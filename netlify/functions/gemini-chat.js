@@ -18,8 +18,23 @@ exports.handler = async function(event) {
             throw new Error("APIキーがNetlifyの環境変数に設定されていません。");
         }
         
-        // AIへの指示書（システムプロンプト）を作成
-        const systemPrompt = `あなたはパチンコ・パチスロ店の優秀なセールスBOTです。ユーザーからの質問に対して、以下の遊技機リストの情報を基に、簡潔で魅力的なセールストークを生成してください。リストにない機種や、スペック以外の質問には答えられません。セールストークは必ず「お客様、」から始めてください。\n\n遊技機リスト:\n${JSON.stringify(machineList, null, 2)}`;
+        let systemPrompt;
+
+        // ユーザーの質問に「新台」が含まれているかチェック
+        if (userQuery.includes('新台')) {
+            systemPrompt = `あなたはパチンコ・パチスロ店の優秀なセールスBOTです。ユーザーから新台について質問されています。以下の遊技機リストの中から、「type」が「pachinko」または「pachislot」である新台カテゴリの機種をいくつか選び、それらのセールストークをまとめて紹介してください。セールストークは必ず「お客様、」から始めて、機種ごとに改行して分かりやすく提示してください。\n\n遊技機リスト:\n${JSON.stringify(machineList, null, 2)}`;
+        } else if (userQuery.includes('たけし')) {
+            // 「たけし」が入力された場合の特別な応答
+            return {
+                statusCode: 200,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: "ああ！くっさいカレーのことですね！\n八潮店にはカレーが生息しています！\nよければ食べに来てください！\nありがとうございます！" })
+            };
+        }
+        else {
+            // 通常の質問の場合の指示
+            systemPrompt = `あなたはパチンコ・パチスロ店の優秀なセールスBOTです。ユーザーからの質問に対して、以下の遊技機リストの情報を基に、簡潔で魅力的なセールストークを生成してください。リストにない機種や、スペック以外の質問には答えられません。セールストークは必ず「お客様、」から始めてください。\n\n遊技機リスト:\n${JSON.stringify(machineList, null, 2)}`;
+        }
 
         // GoogleのAIに送るデータを作成
         const payload = {
@@ -59,3 +74,5 @@ exports.handler = async function(event) {
         };
     }
 };
+
+
