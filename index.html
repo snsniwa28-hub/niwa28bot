@@ -33,12 +33,13 @@
             transform: scale(1.05);
             box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
         }
+        /* AI Chat Styles */
         .chat-bubble-user {
-            background-color: #0e7490;
+            background-color: #0e7490; /* cyan-700 */
             align-self: flex-end;
         }
         .chat-bubble-ai {
-            background-color: #374151;
+            background-color: #374151; /* gray-700 */
             align-self: flex-start;
         }
          .loader {
@@ -64,12 +65,16 @@
                 <p class="text-gray-300 mt-2">機種の検索やAIへの質問は、下のボタンからどうぞ。</p>
             </header>
 
-            <button id="selectMachineButton" class="btn w-full text-white bg-cyan-600 hover:bg-cyan-700 focus:ring-4 focus:outline-none focus:ring-cyan-800 font-medium rounded-lg text-md px-5 py-3 text-center">
-                台一覧から検索する
-            </button>
-            
-            <div class="mt-4">
-                 <button id="openChatButton" class="btn w-full text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:outline-none focus:ring-indigo-800 font-medium rounded-lg text-md px-5 py-3 text-center">
+            <div class="space-y-4">
+                <button id="selectMachineButton" class="btn w-full text-white bg-cyan-600 hover:bg-cyan-700 focus:ring-4 focus:outline-none focus:ring-cyan-800 font-medium rounded-lg text-md px-5 py-3 text-center">
+                    台一覧から検索する
+                </button>
+                
+                <button id="newMachineButton" class="btn w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-800 font-medium rounded-lg text-md px-5 py-3 text-center">
+                    次の新台を表示する
+                </button>
+
+                <button id="openChatButton" class="btn w-full text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:outline-none focus:ring-indigo-800 font-medium rounded-lg text-md px-5 py-3 text-center">
                     チャットで聞いてみる。
                 </button>
             </div>
@@ -83,7 +88,7 @@
         </div>
     </div>
 
-    <!-- Machine Select Modal -->
+    <!-- All Machines Modal -->
     <div id="selectModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 hidden z-40">
         <div class="modal-content glassmorphism rounded-lg shadow-xl w-full max-w-md">
             <div class="flex justify-between items-center p-4 border-b border-gray-700">
@@ -100,6 +105,19 @@
             </div>
             <div id="machineList" class="p-4 max-h-72 overflow-y-auto">
                 <!-- Machine list will be populated here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- New Machines Only Modal -->
+    <div id="newMachineModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 hidden z-40">
+        <div class="modal-content glassmorphism rounded-lg shadow-xl w-full max-w-md">
+            <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                <h3 class="text-lg font-semibold text-blue-400">新台を選択</h3>
+                <button id="closeNewMachineModal" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div id="newMachineList" class="p-4 max-h-96 overflow-y-auto">
+                <!-- New machine list will be populated here -->
             </div>
         </div>
     </div>
@@ -123,23 +141,33 @@
         </div>
     </div>
 
+
     <script type="module">
-        // Firebaseのインポート (Firestoreの永続化機能のため)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        // --- 各種Elementの取得 ---
-        const selectMachineButton = document.getElementById('selectMachineButton');
+        // --- Common Elements ---
         const resultArea = document.getElementById('resultArea');
         const resultTitle = document.getElementById('resultTitle');
         const salesPitch = document.getElementById('salesPitch');
+        
+        // --- All Machines Modal Elements ---
+        const selectMachineButton = document.getElementById('selectMachineButton');
         const selectModal = document.getElementById('selectModal');
         const closeModal = document.getElementById('closeModal');
         const machineList = document.getElementById('machineList');
         const searchInput = document.getElementById('searchInput');
         const searchToggleButton = document.getElementById('searchToggleButton');
         const searchContainer = document.getElementById('searchContainer');
+        
+        // --- New Machines Modal Elements ---
+        const newMachineButton = document.getElementById('newMachineButton');
+        const newMachineModal = document.getElementById('newMachineModal');
+        const closeNewMachineModal = document.getElementById('closeNewMachineModal');
+        const newMachineList = document.getElementById('newMachineList');
+
+        // --- AI Chat Elements ---
         const openChatButton = document.getElementById('openChatButton');
         const chatModal = document.getElementById('chatModal');
         const closeChatModal = document.getElementById('closeChatModal');
@@ -149,10 +177,10 @@
 
         let rememberedMachines = [];
 
-        // --- 初期データ ---
+        // --- Initial Data (This will be overwritten by Firebase) ---
         const initialMachines = [
+            { id: 'hokuto', name: 'スマスロ北斗の拳', type: 'main-slot', salesPitch: `お客様、こちらの『スマスロ北斗の拳』はいかがでしょうか？\n\n本機は初代北斗のゲーム性をスマスロで完全再現した後継機です。バトルボーナスは継続率66%～89%の4パターンで、ケンシロウが倒れない限り継続します。\n\nさらに、継続率94%を誇る上位AT「無想転生バトル」を新たに搭載しており、突入時の期待枚数は2,500枚OVERと、一撃の夢もさらに大きくなりました。初代の興奮と新たな可能性をぜひご体感ください！` },
             { id: 'garo12', name: 'e牙狼12黄金騎士極限', type: 'main-pachinko', salesPitch: `お客様、こちらの『e牙狼12黄金騎士極限』はいかがでしょうか？\n\n本機は液晶図柄揃い時の50%で突入する「極限7500バトル」が特徴です。このバトルに勝利すると、7500個の大当たりとラッキートリガー「魔戒CHANCE LT」が濃厚となります。\n\nLT中の継続率は約76%、さらにLT中の大当たりの25%が7500個と、圧倒的な出玉性能を誇ります。` },
-            { id: 're_zero_s2', name: 'e Re:ゼロから始める異世界生活 season2', type: 'main-pachinko', salesPitch: `お客様、こちらの『e Re:ゼロから始める異世界生活 season2』はいかがでしょうか？\n\n本機はRUSH突入率55%で、突入時は必ず3000個（1500個×2）以上の出玉からスタートする強力なスペックが魅力です。\n\nRUSHの継続率は約77%で、RUSH中の大当たりの25%が3000個以上の「超強欲3000BONUS」となります。\n\nさらに、そのBONUS消化中も約25%で1500個が上乗せされる「強欲フリーズ」を搭載しており、一撃の夢が広がります。ぜひこの興奮をご体感ください。` },
             { id: 'eva_mirai', name: 'P 新世紀エヴァンゲリオン ～未来への咆哮～', type: 'main-pachinko', salesPitch: `お客様、こちらの『P 新世紀エヴァンゲリオン ～未来への咆哮～』はいかがでしょうか？\n\n本機はトータルST突入率約70%、継続率は約81%と非常に高い性能を誇る一台です。\n\nST「IMPACT MODE」中は全ての大当たりが出玉1500個となりますので、一撃の出玉感も十分に期待できます。\n\nまさに最高峰の性能を、ぜひご体感ください。` },
             { id: 'karakuri2', name: 'eフィーバーからくりサーカス2R', type: 'main-pachinko', salesPitch: `お客様、こちらの『eフィーバーからくりサーカス2R』をお勧めします。\n\n本機はラッキートリガー「超悪魔RUSH」を搭載しており、突入時の継続率は約80%です。RUSH中は最大7500個の大当たりが期待できます。\n\nLTへのトータル突入率は約52%となっております。高い一撃性能をぜひお試しください。` },
             { id: 'tokyoghoul_p', name: 'eスマパチ 東京喰種', type: 'main-pachinko', salesPitch: `お客様、『eスマパチ 東京喰種』はいかがでしょうか。\n\n本機は継続率約75%のラッキートリガーを搭載しています。RUSH中の大当たりは全て3000個、さらに約3%で6000個の大当たりにも期待できます。\n\n初当たりは1500個、RUSHへのトータル突入率は約51%です。` },
@@ -165,7 +193,7 @@
             { id: 'zenigata5', name: 'L主役は銭形5', type: 'pachislot', salesPitch: `お客様！スマスロで一撃を狙うなら『L主役は銭形5』がおすすめです！\n\n最大の魅力は、平均650枚OVERのBIG BONUSが約80%でループする点です！払出も500枚から最大3000枚と夢があります。\n\nさらに、継続をかけた「デкаタイム」は3回、6回、9回と成功するたびにBIG BONUSへの昇格期待度がアップしていくので、叩きどころが明確でアツくなれます！出玉の塊を掴み取る快感を、ぜひご体験ください！` }
         ];
 
-        // --- Firebaseによるデータ永続化 ---
+        // --- Firebase Setup ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         let db, auth;
@@ -183,68 +211,100 @@
         if (db) {
             const machinesDocRef = doc(db, `artifacts/${appId}/public/data/machines`, 'machine-list');
             onSnapshot(machinesDocRef, (docSnap) => {
-                if (docSnap.exists() && docSnap.data().list) {
-                    rememberedMachines = docSnap.data().list;
-                } else {
-                    setDoc(machinesDocRef, { list: initialMachines }).then(() => { rememberedMachines = initialMachines; });
-                }
+                if (docSnap.exists() && docSnap.data().list) { rememberedMachines = docSnap.data().list; } 
+                else { setDoc(machinesDocRef, { list: initialMachines }).then(() => { rememberedMachines = initialMachines; }); }
             }, (error) => { rememberedMachines = initialMachines; });
         } else {
             rememberedMachines = initialMachines;
         }
 
-        // --- イベントリスナー ---
+        // --- Event Listeners ---
         selectMachineButton.addEventListener('click', openSelectModal);
         closeModal.addEventListener('click', () => { selectModal.classList.add('hidden'); searchContainer.classList.add('hidden'); });
         selectModal.addEventListener('click', (e) => { if (e.target === selectModal) { selectModal.classList.add('hidden'); searchContainer.classList.add('hidden'); } });
         searchInput.addEventListener('input', (e) => renderMachineList(e.target.value));
         searchToggleButton.addEventListener('click', () => { searchContainer.classList.toggle('hidden'); if (!searchContainer.classList.contains('hidden')) { searchInput.focus(); } });
+
+        newMachineButton.addEventListener('click', openNewMachineModal);
+        closeNewMachineModal.addEventListener('click', () => newMachineModal.classList.add('hidden'));
+        newMachineModal.addEventListener('click', (e) => { if (e.target === newMachineModal) { newMachineModal.classList.add('hidden'); } });
+        
         openChatButton.addEventListener('click', () => chatModal.classList.remove('hidden'));
         closeChatModal.addEventListener('click', () => chatModal.classList.add('hidden'));
         chatForm.addEventListener('submit', handleChatMessage);
 
-        // --- 関数 ---
+        // --- Functions ---
+        const createCategorySection = (title, machines, targetModal) => {
+            if (machines.length === 0) return null;
+            const section = document.createElement('div');
+            section.className = 'mb-4';
+            const header = document.createElement('h4');
+            header.className = 'text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 px-1';
+            header.textContent = title;
+            section.appendChild(header);
+            machines.forEach(machine => {
+                const button = document.createElement('button');
+                button.className = 'w-full text-left p-3 bg-gray-700 hover:bg-cyan-800 rounded-lg mb-2 transition-colors';
+                button.innerHTML = `<p class="font-semibold">${machine.name}</p>`;
+                button.onclick = () => {
+                    displaySalesPitch(machine.id);
+                    targetModal.classList.add('hidden');
+                    if (targetModal === selectModal) searchContainer.classList.add('hidden');
+                };
+                section.appendChild(button);
+            });
+            return section;
+        };
+        
         function renderMachineList(searchTerm = '') {
             const lowerCaseSearchTerm = searchTerm.toLowerCase();
-            machineList.innerHTML = ''; 
-            const filteredMachines = rememberedMachines.filter(machine => machine.name.toLowerCase().includes(lowerCaseSearchTerm));
+            machineList.innerHTML = '';
+            
+            const filteredMachines = rememberedMachines.filter(machine => 
+                (machine.type === 'main-pachinko' || machine.type === 'main-slot') &&
+                machine.name.toLowerCase().includes(lowerCaseSearchTerm)
+            );
+
             if (filteredMachines.length === 0) {
-                machineList.innerHTML = `<p class="text-gray-400 text-center">該当する機種がありません。</p>`; return;
+                machineList.innerHTML = `<p class="text-gray-400 text-center">該当する機種がありません。</p>`;
+                return;
             }
-            const createCategorySection = (title, machines) => {
-                if (machines.length === 0) return null;
-                const section = document.createElement('div');
-                section.className = 'mb-4';
-                const header = document.createElement('h4');
-                header.className = 'text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 px-1';
-                header.textContent = title;
-                section.appendChild(header);
-                machines.forEach(machine => {
-                    const button = document.createElement('button');
-                    button.className = 'w-full text-left p-3 bg-gray-700 hover:bg-cyan-800 rounded-lg mb-2 transition-colors';
-                    button.innerHTML = `<p class="font-semibold">${machine.name}</p>`;
-                    button.onclick = () => {
-                        displaySalesPitch(machine.id);
-                        selectModal.classList.add('hidden');
-                        searchContainer.classList.add('hidden');
-                    };
-                    section.appendChild(button);
-                });
-                return section;
-            };
+            
             const categories = [
-                createCategorySection('新台パチンコ', filteredMachines.filter(m => m.type === 'pachinko')),
-                createCategorySection('新台パチスロ', filteredMachines.filter(m => m.type === 'pachislot')),
-                createCategorySection('八潮店のメイン機 パチンコ', filteredMachines.filter(m => m.type === 'main-pachinko')),
-                createCategorySection('八潮店のメイン機 スロット', filteredMachines.filter(m => m.type === 'main-slot'))
+                createCategorySection('八潮店のメイン機 パチンコ', filteredMachines.filter(m => m.type === 'main-pachinko'), selectModal),
+                createCategorySection('八潮店のメイン機 スロット', filteredMachines.filter(m => m.type === 'main-slot'), selectModal)
             ];
-            categories.forEach(categoryElement => { if(categoryElement) { machineList.appendChild(categoryElement); } });
+
+            categories.forEach(categoryElement => {
+                 if(categoryElement) {
+                     machineList.appendChild(categoryElement);
+                 }
+            });
         }
+
 
         function openSelectModal() {
             searchInput.value = '';
             renderMachineList();
             selectModal.classList.remove('hidden');
+        }
+
+        function openNewMachineModal() {
+            newMachineList.innerHTML = '';
+            const newPachinko = rememberedMachines.filter(m => m.type === 'pachinko');
+            const newPachislot = rememberedMachines.filter(m => m.type === 'pachislot');
+
+            const pachinkoSection = createCategorySection('新台パチンコ', newPachinko, newMachineModal);
+            const pachislotSection = createCategorySection('新台パチスロ', newPachislot, newMachineModal);
+
+            if (pachinkoSection) newMachineList.appendChild(pachinkoSection);
+            if (pachislotSection) newMachineList.appendChild(pachislotSection);
+            
+            if (!pachinkoSection && !pachislotSection) {
+                 newMachineList.innerHTML = `<p class="text-gray-400 text-center">現在、新台の情報はありません。</p>`;
+            }
+
+            newMachineModal.classList.remove('hidden');
         }
 
         function displaySalesPitch(machineId) {
@@ -257,7 +317,7 @@
             resultArea.addEventListener('animationend', () => resultArea.classList.remove('fade-in'), { once: true });
         }
 
-        // --- AIチャット関数 ---
+        // --- AI Chat Functions ---
         function appendMessage(text, sender) {
             const bubble = document.createElement('div');
             bubble.className = `w-fit max-w-xs lg:max-w-md p-3 rounded-lg ${sender === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'}`;
@@ -288,7 +348,6 @@
             messageInput.value = '';
             const loadingBubble = showLoadingIndicator();
             
-            // Netlifyのサーバーレス関数へのURL
             const proxyUrl = '/.netlify/functions/gemini-chat';
 
             const payload = {
@@ -318,3 +377,4 @@
     </script>
 </body>
 </html>
+
