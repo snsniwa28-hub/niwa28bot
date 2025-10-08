@@ -9,20 +9,7 @@ exports.handler = async function(event) {
 
     try {
         // Webページ側から送られてきたチャット内容や機種リストを取得
-        const { userQuery, machineList } = JSON.parse(event.body);
-
-        // 特別なキーワード「たけし」が入力された場合の固定レスポンス
-        if (userQuery.includes('たけし')) {
-            const takeshiResponse = `ああ！くっさいカレーのことですね！
-八潮店にはカレーが生息しています！
-よければ食べに来てください！
-ありがとうございます！`;
-            return {
-                statusCode: 200,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: takeshiResponse })
-            };
-        }
+        const { userQuery, machineList, newOpeningList } = JSON.parse(event.body);
         
         // Netlifyの環境変数に設定したAPIキーを安全に取得
         const apiKey = process.env.GEMINI_API_KEY;
@@ -30,24 +17,38 @@ exports.handler = async function(event) {
         if (!apiKey) {
             throw new Error("APIキーがNetlifyの環境変数に設定されていません。");
         }
-
-        // --- ここからが新しいロジックです ---
-        // ユーザーの質問に「新台」が含まれているかチェック
-        const isNewMachineQuery = userQuery.includes('新台');
-        let effectiveMachineList = machineList; // デフォルトは全機種リスト
-        let additionalSystemInstruction = ''; // AIへの追加指示
-
-        // 「新台」に関する質問だった場合の処理
-        if (isNewMachineQuery) {
-            // 'pachinko' と 'pachislot' typeを持つ機種（＝新台カテゴリ）のみに絞り込む
-            effectiveMachineList = machineList.filter(m => m.type === 'pachinko' || m.type === 'pachislot');
-            // AIへの指示を追加
-            additionalSystemInstruction = '今回は新台に関する質問なので、必ずこの絞り込まれたリストからのみ回答を生成してください。';
+        
+        // 特別なキーワード「たけし」を先に処理
+        if (userQuery.includes('たけし')) {
+            const takeshiResponse = 'ああ！くっさいカレーのことですね！\n八潮店にはカレーが生息しています！\nよければ食べに来てください！\nありがとうございます！';
+            return {
+                statusCode: 200,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: takeshiResponse })
+            };
         }
-        // --- ここまで ---
 
         // AIへの指示書（システムプロンプト）を作成
-        const systemPrompt = `あなたはパチンコ・パチスロ店の優秀なセールスBOTです。ユーザーからの質問に対して、以下の遊技機リストの情報を基に、簡潔で魅力的なセールストークを生成してください。リストにない機種や、スペック以外の質問には答えられません。セールストークは必ず「お客様、」から始めてください。${additionalSystemInstruction}\n\n遊技機リスト:\n${JSON.stringify(effectiveMachineList, null, 2)}`;
+        const systemPrompt = `あなたはパチンコ・パチスロ店の優秀なセールスBOTです。ユーザーからの質問に対して、あなたが把握している情報を基に、誠実かつ魅力的に回答してください。
+
+あなたが把握している情報は以下の通りです。
+1.  **遊技機リスト**: 各台のスペックやセールスポイントが記載されています。機種名やスペックに関する質問には、このリストを基に回答してください。
+2.  **新装開店情報**: 次回の新装開店で導入される機種と台数が記載されています。「新装開店」に関する質問（例：「新装開店の台は？」「導入台数は？」）には、このリストを基に、機種名と台数を分かりやすく一覧で回答してください。
+
+特別なルール:
+- 「新台」という単語を含む質問（例：「新台教えて」）で、かつ「新装開店」という単語を含まない場合は、遊技機リストの中から'pachinko'または'pachislot'タイプを持つ機種のみをピックアップして紹介してください。
+
+上記以外の情報や、リストにない機種、雑談などには答えられません。「申し訳ありませんが、その情報については分かりかねます。」と回答してください。
+セールストークを求められた場合は、必ず「お客様、」から始めてください。
+
+---
+### 遊技機リスト
+${JSON.stringify(machineList, null, 2)}
+
+---
+### 新装開店情報 (2025/10/21)
+${JSON.stringify(newOpeningList, null, 2)}
+`;
 
         // GoogleのAIに送るデータを作成
         const payload = {
@@ -87,4 +88,6 @@ exports.handler = async function(event) {
         };
     }
 };
+
+
 
