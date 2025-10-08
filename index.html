@@ -96,12 +96,24 @@
                 <button id="closeModal" class="text-gray-400 hover:text-white text-2xl">&times;</button>
             </div>
             <div class="p-4 border-b border-gray-700">
-                 <button id="searchToggleButton" class="btn w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center mb-2">
-                    機種名で検索
-                 </button>
-                 <div id="searchContainer" class="hidden mt-2">
-                    <input type="text" id="searchInput" placeholder="機種名で検索..." class="w-full bg-gray-800/50 border border-gray-600 text-white text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block p-2.5 placeholder-gray-400">
-                 </div>
+                 <input type="text" id="searchInput" placeholder="機種名・読みで検索..." class="w-full bg-gray-800/50 border border-gray-600 text-white text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block p-2.5 placeholder-gray-400">
+                 <div id="filterContainer" class="mt-4 space-y-3">
+                    <div>
+                        <label class="text-sm font-medium text-gray-300">スペック</label>
+                        <div id="specFilters" class="flex flex-wrap gap-2 mt-1">
+                            <!-- Filter buttons will be generated here -->
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-300">特徴</label>
+                        <div id="tagFilters" class="flex flex-wrap gap-2 mt-1">
+                             <label class="flex items-center space-x-2 text-sm text-gray-200 cursor-pointer">
+                                <input type="checkbox" id="ltFilter" value="ラッキートリガー" class="form-checkbox h-4 w-4 rounded bg-gray-700 border-gray-600 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-gray-800">
+                                <span>ラッキートリガー搭載</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div id="machineList" class="p-4 max-h-72 overflow-y-auto">
                 <!-- Machine list will be populated here -->
@@ -159,8 +171,8 @@
         const closeModal = document.getElementById('closeModal');
         const machineList = document.getElementById('machineList');
         const searchInput = document.getElementById('searchInput');
-        const searchToggleButton = document.getElementById('searchToggleButton');
-        const searchContainer = document.getElementById('searchContainer');
+        const specFiltersContainer = document.getElementById('specFilters');
+        const ltFilter = document.getElementById('ltFilter');
 
         // --- New Opening Modal Elements ---
         const newOpeningButton = document.getElementById('newOpeningButton');
@@ -181,29 +193,30 @@
         // --- Initial Data (This will be overwritten by Firebase) ---
         const initialMachines = [
             // 新台パチスロ
-            { id: 'shake_bonus_trigger', name: 'SHAKE BONUS TRIGGER', type: 'pachislot', salesPitch: `お客様、こちらの新台『SHAKE BONUS TRIGGER』はいかがでしょうか？\n\n本機はBIG BONUSの平均獲得枚数が約400枚、さらにループ率は約50%と、高い出玉性能が魅力のA-type機です。\n\nBB中は目押し成功で獲得枚数がアップする技術介入要素もあり、楽しみながら出玉を増やすことができます。\n\nシンプルなゲーム性と高い出玉性能を両立した一台を、ぜひお楽しみください！` },
+            { id: 'shake_bonus_trigger', name: 'S SHAKE BONUS TRIGGER', reading: 'しぇいくぼーなすとりがー', type: 'pachislot', manufacturer: '大都技研', spec: 'A-TYPE', tags: [], salesPitch: `お客様、こちらの新台『SHAKE BONUS TRIGGER』はいかがでしょうか？\n\n本機はBIG BONUSの平均獲得枚数が約400枚、さらにループ率は約50%と、高い出玉性能が魅力のA-type機です。\n\nBB中は目押し成功で獲得枚数がアップする技術介入要素もあり、楽しみながら出玉を増やすことができます。\n\nシンプルなゲーム性と高い出玉性能を両立した一台を、ぜひお楽しみください！` },
              // 新台パチンコ
-            { id: 'god_eater_199', name: 'PLTゴッドイーター199VER', type: 'pachinko', salesPitch: `お客様、こちらの新台『PLTゴッドイーター199VER』はいかがでしょうか？\n\n本機は大当り確率約1/199と遊びやすいスペックながら、ラッキートリガー「PREMIUM神RUSH」を搭載しています。\n\nLT中の継続率は約85%で、大当たりの85%が出玉1500個と、ライトミドルながら一撃の夢も十分に見られる仕様となっております。\n\n遊びやすさと高い出玉性能を兼ね備えた一台です。ぜひお試しください！` },
+            { id: 'god_eater_199', name: 'PLTゴッドイーター199VER', reading: 'ぷらっとごっどいーたー199ver', type: 'pachinko', manufacturer: 'サンセイR&D', spec: 'ライトミドル', tags: ['ラッキートリガー'], salesPitch: `お客様、こちらの新台『PLTゴッドイーター199VER』はいかがでしょうか？\n\n本機は大当り確率約1/199と遊びやすいスペックながら、ラッキートリガー「PREMIUM神RUSH」を搭載しています。\n\nLT中の継続率は約85%で、大当たりの85%が出玉1500個と、ライトミドルながら一撃の夢も十分に見られる仕様となっております。\n\n遊びやすさと高い出玉性能を兼ね備えた一台です。ぜひお試しください！` },
             // メイン機 パチンコ
-            { id: 'garo12', name: 'e牙狼12黄金騎士極限', type: 'main-pachinko', salesPitch: `お客様、こちらの『e牙狼12黄金騎士極限』はいかがでしょうか？\n\n本機は液晶図柄揃い時の50%で突入する「極限7500バトル」が特徴です。このバトルに勝利すると、7500個の大当たりとラッキートリガー「魔戒CHANCE LT」が濃厚となります。\n\nLT中の継続率は約76%、さらにLT中の大当たりの25%が7500個と、圧倒的な出玉性能を誇ります。` },
-            { id: 'eva_mirai', name: 'P 新世紀エヴァンゲリオン ～未来への咆哮～', type: 'main-pachinko', salesPitch: `お客様、こちらの『P 新世紀エヴァンゲリオン ～未来への咆哮～』はいかがでしょうか？\n\n本機はトータルST突入率約70%、継続率は約81%と非常に高い性能を誇る一台です。\n\nST「IMPACT MODE」中は全ての大当たりが出玉1500個となりますので、一撃の出玉感も十分に期待できます。\n\nまさに最高峰の性能を、ぜひご体感ください。` },
-            { id: 'karakuri2', name: 'eフィーバーからくりサーカス2R', type: 'main-pachinko', salesPitch: `お客様、こちらの『eフィーバーからくりサーカス2R』をお勧めします。\n\n本機はラッキートリガー「超悪魔RUSH」を搭載しており、突入時の継続率は約80%です。RUSH中は最大7500個の大当たりが期待できます。\n\nLTへのトータル突入率は約52%となっております。高い一撃性能をぜひお試しください。` },
-            { id: 'tokyoghoul_p', name: 'eスマパチ 東京喰種', type: 'main-pachinko', salesPitch: `お客様、『eスマパチ 東京喰種』はいかがでしょうか。\n\n本機は継続率約75%のラッキートリガーを搭載しています。RUSH中の大当たりは全て3000個、さらに約3%で6000個の大当たりにも期待できます。\n\n初当たりは1500個、RUSHへのトータル突入率は約51%です。` },
+            { id: 'garo12', name: 'e牙狼12黄金騎士極限', reading: 'eがろ12おうごんきしきょくげん', type: 'main-pachinko', manufacturer: 'サンセイR&D', spec: 'ミドル', tags: ['ラッキートリガー'], salesPitch: `お客様、こちらの『e牙狼12黄金騎士極限』はいかがでしょうか？\n\n本機は液晶図柄揃い時の50%で突入する「極限7500バトル」が特徴です。このバトルに勝利すると、7500個の大当たりとラッキートリガー「魔戒CHANCE LT」が濃厚となります。\n\nLT中の継続率は約76%、さらにLT中の大当たりの25%が7500個と、圧倒的な出玉性能を誇ります。` },
+            { id: 'eva_mirai', name: 'P新世紀エヴァンゲリオン ～未来への咆哮～', reading: 'pしんせいきえゔぁんげりおん みらいへのほうこう', type: 'main-pachinko', manufacturer: 'ビスティ', spec: 'ミドル', tags: [], salesPitch: `お客様、こちらの『P 新世紀エヴァンゲリオン ～未来への咆哮～』はいかがでしょうか？\n\n本機はトータルST突入率約70%、継続率は約81%と非常に高い性能を誇る一台です。\n\nST「IMPACT MODE」中は全ての大当たりが出玉1500個となりますので、一撃の出玉感も十分に期待できます。\n\nまさに最高峰の性能を、ぜひご体感ください。` },
+            { id: 'karakuri2', name: 'eフィーバーからくりサーカス2R', reading: 'eふぃーばーからくりさーかす2r', type: 'main-pachinko', manufacturer: 'SANKYO', spec: 'ミドル', tags: ['ラッキートリガー'], salesPitch: `お客様、こちらの『eフィーバーからくりサーカス2R』をお勧めします。\n\n本機はラッキートリガー「超悪魔RUSH」を搭載しており、突入時の継続率は約80%です。RUSH中は最大7500個の大当たりが期待できます。\n\nLTへのトータル突入率は約52%となっております。高い一撃性能をぜひお試しください。` },
+            { id: 'tokyoghoul_p', name: 'e東京喰種', reading: 'eとうきょうぐーる', type: 'main-pachinko', manufacturer: 'ビスティ', spec: 'ミドル', tags: ['ラッキートリガー'], salesPitch: `お客様、こちらの『eスマパチ 東京喰種』はいかがでしょうか？\n\n本機の魅力は、なんといってもラッキートリガー「HYPER喰種RUSH」です！\n\n突入すれば継続率は約75%、そしてRUSH中の大当たりは全て3000個以上が濃厚となります！\n\nさらに、約3%で6000個という圧倒的な出玉も搭載しており、一撃の破壊力は抜群です。\n\n初当たりの図柄揃いは1500個。そこからのRUSH突入を賭けたチャレンジが、手に汗握るポイントです。トータル突入率は約51%となっております。ぜひ、このスリリングなゲーム性と強力な出玉性能をご体感ください！` },
             
             // メイン機 スロット
-            { id: 'onimusha3', name: 'L新鬼武者3', type: 'main-slot', salesPitch: `お客様！スロットならこちらの『L新鬼武者3』がオススメです！\n\n純増約2.5枚、継続率最大89%のAT「蒼剣RUSH」が基本となるゲーム性ですが、なんといっても魅力は純増約5.5枚にパワーアップする上位AT「真 蒼剣RUSH」です！\n\nさらに、上乗се特化ゾーン「鬼斬乱舞」では平均約180Gの上乗せが期待でき、一撃の夢も十分狙えます！強力なATと多彩な上乗せをぜひご体感ください！` },
-            { id: 'monhan_rise', name: 'Lモンスターハンターライズ', type: 'main-slot', salesPitch: `お客様、こちらの『Lモンスターハンターライズ』はいかがでしょうか？\n\n大人気シリーズ「モンスターハンター」の超抽選バトルが、スマスロで正統進化しました！\n本機は純増約2.7枚のATがメインですが、討伐モンスターに応じてG数や報酬が変化し、おなじみの「剥ぎ取りチャンス」でボーナスをストックしていく、ファンにはたまらないゲーム性です。\n\nさらに、15頭討伐から突入のチャンスとなる上位AT「気焔万丈」は、すべてのボーナスが純増約4.0枚にパワーアップ！狩りの興奮と一撃の夢を、ぜひご体感ください！` },
-            { id: 'hokuto', name: 'スマスロ北斗の拳', type: 'main-slot', salesPitch: `お客様、こちらの『スマスロ北斗の拳』はいかがでしょうか？\n\n本機は初代北斗のゲーム性をスマスロで完全再現した後継機です。バトルボーナスは継続率66%～89%の4パターンで、ケンシロウが倒れない限り継続します。\n\nさらに、継続率94%を誇る上位AT「無想転生バトル」を新たに搭載しており、突入時の期待枚数は2,500枚OVERと、一撃の夢もさらに大きくなりました。初代の興奮と新たな可能性をぜひご体感ください！` },
-            { id: 'kaguya', name: 'Lかぐや様は告らせたい', type: 'main-slot', salesPitch: `お客様、『Lかぐや様は告らせたい』をご紹介します。\n\n本機の最大の特徴は、純増約9.0枚のボーナスが約45%で1G連する点です。\n\nBIG BONUSでは約270枚、SUPER BIG BONUSでは約490枚の獲得が見込めます。\n\nさらに、突入時の期待枚数が約3450枚の最上位ボーナス「EXTRA BONUS」も搭載しております。` },
-            { id: 'revengers', name: 'Lスマスロ東京リベンジャーズ', type: 'main-slot', salesPitch: `お客様、こちらの『Lスマスロ東京リベンジャーズ』はいかがでしょうか。\n\nAT「東卍RUSH」中の「東卍ATTACK」成功で、純増約8.0枚、継続率約80%の上位AT「東卍RUSH BURST」へ突入します。\n\n加えて、期待枚数約3000枚OVERの最強特化ゾーン「黒い衝動」も搭載しております。` },
-            { id: 'tokyoghoul_s', name: 'Lスマスロ東京喰種', type: 'main-slot', salesPitch: `お客様、『Lスマスロ東京喰種』をお勧めします。\n\n本機は純増約4.0枚のAT機で、AT中の「喰種対決」勝利で上乗せトリガー「BITES」へ突入します。「BITES」中は小役で報酬がアップし、4桁枚数の上乗せも可能です。\n\nさらに、期待度約61%の上位CZ「ジャッジメント」を突破することで、平均上乗せ約500枚の「CCGの死神」に突入します。` },
+            { id: 'kabaneri', name: 'Sパチスロ甲鉄城のカバネリ', reading: 'sぱちすろこうてつじょうのかばねり', type: 'main-slot', manufacturer: 'サミー', spec: 'AT', tags: [], salesPitch: `お客様、こちらの『Sパチスロ甲鉄城のカバネリ』はいかがでしょうか？\n\n本機は大人気のSTタイプのゲーム性で、ST「KABANERI OF THE IRON FORTRESS」とボーナスのループで出玉を増やしていきます。\n\n6.5号機の特性を活かした「ツラヌキSPEC」を搭載しており、エンディング到達後も即ST引き戻しのチャンスがあるため、どこまでも続く期待感が魅力です！\n\nさらに、突入すれば期待枚数約3,500枚を誇る継続率約95%の上位ST「美馬ST」も搭載！STが続く限り終わらない興奮を、ぜひご体感ください。` },
+            { id: 'onimusha3', name: 'L新鬼武者3', reading: 'lしんおにむしゃ3', type: 'main-slot', manufacturer: 'エンターライズ', spec: 'AT', tags: [], salesPitch: `お客様！スロットならこちらの『L新鬼武者3』がオススメです！\n\n純増約2.5枚、継続率最大89%のAT「蒼剣RUSH」が基本となるゲーム性ですが、なんといっても魅力は純増約5.5枚にパワーアップする上位AT「真 蒼剣RUSH」です！\n\nさらに、上乗се特化ゾーン「鬼斬乱舞」では平均約180Gの上乗せが期待でき、一撃の夢も十分狙えます！強力なATと多彩な上乗せをぜひご体感ください！` },
+            { id: 'monhan_rise', name: 'Lモンスターハンターライズ', reading: 'lもんすたーはんたーらいず', type: 'main-slot', manufacturer: 'アデリオン', spec: 'AT', tags: [], salesPitch: `お客様、こちらの『Lモンスターハンターライズ』はいかがでしょうか？\n\n大人気シリーズ「モンスターハンター」の超抽選バトルが、スマスロで正統進化しました！\n本機は純増約2.7枚のATがメインですが、討伐モンスターに応じてG数や報酬が変化し、おなじみの「剥ぎ取りチャンス」でボーナスをストックしていく、ファンにはたまらないゲーム性です。\n\nさらに、15頭討伐から突入のチャンスとなる上位AT「気焔万丈」は、すべてのボーナスが純増約4.0枚にパワーアップ！狩りの興奮と一撃の夢を、ぜひご体感ください！` },
+            { id: 'hokuto', name: 'L北斗の拳', reading: 'lほくとのけん', type: 'main-slot', manufacturer: 'サミー', spec: 'AT', tags: [], salesPitch: `お客様、こちらの『スマスロ北斗の拳』はいかがでしょうか？\n\n本機は初代北斗のゲーム性をスマスロで完全再現した後継機です。バトルボーナスは継続率66%～89%の4パターンで、ケンシロウが倒れない限り継続します。\n\nさらに、継続率94%を誇る上位AT「無想転生バトル」を新たに搭載しており、突入時の期待枚数は2,500枚OVERと、一撃の夢もさらに大きくなりました。初代の興奮と新たな可能性をぜひご体感ください！` },
+            { id: 'kaguya', name: 'Lかぐや様は告らせたい', reading: 'lかぐやさまはこくらせたい', type: 'main-slot', manufacturer: 'SANKYO', spec: 'AT', tags: [], salesPitch: `お客様、『Lかぐや様は告らせたい』をご紹介します。\n\n本機の最大の特徴は、純増約9.0枚のボーナスが約45%で1G連する点です。\n\nBIG BONUSでは約270枚、SUPER BIG BONUSでは約490枚の獲得が見込めます。\n\nさらに、突入時の期待枚数が約3450枚の最上位ボーナス「EXTRA BONUS」も搭載しております。` },
+            { id: 'revengers', name: 'L東京リベンジャーズ', reading: 'lとうきょうりべんじゃーず', type: 'main-slot', manufacturer: 'サミー', spec: 'AT', tags: [], salesPitch: `お客様、こちらの『Lスマスロ東京リベンジャーズ』はいかがでしょうか。\n\nAT「東卍RUSH」中の「東卍ATTACK」成功で、純増約8.0枚、継続率約80%の上位AT「東卍RUSH BURST」へ突入します。\n\n加えて、期待枚数約3000枚OVERの最強特化ゾーン「黒い衝動」も搭載しております。` },
+            { id: 'tokyoghoul_s', name: 'L東京喰種', reading: 'lとうきょうぐーる', type: 'main-slot', manufacturer: 'スパイキー', spec: 'AT', tags: [], salesPitch: `お客様、『Lスマスロ東京喰種』をお勧めします。\n\n本機は純増約4.0枚のAT機で、AT中の「喰種対決」勝利で上乗せトリガー「BITES」へ突入します。「BITES」中は小役で報酬がアップし、4桁枚数の上乗せも可能です。\n\nさらに、期待度約61%の上位CZ「ジャッジメント」を突破することで、平均上乗せ約500枚の「CCGの死神」に突入します。` },
 
             // その他の台 パチンコ
-            { id: 'railgun', name: 'eとある科学の超電磁砲 PHASE NEXT', type: 'other-pachinko', salesPitch: `お客様！こちらの『eとある科学の超電磁砲 PHASE NEXT』はいかがでしょうか？\n\n話題のラッキートリガー搭載機です！\n\n大当り確率は1/169.7と非常に遊びやすいスペックでありながら、一度ラッキートリガー「超超電磁砲RUSH」に突入すれば継続率は約77%と、連チャンの期待感も抜群です！\n\nさらにRUSH中は、約30%が4500個以上の出玉となる破壊力も秘めています。遊びやすさと一撃の夢を両立したこの一台、ぜひお試しください！` },
-            { id: 'okinawa6', name: 'Pスーパー海物語IN沖縄6', type: 'other-pachinko', salesPitch: `お客様！人気の沖海シリーズ最新作、『Pスーパー海物語IN沖縄6』はいかがですか？\n\n伝統の確変ループタイプで、大当りは1500個の出玉（※）と、安定感は健在です！\n\n注目は新搭載の「ジンベェタイム」！このモード中に通常大当りを引いても、時短が200回にパワーアップするので、引き戻しの期待感が格段に違います！安心感と新たな興奮を、ぜひご体感ください！\n\n（※2R確変を除く）` },
+            { id: 'railgun', name: 'eとある科学の超電磁砲 PHASE NEXT', reading: 'eとあるかがくのれーるがんふぇいずねくすと', type: 'other-pachinko', manufacturer: '藤商事', spec: 'ライトミドル', tags: ['ラッキートリガー'], salesPitch: `お客様！こちらの『eとある科学の超電磁砲 PHASE NEXT』はいかがでしょうか？\n\n話題のラッキートリガー搭載機です！\n\n大当り確率は1/169.7と非常に遊びやすいスペックでありながら、一度ラッキートリガー「超超電磁砲RUSH」に突入すれば継続率は約77%と、連チャンの期待感も抜群です！\n\nさらにRUSH中は、約30%が4500個以上の出玉となる破壊力も秘めています。遊びやすさと一撃の夢を両立したこの一台、ぜひお試しください！` },
+            { id: 'okinawa6', name: 'Pスーパー海物語IN沖縄6', reading: 'pすーぱーうみものがたりいんおきなわ6', type: 'other-pachinko', manufacturer: '三洋物産', spec: 'ミドル', tags: [], salesPitch: `お客様！人気の沖海シリーズ最新作、『Pスーパー海物語IN沖縄6』はいかがですか？\n\n伝統の確変ループタイプで、大当りは1500個の出玉（※）と、安定感は健在です！\n\n注目は新搭載の「ジンベェタイム」！このモード中に通常大当りを引いても、時短が200回にパワーアップするので、引き戻しの期待感が格段に違います！安心感と新たな興奮を、ぜひご体感ください！\n\n（※2R確変を除く）` },
             
             // その他の台 スロット
-            { id: 'zenigata5', name: 'L主役は銭形5', type: 'other-pachislot', salesPitch: `お客様！スマスロで一撃を狙うなら『L主役は銭形5』がおすすめです！\n\n最大の魅力は、平均650枚OVERのBIG BONUSが約80%でループする点です！払出も500枚から最大3000枚と夢があります。\n\nさらに、継続をかけた「デкаタイム」は3回、6回、9回と成功するたびにBIG BONUSへの昇格期待度がアップしていくので、叩きどころが明確でアツくなれます！出玉の塊を掴み取る快感を、ぜひご体験ください！` }
+            { id: 'zenigata5', name: 'L主役は銭形5', reading: 'lしゅやくはぜにがた5', type: 'other-pachislot', manufacturer: 'オリンピア', spec: 'AT', tags: [], salesPitch: `お客様！スマスロで一撃を狙うなら『L主役は銭形5』がおすすめです！\n\n最大の魅力は、平均650枚OVERのBIG BONUSが約80%でループする点です！払出も500枚から最大3000枚と夢があります。\n\nさらに、継続をかけた「デкаタイム」は3回、6回、9回と成功するたびにBIG BONUSへの昇格期待度がアップしていくので、叩きどころが明確でアツくなれます！出玉の塊を掴み取る快感を、ぜひご体験ください！` }
         ];
         
         const newOpeningData = [
@@ -243,12 +256,40 @@
             rememberedMachines = initialMachines;
         }
 
+        // --- Filter Setup ---
+        const specTypes = ['すべて', 'スロット', 'パチンコ', 'ミドル', 'ライトミドル', '甘デジ', 'AT', 'A-TYPE'];
+        let activeSpecFilter = 'すべて';
+
+        specTypes.forEach(spec => {
+            const button = document.createElement('button');
+            button.textContent = spec;
+            button.dataset.spec = spec;
+            button.className = 'px-3 py-1 text-sm font-medium rounded-full transition-colors focus:outline-none';
+            if (spec === 'すべて') {
+                button.classList.add('bg-cyan-600', 'text-white');
+            } else {
+                button.classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600');
+            }
+            button.addEventListener('click', () => {
+                activeSpecFilter = spec;
+                specFiltersContainer.querySelectorAll('button').forEach(btn => {
+                    btn.classList.remove('bg-cyan-600', 'text-white');
+                    btn.classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600');
+                });
+                button.classList.add('bg-cyan-600', 'text-white');
+                button.classList.remove('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600');
+                renderMachineList(); 
+            });
+            specFiltersContainer.appendChild(button);
+        });
+        
         // --- Event Listeners ---
         selectMachineButton.addEventListener('click', openSelectModal);
-        closeModal.addEventListener('click', () => { selectModal.classList.add('hidden'); searchContainer.classList.add('hidden'); });
-        selectModal.addEventListener('click', (e) => { if (e.target === selectModal) { selectModal.classList.add('hidden'); searchContainer.classList.add('hidden'); } });
-        searchInput.addEventListener('input', (e) => renderMachineList(e.target.value));
-        searchToggleButton.addEventListener('click', () => { searchContainer.classList.toggle('hidden'); if (!searchContainer.classList.contains('hidden')) { searchInput.focus(); } });
+        closeModal.addEventListener('click', () => selectModal.classList.add('hidden'));
+        selectModal.addEventListener('click', (e) => { if (e.target === selectModal) { selectModal.classList.add('hidden'); } });
+        
+        searchInput.addEventListener('input', () => renderMachineList());
+        ltFilter.addEventListener('change', () => renderMachineList());
 
         newOpeningButton.addEventListener('click', openNewOpeningModal);
         closeNewOpeningModal.addEventListener('click', () => newOpeningModal.classList.add('hidden'));
@@ -259,6 +300,15 @@
         chatForm.addEventListener('submit', handleChatMessage);
 
         // --- Functions ---
+
+        // Katakana to Hiragana conversion
+        function toHiragana(str) {
+            return str.replace(/[\u30a1-\u30f6]/g, function(match) {
+                var chr = match.charCodeAt(0) - 0x60;
+                return String.fromCharCode(chr);
+            });
+        }
+
         const createCategorySection = (title, machines, targetModal) => {
             if (machines.length === 0) return null;
             const section = document.createElement('div');
@@ -274,20 +324,40 @@
                 button.onclick = () => {
                     displaySalesPitch(machine.id);
                     targetModal.classList.add('hidden');
-                    if (targetModal === selectModal) searchContainer.classList.add('hidden');
                 };
                 section.appendChild(button);
             });
             return section;
         };
         
-        function renderMachineList(searchTerm = '') {
+        function renderMachineList() {
+            const searchTerm = searchInput.value;
             const lowerCaseSearchTerm = searchTerm.toLowerCase();
+            const hiraganaSearchTerm = toHiragana(lowerCaseSearchTerm);
+
+            const ltChecked = ltFilter.checked;
             machineList.innerHTML = '';
             
-            const filteredMachines = rememberedMachines.filter(machine => 
-                machine.name.toLowerCase().includes(lowerCaseSearchTerm)
-            );
+            let filteredMachines = rememberedMachines;
+
+            filteredMachines = filteredMachines.filter(machine => {
+                const textMatch = machine.name.toLowerCase().includes(lowerCaseSearchTerm) || 
+                                  (machine.reading && machine.reading.includes(hiraganaSearchTerm));
+
+                let specMatch = activeSpecFilter === 'すべて';
+                if (!specMatch) {
+                    if (activeSpecFilter === 'スロット') {
+                        specMatch = machine.type.includes('slot');
+                    } else if (activeSpecFilter === 'パチンコ') {
+                        specMatch = machine.type.includes('pachinko');
+                    } else {
+                        specMatch = machine.spec === activeSpecFilter;
+                    }
+                }
+
+                const tagMatch = !ltChecked || (machine.tags && machine.tags.includes('ラッキートリガー'));
+                return textMatch && specMatch && tagMatch;
+            });
 
             if (filteredMachines.length === 0) {
                 machineList.innerHTML = `<p class="text-gray-400 text-center">該当する機種がありません。</p>`;
@@ -310,9 +380,18 @@
             });
         }
 
-
         function openSelectModal() {
             searchInput.value = '';
+            ltFilter.checked = false;
+            activeSpecFilter = 'すべて';
+            specFiltersContainer.querySelectorAll('button').forEach(btn => {
+                btn.classList.remove('bg-cyan-600', 'text-white');
+                btn.classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600');
+                if (btn.dataset.spec === 'すべて') {
+                    btn.classList.add('bg-cyan-600', 'text-white');
+                    btn.classList.remove('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600');
+                }
+            });
             renderMachineList();
             selectModal.classList.remove('hidden');
         }
@@ -336,16 +415,16 @@
                     const li = document.createElement('li');
                     li.className = 'flex justify-between items-center bg-gray-800/50 p-3 rounded-lg';
 
-                    // Check if the new machine exists in our remembered list
                     const matchedMachine = rememberedMachines.find(rm => 
                         openingMachine.name.includes(rm.name) || 
                         (openingMachine.name.includes('シェイクボーナス') && rm.id === 'shake_bonus_trigger') ||
-                        (openingMachine.name.includes('新鬼武者3') && rm.id === 'onimusha3')
+                        (openingMachine.name.includes('新鬼武者3') && rm.id === 'onimusha3') ||
+                        (openingMachine.name.includes('e東京喰種W') && rm.id === 'tokyoghoul_p') ||
+                        (openingMachine.name.includes('甲鉄城のカバネリ') && rm.id === 'kabaneri')
                     );
 
                     let nameElement;
                     if (matchedMachine) {
-                        // If it exists, make it a button
                         nameElement = document.createElement('button');
                         nameElement.className = 'text-left text-cyan-400 hover:text-cyan-300 transition-colors focus:outline-none';
                         nameElement.textContent = openingMachine.name;
@@ -354,7 +433,6 @@
                             newOpeningModal.classList.add('hidden');
                         });
                     } else {
-                        // If not, just display the name
                         nameElement = document.createElement('span');
                         nameElement.className = 'text-gray-200';
                         nameElement.textContent = openingMachine.name;
@@ -435,7 +513,8 @@
 
             const payload = {
                 userQuery: userQuery,
-                machineList: rememberedMachines
+                machineList: rememberedMachines,
+                newOpeningList: newOpeningData // 新装開店の情報を追加
             };
 
             try {
