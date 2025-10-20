@@ -40,29 +40,6 @@
             transform: translateY(-4px);
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
         }
-        /* AI Chat Styles */
-        .chat-bubble-user {
-            background-color: #4f46e5; /* indigo-600 */
-            color: white;
-            align-self: flex-end;
-        }
-        .chat-bubble-ai {
-            background-color: #e5e7eb; /* gray-200 */
-            color: #1f293b; /* gray-800 */
-            align-self: flex-start;
-        }
-        .loader {
-            border: 2px solid #e5e7eb;
-            border-top: 2px solid #4f46e5;
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
     </style>
 </head>
 <body class="antialiased">
@@ -87,7 +64,7 @@
                     最新台の情報をいつでも手軽に
                 </h1>
                 <p class="mt-6 max-w-2xl mx-auto text-lg text-gray-600">
-                    ガーデン八潮店の遊技台情報や新装開店情報、AIによるセールストーク提案など、あなたの「知りたい」をサポートします。
+                    ガーデン八潮店の遊技台情報や新装開店情報など、あなたの「知りたい」をサポートします。
                 </p>
             </div>
         </section>
@@ -95,7 +72,7 @@
         <!-- Features Section -->
         <section class="pb-20 bg-slate-50">
             <div class="container mx-auto px-4 sm:px-6 lg:px-8 -mt-20 sm:-mt-24">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                     <!-- Feature 1: Machine List -->
                     <div id="selectMachineButton" class="feature-card cursor-pointer bg-white rounded-2xl shadow-lg border border-gray-200/80 p-8 text-center">
                         <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
@@ -112,15 +89,6 @@
                         </div>
                         <h3 class="mt-6 text-xl font-semibold text-gray-900">新装開店の<br>情報を見る</h3>
                         <p class="mt-2 text-base text-gray-600">新装開店の情報を<br>いち早く確認。</p>
-                    </div>
-                    
-                    <!-- Feature 3: AI Chat -->
-                    <div id="openChatButton" class="feature-card cursor-pointer bg-white rounded-2xl shadow-lg border border-gray-200/80 p-8 text-center">
-                        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
-                           <svg class="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg>
-                        </div>
-                        <h3 class="mt-6 text-xl font-semibold text-gray-900">AIチャットで<br>質問する</h3>
-                        <p class="mt-2 text-base text-gray-600">AIチャットが<br>疑問を即解決。</p>
                     </div>
                 </div>
 
@@ -162,7 +130,7 @@
         </div>
     </footer>
 
-    <!-- Modals (Copied from previous version with style adjustments) -->
+    <!-- Modals -->
     
     <!-- All Machines Modal -->
     <div id="selectModal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 hidden z-40">
@@ -204,25 +172,6 @@
         </div>
     </div>
 
-    <!-- AI Chat Modal -->
-    <div id="chatModal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 hidden z-40">
-        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col" style="height: 70vh;">
-            <div class="flex justify-between items-center p-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">AIセールスチャット</h3>
-                <button id="closeChatModal" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-            </div>
-            <div id="chatMessages" class="flex-grow p-4 overflow-y-auto flex flex-col space-y-4 bg-gray-50">
-                 <div class="chat-bubble-ai w-fit max-w-xs lg:max-w-md p-3 rounded-lg"><p class="text-sm">こんにちは！機種名や特徴を話しかけてみてください。おすすめのセールストークを提案します。</p></div>
-            </div>
-            <div class="p-4 border-t border-gray-200 bg-white">
-                <form id="chatForm" class="flex space-x-2">
-                    <input type="text" id="messageInput" placeholder="「エヴァのスペックは？」" class="flex-grow bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg p-2.5 placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500" required>
-                    <button type="submit" class="btn-primary text-white bg-indigo-600 hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-2.5">送信</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -246,13 +195,6 @@
         const closeNewOpeningModal = document.getElementById('closeNewOpeningModal');
         const newOpeningInfo = document.getElementById('newOpeningInfo');
 
-        const openChatButton = document.getElementById('openChatButton');
-        const chatModal = document.getElementById('chatModal');
-        const closeChatModal = document.getElementById('closeChatModal');
-        const chatMessages = document.getElementById('chatMessages');
-        const chatForm = document.getElementById('chatForm');
-        const messageInput = document.getElementById('messageInput');
-
         let rememberedMachines = [];
 
         const initialMachines = [
@@ -269,7 +211,7 @@
             { id: 'kabaneri', name: 'Sパチスロ甲鉄城のカバネリ', reading: 'sぱちすろこうてつじょうのかばねり', type: 'main-slot', manufacturer: 'サミー', spec: 'AT', tags: [], salesPitch: `お客様、こちらの『Sパチスロ甲鉄城のカバネリ』はいかがでしょうか？\n\n本機は大人気のSTタイプのゲーム性で、ST「KABANERI OF THE IRON FORTRESS」とボーナスのループで出玉を増やしていきます。\n\n6.5号機の特性を活かした「ツラヌキSPEC」を搭載しており、エンディング到達後も即ST引き戻しのチャンスがあるため、どこまでも続く期待感が魅力です！\n\nさらに、突入すれば期待枚数約3,500枚を誇る継続率約95%の上位ST「美馬ST」も搭載！STが続く限り終わらない興奮を、ぜひご体感ください。` },
             { id: 'onimusha3', name: 'L新鬼武者3', reading: 'lしんおにむしゃ3', type: 'main-slot', manufacturer: 'エンターライズ', spec: 'AT', tags: [], salesPitch: `お客様！スロットならこちらの『L新鬼武者3』がオススメです！\n\n純増約2.5枚、継続率最大89%のAT「蒼剣RUSH」が基本となるゲーム性ですが、なんといっても魅力は純増約5.5枚にパワーアップする上位AT「真 蒼剣RUSH」です！\n\nさらに、上乗се特化ゾーン「鬼斬乱舞」では平均約180Gの上乗せが期待でき、一撃の夢も十分狙えます！強力なATと多彩な上乗せをぜひご体感ください！` },
             { id: 'monhan_rise', name: 'Lモンスターハンターライズ', reading: 'lもんすたーはんたーらいず', type: 'main-slot', manufacturer: 'アデリオン', spec: 'AT', tags: [], salesPitch: `お客様、こちらの『Lモンスターハンターライズ』はいかがでしょうか？\n\n大人気シリーズ「モンスターハンター」の超抽選バトルが、スマスロで正統進化しました！\n本機は純増約2.7枚のATがメインですが、討伐モンスターに応じてG数や報酬が変化し、おなじみの「剥ぎ取りチャンス」でボーナスをストックしていく、ファンにはたまらないゲーム性です。\n\nさらに、15頭討伐から突入のチャンスとなる上位AT「気焔万丈」は、すべてのボーナスが純増約4.0枚にパワーアップ！狩りの興奮と一撃の夢を、ぜひご体感ください！` },
-            { id: 'hokuto', name: 'L北斗の拳', reading: 'lほくとのけん', type: 'main-slot', manufacturer: 'サミー', spec: 'AT', tags: [], salesPitch: `お客様、こちらの『スマスロ北斗の拳』はいかがでしょうか？\n\n本機は初代北斗のゲーム性をスマスロで完全再現した後継機です。バトルボーナスは継続率66%～89%の4パターンで、ケンシロウが倒れない限り継続します。\n\nさらに、継続率94%を誇る上位AT「無想転生バトル」を新たに搭載しており、突入時の期待枚数は2,500枚OVERと、一撃の夢もさらに大きくなりました。初代の興奮と新たな可能性をぜひご体感ください！` },
+            { id: 'hokuto', name: 'L北斗の拳', reading: 'lほくとのけん', type: 'main-slot', manufacturer: 'サミー', spec: 'AT', tags: [], salesPitch: `お客様、こちらの『スマスロ北斗の拳』はいかがでしょうか？\n\n本機は初代北斗のゲーム性をスマスロで完全再現した後継機です。バトルボーナスは継続率66%～89%の4パターンで、ケンシロウが倒れない限り継続します。\n\nさらに、継続率94%を誇る上位AT「無想転生バトル」を新たに搭載しており、突入時の期待枚数は2,500枚OVERと、一撃の夢もさらに大きくなりました。初代の興奮と新たな可能性をぜひご体感ください。` },
             { id: 'kaguya', name: 'Lかぐや様は告らせたい', reading: 'lかぐやさまはこくらせたい', type: 'main-slot', manufacturer: 'SANKYO', spec: 'AT', tags: [], salesPitch: `お客様、『Lかぐや様は告らせたい』をご紹介します。\n\n本機の最大の特徴は、純増約9.0枚のボーナスが約45%で1G連する点です。\n\nBIG BONUSでは約270枚、SUPER BIG BONUSでは約490枚の獲得が見込めます。\n\nさらに、突入時の期待枚数が約3450枚の最上位ボーナス「EXTRA BONUS」も搭載しております。` },
             { id: 'revengers', name: 'L東京リベンジャーズ', reading: 'lとうきょうりべんじゃーず', type: 'main-slot', manufacturer: 'サミー', spec: 'AT', tags: [], salesPitch: `お客様、こちらの『Lスマスロ東京リベンジャーズ』はいかがでしょうか。\n\nAT「東卍RUSH」中の「東卍ATTACK」成功で、純増約8.0枚、継続率約80%の上位AT「東卍RUSH BURST」へ突入します。\n\n加えて、期待枚数約3000枚OVERの最強特化ゾーン「黒い衝動」も搭載しております。` },
             { id: 'tokyoghoul_s', name: 'L東京喰種', reading: 'lとうきょうぐーる', type: 'main-slot', manufacturer: 'スパイキー', spec: 'AT', tags: [], salesPitch: `お客様、『Lスマスロ東京喰種』をお勧めします。\n\n本機は純増約4.0枚のAT機で、AT中の「喰種対決」勝利で上乗せトリガー「BITES」へ突入します。「BITES」中は小役で報酬がアップし、4桁枚数の上乗せも可能です。\n\nさらに、期待度約61%の上位CZ「ジャッジメント」を突破することで、平均上乗せ約500枚の「CCGの死神」に突入します。` },
@@ -390,10 +332,6 @@
         newOpeningButton.addEventListener('click', openNewOpeningModal);
         closeNewOpeningModal.addEventListener('click', () => newOpeningModal.classList.add('hidden'));
         newOpeningModal.addEventListener('click', (e) => { if (e.target === newOpeningModal) { newOpeningModal.classList.add('hidden'); } });
-
-        openChatButton.addEventListener('click', () => chatModal.classList.remove('hidden'));
-        closeChatModal.addEventListener('click', () => chatModal.classList.add('hidden'));
-        chatForm.addEventListener('submit', handleChatMessage);
 
         function toHiragana(str) { return str.replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60)); }
 
@@ -534,62 +472,7 @@
             resultArea.addEventListener('animationend', () => resultArea.classList.remove('fade-in'), { once: true });
             resultArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-
-        function appendMessage(text, sender) {
-            const bubble = document.createElement('div');
-            bubble.className = `w-fit max-w-xs lg:max-w-md p-3 rounded-lg ${sender === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'}`;
-            const textEl = document.createElement('p');
-            textEl.className = 'text-sm whitespace-pre-wrap';
-            textEl.textContent = text;
-            bubble.appendChild(textEl);
-            chatMessages.appendChild(bubble);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            return bubble;
-        }
-
-        function showLoadingIndicator() {
-            const bubble = document.createElement('div');
-            bubble.className = 'chat-bubble-ai w-fit max-w-xs lg:max-w-md p-3 rounded-lg';
-            bubble.innerHTML = `<div class="loader"></div>`;
-            chatMessages.appendChild(bubble);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            return bubble;
-        }
-        
-       async function handleChatMessage(e) {
-            e.preventDefault();
-            const userQuery = messageInput.value.trim();
-            if (!userQuery) return;
-
-            appendMessage(userQuery, 'user');
-            messageInput.value = '';
-            const loadingBubble = showLoadingIndicator();
-            
-            const proxyUrl = 'https://gemini-chat-worker.snsniwa28.workers.dev';
-
-            const payload = {
-                userQuery: userQuery,
-                machineList: rememberedMachines,
-                newOpeningList: newOpeningData
-            };
-
-            try {
-                const response = await fetch(proxyUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                if (!response.ok) throw new Error(`サーバーエラー: ${response.statusText}`);
-                
-                const result = await response.json();
-                const text = result.text || "申し訳ありません、うまく応答できませんでした。";
-                loadingBubble.querySelector('.loader').parentElement.innerHTML = `<p class="text-sm whitespace-pre-wrap">${text}</p>`;
-            } catch (error) {
-                console.error("AI chat error:", error);
-                loadingBubble.querySelector('.loader').parentElement.innerHTML = `<p class="text-sm">エラーが発生しました。もう一度お試しください。</p>`;
-            }
-        }
     </script>
 </body>
 </html>
+
