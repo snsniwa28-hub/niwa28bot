@@ -165,7 +165,7 @@
     <div id="newOpeningModal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 hidden z-40">
         <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-lg">
             <div class="flex justify-between items-center p-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">2025/10/21 新装開店</h3>
+                <h3 class="text-lg font-semibold text-gray-900">2025/11/05 新装開店</h3>
                 <button id="closeNewOpeningModal" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
             <div id="newOpeningInfo" class="p-6 max-h-[70vh] overflow-y-auto text-left"></div>
@@ -200,9 +200,29 @@
         const initialMachines = [
             // (Data is the same as previous version, omitted for brevity)
             // 新台パチスロ
-            { id: 'shake_bonus_trigger', name: 'S SHAKE BONUS TRIGGER', reading: 'しぇいくぼーなすとりがー', type: 'pachislot', manufacturer: '大都技研', spec: 'A-TYPE', tags: [], salesPitch: `お客様、こちらの新台『SHAKE BONUS TRIGGER』はいかがでしょうか？\n\n本機はBIG BONUSの平均獲得枚数が約400枚、さらにループ率は約50%と、高い出玉性能が魅力のA-type機です。\n\nBB中は目押し成功で獲得枚数がアップする技術介入要素もあり、楽しみながら出玉を増やすことができます。\n\nシンプルなゲーム性と高い出玉性能を両立した一台を、ぜひお楽しみください！` },
+            { id: 'shake_bonus_trigger', name: 'S SHAKE BONUS TRIGGER', reading: 'しぇいくぼーなすとりがー', type: 'other-pachislot', manufacturer: '大都技研', spec: 'A-TYPE', tags: [], salesPitch: `お客様、こちらの新台『SHAKE BONUS TRIGGER』はいかがでしょうか？\n\n本機はBIG BONUSの平均獲得枚数が約400枚、さらにループ率は約50%と、高い出玉性能が魅力のA-type機です。\n\nBB中は目押し成功で獲得枚数がアップする技術介入要素もあり、楽しみながら出玉を増やすことができます。\n\nシンプルなゲーム性と高い出玉性能を両立した一台を、ぜひお楽しみください！` },
              // 新台パチンコ
-            { id: 'god_eater_199', name: 'PLTゴッドイーター199VER', reading: 'ぷらっとごっどいーたー199ver', type: 'pachinko', manufacturer: 'サンセイR&D', spec: 'ライトミドル', tags: ['ラッキートリガー'], salesPitch: `お客様、こちらの新台『PLTゴッドイーター199VER』はいかがでしょうか？\n\n本機は大当り確率約1/199と遊びやすいスペックながら、ラッキートリガー「PREMIUM神RUSH」を搭載しています。\n\nLT中の継続率は約85%で、大当たりの85%が出玉1500個と、ライトミドルながら一撃の夢も十分に見られる仕様となっております。\n\n遊びやすさと高い出玉性能を兼ね備えた一台です。ぜひお試しください！` },
+            { id: 'god_eater_199', name: 'PLTゴッドイーター199VER', reading: 'ぷらっとごっどいーたー199ver', type: 'other-pachinko', manufacturer: 'サンセイR&D', spec: 'ライトミドル', tags: ['ラッキートリガー'], salesPitch: `お客様、こちらの新台『PLTゴッドイーター199VER』はいかがでしょうか？\n\n本機は大当り確率約1/199と遊びやすいスペックながら、ラッキートリガー「PREMIUM神RUSH」を搭載しています。\n\nLT中の継続率は約85%で、大当たりの85%が出玉1500個と、ライトミドルながら一撃の夢も十分に見られる仕様となっております。\n\n遊びやすさと高い出玉性能を兼ね備えた一台です。ぜひお試しください！` },
+            { 
+                id: 'no_game_no_life_199', 
+                name: 'eノーゲーム・ノーライフ 199Ver.', 
+                reading: 'eのーげーむのーらいふ 199ver', 
+                type: 'pachinko',
+                manufacturer: '高尾', 
+                spec: 'ライトミドル', 
+                tags: ['ラッキートリガー'], 
+                salesPitch: `お客様、こちらの新台『eノーゲーム・ノーライフ 199Ver.』はいかがでしょうか？\n\n本機は大当り確率約1/199と遊びやすいスペックながら、強力なラッキートリガー「ノゲノラッシュHYPER」を搭載しております。\n\nLT突入時の継続率は約88%、さらにRUSH中の大当たりは全て1500個と、ライトミドルながら一撃の夢も十分に狙える仕様です。\n\n遊びやすさと高い出玉性能を両立した、まさに『チェックメイト』な一台をぜひお楽しみください！` 
+            },
+            {
+                id: 'mononogatari',
+                name: 'eフィーバーもののがたり',
+                reading: 'eふぃーばーもののがたり',
+                type: 'pachinko',
+                manufacturer: 'SANKYO',
+                spec: 'ライトミドル',
+                tags: ['ラッキートリガー'],
+                salesPitch: `お客様、こちらの新台『eフィーバーもののがたり』はいかがでしょうか？\n\n話題のラッキートリガー搭載機です！\n\n大当り確率は約1/149.9と非常に遊びやすいスペックでありながら、LT突入率も約25.5%と現実的に狙えるのが大きな魅力です。\n\n一度ラッキートリガー「SPECIAL付喪ノ戦」に突入すれば継続率は約73%、さらにLT中の大当たりの約50%が3000個以上と、高い出玉性能も兼ね備えています！\n\n遊びやすさと一撃の夢を両立したこの一台、ぜひお試しください！`
+            },
             // メイン機 パチンコ
             { id: 'garo12', name: 'e牙狼12黄金騎士極限', reading: 'eがろ12おうごんきしきょくげん', type: 'main-pachinko', manufacturer: 'サンセイR&D', spec: 'ミドル', tags: ['ラッキートリガー'], salesPitch: `お客様、こちらの『e牙狼12黄金騎士極限』はいかがでしょうか？\n\n本機は液晶図柄揃い時の50%で突入する「極限7500バトル」が特徴です。このバトルに勝利すると、7500個の大当たりとラッキートリガー「魔戒CHANCE LT」が濃厚となります。\n\nLT中の継続率は約76%、さらにLT中の大当たりの25%が7500個と、圧倒的な出玉性能を誇ります。` },
             { id: 'eva_mirai', name: 'P新世紀エヴァンゲリオン ～未来への咆哮～', reading: 'pしんせいきえゔぁんげりおん みらいへのほうこう', type: 'main-pachinko', manufacturer: 'ビスティ', spec: 'ミドル', tags: [], salesPitch: `お客様、こちらの『P 新世紀エヴァンゲリオン ～未来への咆哮～』はいかがでしょうか？\n\n本機はトータルST突入率約70%、継続率は約81%と非常に高い性能を誇る一台です。\n\nST「IMPACT MODE」中は全ての大当たりが出玉1500個となりますので、一撃の出玉感も十分に期待できます。\n\nまさに最高峰の性能を、ぜひご体感ください。` },
@@ -252,7 +272,27 @@
         ];
         
         const newOpeningData = [
-            { type: 'P', name: 'PLTゴッドイーター199VER-ARB', count: 6 }, { type: 'P', name: 'e東京喰種W', count: 4 }, { type: 'P', name: 'e女神のカフェテラス', count: 5 }, { type: 'S', name: 'SネオアイムジャグラーEX-KK【5】', count: 10 }, { type: 'S', name: 'L新鬼武者3SA【1】', count: 9 }, { type: 'S', name: 'Sパチすろ甲鉄城のカバネリ ZR', count: 2 }, { type: 'S', name: 'LB/シェイクボーナス トリガー/A1', count: 2 }, { type: 'S', name: 'L/いざ番長/SB8【1】', count: 2 }, { type: 'S', name: 'L荒野のコトブキ飛行隊SS', count: 2 }
+            { type: 'P', name: 'eノーゲーム・ノーライフV3C', count: 4 },
+            { type: 'P', name: 'eフィーバーもののがたりF', count: 4 },
+            { type: 'P', name: 'eルパン三世VSキャッツアイMAH4', count: 4 },
+            { type: 'P', name: 'e東京喰種W', count: 3 },
+            { type: 'P', name: 'Pいくさの子‐織田三郎信長‐GRP', count: 3 },
+            { type: 'P', name: 'e花の慶次～黄金の一撃‐H4', count: 2 },
+            { type: 'P', name: 'eとある魔術の禁書目録‐万能通行BIG JKZ', count: 1 },
+            { type: 'P', name: 'P Re:ゼロから始める異世界生活鬼がかりver AO3', count: 1 },
+            { type: 'P', name: 'e真・一騎当千～桃園の誓い～AM-T5', count: 1 },
+            { type: 'P', name: 'eシャーマンキングLB', count: 1 },
+            { type: 'P', name: 'PFAIRYTALE超‐夜ver.FQY', count: 1 },
+            { type: 'S', name: 'Lかぐや様は告らせたいJA', count: 10 },
+            { type: 'S', name: 'L東京喰種CT', count: 10 },
+            { type: 'S', name: 'Lとある科学の超電磁砲2FV', count: 10 },
+            { type: 'S', name: 'L革命機ヴァルヴレイヴ2jF', count: 10 },
+            { type: 'S', name: 'SネオアイムジャグラーEX-KK【7】', count: 5 },
+            { type: 'S', name: 'LBエヴァンゲリオンSR', count: 4 },
+            { type: 'S', name: 'L絶対衝激フォースFH', count: 4 },
+            { type: 'S', name: 'Lいざ番長/SB8【2】', count: 3 },
+            { type: 'S', name: 'Lバジリスク絆2～天膳～/ZN', count: 2 },
+            { type: 'S', name: 'Lいざ番長/SB8', count: 1 }
         ];
 
         // --- Firebase Setup ---
@@ -424,6 +464,8 @@
                     li.className = 'flex justify-between items-center bg-slate-50 p-3 rounded-lg border';
                     const matchedMachine = rememberedMachines.find(rm => 
                         openingMachine.name.includes(rm.name) || 
+                        (openingMachine.name.includes('eフィーバーもののがたり') && rm.id === 'mononogatari') ||
+                        (openingMachine.name.includes('eノーゲーム・ノーライフ') && rm.id === 'no_game_no_life_199') ||
                         (openingMachine.name.includes('シェイクボーナス') && rm.id === 'shake_bonus_trigger') ||
                         (openingMachine.name.includes('新鬼武者3') && rm.id === 'onimusha3') ||
                         (openingMachine.name.includes('e東京喰種W') && rm.id === 'tokyoghoul_p') ||
@@ -475,4 +517,5 @@
     </script>
 </body>
 </html>
+
 
