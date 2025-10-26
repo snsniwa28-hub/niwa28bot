@@ -11,6 +11,7 @@
             font-family: 'Inter', 'Noto Sans JP', sans-serif;
             background-color: #f8fafc; /* slate-50 */
             color: #1e2b3b; /* slate-800 */
+            overflow-x: hidden; /* Prevent horizontal scroll */
         }
         .fade-in {
             animation: fadeIn 0.7s ease-in-out forwards;
@@ -40,48 +41,58 @@
             transform: translateY(-4px);
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
         }
-        /* Image Slider Styles */
+
+        /* --- Image Slider Styles --- */
+        .slider-outer-container {
+            width: 100%; /* Full width container */
+            padding: 2rem 0; /* Add some vertical padding */
+            background-color: white; /* Match hero section background */
+        }
         .slider-container {
             position: relative;
-            max-width: 800px; /* Adjust as needed */
-            margin: 2rem auto; /* Centering and spacing */
-            overflow: hidden;
-            border-radius: 1rem; /* Rounded corners for the container */
+            width: 90%; /* Responsive width */
+            max-width: 800px; /* Max width for larger screens */
+            margin: 0 auto; /* Centering */
+            overflow: hidden; /* Crucial for sliding effect */
+            border-radius: 1rem;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
+        .slider-wrapper {
+            display: flex;
+            transition: transform 0.5s ease-in-out; /* Animation */
+        }
         .slide {
-            display: none; /* Hide slides by default */
-            width: 100%;
-            transition: opacity 0.5s ease-in-out;
+            min-width: 100%; /* Each slide takes full container width */
+            box-sizing: border-box;
         }
         .slide img {
             width: 100%;
             height: auto;
             display: block;
         }
-        .slide.active {
-            display: block; /* Show active slide */
-            opacity: 1;
-        }
         /* Style for prev/next buttons */
         .prev, .next {
             cursor: pointer;
             position: absolute;
             top: 50%;
+            transform: translateY(-50%); /* Vertically center */
             width: auto;
             padding: 16px;
-            margin-top: -22px;
             color: white;
             font-weight: bold;
             font-size: 20px;
             transition: 0.3s ease;
-            border-radius: 0 3px 3px 0;
+            border-radius: 50%; /* Make buttons circular */
             user-select: none;
             background-color: rgba(0,0,0,0.4);
+            line-height: 1; /* Adjust line height for better centering */
+            z-index: 10; /* Ensure buttons are above images */
+        }
+        .prev {
+            left: 10px; /* Position on the left */
         }
         .next {
-            right: 0;
-            border-radius: 3px 0 0 3px;
+            right: 10px; /* Position on the right */
         }
         .prev:hover, .next:hover {
             background-color: rgba(0,0,0,0.7);
@@ -89,7 +100,8 @@
          /* Style for dots */
         .dots-container {
             text-align: center;
-            padding-top: 10px;
+            padding-top: 15px; /* Spacing above dots */
+             padding-bottom: 10px; /* Spacing below dots */
         }
         .dot {
             cursor: pointer;
@@ -104,6 +116,7 @@
         .dot.active {
             background-color: #4f46e5; /* Indigo color */
         }
+         /* --- End Image Slider Styles --- */
     </style>
 </head>
 <body class="antialiased">
@@ -112,9 +125,12 @@
     <header class="bg-white/80 backdrop-blur-md border-b border-gray-200/80 sticky top-0 z-20">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
-                <div class="flex-shrink-0">
-                    <a href="#" class="text-xl font-bold text-gray-800">ガーデン八潮店 BOT</a>
-                </div>
+                <!-- Modified section for logo and text -->
+                <a href="#" class="flex items-center">
+                    <img src="rogo.jpg" alt="ロゴ" class="h-6 w-auto mr-2"> <!-- Image added -->
+                    <span class="text-xl font-bold text-gray-800">ガーデン八潮店 BOT</span> <!-- Text wrapped in span -->
+                </a>
+                <!-- End of modified section -->
             </div>
         </div>
     </header>
@@ -123,31 +139,35 @@
     <main>
         <!-- Hero Section -->
         <section class="text-center bg-white pb-28 sm:pb-36">
-            <!-- Image Slider -->
-            <div class="slider-container">
-                <div class="slide active">
-                    <img src="sinsou1.jpg" alt="新装開店画像1">
+             <!-- Image Slider -->
+            <div class="slider-outer-container">
+                <div class="slider-container">
+                    <div class="slider-wrapper">
+                        <div class="slide">
+                            <img src="sinsou1.jpg" alt="新装開店画像1">
+                             <div style="display: none; padding: 20px; background-color: #eee; color: #555; text-align: center; border-radius: 1rem;">画像1が表示できません</div>
+                        </div>
+                        <div class="slide">
+                            <img src="sinsou2.jpg" alt="新装開店画像2">
+                             <div style="display: none; padding: 20px; background-color: #eee; color: #555; text-align: center; border-radius: 1rem;">画像2が表示できません</div>
+                        </div>
+                    </div>
+                    <!-- Prev/Next Buttons -->
+                    <a class="prev" onclick="changeSlide(-1)">&#10094;</a>
+                    <a class="next" onclick="changeSlide(1)">&#10095;</a>
                 </div>
-                <div class="slide">
-                    <img src="sinsou2.jpg" alt="新装開店画像2">
+                 <!-- Dots Indicator -->
+                <div class="dots-container">
+                    <span class="dot active" onclick="currentSlide(1)"></span>
+                    <span class="dot" onclick="currentSlide(2)"></span>
                 </div>
-                <!-- Prev/Next Buttons -->
-                <a class="prev" onclick="changeSlide(-1)">&#10094;</a>
-                <a class="next" onclick="changeSlide(1)">&#10095;</a>
-            </div>
-             <!-- Dots Indicator -->
-            <div class="dots-container">
-                <span class="dot active" onclick="currentSlide(1)"></span>
-                <span class="dot" onclick="currentSlide(2)"></span>
             </div>
 
             <div class="container mx-auto px-4 pt-10 lg:px-8"> <!-- Adjusted pt here -->
                 <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900">
                     最新台の情報をいつでも手軽に
                 </h1>
-                <p class="mt-6 max-w-2xl mx-auto text-lg text-gray-600">
-                    ガーデン八潮店の遊技台情報や新装開店情報など、あなたの「知りたい」をサポートします。
-                </p>
+                <!-- Removed the paragraph here -->
             </div>
         </section>
 
@@ -197,7 +217,8 @@
                 </div>
                 <div class="max-w-6xl mx-auto">
                     <div class="bg-white rounded-2xl shadow-lg border border-gray-200/80 p-4">
-                        <img src="simazu.jpg" alt="ガーデン八潮店フロアマップ" class="rounded-xl w-full h-auto">
+                         <img src="simazu.jpg" alt="ガーデン八潮店フロアマップ" class="rounded-xl w-full h-auto" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                         <div style="display: none; padding: 20px; background-color: #eee; color: #555; text-align: center; border-radius: 1rem;">フロアマップが表示できません</div>
                     </div>
                 </div>
             </div>
@@ -260,10 +281,10 @@
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
+        // --- DOM Element Variables ---
         const resultArea = document.getElementById('resultArea');
         const resultTitle = document.getElementById('resultTitle');
         const salesPitch = document.getElementById('salesPitch');
-
         const selectMachineButton = document.getElementById('selectMachineButton');
         const selectModal = document.getElementById('selectModal');
         const closeModal = document.getElementById('closeModal');
@@ -271,19 +292,14 @@
         const searchInput = document.getElementById('searchInput');
         const specFiltersContainer = document.getElementById('specFilters');
         const ltFilter = document.getElementById('ltFilter');
-
         const newOpeningButton = document.getElementById('newOpeningButton');
         const newOpeningModal = document.getElementById('newOpeningModal');
         const closeNewOpeningModal = document.getElementById('closeNewOpeningModal');
         const newOpeningInfo = document.getElementById('newOpeningInfo');
 
+        // --- Data Variables ---
         let rememberedMachines = [];
-
-        // --- Image Slider Variables ---
-        let slideIndex = 1;
-        let slideInterval;
-        const slideChangeInterval = 5000; // 5 seconds
-
+        // Restored the full initialMachines array
         const initialMachines = [
              // 新台パチンコ
             { id: 'god_eater_199', name: 'PLTゴッドイーター199VER', reading: 'ぷらっとごっどいーたー199ver', type: 'other-pachinko', manufacturer: 'サンセイR&D', spec: 'ライトミドル', tags: ['ラッキートリガー'], salesPitch: `お客様、こちらの『PLTゴッドイーター199VER』はいかがでしょうか？\n\n本機は大当り確率約1/199と遊びやすいスペックながら、ラッキートリガー「PREMIUM神RUSH」を搭載しています。\n\nLT中の継続率は約85%で、大当たりの85%が出玉1500個と、ライトミドルながら一撃の夢も十分に見られる仕様となっております。\n\n遊びやすさと高い出玉性能を兼ね備えた一台です。ぜひお試しください！` },
@@ -490,9 +506,8 @@
                 salesPitch: `お客様、こちらの『L荒野のコトブキ飛行隊』はいかがでしょうか？\n\n本機は、純増約7.0枚という超高純増ATが魅力の一台です。\n\nAT「空戦RUSH」は継続率約64%～91%で、さらに上位AT「超空戦RUSH」に突入すれば継続率は約92%まで上昇します！\n\nAT終了後100G間は引き戻し高確率状態となり、引き戻しに成功すれば前回のAT状態を引き継ぐため、ループするたびに出玉の期待感が膨らみます。\n\n高純増×高継続の爽快感を、ぜひご体験ください！`
             }
         ];
-
-        const newOpeningData = [
-            { type: 'P', name: 'eノーゲーム・ノーライフV3C', count: 4 },
+        const newOpeningData = [ /* New Opening Data Array */
+             { type: 'P', name: 'eノーゲーム・ノーライフV3C', count: 4 },
             { type: 'P', name: 'eフィーバーもののがたりF', count: 4 },
             { type: 'P', name: 'eルパン三世VSキャッツアイMAH4', count: 4 },
             { type: 'P', name: 'e東京喰種W', count: 3 },
@@ -500,25 +515,38 @@
             { type: 'P', name: 'e花の慶次～黄金の一撃‐H4', count: 2 },
             { type: 'P', name: 'eとある魔術の禁書目録‐万能通行BIG JKZ', count: 1 },
             { type: 'P', name: 'P Re:ゼロから始める異世界生活鬼がかりver AO3', count: 1 },
-            { type: 'P', name: 'e真・一騎当千～桃園の誓い～AM-T5', count: 1 }, // Added this machine
+            { type: 'P', name: 'e真・一騎当千～桃園の誓い～AM-T5', count: 1 },
             { type: 'P', name: 'eシャーマンキングLB', count: 1 },
-            { type: 'P', name: 'PFAIRYTALE超‐夜ver.FQY', count: 1 }, // Added this machine
+            { type: 'P', name: 'PFAIRYTALE超‐夜ver.FQY', count: 1 },
             { type: 'S', name: 'Lかぐや様は告らせたいJA', count: 10 },
             { type: 'S', name: 'L東京喰種CT', count: 10 },
             { type: 'S', name: 'Lとある科学の超電磁砲2FV', count: 10 },
             { type: 'S', name: 'L革命機ヴァルヴレイヴ2jF', count: 10 },
             { type: 'S', name: 'SネオアイムジャグラーEX-KK【7】', count: 5 },
             { type: 'S', name: 'LBエヴァンゲリオンSR', count: 4 },
-            { type: 'S', name: 'L絶対衝激フォースFH', count: 4 }, // Added this machine
+            { type: 'S', name: 'L絶対衝激フォースFH', count: 4 }, // Updated count
             { type: 'S', name: 'Lいざ番長/SB8【2】', count: 3 },
             { type: 'S', name: 'Lバジリスク絆2～天膳～/ZN', count: 2 },
             { type: 'S', name: 'Lいざ番長/SB8', count: 1 }
         ];
+        const specTypes = ['すべて', 'スロット', 'パチンコ', 'ミドル', 'ライトミドル', '甘デジ', 'AT', 'A-TYPE'];
+        let activeSpecFilter = 'すべて';
 
-        // --- Firebase Setup ---
+        // --- Image Slider Variables ---
+        let slideIndex = 0;
+        let slideInterval;
+        const slideChangeInterval = 5000; // 5 seconds
+        const sliderWrapper = document.querySelector('.slider-wrapper');
+        const slides = document.querySelectorAll('.slide');
+        const dots = document.querySelectorAll('.dot');
+        const totalSlides = slides.length;
+
+        // --- Firebase Config ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         let db, auth;
+
+        // --- Function Definitions ---
 
         async function initializeFirebase() {
             try {
@@ -537,8 +565,6 @@
                         if (docSnap.exists() && docSnap.data().list) {
                             rememberedMachines = docSnap.data().list;
                         } else {
-                            // If the document doesn't exist or has no list, initialize with initialMachines
-                            // Sort initialMachines before saving
                             const sortedInitialMachines = initialMachines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
                             setDoc(machinesDocRef, { list: sortedInitialMachines }).then(() => {
                                 rememberedMachines = sortedInitialMachines;
@@ -547,73 +573,20 @@
                         }
                     }, (error) => {
                         console.error("Firestore snapshot error:", error);
-                        // Fallback: sort and use initialMachines if Firestore fails
                         rememberedMachines = initialMachines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
                     });
                 } else {
-                     // Fallback: sort and use initialMachines if Firestore fails
                     rememberedMachines = initialMachines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
                 }
             } catch (e) {
                 console.error("Firebase initialization failed:", e);
-                 // Fallback: sort and use initialMachines if initialization fails
                 rememberedMachines = initialMachines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
             }
         }
 
-        initializeFirebase();
-
-        const specTypes = ['すべて', 'スロット', 'パチンコ', 'ミドル', 'ライトミドル', '甘デジ', 'AT', 'A-TYPE'];
-        let activeSpecFilter = 'すべて';
-
-         // Check if the element exists before trying to append children
-        if (specFiltersContainer) {
-            specTypes.forEach(spec => {
-                const button = document.createElement('button');
-                button.textContent = spec;
-                button.dataset.spec = spec;
-                button.className = 'px-3 py-1 text-sm font-medium rounded-full transition-colors focus:outline-none';
-                if (spec === 'すべて') {
-                    button.classList.add('bg-indigo-600', 'text-white');
-                } else {
-                    button.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
-                }
-                button.addEventListener('click', () => {
-                    activeSpecFilter = spec;
-                    // Need to ensure specFiltersContainer is available here too, but it should be if it passed the initial check.
-                    const container = document.getElementById('specFilters'); // Re-get or use closure
-                    if (container) {
-                        container.querySelectorAll('button').forEach(btn => {
-                            btn.classList.remove('bg-indigo-600', 'text-white');
-                            btn.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
-                        });
-                    }
-                    button.classList.add('bg-indigo-600', 'text-white');
-                    button.classList.remove('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
-                    renderMachineList();
-                });
-                specFiltersContainer.appendChild(button); // Appending inside the check
-            });
-        } else {
-            console.error("Error: Could not find the element with ID 'specFilters'."); // Log an error if not found
-        }
-
-
-        selectMachineButton.addEventListener('click', openSelectModal);
-        closeModal.addEventListener('click', () => selectModal.classList.add('hidden'));
-        selectModal.addEventListener('click', (e) => { if (e.target === selectModal) { selectModal.classList.add('hidden'); } });
-
-        searchInput.addEventListener('input', () => renderMachineList());
-        ltFilter.addEventListener('change', () => renderMachineList());
-
-        newOpeningButton.addEventListener('click', openNewOpeningModal);
-        closeNewOpeningModal.addEventListener('click', () => newOpeningModal.classList.add('hidden'));
-        newOpeningModal.addEventListener('click', (e) => { if (e.target === newOpeningModal) { newOpeningModal.classList.add('hidden'); } });
-
         function toHiragana(str) { return str.replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60)); }
 
         const createCategorySection = (title, machines, targetModal) => {
-             // Sort machines alphabetically by name within the category
             const sortedMachines = machines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
             if (sortedMachines.length === 0) return null;
 
@@ -623,13 +596,13 @@
             header.className = 'text-sm font-bold text-gray-500 uppercase tracking-wider mb-2 px-1';
             header.textContent = title;
             section.appendChild(header);
-            sortedMachines.forEach(machine => { // Use sortedMachines here
+            sortedMachines.forEach(machine => {
                 const button = document.createElement('button');
                 button.className = 'w-full text-left p-3 text-gray-800 bg-white hover:bg-indigo-50 border border-gray-200 rounded-lg mb-2 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-300';
                 button.innerHTML = `<p class="font-semibold">${machine.name}</p>`;
                 button.onclick = () => {
                     displaySalesPitch(machine.id);
-                    targetModal.classList.add('hidden');
+                    if(targetModal) targetModal.classList.add('hidden'); // Added null check
                 };
                 section.appendChild(button);
             });
@@ -637,10 +610,14 @@
         };
 
         function renderMachineList() {
-            const searchTerm = searchInput.value;
+             if (!machineList) { // Added null check for machineList
+                 console.error("Machine list element not found.");
+                 return;
+             }
+            const searchTerm = searchInput ? searchInput.value : ''; // Added null check
             const lowerCaseSearchTerm = searchTerm.toLowerCase();
             const hiraganaSearchTerm = toHiragana(lowerCaseSearchTerm);
-            const ltChecked = ltFilter.checked;
+            const ltChecked = ltFilter ? ltFilter.checked : false; // Added null check
             machineList.innerHTML = '';
 
             let filteredMachines = rememberedMachines.filter(machine => {
@@ -658,7 +635,6 @@
                 return textMatch && specMatch && tagMatch;
             });
 
-            // Ensure the base list is sorted for categorization
             const sortedBaseList = rememberedMachines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
             if (filteredMachines.length === 0) {
@@ -666,7 +642,6 @@
                 return;
             }
 
-             // Apply filtering to the sorted base list to maintain order within categories
             const finalFilteredMachines = sortedBaseList.filter(machine => filteredMachines.some(fm => fm.id === machine.id));
 
             const categories = [
@@ -679,46 +654,45 @@
             ];
 
             categories.forEach(cat => {
-                 const section = createCategorySection(cat.title, cat.machines, selectModal); // Pass already filtered+sorted machines
-                 if(section) machineList.appendChild(section);
+                 const section = createCategorySection(cat.title, cat.machines, selectModal);
+                 if(section) {
+                     machineList.appendChild(section);
+                 }
             });
         }
 
         function openSelectModal() {
-            searchInput.value = '';
-            ltFilter.checked = false;
+            if (searchInput) searchInput.value = '';
+            if (ltFilter) ltFilter.checked = false;
             activeSpecFilter = 'すべて';
-            specFiltersContainer.querySelectorAll('button').forEach(btn => {
-                const isAllButton = btn.dataset.spec === 'すべて';
-                btn.classList.toggle('bg-indigo-600', isAllButton);
-                btn.classList.toggle('text-white', isAllButton);
-                btn.classList.toggle('bg-gray-200', !isAllButton);
-                btn.classList.toggle('text-gray-800', !isAllButton);
-            });
-             // Sort rememberedMachines initially when modal opens, before rendering
+            if (specFiltersContainer) {
+                specFiltersContainer.querySelectorAll('button').forEach(btn => {
+                    const isAllButton = btn.dataset.spec === 'すべて';
+                    btn.classList.toggle('bg-indigo-600', isAllButton);
+                    btn.classList.toggle('text-white', isAllButton);
+                    btn.classList.toggle('bg-gray-200', !isAllButton);
+                    btn.classList.toggle('text-gray-800', !isAllButton);
+                });
+            }
             rememberedMachines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
             renderMachineList();
-            selectModal.classList.remove('hidden');
+            if (selectModal) selectModal.classList.remove('hidden');
         }
 
-    function openNewOpeningModal() {
-        newOpeningInfo.innerHTML = '';
-        // Sort newOpeningData before creating lists: Prioritize count (desc), then type (P > S), then name (alpha)
-        const sortedNewOpeningData = newOpeningData.sort((a, b) => {
-            // 1. Sort by count (descending)
-            if (b.count !== a.count) {
-                return b.count - a.count;
+        function openNewOpeningModal() {
+            if (!newOpeningInfo) {
+                console.error("New opening info element not found.");
+                return;
             }
-            // 2. Sort by type (Pachinko first)
-            if (a.type !== b.type) {
-                return a.type === 'P' ? -1 : 1;
-            }
-            // 3. Sort by name (alphabetical - Japanese Gojūon order)
-            return a.name.localeCompare(b.name, 'ja');
-        });
+            newOpeningInfo.innerHTML = '';
+            const sortedNewOpeningData = newOpeningData.sort((a, b) => {
+                if (b.count !== a.count) return b.count - a.count;
+                if (a.type !== b.type) return a.type === 'P' ? -1 : 1;
+                return a.name.localeCompare(b.name, 'ja');
+            });
 
-        const createList = (title, machines) => {
-             if (machines.length === 0) return null;
+            const createList = (title, machines) => {
+                if (machines.length === 0) return null;
                 const section = document.createElement('div');
                 const header = document.createElement('h4');
                 header.className = 'text-lg font-bold text-gray-800 mb-3';
@@ -726,13 +700,12 @@
                 section.appendChild(header);
                 const ul = document.createElement('ul');
                 ul.className = 'space-y-2 mb-6';
-                 // Use the pre-sorted machines directly
                 machines.forEach(openingMachine => {
                     const li = document.createElement('li');
                     li.className = 'flex justify-between items-center bg-slate-50 p-3 rounded-lg border';
                     const matchedMachine = rememberedMachines.find(rm =>
                         openingMachine.name.includes(rm.name) ||
-                        (openingMachine.name.includes('L絶対衝激フォースFH') && rm.id === 'zettai_shougeki4') || // Added mapping
+                        (openingMachine.name.includes('L絶対衝激フォースFH') && rm.id === 'zettai_shougeki4') ||
                          (openingMachine.name.includes('PFAIRYTALE超‐夜ver.FQY') && rm.id === 'fairytale_ichiya') ||
                          (openingMachine.name.includes('e真・一騎当千～桃園の誓い～') && rm.id === 'ikkitousen_touen') ||
                          (openingMachine.name.includes('e花の慶次～黄金の一撃') && rm.id === 'keiji_ougon') ||
@@ -761,7 +734,7 @@
                     if (matchedMachine) {
                         nameElement.addEventListener('click', () => {
                             displaySalesPitch(matchedMachine.id);
-                            newOpeningModal.classList.add('hidden');
+                            if (newOpeningModal) newOpeningModal.classList.add('hidden');
                         });
                     }
                     const countElement = document.createElement('span');
@@ -773,24 +746,22 @@
                 });
                 section.appendChild(ul);
                 return section;
-        };
+            };
 
-        // Use sortedNewOpeningData for filtering
-        const pachinkoList = createList('パチンコ', sortedNewOpeningData.filter(m => m.type === 'P'));
-        const slotList = createList('スロット', sortedNewOpeningData.filter(m => m.type === 'S'));
+            const pachinkoList = createList('パチンコ', sortedNewOpeningData.filter(m => m.type === 'P'));
+            const slotList = createList('スロット', sortedNewOpeningData.filter(m => m.type === 'S'));
 
-        // Display lists (No change needed here, just ensure correct data is passed)
-        if (pachinkoList) newOpeningInfo.appendChild(pachinkoList);
-        if (slotList) newOpeningInfo.appendChild(slotList);
-        if (!pachinkoList && !slotList) {
-            newOpeningInfo.innerHTML = `<p class="text-gray-500 text-center">新装開店の情報は現在ありません。</p>`;
+            if (pachinkoList) newOpeningInfo.appendChild(pachinkoList);
+            if (slotList) newOpeningInfo.appendChild(slotList);
+            if (!pachinkoList && !slotList) {
+                newOpeningInfo.innerHTML = `<p class="text-gray-500 text-center">新装開店の情報は現在ありません。</p>`;
+            }
+            if (newOpeningModal) newOpeningModal.classList.remove('hidden');
         }
-        newOpeningModal.classList.remove('hidden');
-    }
 
         function displaySalesPitch(machineId) {
             const machine = rememberedMachines.find(m => m.id === machineId);
-            if (!machine) return;
+            if (!machine || !resultTitle || !salesPitch || !resultArea) return;
             resultTitle.textContent = `『${machine.name}』のセールスポイント`;
             salesPitch.textContent = machine.salesPitch;
             resultArea.classList.remove('hidden');
@@ -799,60 +770,132 @@
             resultArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // --- Image Slider Logic ---
-        function showSlide(n) {
-            let i;
-            const slides = document.getElementsByClassName("slide");
-            const dots = document.getElementsByClassName("dot");
-            if (n > slides.length) { slideIndex = 1 }
-            if (n < 1) { slideIndex = slides.length }
-            for (i = 0; i < slides.length; i++) {
-                slides[i].style.display = "none";
-                slides[i].classList.remove("active");
+        function updateSlider() {
+            if (!sliderWrapper) return;
+            const translateValue = -slideIndex * 100;
+            sliderWrapper.style.transform = `translateX(${translateValue}%)`;
+            if (dots && dots.length > 0) {
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === slideIndex);
+                });
             }
-            for (i = 0; i < dots.length; i++) {
-                dots[i].classList.remove("active");
-            }
-            slides[slideIndex - 1].style.display = "block";
-            slides[slideIndex - 1].classList.add("active");
-            dots[slideIndex - 1].classList.add("active");
         }
 
-        // Function to change slide manually or automatically
         function changeSlide(n) {
-            resetSlideInterval(); // Reset timer on manual change
-            showSlide(slideIndex += n);
+            if (totalSlides === 0) return;
+            slideIndex += n;
+            if (slideIndex >= totalSlides) slideIndex = 0;
+            else if (slideIndex < 0) slideIndex = totalSlides - 1;
+            updateSlider();
+            resetSlideInterval();
         }
 
-        // Function for dot navigation
         function currentSlide(n) {
-            resetSlideInterval(); // Reset timer on dot click
-            showSlide(slideIndex = n);
+            if (totalSlides === 0) return;
+            slideIndex = n - 1;
+            updateSlider();
+            resetSlideInterval();
         }
 
-        // Function to start automatic sliding
         function startSlideInterval() {
-             // Clear existing interval before starting a new one
+            if (totalSlides <= 1) return;
             clearInterval(slideInterval);
-            slideInterval = setInterval(() => {
-                changeSlide(1);
-            }, slideChangeInterval);
+            slideInterval = setInterval(() => { changeSlide(1); }, slideChangeInterval);
         }
 
-         // Function to reset the interval timer
         function resetSlideInterval() {
             clearInterval(slideInterval);
-            startSlideInterval(); // Restart the timer
+            startSlideInterval();
         }
 
-        // Expose functions to global scope for onclick handlers
+        // --- Initial Setup ---
+
+        // Spec Filter Buttons
+        if (specFiltersContainer) {
+            specTypes.forEach(spec => {
+                const button = document.createElement('button');
+                button.textContent = spec;
+                button.dataset.spec = spec;
+                button.className = 'px-3 py-1 text-sm font-medium rounded-full transition-colors focus:outline-none';
+                if (spec === 'すべて') {
+                    button.classList.add('bg-indigo-600', 'text-white');
+                } else {
+                    button.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                }
+                button.addEventListener('click', () => {
+                    activeSpecFilter = spec;
+                    const container = document.getElementById('specFilters');
+                    if (container) {
+                        container.querySelectorAll('button').forEach(btn => {
+                            btn.classList.remove('bg-indigo-600', 'text-white');
+                            btn.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                        });
+                    }
+                    button.classList.add('bg-indigo-600', 'text-white');
+                    button.classList.remove('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                    renderMachineList();
+                });
+                specFiltersContainer.appendChild(button);
+            });
+        } else {
+            console.error("Error: Could not find the element with ID 'specFilters'.");
+        }
+
+        // Event Listeners
+        if (selectMachineButton) selectMachineButton.addEventListener('click', openSelectModal);
+        if (closeModal) closeModal.addEventListener('click', () => { if (selectModal) selectModal.classList.add('hidden'); }); // Added null check
+        if (selectModal) selectModal.addEventListener('click', (e) => { if (e.target === selectModal) { selectModal.classList.add('hidden'); } });
+        if (searchInput) searchInput.addEventListener('input', () => renderMachineList());
+        if (ltFilter) ltFilter.addEventListener('change', () => renderMachineList());
+        if (newOpeningButton) newOpeningButton.addEventListener('click', openNewOpeningModal);
+        if (closeNewOpeningModal) closeNewOpeningModal.addEventListener('click', () => { if (newOpeningModal) newOpeningModal.classList.add('hidden'); }); // Added null check
+        if (newOpeningModal) newOpeningModal.addEventListener('click', (e) => { if (e.target === newOpeningModal) { newOpeningModal.classList.add('hidden'); } });
+
+        // Expose slider functions to global scope
         window.changeSlide = changeSlide;
         window.currentSlide = currentSlide;
 
-        // Initialize slider on window load
+        // Initialize Firebase
+        initializeFirebase();
+
+        // Initialize slider and add image error handling on window load
         window.addEventListener('load', () => {
-             showSlide(slideIndex); // Show the first slide initially
-             startSlideInterval(); // Start automatic sliding
+            document.querySelectorAll('.slide img').forEach(img => {
+                img.onerror = function() {
+                    const placeholder = document.createElement('div');
+                    placeholder.textContent = `${this.alt || '画像'}が表示できません`;
+                    placeholder.style.cssText = `display: flex; align-items: center; justify-content: center; height: 200px; background-color: #eee; color: #555; text-align: center; border-radius: 1rem; width: 100%;`;
+                    this.parentNode.replaceChild(placeholder, this);
+                };
+            });
+            const floorMapImg = document.querySelector('img[src="simazu.jpg"]');
+            if (floorMapImg) {
+                floorMapImg.onerror = function() {
+                    const placeholder = document.createElement('div');
+                    placeholder.textContent = 'フロアマップが表示できません';
+                    placeholder.style.cssText = `display: flex; align-items: center; justify-content: center; height: 300px; background-color: #eee; color: #555; text-align: center; border-radius: 1rem; width: 100%;`;
+                    this.parentNode.replaceChild(placeholder, this);
+                };
+            }
+            const logoImg = document.querySelector('img[src="rogo.jpg"]');
+             if (logoImg) {
+                 logoImg.onerror = function() {
+                     this.style.display = 'none'; // Hide broken logo
+                 };
+             }
+
+            if (sliderWrapper && slides.length > 0 && dots.length > 0) {
+                updateSlider();
+                startSlideInterval();
+            } else {
+                const prevButton = document.querySelector('.prev');
+                const nextButton = document.querySelector('.next');
+                const dotsContainer = document.querySelector('.dots-container');
+                if(prevButton) prevButton.style.display = 'none';
+                if(nextButton) nextButton.style.display = 'none';
+                if(dotsContainer) dotsContainer.style.display = 'none';
+                console.error("Slider elements (wrapper, slides, or dots) not found.");
+            }
         });
 
     </script>
