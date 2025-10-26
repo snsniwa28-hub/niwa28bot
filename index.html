@@ -40,6 +40,70 @@
             transform: translateY(-4px);
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
         }
+        /* Image Slider Styles */
+        .slider-container {
+            position: relative;
+            max-width: 800px; /* Adjust as needed */
+            margin: 2rem auto; /* Centering and spacing */
+            overflow: hidden;
+            border-radius: 1rem; /* Rounded corners for the container */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .slide {
+            display: none; /* Hide slides by default */
+            width: 100%;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .slide img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .slide.active {
+            display: block; /* Show active slide */
+            opacity: 1;
+        }
+        /* Style for prev/next buttons */
+        .prev, .next {
+            cursor: pointer;
+            position: absolute;
+            top: 50%;
+            width: auto;
+            padding: 16px;
+            margin-top: -22px;
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+            transition: 0.3s ease;
+            border-radius: 0 3px 3px 0;
+            user-select: none;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .next {
+            right: 0;
+            border-radius: 3px 0 0 3px;
+        }
+        .prev:hover, .next:hover {
+            background-color: rgba(0,0,0,0.7);
+        }
+         /* Style for dots */
+        .dots-container {
+            text-align: center;
+            padding-top: 10px;
+        }
+        .dot {
+            cursor: pointer;
+            height: 12px;
+            width: 12px;
+            margin: 0 4px;
+            background-color: #bbb;
+            border-radius: 50%;
+            display: inline-block;
+            transition: background-color 0.3s ease;
+        }
+        .dot.active {
+            background-color: #4f46e5; /* Indigo color */
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -58,8 +122,26 @@
     <!-- Main Content -->
     <main>
         <!-- Hero Section -->
-        <section class="text-center bg-white">
-            <div class="container mx-auto px-4 pt-20 pb-28 sm:pt-28 sm:pb-36 lg:px-8">
+        <section class="text-center bg-white pb-28 sm:pb-36">
+            <!-- Image Slider -->
+            <div class="slider-container">
+                <div class="slide active">
+                    <img src="sinsou1.jpg" alt="新装開店画像1">
+                </div>
+                <div class="slide">
+                    <img src="sinsou2.jpg" alt="新装開店画像2">
+                </div>
+                <!-- Prev/Next Buttons -->
+                <a class="prev" onclick="changeSlide(-1)">&#10094;</a>
+                <a class="next" onclick="changeSlide(1)">&#10095;</a>
+            </div>
+             <!-- Dots Indicator -->
+            <div class="dots-container">
+                <span class="dot active" onclick="currentSlide(1)"></span>
+                <span class="dot" onclick="currentSlide(2)"></span>
+            </div>
+
+            <div class="container mx-auto px-4 pt-10 lg:px-8"> <!-- Adjusted pt here -->
                 <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900">
                     最新台の情報をいつでも手軽に
                 </h1>
@@ -197,6 +279,11 @@
 
         let rememberedMachines = [];
 
+        // --- Image Slider Variables ---
+        let slideIndex = 1;
+        let slideInterval;
+        const slideChangeInterval = 5000; // 5 seconds
+
         const initialMachines = [
              // 新台パチンコ
             { id: 'god_eater_199', name: 'PLTゴッドイーター199VER', reading: 'ぷらっとごっどいーたー199ver', type: 'other-pachinko', manufacturer: 'サンセイR&D', spec: 'ライトミドル', tags: ['ラッキートリガー'], salesPitch: `お客様、こちらの『PLTゴッドイーター199VER』はいかがでしょうか？\n\n本機は大当り確率約1/199と遊びやすいスペックながら、ラッキートリガー「PREMIUM神RUSH」を搭載しています。\n\nLT中の継続率は約85%で、大当たりの85%が出玉1500個と、ライトミドルながら一撃の夢も十分に見られる仕様となっております。\n\n遊びやすさと高い出玉性能を兼ね備えた一台です。ぜひお試しください！` },
@@ -230,6 +317,26 @@
                 tags: ['ラッキートリガー'],
                 salesPitch: `お客様、こちらの新台『eルパン三世VSキャッツ・アイ』はいかがでしょうか？\n\n夢のコラボが実現した一台です！\n\n本機の最大の特徴は、初当たりの50%でラッキートリガーに直行するという、非常に分かりやすく夢のあるスペックです。\n\nLT「SUPER HERO RUSH W」の継続率は約79%、さらにLT中の大当たりの約50%が3000個と、一撃の破壊力は抜群です！\n\nぜひ、この爽快なゲーム性をご体感ください！`
             },
+             {
+                id: 're_zero_oni_ama',
+                name: 'PRe:ゼロから始める異世界生活 鬼がかりverA03',
+                reading: 'ぴーりぜろからはじめるいせかいせいかつ おにがかりゔぁーじょんあま',
+                type: 'pachinko',
+                manufacturer: '大都技研',
+                spec: '甘デジ', // Changed spec to 甘デジ
+                tags: [], // Assuming no LT based on 甘デジ spec
+                salesPitch: `お客様、こちらの新台『PRe:ゼロから始める異世界生活 鬼がかりver 甘デジ』はいかがでしょうか？\n\n大人気機種「リゼロ鬼がかり」が遊びやすい甘デジスペックで登場です！\n\n大当り確率は約1/99.9ながら、初当たりの50%でST104回転の「鬼がかりRUSH」に突入します。\n\nRUSH中の継続率は約73%！さらに継続時の約25%が1800個(900個×2)の大当たりと、甘デジながら一撃の出玉も期待できるスペックとなっております。\n\n遊びやすさと鬼がかりの興奮を両立した一台を、ぜひお楽しみください！`
+            },
+            {
+                 id: 'keiji_ougon',
+                 name: 'e花の慶次～黄金の一撃‐H4',
+                 reading: 'eはなのけいじ おうごんのいちげき',
+                 type: 'pachinko',
+                 manufacturer: 'ニューギン',
+                 spec: 'ミドル',
+                 tags: ['ラッキートリガー'],
+                 salesPitch: `お客様、こちらの新台『e花の慶次～黄金の一撃』はいかがでしょうか？\n\n本機は、初当たりの50.1%で突入するラッキートリガー「RUSH」が魅力です！\n\nRUSHはST143回転で継続率は約77%。さらにRUSH中の大当たりの23.5%で、上位の「超RUSH」へ突入します。\n\n超RUSHに突入すれば、大当たりの約半数が6000個以上の出玉となり、圧倒的な出玉性能を誇ります！まさに「黄金の一撃」の名にふさわしいスペックを、ぜひご体感ください！`
+            },
             // 新台パチスロ
             { id: 'shake_bonus_trigger', name: 'S SHAKE BONUS TRIGGER', reading: 'しぇいくぼーなすとりがー', type: 'other-pachislot', manufacturer: '大都技研', spec: 'A-TYPE', tags: [], salesPitch: `お客様、こちらの『SHAKE BONUS TRIGGER』はいかがでしょうか？\n\n本機はBIG BONUSの平均獲得枚数が約400枚、さらにループ率は約50%と、高い出玉性能が魅力のA-type機です。\n\nBB中は目押し成功で獲得枚数がアップする技術介入要素もあり、楽しみながら出玉を増やすことができます。\n\nシンプルなゲーム性と高い出玉性能を両立した一台を、ぜひお楽しみください！` },
              {
@@ -242,6 +349,26 @@
                  tags: [],
                  salesPitch: `お客様、こちらの新台『L革命機ヴァルヴレイヴ2』はいかがでしょうか？\n\n純増約9.0枚の超高純増AT「革命RUSH」が魅力の一台です！\n\n通常時は規定ポイント到達やレア役からCZを目指し、CZ成功でボーナスへ。ボーナス中のミッションをクリアできれば「革命RUSH」突入です！\n\nRUSHはゲーム数＆セット数上乗せタイプで、継続率は75%！Vランプが3つ点灯すれば、継続率90%の「超革命RUSH」へ昇格します！\n\nさらに、RUSH終了後やボーナス中の分岐から突入する可能性がある「ハラキリチャレンジ」は、3G以内にV図柄を揃えればAT継続！成功時の一部やAT中のレア役などからは、ゲーム数上乗せ特化ゾーン「ハラキリDRIVE」に突入することもあります。\n\n圧倒的なスピード感と出玉性能をぜひご体感ください！` // Added "新台"
             },
+            {
+                 id: 'toaru_railgun_s2',
+                 name: 'Lとある科学の超電磁砲2FV',
+                 reading: 'えるとあるかがくのレールガン2FV',
+                 type: 'pachislot', // Changed from other-pachislot
+                 manufacturer: '藤商事',
+                 spec: 'AT',
+                 tags: [],
+                 salesPitch: `お客様、こちらの新台『Lとある科学の超電磁砲2』はいかがでしょうか？\n\n本機は、AT中のゲーム数減算がストップする「No Loss GAMEシステム」を搭載しており、ストレスなく遊技を楽しめます！\n\nAT「超電磁砲DRIVE」中は、「超電磁砲コイン」を契機にゲーム数上乗せや特化ゾーン「JUDGE LIGHT ATTACK」を目指します。\n\n「JUDGE LIGHT ATTACK」はループ性があり、最大継続率は約80%！さらに、期待枚数3500枚OVERの上位AT「超電磁砲 OVER DRIVE」も搭載しており、一撃の夢も秘めています！ぜひ、進化したLEVEL5の力をご体感ください！` // Added "新台"
+            },
+             {
+                 id: 'zettai_shougeki4',
+                 name: 'L絶対衝激フォースFH',
+                 reading: 'えるぜったいしょうげきふぉーす',
+                 type: 'pachislot',
+                 manufacturer: 'アリストクラートテクノロジーズ',
+                 spec: 'AT',
+                 tags: [],
+                 salesPitch: `お客様、こちらの新台『L絶対衝激フォース』はいかがでしょうか？\n\n純増約5.5枚のAT「プラトニックタイム」とボーナスのループで出玉を増やしていくマシンです！\n\n通常時はレベルを上げてCZを目指し、CZ成功でボーナスへ。ボーナス中のバトル勝利でAT突入となります。\n\nAT中はレア役でボーナスを目指し、ボーナス当選時の約17%で上位AT「プラトニックタイム GOLD」へ昇格！GOLD中はボーナス当選＝ゲーム数上乗せとなり、期待枚数も大幅アップします！\n\nさらに、ボーナスの一部で突入する「絶対領域」は、消化中のレア役でゲーム数上乗せ抽選を行う特化ゾーンです。\n\n衝激安打スペックによる爽快感をぜひご体感ください！`
+             },
             // メイン機 パチンコ
             { id: 'garo12', name: 'e牙狼12黄金騎士極限', reading: 'eがろ12おうごんきしきょくげん', type: 'main-pachinko', manufacturer: 'サンセイR&D', spec: 'ミドル', tags: ['ラッキートリガー'], salesPitch: `お客様、こちらの『e牙狼12黄金騎士極限』はいかがでしょうか？\n\n本機は液晶図柄揃い時の50%で突入する「極限7500バトル」が特徴です。このバトルに勝利すると、7500個の大当たりとラッキートリガー「魔戒CHANCE LT」が濃厚となります。\n\nLT中の継続率は約76%、さらにLT中の大当たりの25%が7500個と、圧倒的な出玉性能を誇ります。` },
             { id: 'eva_mirai', name: 'P新世紀エヴァンゲリオン ～未来への咆哮～', reading: 'pしんせいきえゔぁんげりおん みらいへのほうこう', type: 'main-pachinko', manufacturer: 'ビスティ', spec: 'ミドル', tags: [], salesPitch: `お客様、こちらの『P 新世紀エヴァンゲリオン ～未来への咆哮～』はいかがでしょうか？\n\n本機はトータルST突入率約70%、継続率は約81%と非常に高い性能を誇る一台です。\n\nST「IMPACT MODE」中は全ての大当たりが出玉1500個となりますので、一撃の出玉感も十分に期待できます。\n\nまさに最高峰の性能を、ぜひご体感ください。` },
@@ -298,6 +425,36 @@
                 tags: ['ラッキートリガー'],
                 salesPitch: `お客様、こちらの『eとある魔術の禁書目録 万能通行BIG』はいかがでしょうか？\n\n本機は、右打ち中の大当たりがALL3000個という、まさに学園都市第一位の力を体現したようなスペックが特徴です！\n\n初当たりの約51%で突入する「一方通行RUSHチャレンジ」を突破（突破率約60%）できれば、ラッキートリガー「一方通行RUSH HYPER」へ！\n\nLT中の継続率は約75%で、その間の大当たりは全て3000個！さらに一部で6000個以上の出玉も期待できます。\n\n圧倒的な出玉性能をぜひご体感ください！`
             },
+            {
+                 id: 'shaman_king_lb',
+                 name: 'eシャーマンキングLB',
+                 reading: 'eしゃーまんきんぐえるびー',
+                 type: 'other-pachinko',
+                 manufacturer: 'ジェイビー',
+                 spec: 'ミドル',
+                 tags: ['ラッキートリガー'],
+                 salesPitch: `お客様、こちらの『eシャーマンキングLB でっけぇえなver.』はいかがでしょうか？\n\n本機は、強力なラッキートリガー「超シャーマンファイト」を搭載しています！\n\n初当たりの50%で突入する「シャーマンファイト」中に、大当たりの約1/87.7で発生する「シャーマンバトル」に勝利（勝率約80%）することでLTへ突入します。\n\nLT中の継続率は約81%！さらにバトル勝利時の約50%が3000個以上、最大で6000個の出玉も期待できる、まさに「でっけぇえな」スペックです！\n\nまた、バトル敗北時もST回数がリセットされる「リスタート機能」を搭載しており、諦めずにLT継続を目指せます。\n\nぜひ、この爽快な出玉性能をご体感ください！`
+            },
+             {
+                id: 'ikkitousen_touen',
+                name: 'P真・一騎当千～桃園の誓い～',
+                reading: 'ぴーしんいっきとうせん とうえんのちかい',
+                type: 'other-pachinko',
+                manufacturer: 'D-light',
+                spec: 'ミドル',
+                tags: [],
+                salesPitch: `お客様、こちらの『P真・一騎当千～桃園の誓い～』はいかがでしょうか？\n\n本機は大当りすれば必ず1500個以上の出玉＋右打ちに突入するのが特徴です！\n\n初当たりの約62%でST120回転の「闘士恋撃」へ。ここで3連チャン（初当たり含む）させると、ST163回転の上位RUSH「超ドキドキ！ハーレムタイム」に昇格します！ハーレムタイムの継続率は約81%と高く、ロング継続に期待できます。\n\n初当たりでRUSH非突入でも、時短100回転の「チャンスタイム」へ。ここで引き戻せばハーレムタイム直行となります！\n\n連チャンするほど継続率が上がる「カウントダウンシステム」を搭載した、一味違うRUSHをぜひご体感ください！`
+            },
+             {
+                 id: 'fairytale_ichiya',
+                 name: 'PFAIRYTALE超‐夜ver.FQY',
+                 reading: 'ぴーふぇありーている ちょういちやばーじょん',
+                 type: 'other-pachinko',
+                 manufacturer: '藤商事',
+                 spec: 'ミドル',
+                 tags: ['ラッキートリガー'],
+                 salesPitch: `お客様、こちらの『PFAIRY TAIL 超一夜Ver.』はいかがでしょうか？\n\n本機は、ラッキートリガー発動後のRUSH2回目で「一夜モード」に突入するのが特徴です。\n\n初当たり後の「FAIRY RUSH」（継続率約60%）を2回突破できれば、ラッキートリガーが発動し「七炎竜RUSH」（継続率約81%）へ！\n\n七炎竜RUSH中の大当たりの約25%で「一夜モード」へ突入！一夜モード中は大当たり時の約25%で「超一夜モード」へ昇格します。\n\n超一夜モード中は約50%で1500個が上乗せされ、終了しても一夜モードへ移行するため、大量出玉のループに期待できます！\n\nぜひ、一夜限りの夢のような出玉性能をご体感ください！`
+            },
             // その他の台 スロット
             {
                 id: 'evangelion_lb',
@@ -309,16 +466,7 @@
                 tags: [],
                 salesPitch: `お客様、こちらの『LBエヴァンゲリオン』はいかがでしょうか？\n\n本機は、ボーナスがボーナスを呼ぶ「ボーナストリガー」を搭載したマシンです。\n\nSUPER BIG BONUS後は、平均約404枚の獲得とボーナストリガーへの突入が期待できます。\n\nBT中は約1/1.4でBAR揃いのピンチが訪れますが、それを回避し続ける限りボーナスがループ！エヴァならではの手に汗握る展開と、ボーナスが連チャンする爽快感をぜひご体感ください！`
             },
-            {
-                 id: 'toaru_railgun_s2',
-                 name: 'Lとある科学の超電磁砲2FV',
-                 reading: 'えるとあるかがくのレールガン2FV',
-                 type: 'other-pachislot',
-                 manufacturer: '藤商事',
-                 spec: 'AT',
-                 tags: [],
-                 salesPitch: `お客様、こちらの『Lとある科学の超電磁砲2』はいかがでしょうか？\n\n本機は、AT中のゲーム数減算がストップする「No Loss GAMEシステム」を搭載しており、ストレスなく遊技を楽しめます！\n\nAT「超電磁砲DRIVE」中は、「超電磁砲コイン」を契機にゲーム数上乗せや特化ゾーン「JUDGE LIGHT ATTACK」を目指します。\n\n「JUDGE LIGHT ATTACK」はループ性があり、最大継続率は約80%！さらに、期待枚数3500枚OVERの上位AT「超電磁砲 OVER DRIVE」も搭載しており、一撃の夢も秘めています！ぜひ、進化したLEVEL5の力をご体感ください！`
-            },
+
             { id: 'zenigata5', name: 'L主役は銭形5', reading: 'lしゅやくはぜにがた5', type: 'other-pachislot', manufacturer: 'オリンピア', spec: 'AT', tags: [], salesPitch: `お客様！スマスロで一撃を狙うなら『L主役は銭形5』がおすすめです！\n\n最大の魅力は、平均650枚OVERのBIG BONUSが約80%でループする点です！払出も500枚から最大3000枚と夢があります。\n\nさらに、継続をかけた「デкаタイム」は3回、6回、9回と成功するたびにBIG BONUSへの昇格期待度がアップしていくので、叩きどころが明確でアツくなれます！出玉の塊を掴み取る快感を、ぜひご体験ください！` }
             ,
             {
@@ -352,16 +500,16 @@
             { type: 'P', name: 'e花の慶次～黄金の一撃‐H4', count: 2 },
             { type: 'P', name: 'eとある魔術の禁書目録‐万能通行BIG JKZ', count: 1 },
             { type: 'P', name: 'P Re:ゼロから始める異世界生活鬼がかりver AO3', count: 1 },
-            { type: 'P', name: 'e真・一騎当千～桃園の誓い～AM-T5', count: 1 },
+            { type: 'P', name: 'e真・一騎当千～桃園の誓い～AM-T5', count: 1 }, // Added this machine
             { type: 'P', name: 'eシャーマンキングLB', count: 1 },
-            { type: 'P', name: 'PFAIRYTALE超‐夜ver.FQY', count: 1 },
+            { type: 'P', name: 'PFAIRYTALE超‐夜ver.FQY', count: 1 }, // Added this machine
             { type: 'S', name: 'Lかぐや様は告らせたいJA', count: 10 },
             { type: 'S', name: 'L東京喰種CT', count: 10 },
             { type: 'S', name: 'Lとある科学の超電磁砲2FV', count: 10 },
             { type: 'S', name: 'L革命機ヴァルヴレイヴ2jF', count: 10 },
             { type: 'S', name: 'SネオアイムジャグラーEX-KK【7】', count: 5 },
             { type: 'S', name: 'LBエヴァンゲリオンSR', count: 4 },
-            { type: 'S', name: 'L絶対衝激フォースFH', count: 4 },
+            { type: 'S', name: 'L絶対衝激フォースFH', count: 4 }, // Added this machine
             { type: 'S', name: 'Lいざ番長/SB8【2】', count: 3 },
             { type: 'S', name: 'Lバジリスク絆2～天膳～/ZN', count: 2 },
             { type: 'S', name: 'Lいざ番長/SB8', count: 1 }
@@ -584,7 +732,13 @@
                     li.className = 'flex justify-between items-center bg-slate-50 p-3 rounded-lg border';
                     const matchedMachine = rememberedMachines.find(rm =>
                         openingMachine.name.includes(rm.name) ||
-                        (openingMachine.name.includes('L革命機ヴァルヴレイヴ2jF') && rm.id === 'valvrave2') || // Added mapping
+                        (openingMachine.name.includes('L絶対衝激フォースFH') && rm.id === 'zettai_shougeki4') || // Added mapping
+                         (openingMachine.name.includes('PFAIRYTALE超‐夜ver.FQY') && rm.id === 'fairytale_ichiya') ||
+                         (openingMachine.name.includes('e真・一騎当千～桃園の誓い～') && rm.id === 'ikkitousen_touen') ||
+                         (openingMachine.name.includes('e花の慶次～黄金の一撃') && rm.id === 'keiji_ougon') ||
+                        (openingMachine.name.includes('P Re:ゼロから始める異世界生活鬼がかりver AO3') && rm.id === 're_zero_oni_ama') ||
+                        (openingMachine.name.includes('eシャーマンキングLB') && rm.id === 'shaman_king_lb') ||
+                        (openingMachine.name.includes('L革命機ヴァルヴレイヴ2jF') && rm.id === 'valvrave2') ||
                         (openingMachine.name.includes('Lとある科学の超電磁砲2FV') && rm.id === 'toaru_railgun_s2') ||
                         (openingMachine.name.includes('eとある魔術の禁書目録‐万能通行BIG') && rm.id === 'toaru_big') ||
                         (openingMachine.name.includes('LBエヴァンゲリオンSR') && rm.id === 'evangelion_lb') ||
@@ -644,6 +798,63 @@
             resultArea.addEventListener('animationend', () => resultArea.classList.remove('fade-in'), { once: true });
             resultArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
+
+        // --- Image Slider Logic ---
+        function showSlide(n) {
+            let i;
+            const slides = document.getElementsByClassName("slide");
+            const dots = document.getElementsByClassName("dot");
+            if (n > slides.length) { slideIndex = 1 }
+            if (n < 1) { slideIndex = slides.length }
+            for (i = 0; i < slides.length; i++) {
+                slides[i].style.display = "none";
+                slides[i].classList.remove("active");
+            }
+            for (i = 0; i < dots.length; i++) {
+                dots[i].classList.remove("active");
+            }
+            slides[slideIndex - 1].style.display = "block";
+            slides[slideIndex - 1].classList.add("active");
+            dots[slideIndex - 1].classList.add("active");
+        }
+
+        // Function to change slide manually or automatically
+        function changeSlide(n) {
+            resetSlideInterval(); // Reset timer on manual change
+            showSlide(slideIndex += n);
+        }
+
+        // Function for dot navigation
+        function currentSlide(n) {
+            resetSlideInterval(); // Reset timer on dot click
+            showSlide(slideIndex = n);
+        }
+
+        // Function to start automatic sliding
+        function startSlideInterval() {
+             // Clear existing interval before starting a new one
+            clearInterval(slideInterval);
+            slideInterval = setInterval(() => {
+                changeSlide(1);
+            }, slideChangeInterval);
+        }
+
+         // Function to reset the interval timer
+        function resetSlideInterval() {
+            clearInterval(slideInterval);
+            startSlideInterval(); // Restart the timer
+        }
+
+        // Expose functions to global scope for onclick handlers
+        window.changeSlide = changeSlide;
+        window.currentSlide = currentSlide;
+
+        // Initialize slider on window load
+        window.addEventListener('load', () => {
+             showSlide(slideIndex); // Show the first slide initially
+             startSlideInterval(); // Start automatic sliding
+        });
+
     </script>
 </body>
 </html>
