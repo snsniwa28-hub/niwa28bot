@@ -117,6 +117,25 @@
             background-color: #4f46e5; /* Indigo color */
         }
          /* --- End Image Slider Styles --- */
+
+         /* --- Calendar Styles --- */
+        .calendar-details[open] .calendar-summary {
+            border-bottom-color: transparent;
+        }
+        .calendar-summary {
+            transition: background-color 0.2s ease;
+        }
+        .calendar-summary:hover {
+            background-color: #f4f4f5; /* zinc-100 */
+        }
+        .today {
+            background-color: #fefce8; /* yellow-50 */
+            border-left-color: #eab308; /* yellow-600 */
+            border-left-width: 4px;
+        }
+        .today .calendar-summary {
+            background-color: #fef9c3; /* yellow-100 */
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -124,13 +143,15 @@
     <!-- Header -->
     <header class="bg-white/80 backdrop-blur-md border-b border-gray-200/80 sticky top-0 z-20">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- ↓ flex justify-between を追加 -->
             <div class="flex items-center justify-between h-16">
-                <!-- Modified section for logo and text -->
+                <!-- Logo and Text -->
                 <a href="#" class="flex items-center">
-                    <img src="rogo.jpg" alt="ロゴ" class="h-6 w-auto mr-2"> <!-- Image added -->
-                    <span class="text-xl font-bold text-gray-800">ガーデン八潮店 BOT</span> <!-- Text wrapped in span -->
+                    <img src="rogo.jpg" alt="ロゴ" class="h-6 w-auto mr-2">
+                    <span class="text-xl font-bold text-gray-800">ガーデン八潮店 BOT</span>
                 </a>
-                <!-- End of modified section -->
+                <!-- Date Display (NEW) -->
+                <span id="currentDate" class="text-sm sm:text-base font-medium text-gray-700"></span>
             </div>
         </div>
     </header>
@@ -143,13 +164,30 @@
             <div class="slider-outer-container">
                 <div class="slider-container">
                     <div class="slider-wrapper">
+                        <!-- Slide 1 -->
                         <div class="slide">
                             <img src="sinsou1.jpg" alt="新装開店画像1">
                              <div style="display: none; padding: 20px; background-color: #eee; color: #555; text-align: center; border-radius: 1rem;">画像1が表示できません</div>
                         </div>
+                        <!-- Slide 2 -->
                         <div class="slide">
                             <img src="sinsou2.jpg" alt="新装開店画像2">
                              <div style="display: none; padding: 20px; background-color: #eee; color: #555; text-align: center; border-radius: 1rem;">画像2が表示できません</div>
+                        </div>
+                        <!-- Slide 3 -->
+                        <div class="slide">
+                            <img src="sinsou3.jpg" alt="新装開店画像3">
+                             <div style="display: none; padding: 20px; background-color: #eee; color: #555; text-align: center; border-radius: 1rem;">画像3が表示できません</div>
+                        </div>
+                        <!-- Slide 4 -->
+                        <div class="slide">
+                            <img src="sinsou4.jpg" alt="新装開店画像4">
+                             <div style="display: none; padding: 20px; background-color: #eee; color: #555; text-align: center; border-radius: 1rem;">画像4が表示できません</div>
+                        </div>
+                        <!-- Slide 5 -->
+                        <div class="slide">
+                            <img src="sinsou5.jpg" alt="新装開店画像5">
+                             <div style="display: none; padding: 20px; background-color: #eee; color: #555; text-align: center; border-radius: 1rem;">画像5が表示できません</div>
                         </div>
                     </div>
                     <!-- Prev/Next Buttons -->
@@ -160,6 +198,9 @@
                 <div class="dots-container">
                     <span class="dot active" onclick="currentSlide(1)"></span>
                     <span class="dot" onclick="currentSlide(2)"></span>
+                    <span class="dot" onclick="currentSlide(3)"></span>
+                    <span class="dot" onclick="currentSlide(4)"></span>
+                    <span class="dot" onclick="currentSlide(5)"></span>
                 </div>
             </div>
 
@@ -187,7 +228,8 @@
                     <!-- Feature 2: New Opening -->
                     <div id="newOpeningButton" class="feature-card cursor-pointer bg-white rounded-2xl shadow-lg border border-gray-200/80 p-8 text-center">
                         <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
-                            <svg class="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.54C5 3.22 5.22 3 5.5 3h13c.28 0 .5.22.5.54v17.92c0 .28-.22.54-.5.54H5.5c-.28 0-.5-.26-.5-.54V3.54Z"/><path d="M8 3v2"/><path d="M16 3v2"/><path d="M7 12h10"/><path d="m15.2 16.2-3.4-2.2-3.4 2.2"/><path d="M12 14V8"/></svg>
+                            <!-- アイコンを「台一覧」ボタンと同じリストのアイコンに変更しました -->
+                            <svg class="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
                         </div>
                         <h3 class="mt-6 text-xl font-semibold text-gray-900">新装開店の<br>情報を見る</h3>
                         <p class="mt-2 text-base text-gray-600">新装開店の情報を<br>いち早く確認。</p>
@@ -204,8 +246,263 @@
             </div>
         </section>
 
-        <!-- Floor Map Section -->
+        <!-- Pachi Team Info Section (NEW) -->
         <section class="py-20 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                
+                <!-- Accordion Wrapper -->
+                <details class="group max-w-4xl mx-auto" open>
+                    <!-- Accordion Summary -->
+                    <summary class="list-none cursor-pointer flex justify-between items-center text-left py-4 border-b border-gray-300">
+                        <div class="text-center w-full">
+                            <h2 class="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+                                ぱちんこチームからのご案内
+                            </h2>
+                        </div>
+                        <!-- Chevron Arrow -->
+                        <svg class="h-6 w-6 text-gray-500 group-open:rotate-180 transition-transform duration-300 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </summary>
+
+                    <!-- Accordion Content -->
+                    <div class="pt-8 pb-4">
+                        <p class="mt-4 max-w-2xl mx-auto text-lg text-gray-600 text-center mb-12">
+                            今週のオススメ機種情報（11/5～11/11）
+                        </p>
+                        
+                        <!-- PDF Content Display (REPAIRED) -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- 4円パチンコ -->
+                            <div class="bg-white rounded-2xl shadow-lg border border-gray-200/80 p-6">
+                                <h3 class="text-2xl font-bold text-indigo-700 mb-4">
+                                    <span class="inline-block bg-indigo-100 text-indigo-700 rounded-full px-4 py-1 text-sm font-semibold mr-2">4円</span>
+                                    今週のオススメ
+                                </h3>
+                                <ul class="space-y-4">
+                                    <li class="flex items-start">
+                                        <svg class="h-6 w-6 text-yellow-500 flex-shrink-0 mr-3 mt-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z"/></svg>
+                                        <div>
+                                            <!-- ↓ h4 に inline-block を追加 -->
+                                            <h4 class="font-semibold text-gray-900 inline-block">【女神のカフェテラス】</h4>
+                                            <p class="text-gray-600">今週のイチオシ！ (11/11まで)</p>
+                                        </div>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <svg class="h-6 w-6 text-red-500 flex-shrink-0 mr-3 mt-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                                        <div>
+                                            <!-- ↓ h4 に inline-block を追加 -->
+                                            <h4 class="font-semibold text-gray-900 inline-block">【エヴァンゲリオンシリーズ】</h4>
+                                            <p class="text-gray-600">月間強化中！特に週末は要チェック！</p>
+                                        </div>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <svg class="h-6 w-6 text-blue-500 flex-shrink-0 mr-3 mt-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10.5V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12c0 1.1.9 2 2 2h12.5"/><path d="M22 10.5l-5.7 5.7M22 10.5h-5.7v5.7"/></svg>
+                                        <div>
+                                            <h4 class="font-semibold text-gray-900">金曜日のオススメ</h4>
+                                            <!-- ↓ 機種名を inline-block で囲み、改行を制御 -->
+                                            <p class="text-gray-600"><span class="inline-block">「からくりサーカス」</span> <span class="inline-block">「ブルーロック」</span> <span class="inline-block">「炎炎ノ消防隊」をプッシュ！</span></p>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- 時差 & 1円 -->
+                            <div class="space-y-6">
+                                <div class="bg-white rounded-2xl shadow-lg border border-gray-200/80 p-6">
+                                    <h3 class="text-2xl font-bold text-teal-700 mb-4">
+                                        <span class="inline-block bg-teal-100 text-teal-700 rounded-full px-4 py-1 text-sm font-semibold mr-2">時差</span>
+                                        時差開放台
+                                    </h3>
+                                    <ul class="space-y-4">
+                                        <li class="flex items-start">
+                                            <svg class="h-6 w-6 text-teal-500 flex-shrink-0 mr-3 mt-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
+                                            <div>
+                                                <!-- ↓ h4 に inline-block を追加 -->
+                                                <h4 class="font-semibold text-gray-900 inline-block">【からくりサーカス】</h4>
+                                                <p class="text-gray-600">時差開放台で常にオススメしています！</p>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="bg-white rounded-2xl shadow-lg border border-gray-200/80 p-6">
+                                    <h3 class="text-2xl font-bold text-pink-700 mb-4">
+                                        <span class="inline-block bg-pink-100 text-pink-700 rounded-full px-4 py-1 text-sm font-semibold mr-2">1円</span>
+                                        1円パチンコ
+                                    </h3>
+                                    <ul class="space-y-4">
+                                        <li class="flex items-start">
+                                            <svg class="h-6 w-6 text-pink-500 flex-shrink-0 mr-3 mt-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 3a3 3 0 00-3-3v2a1 1 0 011 1v2a1 1 0 01-1 1v2a3 3 0 003-3V3zM6 3a3 3 0 013-3v2a1 1 0 00-1 1v2a1 1 0 001 1v2a3 3 0 01-3-3V3z"/><path d="M12 18L12 6"/><path d="M6 18V9a3 3 0 013-3h6a3 3 0 013 3v9"/><path d="M6 21h12"/><path d="M12 21v-3"/></svg>
+                                            <div>
+                                                <h4 class="font-semibold text-gray-900">人気機種ランキング</h4>
+                                                <p class="text-gray-600">好評につき、引き続き実施中です！</p>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+            </div>
+        </section>
+
+        <!-- Slot Team Info Section (NEWLY ADDED) -->
+        <section class="py-20 bg-slate-50">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                
+                <!-- Accordion Wrapper -->
+                <!-- ↓ detailsタグに 'open' を追加しました -->
+                <details class="group max-w-4xl mx-auto" open>
+                    <!-- Accordion Summary -->
+                    <summary class="list-none cursor-pointer flex justify-between items-center text-left py-4 border-b border-gray-300">
+                        <div class="text-center w-full">
+                            <h2 class="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+                                スロットチームからのご案内
+                            </h2>
+                        </div>
+                        <!-- Chevron Arrow -->
+                        <svg class="h-6 w-6 text-gray-500 group-open:rotate-180 transition-transform duration-300 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </summary>
+
+                    <!-- Accordion Content -->
+                    <div class="pt-8 pb-4">
+                        <p class="mt-4 max-w-2xl mx-auto text-lg text-gray-600 text-center mb-12">
+                            11月1週目のオススメ＆イベント情報
+                        </p>
+                        
+                        <!-- Slot Content Display -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            
+                            <!-- Event 1 -->
+                            <div class="bg-white rounded-2xl shadow-lg border border-gray-200/80 p-6">
+                                <h3 class="text-xl font-bold text-red-700 mb-4">
+                                    <!-- ↓ 縦位置を揃え、テキストをspanで囲いました -->
+                                    <span class="inline-block bg-red-100 text-red-700 rounded-full px-4 py-1 text-sm font-semibold mr-2 align-middle">11/3 (日)</span>
+                                    <span class="inline-block align-middle">極上マッティー 来店</span>
+                                </h3>
+                                <ul class="space-y-4">
+                                    <li class="flex items-start">
+                                        <svg class="h-6 w-6 text-red-500 flex-shrink-0 mr-3 mt-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z"/></svg>
+                                        <div>
+                                            <!-- ↓ h4 に inline-block を追加 -->
+                                            <h4 class="font-semibold text-gray-900 inline-block">マッティーさんご本人が来店！</h4>
+                                            <p class="text-gray-600">スロット全般の出玉アピールを終日頑張ります！ご期待ください！</p>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Event 2 -->
+                            <div class="bg-white rounded-2xl shadow-lg border border-gray-200/80 p-6">
+                                <h3 class="text-xl font-bold text-indigo-700 mb-4">
+                                    <!-- ↓ 縦位置を揃え、テキストをspanで囲いました -->
+                                    <span class="inline-block bg-indigo-100 text-indigo-700 rounded-full px-4 py-1 text-sm font-semibold mr-2 align-middle">11/5 (火)～7 (木)</span>
+                                    <span class="inline-block align-middle">新装開店 & PS時差開放</span>
+                                </h3>
+                                <ul class="space-y-4">
+                                    <li class="flex items-start">
+                                        <svg class="h-6 w-6 text-indigo-500 flex-shrink-0 mr-3 mt-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
+                                        <div>
+                                            <!-- ↓ h4 に inline-block を追加 -->
+                                            <h4 class="font-semibold text-gray-900 inline-block">P/S時差開放（平日限定）</h4>
+                                            <p class="text-gray-600">時差台は「最高に遊べる状態」です！お仕事帰りにぜひ！</p>
+                                        </div>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <svg class="h-6 w-6 text-pink-500 flex-shrink-0 mr-3 mt-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20.24,12.24a8,8,0,0,0-11.31-11.31A8,8,0,0,0,3.51,12.36,8.08,8.08,0,0,0,8.68,19.5a8.53,8.53,0,0,0,4.45.7A8,8,0,0,0,20.24,12.24Z"/></svg>
+                                        <div>
+                                            <h4 class="font-semibold text-gray-900">今週のおすすめ (11/11まで)</h4>
+                                            <!-- ↓ brタグの代わりにspan blockで改行を制御 -->
+                                            <p class="text-gray-600">
+                                                <span class="block">スロット: Lかぐや様は告らせたい</span>
+                                                <span class="block">パチンコ: e女神のカフェテラス</span>
+                                            </p>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- Event 3 -->
+                            <div class="bg-white rounded-2xl shadow-lg border border-gray-200/80 p-6">
+                                <h3 class="text-xl font-bold text-blue-700 mb-4">
+                                    <!-- ↓ 縦位置を揃え、テキストをspanで囲いました -->
+                                    <span class="inline-block bg-blue-100 text-blue-700 rounded-full px-4 py-1 text-sm font-semibold mr-2 align-middle">11/8 (金)</span>
+                                    <span class="inline-block align-middle">八潮上空＆W来店</span>
+                                </h3>
+                                <ul class="space-y-4">
+                                    <li class="flex items-start">
+                                        <svg class="h-6 w-6 text-blue-500 flex-shrink-0 mr-3 mt-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+                                        <div>
+                                            <!-- ↓ h4 に inline-block を追加 -->
+                                            <h4 class="font-semibold text-gray-900 inline-block">おすしさん＆おにくさん W来店！</h4>
+                                            <!-- ↓ オススメ機種一覧を inline-block で囲み、改行を制御 -->
+                                            <p class="text-gray-600">メイン機種がほぼオススメの1日！<br>
+                                            <span class="text-sm font-medium">オススメ: <span class="inline-block">L喰種,</span> <span class="inline-block">Pエヴァ未来,</span> <span class="inline-block">eカフェテラス,</span> <span class="inline-block">Lモンハン,</span> <span class="inline-block">サミー機種,</span> <span class="inline-block">Lかぐや様</span></span></p>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- Event 4 -->
+                            <div class="bg-white rounded-2xl shadow-lg border border-gray-200/80 p-6">
+                                <h3 class="text-xl font-bold text-green-700 mb-4">
+                                    <!-- ↓ 縦位置を揃え、テキストをspanで囲いました -->
+                                    <span class="inline-block bg-green-100 text-green-700 rounded-full px-4 py-1 text-sm font-semibold mr-2 align-middle">11/9 (土)</span>
+                                    <span class="inline-block align-middle">スロパチ for 埼玉</span>
+                                </h3>
+                                <ul class="space-y-4">
+                                    <li class="flex items-start">
+                                        <svg class="h-6 w-6 text-green-500 flex-shrink-0 mr-3 mt-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.67 19a1 1 0 0 1-1.34 0l-5.07-4.4a1 1 0 0 1-.2-1.38l1.83-3.95a1 1 0 0 1 .9-.67h11.2a1 1 0 0 1 .9.67l1.83 3.95a1 1 0 0 1-.2 1.38Z"/><path d="M12 14.5V22"/><path d="M9.5 14.5l-2-6.5h10l-2 6.5"/></svg>
+                                        <div>
+                                            <!-- ↓ h4 に inline-block を追加 -->
+                                            <h4 class="font-semibold text-gray-900 inline-block">ジャグラーに注目！</h4>
+                                            <p class="text-gray-600">「どこかの1列」が盛り上がる日！人気のイベントです！</p>
+                                        </div>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <svg class="h-6 w-6 text-pink-500 flex-shrink-0 mr-3 mt-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20.24,12.24a8,8,0,0,0-11.31-11.31A8,8,0,0,0,3.51,12.36,8.08,8.08,0,0,0,8.68,19.5a8.53,8.53,0,0,0,4.45.7A8,8,0,0,0,20.24,12.24Z"/></svg>
+                                        <div>
+                                            <h4 class="font-semibold text-gray-900">引き続きオススメ！</h4>
+                                            <!-- ↓ 機種名を inline-block で囲み、改行を制御 -->
+                                            <p class="text-gray-600"><span class="inline-block">Lかぐや様</span> <span class="inline-block">& eカフェテラス</span></p>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+            </div>
+        </section>
+
+        <!-- Calendar Section (NEW) -->
+        <section class="py-20 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="max-w-4xl mx-auto">
+                    <div class="text-center mb-12">
+                        <h2 class="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+                            11月のイベントカレンダー
+                        </h2>
+                        <p class="mt-4 max-w-2xl mx-auto text-lg text-gray-600">
+                            日付をタップすると詳細が表示されます。
+                        </p>
+                    </div>
+                    <!-- Calendar List Container -->
+                    <div id="calendarList" class="bg-white rounded-2xl shadow-lg border border-gray-200/80 overflow-hidden">
+                        <!-- Calendar items will be injected here by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Floor Map Section -->
+        <section class="py-20 bg-slate-50"> <!-- 背景色を交互にするため slate-50 に変更 -->
             <div class="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-12">
                     <h2 class="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
@@ -227,7 +524,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-slate-50">
+    <footer class="bg-white"> <!-- 背景色を交互にするため white に変更 -->
         <div class="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <p class="text-center text-base text-gray-500">&copy; 2025 ガーデン八潮店. All rights reserved.</p>
         </div>
@@ -277,10 +574,6 @@
 
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
         // --- DOM Element Variables ---
         const resultArea = document.getElementById('resultArea');
         const resultTitle = document.getElementById('resultTitle');
@@ -296,9 +589,10 @@
         const newOpeningModal = document.getElementById('newOpeningModal');
         const closeNewOpeningModal = document.getElementById('closeNewOpeningModal');
         const newOpeningInfo = document.getElementById('newOpeningInfo');
+        const currentDateEl = document.getElementById('currentDate'); // (NEW)
+        const calendarListEl = document.getElementById('calendarList'); // (NEW)
 
         // --- Data Variables ---
-        let rememberedMachines = [];
         // Restored the full initialMachines array
         const initialMachines = [
              // 新台パチンコ
@@ -429,7 +723,7 @@
                 manufacturer: 'SANKYO',
                 spec: 'ミドル',
                 tags: ['ラッキートリガー'],
-                salesPitch: `お客様、こちらの『e女神のカフェテラス』はいかがでしょうか？\n\n本機は、大当り確率約1/399のミドルスペック機で、強力なラッキートリガー「女神の交響曲TIME」を搭載しています。\n\nLT中の継続率は約75%と高く、さらに大当たり時の75%が3000個以上、25%が4500個以上と、圧倒的な出玉性能が魅力です。\n\n円グラフの出玉を丸ごと上乗せする「まるっと爆乗せ」や、期待度85%を超える「3大女神演出」など、心を揺さぶるエモーショナルな演出が満載です。\n\nぜひ、女神たちとのハーレムRUSHと、圧倒的な出玉力をご体感ください！`
+                salesPitch: `お客様、こちらの『e女神のカフェテラス』はいかがでしょうか？\n\n本機は、大当り確率約1/399のミドルスペック機で、強力なラッキートリガー「女神の交響曲TIME」を搭載しています。\n\nLT中の継続率は約75%と高く、さらに大当たり時の75%が3000個以上、25%が4500個以上と、圧倒的な出玉性能が魅力です。\n\n円グラフの出玉を丸ごと上乗せする「まるっと爆乗せ」や、期待度85%を超える「3大女神演出」など、心を揺Sぶるエモーショナルな演出が満載です。\n\nぜひ、女神たちとのハーレムRUSHと、圧倒的な出玉力をご体感ください！`
             },
              {
                 id: 'toaru_big',
@@ -506,6 +800,9 @@
                 salesPitch: `お客様、こちらの『L荒野のコトブキ飛行隊』はいかがでしょうか？\n\n本機は、純増約7.0枚という超高純増ATが魅力の一台です。\n\nAT「空戦RUSH」は継続率約64%～91%で、さらに上位AT「超空戦RUSH」に突入すれば継続率は約92%まで上昇します！\n\nAT終了後100G間は引き戻し高確率状態となり、引き戻しに成功すれば前回のAT状態を引き継ぐため、ループするたびに出玉の期待感が膨らみます。\n\n高純増×高継続の爽快感を、ぜひご体験ください！`
             }
         ];
+        // Firebase関連のコードを削除し、最初からソート済みのリストを定義
+        const rememberedMachines = initialMachines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
         const newOpeningData = [ /* New Opening Data Array */
              { type: 'P', name: 'eノーゲーム・ノーライフV3C', count: 4 },
             { type: 'P', name: 'eフィーバーもののがたりF', count: 4 },
@@ -532,63 +829,60 @@
         const specTypes = ['すべて', 'スロット', 'パチンコ', 'ミドル', 'ライトミドル', '甘デジ', 'AT', 'A-TYPE'];
         let activeSpecFilter = 'すべて';
 
+        // --- (NEW) Calendar Event Data ---
+        const calendarEvents = [
+            { date: 1, day: '土', p_event: "1の日(かぐや)", s_event: "みーまる連鎖2日目/スロパチfor埼玉", recommend: "かぐやオススメ" },
+            { date: 2, day: '日', p_event: "2の日 【八潮上空】/喰種", s_event: "さくらのーと/G百鬼ガール(おにく)", recommend: "かぐやオススメ" },
+            { date: 3, day: '月', p_event: "もっと", s_event: "極上マッティー", recommend: "" },
+            { date: 4, day: '火', p_event: "", s_event: "", recommend: "P時差19時" },
+            { date: 5, day: '水', p_event: "新装開店", s_event: "", recommend: "P/S時差19時/かぐやオススメ/カフェテラスオススメ" },
+            { date: 6, day: '木', p_event: "", s_event: "", recommend: "PS/時差19時/かぐやオススメ/カフェテラスオススメ" },
+            { date: 7, day: '金', p_event: "", s_event: "", recommend: "P/S時差19時/かぐやオススメ/カフェテラスオススメ" },
+            { date: 8, day: '土', p_event: "8の日 【八潮上空】/喰種", s_event: "G百鬼ガール(おすし・おにく)", recommend: "かぐやオススメ/カフェテラスオススメ" },
+            { date: 9, day: '日', p_event: "もっと", s_event: "スロパチfor埼玉", recommend: "かぐやオススメ/カフェテラスオススメ" },
+            { date: 10, day: '月', p_event: "", s_event: "", recommend: "P/S時差19時/かぐやオススメ/カフェテラスオススメ" },
+            { date: 11, day: '火', p_event: "1の日(かぐや)", s_event: "BASH よっしー、烏丸シュウジ", recommend: "PS/時差19時/かぐやオススメ/カフェテラスオススメ" },
+            { date: 12, day: '水', p_event: "2の日 【八潮上空】/喰種", s_event: "G百鬼ガール(おにく)", recommend: "P/S時差19時/e リベオススメ" },
+            { date: 13, day: '木', p_event: "", s_event: "", recommend: "P/S時差19時/e リベオススメ" },
+            { date: 14, day: '金', p_event: "", s_event: "", recommend: "P/S時差19時/e リベオススメ" },
+            { date: 15, day: '土', p_event: "", s_event: "スロパチfor埼玉/七咲なな/ナナメ", recommend: "e リベオススメ" },
+            { date: 16, day: '日', p_event: "", s_event: "スロパチfor埼玉", recommend: "e リベオススメ" },
+            { date: 17, day: '月', p_event: "", s_event: "", recommend: "P/S時差19時/東リベオススメ" },
+            { date: 18, day: '火', p_event: "8の日 【八潮上空】/喰種/新装開店", s_event: "G百鬼ガール(おすし)", recommend: "P/S時差19時/e東リベオススメ" },
+            { date: 19, day: '水', p_event: "", s_event: "", recommend: "P/S時差19時/e牙狼オススメ" },
+            { date: 20, day: '木', p_event: "", s_event: "おめえらなんてスロ! (松本バッチ、神谷玲子)/み一まる初日", recommend: "P/S時差19時/e牙狼オススメ" },
+            { date: 21, day: '金', p_event: "", s_event: "", recommend: "P/S時差19時/e牙狼オススメ" },
+            { date: 22, day: '土', p_event: "月周年日1st/2の日 【八潮上空】/喰種", s_event: "G百鬼ガール(おすし・おにく)/みーまる2日目", recommend: "牙狼オススメ" },
+            { date: 23, day: '日', p_event: "もっと", s_event: "るいべえ", recommend: "e牙狼オススメ" },
+            { date: 24, day: '月', p_event: "", s_event: "極上マッティー/みーまる3日目", recommend: "牙狼オススメ" },
+            { date: 25, day: '火', p_event: "", s_event: "み まる4日目", recommend: "P/S時差19時/e牙狼オススメ" },
+            { date: 26, day: '水', p_event: "", s_event: "みーまる5日目", recommend: "P/S時差19時/エヴァ15オススメ" },
+            { date: 27, day: '木', p_event: "月周年日2nd", s_event: "ポンコツ珍道中(まりも、ガット、いち花)/み まる6日目", recommend: "P/S時差19時/エヴァ15オススメ" },
+            { date: 28, day: '金', p_event: "年一1128/8の日 【八潮上空】", s_event: "真竹 くずバチ収録", recommend: "時差無し/エヴァ15オススメ" },
+            { date: 29, day: '土', p_event: "もっと", s_event: "天草+くろむ", recommend: "エヴァ15オススメ" },
+            { date: 30, day: '日', p_event: "", s_event: "スロパチfor埼玉/MAXBET トモ千咲/なな", recommend: "エヴァ15オススメ" },
+        ];
+
+
         // --- Image Slider Variables ---
         let slideIndex = 0;
         let slideInterval;
         const slideChangeInterval = 5000; // 5 seconds
         const sliderWrapper = document.querySelector('.slider-wrapper');
+        // スライドとドットの要素を取得（HTMLが変更されたため）
         const slides = document.querySelectorAll('.slide');
         const dots = document.querySelectorAll('.dot');
-        const totalSlides = slides.length;
+        const totalSlides = slides.length; // totalSlidesは動的に5になる
 
-        // --- Firebase Config ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        let db, auth;
+        // --- Firebase Config と initializeFirebase 関数を削除 ---
 
         // --- Function Definitions ---
-
-        async function initializeFirebase() {
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                if (db) {
-                    const machinesDocRef = doc(db, `artifacts/${appId}/public/data/machines`, 'machine-list');
-                    onSnapshot(machinesDocRef, (docSnap) => {
-                        if (docSnap.exists() && docSnap.data().list) {
-                            rememberedMachines = docSnap.data().list;
-                        } else {
-                            const sortedInitialMachines = initialMachines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-                            setDoc(machinesDocRef, { list: sortedInitialMachines }).then(() => {
-                                rememberedMachines = sortedInitialMachines;
-                                console.log("Firestore initialized with sorted initial data.");
-                            }).catch(error => console.error("Error setting initial doc:", error));
-                        }
-                    }, (error) => {
-                        console.error("Firestore snapshot error:", error);
-                        rememberedMachines = initialMachines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-                    });
-                } else {
-                    rememberedMachines = initialMachines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-                }
-            } catch (e) {
-                console.error("Firebase initialization failed:", e);
-                rememberedMachines = initialMachines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-            }
-        }
 
         function toHiragana(str) { return str.replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60)); }
 
         const createCategorySection = (title, machines, targetModal) => {
-            const sortedMachines = machines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-            if (sortedMachines.length === 0) return null;
+            // リストは既にソート済みのため、ここでのソートは不要
+            if (machines.length === 0) return null;
 
             const section = document.createElement('div');
             section.className = 'mb-4';
@@ -596,7 +890,7 @@
             header.className = 'text-sm font-bold text-gray-500 uppercase tracking-wider mb-2 px-1';
             header.textContent = title;
             section.appendChild(header);
-            sortedMachines.forEach(machine => {
+            machines.forEach(machine => {
                 const button = document.createElement('button');
                 button.className = 'w-full text-left p-3 text-gray-800 bg-white hover:bg-indigo-50 border border-gray-200 rounded-lg mb-2 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-300';
                 button.innerHTML = `<p class="font-semibold">${machine.name}</p>`;
@@ -635,7 +929,8 @@
                 return textMatch && specMatch && tagMatch;
             });
 
-            const sortedBaseList = rememberedMachines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+            // rememberedMachinesは既にソート済み
+            const sortedBaseList = rememberedMachines;
 
             if (filteredMachines.length === 0) {
                 machineList.innerHTML = `<p class="text-gray-500 text-center py-4">該当する機種がありません。</p>`;
@@ -654,10 +949,29 @@
             ];
 
             categories.forEach(cat => {
-                 const section = createCategorySection(cat.title, cat.machines, selectModal);
-                 if(section) {
-                     machineList.appendChild(section);
-                 }
+                 // createCategorySection内のソート処理を削除
+                 const sortedMachines = cat.machines; // ソート済みのリストをそのまま使用
+                 if (sortedMachines.length === 0) return;
+
+                 const section = document.createElement('div');
+                 section.className = 'mb-4';
+                 const header = document.createElement('h4');
+                 header.className = 'text-sm font-bold text-gray-500 uppercase tracking-wider mb-2 px-1';
+                 header.textContent = cat.title;
+                 section.appendChild(header);
+
+                 sortedMachines.forEach(machine => {
+                    const button = document.createElement('button');
+                    button.className = 'w-full text-left p-3 text-gray-800 bg-white hover:bg-indigo-50 border border-gray-200 rounded-lg mb-2 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-300';
+                    button.innerHTML = `<p class="font-semibold">${machine.name}</p>`;
+                    button.onclick = () => {
+                        displaySalesPitch(machine.id);
+                        if(selectModal) selectModal.classList.add('hidden');
+                    };
+                    section.appendChild(button);
+                 });
+                 
+                 machineList.appendChild(section);
             });
         }
 
@@ -674,7 +988,7 @@
                     btn.classList.toggle('text-gray-800', !isAllButton);
                 });
             }
-            rememberedMachines.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+            // rememberedMachinesは既にソート済みなので、ここでのソートは不要
             renderMachineList();
             if (selectModal) selectModal.classList.remove('hidden');
         }
@@ -808,6 +1122,74 @@
             startSlideInterval();
         }
 
+        // --- (NEW) Date and Calendar Functions ---
+        function setFormattedDate() {
+            if (!currentDateEl) return;
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+            const date = today.getDate();
+            const day = ['日', '月', '火', '水', '木', '金', '土'][today.getDay()];
+            currentDateEl.textContent = `${year}年 ${month}月${date}日 (${day})`;
+        }
+
+        function renderCalendar() {
+            if (!calendarListEl) return;
+
+            const today = new Date();
+            const currentMonth = today.getMonth(); // 11月は 10
+            const currentDate = today.getDate();
+            
+            let calendarHTML = '';
+
+            calendarEvents.forEach(event => {
+                const isToday = (currentMonth === 10 && event.date === currentDate); 
+                const openAttribute = isToday ? 'open' : '';
+                const todayClass = isToday ? 'today' : '';
+
+                // --- ▼ここから変更▼ ---
+                let detailsHTML = '';
+                
+                // (変更) ラベルを削除し、イベント名だけをliタグで追加
+                if (event.p_event) {
+                    detailsHTML += `<li class="text-gray-700">${event.p_event}</li>`;
+                }
+                if (event.s_event) {
+                    detailsHTML += `<li class="text-gray-700">${event.s_event}</li>`;
+                }
+                if (event.recommend) {
+                    detailsHTML += `<li class="text-gray-700">${event.recommend}</li>`;
+                }
+
+                if (detailsHTML === '') {
+                    detailsHTML = '<li class="text-gray-500">この日の特別イベントはありません。</li>';
+                }
+                // --- ▲ここまで変更▲ ---
+
+                calendarHTML += `
+                    <details class="calendar-details border-t border-gray-200 ${todayClass}" ${openAttribute}>
+                        <summary class="calendar-summary list-none cursor-pointer p-4 flex items-center justify-between">
+                            <span class="font-bold text-lg text-indigo-700">11月 ${event.date}日 (${event.day})</span>
+                            <svg class="h-5 w-5 text-gray-500 group-open:rotate-180 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </summary>
+                        <div class="p-4 bg-gray-50 border-t border-gray-100">
+                            <ul class="space-y-2 list-disc list-inside">${detailsHTML}</ul>
+                        </div>
+                    </details>
+                `;
+            });
+
+            if (calendarHTML === '' && currentMonth === 10) {
+                 calendarHTML = `<div class="p-4 text-center text-gray-500">イベント情報がありません。</div>`;
+            } else if (currentMonth !== 10) { 
+                 calendarHTML = `<div class="p-4 text-center text-gray-500">11月のイベントカレンダーです。現在、対象月ではありません。</div>`;
+            }
+
+            calendarListEl.innerHTML = calendarHTML;
+        }
+
         // --- Initial Setup ---
 
         // Spec Filter Buttons
@@ -855,11 +1237,16 @@
         window.changeSlide = changeSlide;
         window.currentSlide = currentSlide;
 
-        // Initialize Firebase
-        initializeFirebase();
+        // Firebaseの初期化呼び出しを削除
 
         // Initialize slider and add image error handling on window load
         window.addEventListener('load', () => {
+            // (NEW) Set Date in Header
+            setFormattedDate();
+
+            // (NEW) Render Calendar
+            renderCalendar();
+
             document.querySelectorAll('.slide img').forEach(img => {
                 img.onerror = function() {
                     const placeholder = document.createElement('div');
@@ -884,17 +1271,25 @@
                  };
              }
 
+            // スライダーの初期化
             if (sliderWrapper && slides.length > 0 && dots.length > 0) {
-                updateSlider();
-                startSlideInterval();
+                updateSlider(); // 最初のスライドを表示
+                startSlideInterval(); // 自動スライド開始
             } else {
+                // スライダー要素が見つからないか、スライドが0枚の場合
                 const prevButton = document.querySelector('.prev');
                 const nextButton = document.querySelector('.next');
                 const dotsContainer = document.querySelector('.dots-container');
                 if(prevButton) prevButton.style.display = 'none';
                 if(nextButton) nextButton.style.display = 'none';
                 if(dotsContainer) dotsContainer.style.display = 'none';
-                console.error("Slider elements (wrapper, slides, or dots) not found.");
+                
+                // スライドが1枚の場合、ボタンとドットを隠す
+                if(slides.length <= 1) {
+                     if(prevButton) prevButton.style.display = 'none';
+                     if(nextButton) nextButton.style.display = 'none';
+                     if(dotsContainer) dotsContainer.style.display = 'none';
+                }
             }
         });
 
