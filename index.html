@@ -199,15 +199,15 @@
                             <img src="sinsou5.jpg" alt="新装開店画像5">
                         </div>
                     </div>
-                    <a class="prev" onclick="changeSlide(-1)">&#10094;</a>
-                    <a class="next" onclick="changeSlide(1)">&#10095;</a>
+                    <a class="prev">&#10094;</a>
+                    <a class="next">&#10095;</a>
                 </div>
                  <div class="dots-container">
-                    <span class="dot active" onclick="currentSlide(1)"></span>
-                    <span class="dot" onclick="currentSlide(2)"></span>
-                    <span class="dot" onclick="currentSlide(3)"></span>
-                    <span class="dot" onclick="currentSlide(4)"></span>
-                    <span class="dot" onclick="currentSlide(5)"></span>
+                    <span class="dot active"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
                 </div>
             </div>
 
@@ -564,12 +564,9 @@
 
     
     <script type="module">
-        // Firebase SDK のインポート
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getFirestore, collection, getDocs, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-        // (★ App Check のインポートを削除)
 
-        // あなたの Firebase プロジェクト設定
         const firebaseConfig = {
           apiKey: "AIzaSyAdxAeBlJkFWAVM1ZWJKhU2urQcmtL0UKo",
           authDomain: "gardenyashiobot.firebaseapp.com",
@@ -579,18 +576,13 @@
           appId: "1:692971442685:web:ae4a65988ad1716ed84994"
         };
 
-        // Firebase の初期化
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-
-        // (★ App Check の初期化コードを削除)
         
-        // Firestore のコレクションへの参照
         const machinesCol = collection(db, "machines");
         const newOpeningCol = collection(db, "newOpening");
         const calendarCol = collection(db, "calendar");
 
-        // --- DOM Element Variables ---
         const resultArea = document.getElementById('resultArea');
         const resultTitle = document.getElementById('resultTitle');
         const salesPitch = document.getElementById('salesPitch');
@@ -607,7 +599,6 @@
         const newOpeningInfo = document.getElementById('newOpeningInfo');
         const currentDateEl = document.getElementById('currentDate');
         
-        // カレンダーセクションのDOM要素
         const calendarWrapper = document.getElementById('calendarWrapper');
         const todayEventContainer = document.getElementById('todayEventContainer');
         const fullCalendarContainer = document.getElementById('fullCalendarContainer');
@@ -617,8 +608,6 @@
         const calendarTitle = document.getElementById('calendarTitle');
         const calendarSubtitle = document.getElementById('calendarSubtitle');
 
-
-        // --- Data Variables ---
         let allMachines = [];
         let newOpeningData = [];
         let calendarEvents = [];
@@ -626,7 +615,6 @@
         const specTypes = ['すべて', 'スロット', 'パチンコ', 'ミドル', 'ライトミドル', '甘デジ', 'AT', 'A-TYPE'];
         let activeSpecFilter = 'すべて';
 
-        // --- Calendar State Variables ---
         let isFullCalendarView = false;
         let selectedDate = -1;
         const today = new Date();
@@ -638,7 +626,6 @@
         const firstDayOfNov2025 = 6; 
         const daysInNov = 30;
 
-        // --- Image Slider Variables ---
         let slideIndex = 0;
         let slideInterval;
         const slideChangeInterval = 5000;
@@ -646,8 +633,6 @@
         const slides = document.querySelectorAll('.slide');
         const dots = document.querySelectorAll('.dot');
         const totalSlides = slides.length;
-
-        // --- Function Definitions ---
 
         function toHiragana(str) { return str.replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60)); }
 
@@ -828,7 +813,6 @@ li.appendChild(countElement);
             resultArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // --- Slider Functions ---
         function updateSlider() {
             if (!sliderWrapper) return;
             const translateValue = -slideIndex * 100;
@@ -862,10 +846,7 @@ li.appendChild(countElement);
             clearInterval(slideInterval);
             startSlideInterval();
         }
-        // --- End Slider Functions ---
 
-
-        // --- Date Function ---
         function setFormattedDate() {
             if (!currentDateEl) return;
             const year = today.getFullYear();
@@ -874,8 +855,6 @@ li.appendChild(countElement);
             const day = ['日', '月', '火', '水', '木', '金', '土'][today.getDay()];
             currentDateEl.textContent = `${year}年 ${month}月${date}日 (${day})`;
         }
-
-        // --- 5つのカレンダー用関数 ---
         
         function getEventDetailsHTML(date) {
             const event = eventMap.get(date);
@@ -1000,13 +979,9 @@ li.appendChild(countElement);
                 if (calendarSubtitle) calendarSubtitle.textContent = '下のボタンから11月全体のカレンダーも確認できます。';
             }
         }
-        // --- End Calendar Functions ---
 
-
-        // --- Firestoreから全データを読み込む関数 ---
         async function fetchAllData() {
             try {
-                // 1. Machines 読み込み (名前でソート)
                 const machinesQuery = query(machinesCol, orderBy("name", "asc"));
                 const machineSnapshot = await getDocs(machinesQuery);
                 allMachines = machineSnapshot.docs.map(doc => ({
@@ -1014,19 +989,16 @@ li.appendChild(countElement);
                     ...doc.data()
                 }));
                 
-                // 2. New Opening 読み込み (台数で降順ソート)
                 const newOpeningQuery = query(newOpeningCol, orderBy("count", "desc"));
                 const newOpeningSnapshot = await getDocs(newOpeningQuery);
                 newOpeningData = newOpeningSnapshot.docs.map(doc => doc.data());
 
-                // 3. Calendar 読み込み (日付で昇順ソート)
                 const calendarQuery = query(calendarCol, orderBy("date", "asc"));
                 const calendarSnapshot = await getDocs(calendarQuery);
                 calendarEvents = calendarSnapshot.docs.map(doc => doc.data());
                 
                 eventMap = new Map(calendarEvents.map(event => [event.date, event]));
 
-                // --- 読み込み完了後の処理 ---
                 console.log("Firebaseからすべてのデータを読み込みました。");
                 
                 if(machineList) machineList.innerHTML = '';
@@ -1038,16 +1010,11 @@ li.appendChild(countElement);
 
             } catch (error) {
                 console.error("Firebaseからのデータ読み込みに失敗しました:", error);
-                // (★ App Check 関連のエラーメッセージを削除)
                 if(machineList) machineList.innerHTML = `<p class="text-red-500 text-center">エラー: 台データを読み込めませんでした。</p>`;
                 if(todayEventContainer) todayEventContainer.innerHTML = `<p class="text-red-500 text-center">エラー: カレンダーを読み込めませんでした。</p>`;
             }
         }
 
-
-        // --- Initial Setup ---
-
-        // Spec Filter Buttons
         if (specFiltersContainer) {
             specTypes.forEach(spec => {
                 const button = document.createElement('button');
@@ -1073,7 +1040,6 @@ li.appendChild(countElement);
             });
         }
 
-        // Event Listeners
         if (selectMachineButton) selectMachineButton.addEventListener('click', openSelectModal);
         if (closeModal) closeModal.addEventListener('click', () => { if (selectModal) selectModal.classList.add('hidden'); });
         if (selectModal) selectModal.addEventListener('click', (e) => { if (e.target === selectModal) { selectModal.classList.add('hidden'); } });
@@ -1083,23 +1049,24 @@ li.appendChild(countElement);
         if (closeNewOpeningModal) closeNewOpeningModal.addEventListener('click', () => { if (newOpeningModal) newOpeningModal.classList.add('hidden'); });
         if (newOpeningModal) newOpeningModal.addEventListener('click', (e) => { if (e.target === newOpeningModal) { newOpeningModal.classList.add('hidden'); } });
 
-        // カレンダー用のイベントリスナー
         if (calendarToggleButton) calendarToggleButton.addEventListener('click', toggleCalendarView);
         if (calendarGrid) calendarGrid.addEventListener('click', handleDateClick);
+        
+        // ★ スライダーのクリック処理をJSに移動
+        const prevButton = document.querySelector('.prev');
+        const nextButton = document.querySelector('.next');
+        if (prevButton) prevButton.addEventListener('click', () => changeSlide(-1));
+        if (nextButton) nextButton.addEventListener('click', () => changeSlide(1));
+        dots.forEach((dot, index) => {
+            dot.addEventListener('click', () => currentSlide(index + 1));
+        });
+        
+        // ★ window.changeSlide と window.currentSlide への代入を削除 (不要になったため)
 
-        // Expose slider functions to global scope
-        window.changeSlide = changeSlide;
-        window.currentSlide = currentSlide;
-
-        // window 'load' イベント
         window.addEventListener('load', () => {
-            // Set Date in Header
             setFormattedDate();
-
-            // Firebaseからデータを取得開始
             fetchAllData();
 
-            // Image error handling
             document.querySelectorAll('.slide img').forEach(img => {
                 img.onerror = function() {
                     const placeholder = document.createElement('div');
@@ -1124,7 +1091,6 @@ li.appendChild(countElement);
                  };
              }
 
-            // スライダーの初期化
             if (sliderWrapper && slides.length > 0 && dots.length > 0) {
                 updateSlider();
                 startSlideInterval();
@@ -1143,7 +1109,6 @@ li.appendChild(countElement);
                 }
             }
             
-            // 画像スライドの onerror 時のプレースホルダーの高さを修正
             document.querySelectorAll('.slide img').forEach(img => {
                 img.onerror = function() {
                     const placeholder = document.createElement('div');
