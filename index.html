@@ -584,7 +584,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // (★ 修正 2) App Check の初期化 (あなたの「本物」のサイトキーを埋め込み)
+        // (★ 修正 2) App Check の初期化 (あなたがコピーした「本物」のサイトキー)
         const appCheck = initializeAppCheck(app, {
           provider: new ReCaptchaV3Provider('6LeXfAQsAAAAAA-799wv8IOm_g--buEwJ0tm770C'),
           isTokenAutoRefreshEnabled: true
@@ -1043,8 +1043,14 @@ li.appendChild(countElement);
 
             } catch (error) {
                 console.error("Firebaseからのデータ読み込みに失敗しました:", error);
-                if(machineList) machineList.innerHTML = `<p class="text-red-500 text-center">エラー: 台データを読み込めませんでした。</p>`;
-                if(todayEventContainer) todayEventContainer.innerHTML = `<p class="text-red-500 text-center">エラー: カレンダーを読み込めませんでした。</p>`;
+                if (error.code === 'permission-denied' || (error.message && error.message.includes('AppCheck'))) {
+                    // (★ 追加) App Check エラー時の専用メッセージ
+                    if(machineList) machineList.innerHTML = `<p class="text-red-500 text-center">エラー: サイトの認証に失敗しました。(AppCheck)</p>`;
+                    if(todayEventContainer) todayEventContainer.innerHTML = `<p class="text-red-500 text-center">エラー: カレンダーを読み込めませんでした。(AppCheck)</p>`;
+                } else {
+                    if(machineList) machineList.innerHTML = `<p class="text-red-500 text-center">エラー: 台データを読み込めませんでした。</p>`;
+                    if(todayEventContainer) todayEventContainer.innerHTML = `<p class="text-red-500 text-center">エラー: カレンダーを読み込めませんでした。</p>`;
+                }
             }
         }
 
