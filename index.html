@@ -42,7 +42,7 @@
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
         }
 
-        /* --- Image Slider Styles (修正済み) --- */
+        /* --- Image Slider Styles --- */
         .slider-outer-container {
             width: 100%;
             padding: 2rem 0;
@@ -64,14 +64,14 @@
         .slide {
             min-width: 100%;
             box-sizing: border-box;
-            aspect-ratio: 16 / 9; /* (修正) 16:9の横長アスペクト比を設定 */
-            background-color: #000; /* (修正) 画像の余白部分の背景を黒に */
+            aspect-ratio: 16 / 9;
+            background-color: #000;
         }
         .slide img {
             width: 100%;
-            height: 100%; /* (修正) 枠いっぱいに高さを指定 */
+            height: 100%;
             display: block;
-            object-fit: contain; /* (修正) 画像が枠に収まるように(レターボックス化) */
+            object-fit: contain;
         }
         .prev, .next {
             cursor: pointer;
@@ -446,6 +446,8 @@
 
             </div>
         </section>
+
+
         <section class="py-20 bg-white">
             <div class="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="max-w-4xl mx-auto">
@@ -565,6 +567,8 @@
         // Firebase SDK のインポート
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getFirestore, collection, getDocs, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        // (★ 修正 1) App Check のインポートを追加
+        import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
 
         // あなたの Firebase プロジェクト設定
         const firebaseConfig = {
@@ -579,6 +583,12 @@
         // Firebase の初期化
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+
+        // (★ 修正 2) App Check の初期化 (あなたの「本物」のサイトキーを埋め込み)
+        const appCheck = initializeAppCheck(app, {
+          provider: new ReCaptchaV3Provider('6LeXfAQsAAAAAA-799wv8IOm_g--buEwJ0tm770C'),
+          isTokenAutoRefreshEnabled: true
+        });
         
         // Firestore のコレクションへの参照
         const machinesCol = collection(db, "machines");
@@ -797,7 +807,6 @@ li.appendChild(countElement);
                 return section;
             };
 
-            // (修正) newOpeningData が空 (削除済み) の場合、メッセージを表示する
             if (newOpeningData.length === 0) {
                  newOpeningInfo.innerHTML = `<p class="text-gray-500 text-center">現在、新装開店の情報はありません。</p>`;
             } else {
