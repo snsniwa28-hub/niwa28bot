@@ -289,7 +289,7 @@
                                         </div>
                                     </li>
                                     <li class="flex items-start">
-                                        <svg class="h-6 w-6 text-blue-500 flex-shrink-0 mr-3 mt-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10.5V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12c0 1.1.9 2 2 2h12.5"/><path d="M22 10.5l-5.7 5.7M22 10.5h-5.7v5.7"/></svg>
+                                        <svg class="h-6 w-6 text-blue-500 flex-shrink-0 mr-3 mt-1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10.5V6a2 2G00-2-2H4a2 2 0 00-2 2v12c0 1.1.9 2 2 2h12.5"/><path d="M22 10.5l-5.7 5.7M22 10.5h-5.7v5.7"/></svg>
                                         <div>
                                             <h4 class="font-semibold text-gray-900">金曜日のオススメ</h4>
                                             <p class="text-gray-600"><span class="inline-block">「からくりサーカス」</span> <span class="inline-block">「ブルーロック」</span> <span class="inline-block">「炎炎ノ消防隊」をプッシュ！</span></p>
@@ -567,7 +567,7 @@
         // Firebase SDK のインポート
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getFirestore, collection, getDocs, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-        // (★ 修正 1) App Check のインポートを追加
+        // App Check のインポートを追加
         import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
 
         // あなたの Firebase プロジェクト設定
@@ -584,9 +584,9 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // (★ 修正 2) App Check の初期化 (スクリーンショットから読み取った「本物」のサイトキー)
+        // (★ 修正 2) App Check の初期化 (あなたがコピーした「本物」のサイトキー)
         const appCheck = initializeAppCheck(app, {
-          provider: new ReCaptchaV3Provider('6LeXFAOsAAAAAAA-799wvBlOm_g--bxEwU0ttm770C'),
+          provider: new ReCaptchaV3Provider('6LeXfAQsAAAAAA-799wv8IOm_g--buEwJ0tm770C'),
           isTokenAutoRefreshEnabled: true
         });
         
