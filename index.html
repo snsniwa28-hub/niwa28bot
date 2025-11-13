@@ -68,21 +68,6 @@
     </header>
 
     <main>
-        <div class="text-center py-4 bg-yellow-200 border-b border-yellow-400 flex flex-wrap justify-center gap-2 px-2">
-            <button id="registerButtonAbyss" class="bg-red-600 text-white font-bold py-2 px-4 rounded hover:bg-red-700 shadow-lg text-sm">
-                【開発用】PメイドインアビスをDBに登録
-            </button>
-            <button id="registerButtonGhoul" class="bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 shadow-lg text-sm">
-                【開発用】L東京喰種をDBに登録
-            </button>
-            <button id="registerButtonEva" class="bg-purple-600 text-white font-bold py-2 px-4 rounded hover:bg-purple-700 shadow-lg text-sm">
-                【開発用】Pエヴァ未来をDBに登録
-            </button>
-            <button id="registerButtonPlanet" class="bg-green-600 text-white font-bold py-2 px-4 rounded hover:bg-green-700 shadow-lg text-sm">
-                【開発用】LネオプラネットをDBに登録
-            </button>
-        </div>
-
         <section class="text-center bg-white pb-28 sm:pb-36">
              <div class="slider-outer-container">
                 <div class="slider-container">
@@ -204,6 +189,7 @@
                 </details>
             </div>
         </section>
+
         <section class="py-20 bg-slate-50">
             <div class="container mx-auto px-4 sm:px-6 lg:px-8">
                 <details class="group max-w-4xl mx-auto" open>
@@ -254,7 +240,7 @@
                                     </li>
                                 </ul>
                             </div>
-                            <div class="bg-white rounded-2xl shadow-lg border border-gray-200/80 p-6">
+                            <div class="bg-white rounded-2xl shadow-lg border border-gray-200/80 p-6 md:col-span-2">
                                 <h3 class="text-xl font-bold text-gray-900 mb-4">今後の予定</h3>
                                 <ul class="space-y-4">
                                     <li class="flex items-start">
@@ -387,8 +373,9 @@
 
     
     <script type="module">
+        // ★★★ 開発用ボタン関連のインポート(addDoc)を削除 ★★★
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, where, orderBy, limit, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- Firebase設定 ---
         const firebaseConfig = {
@@ -486,7 +473,7 @@
                 
                 eventMap = new Map(calendarEvents.map(event => [event.date, event]));
 
-                console.log("Firebaseからすべてのデータを読み込みました。");
+                // ★★★ console.log を削除 ★★★
                 
                 if(elements.machineList) elements.machineList.innerHTML = '';
                 renderMachineList();
@@ -496,7 +483,7 @@
                 renderTodayView(); 
 
             } catch (error) {
-                console.error("Firebaseからのデータ読み込みに失敗しました:", error);
+                // ★★★ console.error を削除 ★★★
                 if(elements.machineList) elements.machineList.innerHTML = `<p class="text-red-500 text-center">エラー: 台データを読み込めませんでした。</p>`;
                 if(elements.todayEventContainer) elements.todayEventContainer.innerHTML = `<p class="text-red-500 text-center">エラー: カレンダーを読み込めませんでした。</p>`;
             }
@@ -634,6 +621,7 @@
                     const li = document.createElement('li');
                     li.className = 'flex justify-between items-center bg-slate-50 p-3 rounded-lg border';
                     
+                    // ★★★ マッチングロジックを docId (name) に変更 ★★★
                     const matchedMachine = allMachines.find(rm => rm.name === openingMachine.name);
                     
                     let nameElement = document.createElement(matchedMachine ? 'button' : 'span');
@@ -861,12 +849,8 @@
             $('img[src="rogo.jpg"]').onerror = function() { this.style.display = 'none'; };
         }
 
-        // --- 開発用：DB登録機能 (変更なし) ---
-        // (このindex.htmlには登録ボタンのロジックは不要)
-        function initDevTools() {
-             // 開発用ボタンはこのファイルでは何もしない
-             // register_tool.html側で処理
-        }
+        // ★★★ 開発用ツールを削除 ★★★
+        // function initDevTools() { ... } を削除
 
         // --- アプリケーション初期化 ---
         function init() {
@@ -875,7 +859,7 @@
             initSlider();
             initModals();
             initErrorHandlers();
-            initDevTools(); 
+            // ★★★ initDevTools() の呼び出しを削除 ★★★
         }
 
         window.addEventListener('load', init);
