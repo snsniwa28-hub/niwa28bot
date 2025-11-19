@@ -90,14 +90,7 @@
 
         <section class="pb-20 bg-slate-50">
             <div class="container mx-auto px-4 sm:px-6 lg:px-8 -mt-20 sm:-mt-24">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                    <div id="selectMachineButton" class="feature-card cursor-pointer bg-white rounded-2xl shadow-lg border border-gray-200/80 p-8 text-center">
-                        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
-                            <svg class="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
-                        </div>
-                        <h3 class="mt-6 text-xl font-semibold text-gray-900">台一覧から<br>検索する</h3>
-                        <p class="mt-2 text-base text-gray-600">スペックや特徴で<br>台を絞り込む。</p>
-                    </div>
+                <div class="flex justify-center max-w-lg mx-auto">
                     <div id="newOpeningButton" class="feature-card cursor-pointer bg-white rounded-2xl shadow-lg border border-gray-200/80 p-8 text-center">
                         <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
                             <svg class="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
@@ -271,7 +264,7 @@
                 <div class="max-w-4xl mx-auto">
                     <div class="text-center mb-12">
                         <h2 id="calendarTitle" class="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">本日のイベント</h2>
-                        <p id="calendarSubtitle" class="mt-4 max-w-2xl mx-auto text-lg text-gray-600">下のボタンから11月全体のカレンダーも確認できます。</p>
+                        <p id="calendarSubtitle" class="mt-4 max-w-2xl mx-auto text-lg text-gray-600">下のボタンから12月全体のカレンダーも確認できます。</p>
                     </div>
                     <div id="calendarWrapper" class="bg-white rounded-2xl shadow-lg border border-gray-200/80 overflow-hidden">
                         <div id="todayEventContainer" class="p-6 sm:p-8"><p class="text-center text-gray-500">カレンダー情報を読み込んでいます...</p></div>
@@ -290,7 +283,7 @@
                     </div>
                     <div class="text-center mt-6">
                         <button id="calendarToggleButton" class="btn-primary bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                            11月のカレンダー全体を見る
+                            12月のカレンダー全体を見る
                         </button>
                     </div>
                 </div>
@@ -352,7 +345,7 @@
     <div id="newOpeningModal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 hidden z-40">
         <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-lg">
             <div class="flex justify-between items-center p-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">2025/11/05 新装開店</h3>
+                <h3 class="text-lg font-semibold text-gray-900">2025/12/05 新装開店</h3>
                 <button id="closeNewOpeningModal" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
             <div id="newOpeningInfo" class="p-6 max-h-[70vh] overflow-y-auto text-left">
@@ -396,11 +389,11 @@
         let isFullCalendarView = false;
         let selectedDate = -1;
         const today = new Date();
-        const currentMonth = today.getMonth(); // 11月は 10
+        const currentMonth = today.getMonth(); // 12月は 11
         const currentDate = today.getDate();
 
-        const firstDayOfNov2025 = 6;
-        const daysInNov = 30;
+        const firstDayOfDec2025 = 1; // 2025年12月1日は月曜日
+        const daysInDec = 31;
 
         let slideIndex = 0;
         let slideInterval;
@@ -711,9 +704,9 @@
                 if (event.s_event) detailsHTML += `<li class="text-gray-700">${event.s_event}</li>`;
                 if (event.recommend) detailsHTML += `<li class="text-gray-700">${event.recommend}</li>`;
             }
-            const dayOfWeek = event ? event.day : new Date(2025, 10, date).toLocaleString('ja-JP', { weekday: 'short' });
+            const dayOfWeek = event ? event.day : new Date(2025, 11, date).toLocaleString('ja-JP', { weekday: 'short' });
             return `
-                <h3 class="font-bold text-xl text-indigo-700 mb-4">11月 ${date}日 (${dayOfWeek})</h3>
+                <h3 class="font-bold text-xl text-indigo-700 mb-4">12月 ${date}日 (${dayOfWeek})</h3>
                 <ul class="space-y-2 list-disc list-inside">${detailsHTML}</ul>
             `;
         }
@@ -724,10 +717,10 @@
                 elements.todayEventContainer.innerHTML = `<p class="text-center text-gray-500">カレンダー情報を読み込んでいます...</p>`;
                 return;
             }
-            if (currentMonth !== 10) { // 10 = 11月
-                elements.todayEventContainer.innerHTML = `<div class="p-4 text-center text-gray-500">11月のイベントカレンダーです。現在、対象月ではありません。</div>`;
+            if (currentMonth !== 11) { // 11 = 12月
+                elements.todayEventContainer.innerHTML = `<div class="p-4 text-center text-gray-500">12月のイベントカレンダーです。現在、対象月ではありません。</div>`;
                 if(elements.calendarTitle) elements.calendarTitle.textContent = 'イベントカレンダー';
-                if(elements.calendarSubtitle) elements.calendarSubtitle.textContent = '11月のイベント情報です。';
+                if(elements.calendarSubtitle) elements.calendarSubtitle.textContent = '12月のイベント情報です。';
             } else {
                 selectedDate = currentDate;
                 elements.todayEventContainer.innerHTML = `<div class="p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded-r-lg">${getEventDetailsHTML(currentDate)}</div>`;
@@ -745,13 +738,13 @@
                 <div class="text-xs font-semibold text-gray-500 py-2">金</div>
                 <div class="text-xs font-semibold text-gray-500 py-2">土</div>
             `;
-            for (let i = 0; i < firstDayOfNov2025; i++) {
+            for (let i = 0; i < firstDayOfDec2025; i++) {
                 gridHTML += `<div class="calendar-day empty-day"></div>`;
             }
-            for (let date = 1; date <= daysInNov; date++) {
+            for (let date = 1; date <= daysInDec; date++) {
                 const event = eventMap.get(date);
                 const hasEvent = event && (event.p_event || event.s_event || event.recommend);
-                const isToday = (currentMonth === 10 && date === currentDate);
+                const isToday = (currentMonth === 11 && date === currentDate);
                 const isSelected = (date === selectedDate);
                 let classes = 'calendar-day';
                 if (hasEvent) classes += ' has-event';
@@ -762,9 +755,9 @@
             elements.calendarGrid.innerHTML = gridHTML;
 
             if (elements.selectedEventDetails) {
-                elements.selectedEventDetails.innerHTML = (currentMonth === 10)
+                elements.selectedEventDetails.innerHTML = (currentMonth === 11)
                     ? getEventDetailsHTML(selectedDate)
-                    : `<p class="text-center text-gray-500">11月のイベントカレンダーです。</p>`;
+                    : `<p class="text-center text-gray-500">12月のイベントカレンダーです。</p>`;
             }
         }
 
@@ -785,13 +778,13 @@
             elements.todayEventContainer?.classList.toggle('hidden', isFullCalendarView);
             elements.fullCalendarContainer?.classList.toggle('hidden', !isFullCalendarView);
             if (elements.calendarToggleButton) {
-                elements.calendarToggleButton.textContent = isFullCalendarView ? '本日のイベントに戻る' : '11月のカレンダー全体を見る';
+                elements.calendarToggleButton.textContent = isFullCalendarView ? '本日のイベントに戻る' : '12月のカレンダー全体を見る';
             }
             if (elements.calendarTitle) {
-                elements.calendarTitle.textContent = isFullCalendarView ? '11月のイベントカレンダー' : '本日のイベント';
+                elements.calendarTitle.textContent = isFullCalendarView ? '12月のイベントカレンダー' : '本日のイベント';
             }
             if (elements.calendarSubtitle) {
-                elements.calendarSubtitle.textContent = isFullCalendarView ? '日付をタップすると詳細が表示されます。' : '下のボタンから11月全体のカレンダーも確認できます。';
+                elements.calendarSubtitle.textContent = isFullCalendarView ? '日付をタップすると詳細が表示されます。' : '下のボタンから12月全体のカレンダーも確認できます。';
             }
             if (isFullCalendarView) {
                 renderFullCalendarGrid();
