@@ -99,12 +99,7 @@
                         <p class="mt-2 text-base text-gray-600">新装開店の情報をいち早く確認。</p>
                     </div>
                 </div>
-                <div id="resultArea" class="text-left hidden mt-12 max-w-4xl mx-auto">
-                    <div class="bg-white p-8 rounded-xl border border-gray-200 shadow-sm">
-                        <h2 id="resultTitle" class="text-2xl font-bold text-gray-900 mb-4"></h2>
-                        <p id="salesPitch" class="text-gray-700 whitespace-pre-wrap leading-relaxed"></p>
-                    </div>
-                </div>
+                <!-- 検索結果表示エリア(Sales Pitch)を削除しました -->
             </div>
         </section>
 
@@ -116,38 +111,9 @@
                         <svg class="h-6 w-6 text-gray-500 group-open:rotate-180 transition-transform duration-300 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                     </summary>
                     <div class="pt-8 pb-4">
-                        <!-- New Content from image -->
-                        <div class="text-center mb-8">
-                            <h3 class="text-3xl font-bold text-red-600">新装開店</h3>
-                            <p class="text-xl text-gray-800 font-semibold">12月18日(火) 10:00 OPEN</p>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <!-- Left Column: Newest Machines -->
-                            <div class="bg-white rounded-2xl shadow-lg border border-gray-200/80 p-6">
-                                <h3 class="text-2xl font-bold text-indigo-700 mb-4">
-                                    <span class="inline-block bg-indigo-100 text-indigo-700 rounded-full px-4 py-1 text-sm font-semibold mr-2">最新台導入</span>
-                                    機種一覧
-                                </h3>
-                                <ul class="space-y-3">
-                                    <li class="flex justify-between items-center"><span class="font-medium">スマスロ ネオプラネット</span><span class="font-bold text-lg text-indigo-600">6台</span></li>
-                                    <li class="flex justify-between items-center"><span class="font-medium">Pメイドインアビス</span><span class="font-bold text-lg text-indigo-600">3台</span></li>
-                                    <li class="flex justify-between items-center"><span class="font-medium">Lアズールレーン</span><span class="font-bold text-lg text-indigo-600">8台</span></li>
-                                </ul>
-                            </div>
-
-                            <!-- Right Column: Additional Machines -->
-                            <div class="bg-white rounded-2xl shadow-lg border border-gray-200/80 p-6">
-                                <h3 class="text-2xl font-bold text-teal-700 mb-4">
-                                    <span class="inline-block bg-teal-100 text-teal-700 rounded-full px-4 py-1 text-sm font-semibold mr-2">増台</span>
-                                    機種一覧
-                                </h3>
-                                <ul class="space-y-3">
-                                    <li class="flex justify-between items-center"><span class="font-medium">ネオアイムジャグラーEX</span><span class="font-bold text-lg text-teal-600">20台</span></li>
-                                    <li class="flex justify-between items-center"><span class="font-medium">e東京喰種</span><span class="font-bold text-lg text-teal-600">20台</span></li>
-                                    <li class="flex justify-between items-center"><span class="font-medium">P炎炎ノ消防隊2</span><span class="font-bold text-lg text-teal-600">6台</span></li>
-                                </ul>
-                            </div>
+                        <!-- コンテンツを白紙化 -->
+                        <div class="text-center py-12">
+                            <p class="text-gray-500 text-lg">現在、ご案内情報は準備中です。</p>
                         </div>
                     </div>
                 </details>
@@ -297,7 +263,6 @@
 
 
     <script type="module">
-        // ★★★ 開発用ボタン関連のインポート(addDoc)を削除 ★★★
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getFirestore, collection, getDocs, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -345,9 +310,6 @@
         const $$ = (selector) => document.querySelectorAll(selector);
 
         const elements = {
-            resultArea: $('#resultArea'),
-            resultTitle: $('#resultTitle'),
-            salesPitch: $('#salesPitch'),
             newOpeningButton: $('#newOpeningButton'),
             newOpeningModal: $('#newOpeningModal'),
             closeNewOpeningModal: $('#closeNewOpeningModal'),
@@ -390,14 +352,11 @@
 
                 eventMap = new Map(calendarEvents.map(event => [event.date, event]));
 
-                // ★★★ console.log を削除 ★★★
-
                 if(elements.newOpeningInfo) elements.newOpeningInfo.innerHTML = '';
 
                 renderTodayView();
 
             } catch (error) {
-                // ★★★ console.error を削除 ★★★
                 if(elements.todayEventContainer) elements.todayEventContainer.innerHTML = `<p class="text-red-500 text-center">エラー: カレンダーを読み込めませんでした。</p>`;
             }
         }
@@ -420,20 +379,14 @@
                     const li = document.createElement('li');
                     li.className = 'flex justify-between items-center bg-slate-50 p-3 rounded-lg border';
 
-                    // ★★★ マッチングロジックを docId (name) に変更 ★★★
+                    // 詳細機能（Sales Pitch）は削除されたため、クリック機能も除外
                     const matchedMachine = allMachines.find(rm => rm.name === openingMachine.name);
 
-                    let nameElement = document.createElement(matchedMachine ? 'button' : 'span');
-                    nameElement.className = matchedMachine
-                        ? 'text-left text-indigo-600 hover:text-indigo-500 transition-colors focus:outline-none font-medium'
-                        : 'text-gray-800 font-medium';
+                    // クリック不可にするため、buttonではなくspanを使用
+                    let nameElement = document.createElement('span');
+                    nameElement.className = 'text-gray-800 font-medium';
                     nameElement.textContent = openingMachine.name;
-                    if (matchedMachine) {
-                        nameElement.addEventListener('click', () => {
-                            displaySalesPitch(matchedMachine.docId);
-                            if (elements.newOpeningModal) elements.newOpeningModal.classList.add('hidden');
-                        });
-                    }
+
                     const countElement = document.createElement('span');
                     countElement.className = 'font-semibold text-white bg-indigo-600 px-2 py-1 text-sm rounded-md';
                     countElement.textContent = `${openingMachine.count}台`;
@@ -639,9 +592,6 @@
             $('img[src="rogo.jpg"]').onerror = function() { this.style.display = 'none'; };
         }
 
-        // ★★★ 開発用ツールを削除 ★★★
-        // function initDevTools() { ... } を削除
-
         // --- アプリケーション初期化 ---
         function init() {
             fetchAllData();
@@ -649,7 +599,6 @@
             initSlider();
             initModals();
             initErrorHandlers();
-            // ★★★ initDevTools() の呼び出しを削除 ★★★
         }
 
         window.addEventListener('load', init);
