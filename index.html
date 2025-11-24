@@ -36,8 +36,8 @@
         .calendar-day.is-selected { background-color: #4f46e5; color: white; box-shadow: 0 4px 10px -2px rgba(79, 70, 229, 0.4); }
 
         /* スマホでの改行対策 */
-        .text-pretty { text-wrap: pretty; } /* 読みやすい位置で改行 */
-        .word-keep { display: inline-block; } /* 単語の途中改行を防ぐ */
+        .text-pretty { text-wrap: pretty; }
+        .word-keep { display: inline-block; }
     </style>
 </head>
 <body class="antialiased pb-20">
@@ -162,9 +162,8 @@
                 </div>
 
                 <div class="p-6 sm:p-8">
-                    <!-- Today's Event Display (Improved) -->
+                    <!-- Today's Event Display -->
                     <div id="todayEventContainer" class="bg-white min-h-[120px] flex items-center justify-center">
-                        <!-- JSでコンテンツを注入 -->
                         <div class="animate-pulse flex flex-col items-center gap-3 w-full">
                             <div class="h-4 bg-slate-100 rounded w-1/3"></div>
                             <div class="h-20 bg-slate-50 rounded-xl w-full"></div>
@@ -272,7 +271,6 @@
 
         async function fetchData() {
             try {
-                // orderByを使わずに全件取得してJSでソートする（インデックスエラー回避）
                 const [mSnap, nSnap, cSnap] = await Promise.all([
                     getDocs(collection(db, "machines")),
                     getDocs(collection(db, "newOpening")),
@@ -417,18 +415,18 @@
                     </div>
                     <ul class="space-y-3">
                         ${ev.p_event ? `
-                        <li class="flex items-start">
-                            <span class="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded mr-3 mt-0.5 shrink-0 tracking-wide">PACHI</span>
+                        <li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors">
+                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 mr-3 shrink-0"></span>
                             <span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.p_event}</span>
                         </li>` : ''}
                         ${ev.s_event ? `
-                        <li class="flex items-start">
-                            <span class="bg-purple-500 text-white text-[10px] font-bold px-2 py-0.5 rounded mr-3 mt-0.5 shrink-0 tracking-wide">SLOT</span>
+                        <li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors">
+                            <span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 mr-3 shrink-0"></span>
                             <span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.s_event}</span>
                         </li>` : ''}
                         ${ev.recommend ? `
-                        <li class="flex items-start">
-                            <span class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded mr-3 mt-0.5 shrink-0 tracking-wide">PICKUP</span>
+                        <li class="flex items-start p-2 rounded-lg hover:bg-rose-50 transition-colors">
+                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 mt-2 mr-3 shrink-0"></span>
                             <span class="text-rose-600 font-bold text-sm leading-relaxed">${ev.recommend}</span>
                         </li>` : ''}
                     </ul>
@@ -470,9 +468,9 @@
                                 <span class="bg-indigo-100 text-indigo-600 text-xs px-2 py-1 rounded mr-2">11/${i}</span> 詳細
                             </div>
                             <ul class="space-y-2 text-sm font-bold text-slate-700">
-                                ${ev.p_event ? `<li class="flex"><span class="text-indigo-400 mr-2">●</span>${ev.p_event}</li>` : ''}
-                                ${ev.s_event ? `<li class="flex"><span class="text-indigo-400 mr-2">●</span>${ev.s_event}</li>` : ''}
-                                ${ev.recommend ? `<li class="flex text-rose-600"><span class="text-rose-400 mr-2">★</span>${ev.recommend}</li>` : ''}
+                                ${ev.p_event ? `<li class="flex items-start"><span class="w-1.5 h-1.5 bg-indigo-400 rounded-full mr-2 mt-1.5 shrink-0"></span>${ev.p_event}</li>` : ''}
+                                ${ev.s_event ? `<li class="flex items-start"><span class="w-1.5 h-1.5 bg-purple-400 rounded-full mr-2 mt-1.5 shrink-0"></span>${ev.s_event}</li>` : ''}
+                                ${ev.recommend ? `<li class="flex items-start text-rose-600"><span class="w-1.5 h-1.5 bg-rose-400 rounded-full mr-2 mt-1.5 shrink-0"></span>${ev.recommend}</li>` : ''}
                             </ul>
                          </div>`;
                     } else {
