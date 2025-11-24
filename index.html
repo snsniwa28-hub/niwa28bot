@@ -5,269 +5,259 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ガーデン八潮総合BOT</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts: Inter & Noto Sans JP -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', 'Noto Sans JP', sans-serif;
-            background-color: #f1f5f9; /* Slate-100: 少し濃い目のグレーで白を引き立てる */
-            color: #1e293b; /* Slate-800 */
+            background-color: #f8fafc;
+            color: #334155;
             -webkit-font-smoothing: antialiased;
         }
         
-        /* アニメーション定義 */
-        .fade-in-up { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(20px); }
+        /* アニメーション */
+        .fade-in-up { animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(20px); }
         @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
         
         .modal-enter { animation: modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes modalEnter { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes modalEnter { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
 
-        /* カスタムスクロールバー */
-        ::-webkit-scrollbar { width: 8px; }
+        /* スクロールバー */
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+        ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
 
-        /* カレンダー用スタイル */
+        /* カレンダー */
         .calendar-day {
-            aspect-ratio: 1 / 1;
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 12px; /* 丸ではなく角丸四角にモダン化 */
-            cursor: pointer; position: relative;
-            font-weight: 600; transition: all 0.2s;
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            border-radius: 12px; cursor: pointer; position: relative; font-weight: 600;
+            transition: all 0.2s ease; color: #64748b;
         }
-        .calendar-day:hover:not(.empty-day) { background-color: #e2e8f0; transform: scale(1.05); }
+        .calendar-day:hover:not(.empty-day) { background-color: #e2e8f0; color: #1e293b; }
         .calendar-day.has-event::after {
             content: ''; position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%);
-            width: 6px; height: 6px; border-radius: 50%; background-color: #ef4444;
+            width: 5px; height: 5px; border-radius: 50%; background-color: #ef4444;
         }
         .calendar-day.is-today { background-color: #fef08a; color: #854d0e; border: 2px solid #eab308; }
-        .calendar-day.is-selected { background-color: #4f46e5; color: white; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); }
+        .calendar-day.is-selected { background-color: #4f46e5; color: white; box-shadow: 0 4px 10px -2px rgba(79, 70, 229, 0.4); }
 
-        /* グラスモーフィズムヘッダー */
-        .glass-header {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-        }
+        /* テキスト改行調整クラス */
+        .text-balance { text-wrap: balance; } /* 見出しの改行を美しく */
     </style>
 </head>
-<body class="antialiased">
+<body class="antialiased pb-20">
 
     <!-- Header -->
-    <header class="glass-header sticky top-0 z-30 shadow-sm">
+    <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/60">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <a href="#" class="flex items-center group">
-                <img src="rogo.jpg" alt="ロゴ" class="h-8 w-auto mr-3 transition-transform group-hover:scale-105" onerror="this.style.display='none'">
-                <span class="text-xl font-black tracking-tighter text-slate-800">GARDEN<span class="text-indigo-600">BOT</span></span>
+            <a href="#" class="flex items-center gap-2 group">
+                <span class="text-xl font-black tracking-tighter text-slate-800 group-hover:text-indigo-600 transition-colors">
+                    GARDEN<span class="text-indigo-600 group-hover:text-slate-800 transition-colors">BOT</span>
+                </span>
             </a>
-            <span id="currentDate" class="text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full hidden sm:inline-block"></span>
+            <span id="currentDate" class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full hidden sm:inline-block tracking-wide"></span>
         </div>
     </header>
 
-    <main class="pb-20">
+    <main>
         <!-- Hero Slider -->
-        <section class="relative bg-white pt-8 pb-16 sm:pt-12 sm:pb-24 rounded-b-[3rem] shadow-sm overflow-hidden">
-            <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                <div class="relative w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border-4 border-white/50">
-                    <div class="aspect-[16/9] sm:aspect-[21/9] bg-slate-900 flex items-center justify-center">
+        <section class="relative pt-8 pb-12 sm:pt-12 sm:pb-20 bg-white rounded-b-[2.5rem] shadow-sm overflow-hidden">
+            <div class="container mx-auto px-4 sm:px-6 text-center">
+                <!-- 画像エリア -->
+                <div class="relative w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl shadow-indigo-900/10 border border-slate-100">
+                    <div class="aspect-[16/9] bg-slate-900 flex items-center justify-center">
                         <img src="sinsou1.jpg" class="w-full h-full object-contain" alt="新装開店">
                     </div>
                 </div>
-                <h1 class="mt-10 text-3xl sm:text-5xl font-black text-slate-800 tracking-tight fade-in-up" style="animation-delay: 0.1s;">
-                    最新台の情報を、<br class="sm:hidden">もっと<span class="text-indigo-600">スマート</span>に。
-                </h1>
-                <p class="mt-4 text-slate-500 font-medium fade-in-up" style="animation-delay: 0.2s;">
-                    ガーデン八潮の最新情報をAIがサポートします。
-                </p>
+                
+                <!-- タイトルエリア -->
+                <div class="mt-10 fade-in-up" style="animation-delay: 0.1s;">
+                    <h1 class="text-3xl sm:text-5xl font-black text-slate-800 tracking-tight text-balance leading-tight">
+                        最新台の情報を、<br class="sm:hidden">もっと<span class="text-indigo-600 inline-block">スマート</span>に。
+                    </h1>
+                    <p class="mt-4 text-slate-500 font-medium text-sm sm:text-base text-balance fade-in-up" style="animation-delay: 0.2s;">
+                        ガーデン八潮の最新スペック・イベント情報を<br class="sm:hidden">AIがわかりやすくお届けします。
+                    </p>
+                </div>
             </div>
         </section>
 
-        <!-- Main Action Button (New Opening) -->
-        <section class="container mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-10 fade-in-up" style="animation-delay: 0.3s;">
-            <div id="newOpeningButton" class="group cursor-pointer bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-3xl shadow-xl shadow-indigo-500/30 p-1 sm:p-1.5 transform transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl max-w-2xl mx-auto">
-                <div class="bg-white/10 backdrop-blur-sm rounded-[1.3rem] p-6 sm:p-8 flex flex-col sm:flex-row items-center text-center sm:text-left border border-white/20">
-                    <div class="bg-white text-indigo-600 p-4 rounded-full mb-4 sm:mb-0 sm:mr-6 shadow-inner">
-                        <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+        <!-- Action Button -->
+        <div class="container mx-auto px-4 -mt-8 sm:-mt-10 relative z-10 fade-in-up" style="animation-delay: 0.3s;">
+            <div id="newOpeningButton" class="group cursor-pointer bg-white rounded-2xl shadow-xl shadow-indigo-900/5 border border-slate-100 p-6 sm:p-8 max-w-xl mx-auto hover:translate-y-[-4px] hover:shadow-2xl transition-all duration-300">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-5">
+                        <div class="bg-indigo-50 text-indigo-600 p-4 rounded-2xl shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+                            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                        </div>
+                        <div>
+                            <h2 class="text-xl sm:text-2xl font-bold text-slate-800 group-hover:text-indigo-700 transition-colors">新装開店情報</h2>
+                            <p class="text-slate-500 text-sm sm:text-sm font-medium mt-0.5">12月8日導入機種のスペック詳細</p>
+                        </div>
                     </div>
+                    <div class="bg-slate-100 rounded-full p-2 text-slate-400 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slot Strategy -->
+        <section class="container mx-auto px-4 mt-16 fade-in-up" style="animation-delay: 0.4s;">
+            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm max-w-4xl mx-auto overflow-hidden">
+                <div class="bg-slate-50/80 px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+                    <span class="flex h-2.5 w-2.5 rounded-full bg-indigo-500"></span>
+                    <h2 class="font-bold text-slate-700 text-lg">スロットチームのご案内</h2>
+                </div>
+                <div class="p-6 sm:p-10">
+                    <div class="mb-8 text-center sm:text-left">
+                        <h3 class="text-2xl font-black text-slate-800 leading-tight">
+                            年一の祭典<span class="text-rose-600">「28日」</span>に向けた<br class="sm:hidden">集大成ウィーク
+                        </h3>
+                        <p class="text-slate-500 mt-2 font-medium">11月ラスト、定休日なしで駆け抜けます！</p>
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <!-- Cards -->
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-colors">
+                            <div class="text-xs font-bold text-indigo-500 mb-1">11/24 (月)</div>
+                            <div class="font-bold text-slate-800 mb-2">極上マッティー × みーまる</div>
+                            <p class="text-sm text-slate-600 leading-relaxed">スロット全般＆物販開催。朝からの盛り上がり必至！W来店で徹底アピール。</p>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-colors">
+                            <div class="text-xs font-bold text-slate-500 mb-1">11/25 (火) ～ 27 (木)</div>
+                            <div class="font-bold text-slate-800 mb-2">夕方時差狙い & 月周年</div>
+                            <p class="text-sm text-slate-600 leading-relaxed">27日は月周年日2nd！ポンコツ珍道中収録。夕方からの時差開放も見逃せない。</p>
+                        </div>
+                        <div class="sm:col-span-2 bg-rose-50/50 p-6 rounded-xl border border-rose-100 relative overflow-hidden">
+                            <div class="relative z-10">
+                                <div class="text-xs font-bold text-rose-600 mb-1 flex items-center gap-2">
+                                    <span class="bg-rose-600 text-white px-2 py-0.5 rounded-full text-[10px]">最重要</span>
+                                    11/28 (金)
+                                </div>
+                                <div class="font-bold text-rose-900 text-lg mb-2">年一「1128」× 8の日</div>
+                                <p class="text-sm text-rose-800 leading-relaxed">
+                                    <span class="font-bold">【八潮上空 / 真骨超 / くずパチ収録】</span><br>
+                                    年に一度のお祭り日。スロット「真骨超」、パチンコ「くずパチ」のWインパクト。
+                                </p>
+                            </div>
+                        </div>
+                        <div class="sm:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-green-200 transition-colors">
+                            <div class="text-xs font-bold text-green-600 mb-1">11/29 (土) ～ 30 (日)</div>
+                            <div class="font-bold text-slate-800 mb-2">週末豪華リレー</div>
+                            <p class="text-sm text-slate-600 leading-relaxed">
+                                29日：天草さん+くろむさん（塊狙い） / 30日：スロパチfor埼玉（AT機＆ジャグラー）
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Calendar & Floor Map (Vertical Layout) -->
+        <section class="container mx-auto px-4 mt-12 max-w-4xl">
+            
+            <!-- Calendar Section -->
+            <div class="bg-white rounded-3xl border border-slate-100 shadow-lg mb-12 overflow-hidden">
+                <div class="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-50">
                     <div>
-                        <h2 class="text-2xl font-bold tracking-tight">新装開店の情報を見る</h2>
-                        <p class="text-indigo-100 mt-1 text-sm sm:text-base font-medium">12月8日導入の話題機種スペック・詳細をチェック！</p>
+                        <h2 class="text-3xl font-black text-slate-800">Event Calendar</h2>
+                        <p class="text-slate-400 text-sm font-bold mt-1">本日のイベント情報</p>
                     </div>
-                    <div class="mt-4 sm:mt-0 sm:ml-auto">
-                        <span class="bg-white text-indigo-700 font-bold py-2 px-6 rounded-full text-sm shadow-lg group-hover:bg-indigo-50 transition-colors">CHECK</span>
-                    </div>
+                    <button id="calendarToggleButton" class="text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors">
+                        11月全体を見る
+                    </button>
                 </div>
-            </div>
-        </section>
 
-        <!-- Slot Strategy Section -->
-        <section class="container mx-auto px-4 sm:px-6 lg:px-8 mt-16 sm:mt-24 fade-in-up" style="animation-delay: 0.4s;">
-            <div class="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden max-w-6xl mx-auto">
-                <div class="bg-slate-50/50 p-6 sm:p-8 border-b border-slate-100">
-                    <h2 class="text-2xl sm:text-3xl font-bold text-slate-800 flex items-center gap-3">
-                        <span class="bg-slate-800 text-white p-2 rounded-lg"><svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg></span>
-                        スロットチームのご案内
-                    </h2>
-                    <p class="mt-2 text-slate-500 font-medium">今週の戦略と重要イベントスケジュール</p>
-                </div>
-                
                 <div class="p-6 sm:p-8">
-                    <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-8 rounded-r-xl">
-                        <h3 class="text-lg font-bold text-red-700">🔥 年一の祭典「28日」に向けた集大成</h3>
-                        <p class="text-red-600/80 text-sm mt-1">11月ラスト、定休日なしで駆け抜けます！</p>
+                    <!-- Today's Event Display (Improved) -->
+                    <div id="todayEventContainer" class="bg-white">
+                        <!-- JSでリッチなコンテンツを注入 -->
+                        <div class="animate-pulse flex space-x-4">
+                            <div class="flex-1 space-y-4 py-1">
+                                <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+                                <div class="space-y-2">
+                                    <div class="h-4 bg-slate-200 rounded"></div>
+                                    <div class="h-4 bg-slate-200 rounded w-5/6"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- PCではGrid表示でスッキリ見せる -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-                        <!-- Card 1 -->
-                        <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                            <div class="flex items-center gap-3 mb-3">
-                                <span class="bg-indigo-100 text-indigo-700 font-bold text-xs px-2 py-1 rounded">11/24 (月)</span>
-                                <h4 class="font-bold text-slate-800">極上マッティー × みーまる</h4>
-                            </div>
-                            <p class="text-slate-600 text-sm leading-relaxed">スロット全般＆物販開催。朝からの盛り上がり必至！W来店で徹底的にアピール。</p>
-                        </div>
-
-                        <!-- Card 2 -->
-                        <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                            <div class="flex items-center gap-3 mb-3">
-                                <span class="bg-slate-100 text-slate-700 font-bold text-xs px-2 py-1 rounded">11/25-27</span>
-                                <h4 class="font-bold text-slate-800">夕方時差狙い & 月周年</h4>
-                            </div>
-                            <p class="text-slate-600 text-sm leading-relaxed">27日は月周年日2nd！ポンコツ珍道中収録。夕方からの時差開放も見逃せない。</p>
-                        </div>
-
-                        <!-- Card 3 (Special) -->
-                        <div class="bg-gradient-to-br from-red-50 to-white border border-red-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
-                            <div class="flex items-center gap-3 mb-3">
-                                <span class="bg-red-600 text-white font-bold text-xs px-3 py-1 rounded-full">11/28 (金) 最重要</span>
-                                <h4 class="font-bold text-red-700 text-lg">年一「1128」× 8の日</h4>
-                            </div>
-                            <p class="text-slate-700 text-sm leading-7 font-medium">
-                                <strong class="text-red-600">【八潮上空 / 真骨超 / くずパチ収録】</strong><br>
-                                年に一度のお祭り日。スロットは「真骨超」、パチンコは「くずパチ」のWインパクトで、これまでの集大成を見せます。
-                            </p>
-                        </div>
-
-                        <!-- Card 4 -->
-                        <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
-                            <div class="flex items-center gap-3 mb-3">
-                                <span class="bg-green-100 text-green-800 font-bold text-xs px-2 py-1 rounded">11/29-30</span>
-                                <h4 class="font-bold text-slate-800">週末豪華リレー</h4>
-                            </div>
-                            <p class="text-slate-600 text-sm leading-relaxed">
-                                29日：天草さん+くろむさん（塊狙い）<br>
-                                30日：スロパチfor埼玉+MAXBET+千咲ななさん（AT機＆ジャグラー）
-                            </p>
+                    <!-- Full Calendar (Hidden by default) -->
+                    <div id="fullCalendarContainer" class="hidden mt-6 pt-6 border-t border-slate-100">
+                        <div id="calendarGrid" class="grid grid-cols-7 gap-2 sm:gap-3 mb-6"></div>
+                        <div id="selectedEventDetails" class="bg-slate-50 rounded-xl p-5 border border-slate-100 min-h-[100px] flex items-center justify-center text-slate-400 text-sm font-medium">
+                            日付をタップして詳細を確認
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
 
-        <!-- Calendar & Floor Map Grid -->
-        <section class="container mx-auto px-4 sm:px-6 lg:px-8 mt-12">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                
-                <!-- Calendar Section -->
-                <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-6 sm:p-8 flex flex-col">
-                    <div class="flex justify-between items-end mb-6">
-                        <h2 class="text-2xl font-bold text-slate-800">本日のイベント</h2>
-                        <button id="calendarToggleButton" class="text-sm font-bold text-indigo-600 hover:text-indigo-800 hover:underline bg-indigo-50 px-3 py-1 rounded-lg transition">11月全体を見る</button>
-                    </div>
-                    
-                    <div id="todayEventContainer" class="flex-grow flex flex-col justify-center bg-slate-50 rounded-2xl p-6 border border-slate-100 min-h-[200px]">
-                        <p class="text-slate-400 text-center animate-pulse">読み込み中...</p>
-                    </div>
-
-                    <div id="fullCalendarContainer" class="hidden">
-                        <div id="calendarGrid" class="grid grid-cols-7 gap-2 mb-4"></div>
-                        <div id="selectedEventDetails" class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm min-h-[100px]">
-                            <p class="text-slate-400 text-center py-4">日付をタップして詳細を確認</p>
-                        </div>
+            <!-- Floor Map Section -->
+            <div class="bg-white rounded-3xl border border-slate-100 shadow-lg overflow-hidden">
+                <div class="p-6 sm:p-8 border-b border-slate-50">
+                    <h2 class="text-2xl font-bold text-slate-800">Floor Map</h2>
+                    <p class="text-slate-400 text-xs font-bold mt-1">フロアマップ</p>
+                </div>
+                <div class="p-4 sm:p-8">
+                    <div class="bg-slate-50 rounded-xl border border-slate-200 p-2">
+                        <img src="simazu.jpg" alt="Map" class="w-full rounded-lg shadow-sm" onerror="this.parentNode.innerHTML='<div class=\'py-20 text-center text-slate-400 font-bold\'>マップ画像を読み込めませんでした</div>'">
                     </div>
                 </div>
-
-                <!-- Floor Map Section -->
-                <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-6 sm:p-8 flex flex-col">
-                    <h2 class="text-2xl font-bold text-slate-800 mb-6">フロアマップ</h2>
-                    <div class="flex-grow bg-slate-100 rounded-2xl overflow-hidden relative group cursor-zoom-in border border-slate-200">
-                        <img src="simazu.jpg" alt="Map" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                        <div style="display:none;" class="absolute inset-0 flex items-center justify-center text-slate-400 font-bold">MAP画像なし</div>
-                    </div>
-                    <p class="mt-4 text-xs text-slate-400 text-center">※配置は変更になる場合があります</p>
-                </div>
-
             </div>
+
         </section>
     </main>
 
-    <footer class="bg-slate-800 text-slate-400 py-12 text-center">
-        <div class="container mx-auto px-4">
-            <img src="rogo.jpg" class="h-8 mx-auto mb-4 opacity-50 grayscale" onerror="this.style.display='none'">
-            <p class="text-sm font-medium">&copy; 2025 GARDEN YASHIO. All rights reserved.</p>
-        </div>
+    <footer class="mt-20 py-10 text-center border-t border-slate-200 bg-slate-50">
+        <p class="text-xs font-bold text-slate-400 tracking-widest">&copy; 2025 GARDEN YASHIO BOT</p>
     </footer>
 
     <!-- ================= MODALS ================= -->
 
-    <!-- New Opening List Modal -->
-    <div id="newOpeningModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-3 sm:p-6 transition-opacity duration-300">
-        <div class="modal-enter bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh]">
-            <!-- Header -->
-            <div class="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
-                <div>
-                    <h3 class="text-xl sm:text-2xl font-black text-slate-800">新装開店リスト</h3>
-                    <p class="text-xs text-slate-500 font-bold mt-1">タップして機種詳細・セールスポイントを確認</p>
-                </div>
-                <button id="closeNewOpeningModal" class="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-full transition-colors">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    <!-- New Opening Modal -->
+    <div id="newOpeningModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden modal-enter">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                <h3 class="font-bold text-xl text-slate-800">導入機種リスト</h3>
+                <button id="closeNewOpeningModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            
-            <!-- Body (List) -->
-            <div id="newOpeningInfo" class="p-5 sm:p-6 overflow-y-auto bg-slate-50/50">
-                <!-- JSでコンテンツ注入 -->
+            <div id="newOpeningInfo" class="p-5 overflow-y-auto bg-slate-50/50">
+                <!-- Content injected by JS -->
             </div>
         </div>
     </div>
 
     <!-- Machine Detail Modal -->
-    <div id="machineDetailModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md hidden z-[60] flex items-center justify-center p-3 sm:p-6 transition-opacity duration-300">
-        <div class="modal-enter bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <!-- Header -->
-            <div class="bg-slate-800 p-6 flex justify-between items-start shrink-0">
+    <div id="machineDetailModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden z-[60] flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden modal-enter">
+            <div class="bg-slate-800 p-6 sm:p-8 flex justify-between items-start shrink-0">
                 <h3 id="detailName" class="text-xl sm:text-2xl font-bold text-white leading-tight pr-4"></h3>
-                <button id="closeDetailModal" class="text-slate-400 hover:text-white transition-colors">
+                <button id="closeDetailModal" class="text-slate-400 hover:text-white transition">
                     <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            
-            <!-- Body -->
             <div class="p-6 sm:p-8 overflow-y-auto">
-                <!-- Sales Pitch -->
                 <div class="mb-8">
                     <h4 class="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">SALES POINT</h4>
-                    <p id="detailPitch" class="text-slate-700 text-base sm:text-lg font-medium leading-loose text-justify tracking-wide whitespace-pre-wrap"></p>
+                    <p id="detailPitch" class="text-slate-700 text-base sm:text-lg font-medium leading-loose tracking-wide text-justify"></p>
                 </div>
-
-                <!-- Pros / Cons -->
-                <div class="grid md:grid-cols-2 gap-6">
-                    <div class="bg-emerald-50 rounded-2xl p-5 border border-emerald-100">
-                        <div class="flex items-center mb-3 text-emerald-700 font-bold">
-                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                <div class="grid sm:grid-cols-2 gap-6">
+                    <div class="bg-emerald-50 p-5 rounded-2xl border border-emerald-100">
+                        <div class="flex items-center gap-2 mb-3 text-emerald-700 font-bold">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                             GOOD POINT
                         </div>
-                        <ul id="detailPros" class="space-y-2 text-sm font-bold text-emerald-900"></ul>
+                        <ul id="detailPros" class="space-y-2 text-sm font-bold text-emerald-800"></ul>
                     </div>
-
-                    <div class="bg-rose-50 rounded-2xl p-5 border border-rose-100">
-                        <div class="flex items-center mb-3 text-rose-700 font-bold">
-                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    <div class="bg-rose-50 p-5 rounded-2xl border border-rose-100">
+                        <div class="flex items-center gap-2 mb-3 text-rose-700 font-bold">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
                             BAD POINT
                         </div>
-                        <ul id="detailCons" class="space-y-2 text-sm font-bold text-rose-900"></ul>
+                        <ul id="detailCons" class="space-y-2 text-sm font-bold text-rose-800"></ul>
                     </div>
                 </div>
             </div>
@@ -303,7 +293,6 @@
             "化物語", "プリズムナナ", "バーニングエキスプレス"
         ];
 
-        // Data Fetch
         async function fetchData() {
             try {
                 const mSnap = await getDocs(query(collection(db, "machines"), orderBy("name")));
@@ -318,18 +307,18 @@
 
                 renderToday();
             } catch (e) {
-                console.error("Data Load Error:", e);
-                $("#todayEventContainer").innerHTML = `<p class="text-rose-500 font-bold text-center">データの読み込みに失敗しました。</p>`;
+                console.error(e);
+                $("#todayEventContainer").innerHTML = `<p class="text-rose-500 text-center py-4">データを読み込めませんでした</p>`;
             }
         }
 
-        // New Opening Logic (Grid Layout for PC)
+        // New Opening List
         function openNewOpening() {
             const container = $("#newOpeningInfo");
             container.innerHTML = "";
             
             if (newOpeningData.length === 0) {
-                container.innerHTML = "<p class='text-center text-slate-400 font-bold py-10'>データがありません。</p>";
+                container.innerHTML = "<p class='text-center text-slate-400 py-10'>データがありません</p>";
                 $("#newOpeningModal").classList.remove("hidden");
                 return;
             }
@@ -347,13 +336,12 @@
             others.sort((a,b) => b.count - a.count);
 
             const createList = (list) => {
-                // PCでは2列グリッド、スマホでは1列
                 const ul = document.createElement("ul");
-                ul.className = "grid grid-cols-1 md:grid-cols-2 gap-3 mb-8";
+                ul.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8";
                 
                 list.forEach(item => {
                     const li = document.createElement("li");
-                    li.className = "flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group";
+                    li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group";
                     
                     const clean = s => s.replace(/\s+/g, '').toLowerCase();
                     const matched = allMachines.find(m => 
@@ -362,33 +350,27 @@
                         clean(m.name) === clean(item.name)
                     );
 
-                    // Name Container
-                    const nameDiv = document.createElement("div");
-                    nameDiv.className = "flex flex-col overflow-hidden mr-3";
-
+                    const leftDiv = document.createElement("div");
+                    leftDiv.className = "flex flex-col overflow-hidden mr-2";
+                    
                     const nameSpan = document.createElement("span");
-                    nameSpan.className = matched && matched.salesPitch 
-                        ? "font-bold text-indigo-700 truncate group-hover:text-indigo-500 transition-colors" 
-                        : "font-bold text-slate-700 truncate";
+                    nameSpan.className = "font-bold text-slate-700 truncate text-sm sm:text-base group-hover:text-indigo-700 transition-colors";
                     nameSpan.textContent = item.name;
-                    nameDiv.appendChild(nameSpan);
+                    leftDiv.appendChild(nameSpan);
 
-                    // Detail Label if Available
                     if (matched && matched.salesPitch) {
                         const sub = document.createElement("span");
-                        sub.className = "text-xs text-slate-400 font-medium mt-0.5 flex items-center";
-                        sub.innerHTML = `<svg class="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> タップして詳細`;
-                        nameDiv.appendChild(sub);
-                        
-                        // Click Event
+                        sub.className = "text-xs text-slate-400 font-medium mt-1 flex items-center";
+                        sub.innerHTML = `<span class="w-1.5 h-1.5 bg-indigo-400 rounded-full mr-1.5"></span>タップして詳細`;
+                        leftDiv.appendChild(sub);
                         li.onclick = () => openDetail(matched);
                     }
 
                     const badge = document.createElement("span");
-                    badge.className = "text-sm font-black bg-slate-800 text-white px-3 py-1.5 rounded-lg shrink-0";
+                    badge.className = "text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0";
                     badge.textContent = `${item.count}台`;
                     
-                    li.appendChild(nameDiv);
+                    li.appendChild(leftDiv);
                     li.appendChild(badge);
                     ul.appendChild(li);
                 });
@@ -397,16 +379,16 @@
 
             if(latest.length > 0) {
                 const h3 = document.createElement("h3");
-                h3.className = "text-lg font-black text-rose-600 mb-4 flex items-center pb-2 border-b-2 border-rose-100";
-                h3.innerHTML = "✨ 12月8日 最新導入";
+                h3.className = "text-lg font-black text-rose-600 mb-4 flex items-center border-b border-rose-100 pb-2";
+                h3.innerHTML = `<span class="mr-2 text-xl">✨</span> 12月8日 最新導入`;
                 container.appendChild(h3);
                 container.appendChild(createList(latest));
             }
 
             if(others.length > 0) {
                 const h3 = document.createElement("h3");
-                h3.className = "text-lg font-black text-slate-600 mb-4 flex items-center pb-2 border-b-2 border-slate-200";
-                h3.innerHTML = "⭐ 準新台・その他・増台";
+                h3.className = "text-lg font-black text-slate-600 mb-4 flex items-center border-b border-slate-200 pb-2";
+                h3.innerHTML = `<span class="mr-2 text-xl">🔄</span> 準新台・その他`;
                 container.appendChild(h3);
                 container.appendChild(createList(others));
             }
@@ -414,12 +396,11 @@
             $("#newOpeningModal").classList.remove("hidden");
         }
 
-        // Detail Modal
         function openDetail(data) {
             $("#detailName").textContent = data.name;
             $("#detailPitch").textContent = data.salesPitch || "情報なし";
             
-            const fillList = (id, list) => {
+            const fill = (id, list) => {
                 const el = $(id);
                 el.innerHTML = "";
                 (list || ["情報なし"]).forEach(t => {
@@ -429,9 +410,8 @@
                     el.appendChild(li);
                 });
             };
-            fillList("#detailPros", data.pros);
-            fillList("#detailCons", data.cons);
-            
+            fill("#detailPros", data.pros);
+            fill("#detailCons", data.cons);
             $("#machineDetailModal").classList.remove("hidden");
         }
 
@@ -442,31 +422,56 @@
             const m = today.getMonth(); // 11=10
             
             if (m !== 10) {
-                $("#todayEventContainer").innerHTML = "<p class='text-slate-400 font-bold text-center'>11月のカレンダーを表示中</p>";
+                $("#todayEventContainer").innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">11月のカレンダーを表示中</div>`;
                 return;
             }
             
             const ev = eventMap.get(d);
+            // デザイン強化した本日のイベント表示
             const html = ev 
-                ? `<h3 class='text-xl font-bold text-indigo-700 mb-3 flex items-center'><span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-sm mr-2">TODAY</span> 11/${d}</h3>
-                   <ul class='space-y-2 font-medium text-slate-700'>
-                     ${ev.p_event ? `<li class="flex items-start"><span class="text-indigo-500 mr-2">●</span>${ev.p_event}</li>` : ''}
-                     ${ev.s_event ? `<li class="flex items-start"><span class="text-indigo-500 mr-2">●</span>${ev.s_event}</li>` : ''}
-                     ${ev.recommend ? `<li class="flex items-start"><span class="text-rose-500 mr-2">★</span>${ev.recommend}</li>` : ''}
-                   </ul>`
-                : `<div class="text-center py-4">
-                    <p class="text-slate-800 font-bold text-lg">11/${d}</p>
-                    <p class='text-slate-400 text-sm mt-1'>特別なイベント情報はありません</p>
-                   </div>`;
+                ? `
+                <div class="flex flex-col md:flex-row gap-6 items-start">
+                    <div class="flex-shrink-0 bg-indigo-600 text-white rounded-2xl p-4 text-center min-w-[100px] shadow-lg shadow-indigo-200">
+                        <div class="text-xs font-bold opacity-80">TODAY</div>
+                        <div class="text-4xl font-black leading-none mt-1">${d}</div>
+                        <div class="text-xs font-bold mt-1 opacity-80">NOV</div>
+                    </div>
+                    <div class="flex-grow w-full">
+                        <ul class="space-y-3">
+                            ${ev.p_event ? `
+                            <li class="flex items-start bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+                                <span class="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded mr-3 mt-0.5 shrink-0">PACHI</span>
+                                <span class="text-slate-700 font-bold text-sm">${ev.p_event}</span>
+                            </li>` : ''}
+                            ${ev.s_event ? `
+                            <li class="flex items-start bg-purple-50 p-3 rounded-xl border border-purple-100">
+                                <span class="bg-purple-500 text-white text-[10px] font-bold px-2 py-0.5 rounded mr-3 mt-0.5 shrink-0">SLOT</span>
+                                <span class="text-slate-700 font-bold text-sm">${ev.s_event}</span>
+                            </li>` : ''}
+                            ${ev.recommend ? `
+                            <li class="flex items-start bg-rose-50 p-3 rounded-xl border border-rose-100">
+                                <span class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded mr-3 mt-0.5 shrink-0">PICKUP</span>
+                                <span class="text-rose-700 font-bold text-sm">${ev.recommend}</span>
+                            </li>` : ''}
+                        </ul>
+                    </div>
+                </div>
+                `
+                : `
+                <div class="flex flex-col items-center justify-center py-8 text-slate-400">
+                    <div class="text-4xl font-black text-slate-200 mb-2">${d}</div>
+                    <p class="text-sm font-bold">特別なイベント情報はありません</p>
+                </div>
+                `;
             $("#todayEventContainer").innerHTML = html;
             $("#currentDate").textContent = `2025.11.${d}`;
         }
 
         function renderFullCalendar() {
             const grid = $("#calendarGrid");
-            grid.innerHTML = ["日","月","火","水","木","金","土"].map(d => `<div class="text-xs font-bold text-slate-400 text-center py-1">${d}</div>`).join("");
+            grid.innerHTML = ["日","月","火","水","木","金","土"].map(d => `<div class="text-xs font-bold text-slate-300 text-center py-2">${d}</div>`).join("");
             
-            for(let i=0; i<6; i++) grid.innerHTML += `<div></div>`; // 2025/11/1 is Sat
+            for(let i=0; i<6; i++) grid.innerHTML += `<div></div>`;
             
             for(let i=1; i<=30; i++) {
                 const ev = eventMap.get(i);
@@ -474,27 +479,34 @@
                 const btn = document.createElement("button");
                 btn.className = `calendar-day ${hasEv ? 'has-event' : ''}`;
                 btn.textContent = i;
+                
+                if (i === new Date().getDate() && new Date().getMonth() === 10) btn.classList.add('is-today');
+
                 btn.onclick = () => {
                     $$(".calendar-day").forEach(b => b.classList.remove("is-selected"));
                     btn.classList.add("is-selected");
                     
                     const detail = $("#selectedEventDetails");
                     if(ev) {
-                         detail.innerHTML = `<h4 class='font-bold text-indigo-600 mb-2 border-b border-indigo-100 pb-1'>11/${i} 詳細</h4>
-                           <ul class='space-y-1.5 text-slate-700 font-medium'>
-                             ${ev.p_event ? `<li>${ev.p_event}</li>` : ''}
-                             ${ev.s_event ? `<li>${ev.s_event}</li>` : ''}
-                             ${ev.recommend ? `<li class="text-rose-600">${ev.recommend}</li>` : ''}
-                           </ul>`;
+                         detail.innerHTML = `
+                         <div class="w-full">
+                            <div class="text-indigo-600 font-black mb-3 flex items-center text-lg">
+                                <span class="bg-indigo-100 text-indigo-600 text-xs px-2 py-1 rounded mr-2">11/${i}</span> イベント詳細
+                            </div>
+                            <ul class="space-y-2 text-sm font-bold text-slate-700">
+                                ${ev.p_event ? `<li class="flex"><span class="text-indigo-400 mr-2">●</span>${ev.p_event}</li>` : ''}
+                                ${ev.s_event ? `<li class="flex"><span class="text-indigo-400 mr-2">●</span>${ev.s_event}</li>` : ''}
+                                ${ev.recommend ? `<li class="flex text-rose-600"><span class="text-rose-400 mr-2">★</span>${ev.recommend}</li>` : ''}
+                            </ul>
+                         </div>`;
                     } else {
-                        detail.innerHTML = `<p class='text-slate-400 text-center py-4'>11/${i} のイベント情報はありません。</p>`;
+                        detail.innerHTML = `<p class='text-slate-400'>情報なし</p>`;
                     }
                 };
                 grid.appendChild(btn);
             }
         }
 
-        // Event Listeners
         window.addEventListener("load", fetchData);
         $("#newOpeningButton").onclick = openNewOpening;
         $("#closeNewOpeningModal").onclick = () => $("#newOpeningModal").classList.add("hidden");
@@ -516,10 +528,7 @@
             }
         };
 
-        // Slider (Placeholder for visual consistency)
-        let sIdx = 0;
         setInterval(() => {}, 5000);
-
     </script>
 </body>
 </html>
