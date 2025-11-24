@@ -257,6 +257,7 @@
         </div>
     </footer>
 
+    <!-- 新装開店モーダル -->
     <div id="newOpeningModal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 hidden z-40">
         <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-lg">
             <div class="flex justify-between items-center p-4 border-b border-gray-200">
@@ -265,6 +266,55 @@
             </div>
             <div id="newOpeningInfo" class="p-6 max-h-[70vh] overflow-y-auto text-left">
                 <p class="text-center text-gray-500">新装開店の情報を読み込んでいます...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 機種詳細モーダル (Z-indexを高く設定) -->
+    <div id="machineDetailModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[85vh] flex flex-col">
+            <!-- Header -->
+            <div class="bg-indigo-600 p-4 sm:p-6 flex justify-between items-start shrink-0">
+                <h3 id="detailName" class="text-xl sm:text-2xl font-bold text-white leading-tight pr-4"></h3>
+                <button id="closeDetailModal" class="text-indigo-100 hover:text-white text-3xl font-bold leading-none">&times;</button>
+            </div>
+            
+            <!-- Body -->
+            <div class="p-6 overflow-y-auto">
+                <!-- Sales Pitch -->
+                <div class="mb-8">
+                    <h4 class="text-sm font-bold text-indigo-500 uppercase tracking-wide mb-2">セールスポイント</h4>
+                    <p id="detailPitch" class="text-gray-800 text-lg leading-relaxed font-medium"></p>
+                </div>
+
+                <!-- Pros & Cons Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <!-- Pros -->
+                    <div class="bg-green-50 rounded-xl p-5 border border-green-100">
+                        <div class="flex items-center mb-3 text-green-700">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <h5 class="font-bold">GOOD（ここが良い！）</h5>
+                        </div>
+                        <ul id="detailPros" class="space-y-2 text-green-900 text-sm font-medium"></ul>
+                    </div>
+
+                    <!-- Cons -->
+                    <div class="bg-red-50 rounded-xl p-5 border border-red-100">
+                        <div class="flex items-center mb-3 text-red-700">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            <h5 class="font-bold">BAD（ここは注意！）</h5>
+                        </div>
+                        <ul id="detailCons" class="space-y-2 text-red-900 text-sm font-medium"></ul>
+                    </div>
+                </div>
+
+                <!-- Link -->
+                <div class="text-center">
+                    <a id="detailLink" href="#" target="_blank" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 transition-colors">
+                        スペック詳細を見る (DMMぱちタウン)
+                        <svg class="ml-2 -mr-1 w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"></path></svg>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -323,6 +373,16 @@
             newOpeningModal: $('#newOpeningModal'),
             closeNewOpeningModal: $('#closeNewOpeningModal'),
             newOpeningInfo: $('#newOpeningInfo'),
+            
+            // Detail Modal Elements
+            machineDetailModal: $('#machineDetailModal'),
+            closeDetailModal: $('#closeDetailModal'),
+            detailName: $('#detailName'),
+            detailPitch: $('#detailPitch'),
+            detailPros: $('#detailPros'),
+            detailCons: $('#detailCons'),
+            detailLink: $('#detailLink'),
+
             currentDateEl: $('#currentDate'),
             todayEventContainer: $('#todayEventContainer'),
             fullCalendarContainer: $('#fullCalendarContainer'),
@@ -370,6 +430,54 @@
             }
         }
 
+        // --- 詳細モーダル機能 ---
+        function openMachineDetail(machine) {
+            // データセット
+            if(elements.detailName) elements.detailName.textContent = machine.name;
+            if(elements.detailPitch) elements.detailPitch.textContent = machine.salesPitch || "詳細情報は現在準備中です。";
+            
+            // Pros
+            if(elements.detailPros) {
+                elements.detailPros.innerHTML = '';
+                if (machine.pros && machine.pros.length > 0) {
+                    machine.pros.forEach(point => {
+                        const li = document.createElement('li');
+                        li.textContent = point;
+                        elements.detailPros.appendChild(li);
+                    });
+                } else {
+                    elements.detailPros.innerHTML = '<li>情報なし</li>';
+                }
+            }
+
+            // Cons
+            if(elements.detailCons) {
+                elements.detailCons.innerHTML = '';
+                if (machine.cons && machine.cons.length > 0) {
+                    machine.cons.forEach(point => {
+                        const li = document.createElement('li');
+                        li.textContent = point;
+                        elements.detailCons.appendChild(li);
+                    });
+                } else {
+                    elements.detailCons.innerHTML = '<li>情報なし</li>';
+                }
+            }
+
+            // Link
+            if(elements.detailLink) {
+                if(machine.specUrl) {
+                    elements.detailLink.href = machine.specUrl;
+                    elements.detailLink.style.display = 'inline-flex';
+                } else {
+                    elements.detailLink.style.display = 'none';
+                }
+            }
+
+            // 表示
+            elements.machineDetailModal.classList.remove('hidden');
+        }
+
         // --- 新装開店モーダル機能 ---
         function openNewOpeningModal() {
             if (!elements.newOpeningInfo) return;
@@ -386,17 +494,29 @@
                 ul.className = 'space-y-2 mb-6';
                 machines.forEach(openingMachine => {
                     const li = document.createElement('li');
-                    li.className = 'flex justify-between items-center bg-slate-50 p-3 rounded-lg border';
+                    li.className = 'flex justify-between items-center bg-slate-50 p-3 rounded-lg border hover:bg-slate-100 transition-colors';
 
+                    // 名前マッチング (DBのデータと照合)
                     const matchedMachine = allMachines.find(rm => rm.name === openingMachine.name);
 
-                    let nameElement = document.createElement('span');
-                    nameElement.className = 'text-gray-800 font-medium';
-                    nameElement.textContent = openingMachine.name;
+                    // クリック可能か判定
+                    let nameElement;
+                    if (matchedMachine && matchedMachine.salesPitch) {
+                        nameElement = document.createElement('button');
+                        nameElement.className = 'text-left text-indigo-600 font-bold hover:underline focus:outline-none';
+                        nameElement.onclick = () => openMachineDetail(matchedMachine);
+                        // ツールチップ的なものを追加しても良いがシンプルに
+                        nameElement.innerHTML = `${openingMachine.name} <span class="text-xs text-indigo-400 font-normal ml-1">▶詳細</span>`;
+                    } else {
+                        nameElement = document.createElement('span');
+                        nameElement.className = 'text-gray-800 font-medium';
+                        nameElement.textContent = openingMachine.name;
+                    }
 
                     const countElement = document.createElement('span');
-                    countElement.className = 'font-semibold text-white bg-indigo-600 px-2 py-1 text-sm rounded-md';
+                    countElement.className = 'font-semibold text-white bg-indigo-600 px-2 py-1 text-sm rounded-md ml-2 shrink-0';
                     countElement.textContent = `${openingMachine.count}台`;
+                    
                     li.appendChild(nameElement);
                     li.appendChild(countElement);
                     ul.appendChild(li);
@@ -575,9 +695,14 @@
 
         // --- モーダル初期化 ---
         function initModals() {
+            // New Opening
             if (elements.newOpeningButton) elements.newOpeningButton.addEventListener('click', openNewOpeningModal);
             if (elements.closeNewOpeningModal) elements.closeNewOpeningModal.addEventListener('click', () => elements.newOpeningModal.classList.add('hidden'));
             if (elements.newOpeningModal) elements.newOpeningModal.addEventListener('click', (e) => { if (e.target === elements.newOpeningModal) elements.newOpeningModal.classList.add('hidden'); });
+
+            // Detail Modal
+            if (elements.closeDetailModal) elements.closeDetailModal.addEventListener('click', () => elements.machineDetailModal.classList.add('hidden'));
+            if (elements.machineDetailModal) elements.machineDetailModal.addEventListener('click', (e) => { if (e.target === elements.machineDetailModal) elements.machineDetailModal.classList.add('hidden'); });
         }
 
         // --- 画像エラー処理 ---
