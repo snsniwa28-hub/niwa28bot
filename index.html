@@ -12,19 +12,14 @@
             background-color: #f8fafc;
             color: #334155;
             -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
         }
         
         /* アニメーション */
         .fade-in-up { animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(20px); }
         @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
-        
         .modal-enter { animation: modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes modalEnter { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
-
-        /* スクロールバー */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
 
         /* カレンダー */
         .calendar-day {
@@ -40,8 +35,9 @@
         .calendar-day.is-today { background-color: #fef08a; color: #854d0e; border: 2px solid #eab308; }
         .calendar-day.is-selected { background-color: #4f46e5; color: white; box-shadow: 0 4px 10px -2px rgba(79, 70, 229, 0.4); }
 
-        /* テキスト改行調整クラス */
-        .text-balance { text-wrap: balance; } /* 見出しの改行を美しく */
+        /* スマホでの改行対策 */
+        .text-pretty { text-wrap: pretty; } /* 読みやすい位置で改行 */
+        .word-keep { display: inline-block; } /* 単語の途中改行を防ぐ */
     </style>
 </head>
 <body class="antialiased pb-20">
@@ -62,20 +58,18 @@
         <!-- Hero Slider -->
         <section class="relative pt-8 pb-12 sm:pt-12 sm:pb-20 bg-white rounded-b-[2.5rem] shadow-sm overflow-hidden">
             <div class="container mx-auto px-4 sm:px-6 text-center">
-                <!-- 画像エリア -->
                 <div class="relative w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl shadow-indigo-900/10 border border-slate-100">
                     <div class="aspect-[16/9] bg-slate-900 flex items-center justify-center">
                         <img src="sinsou1.jpg" class="w-full h-full object-contain" alt="新装開店">
                     </div>
                 </div>
                 
-                <!-- タイトルエリア -->
                 <div class="mt-10 fade-in-up" style="animation-delay: 0.1s;">
-                    <h1 class="text-3xl sm:text-5xl font-black text-slate-800 tracking-tight text-balance leading-tight">
+                    <h1 class="text-3xl sm:text-5xl font-black text-slate-800 tracking-tight leading-tight text-pretty">
                         最新台の情報を、<br class="sm:hidden">もっと<span class="text-indigo-600 inline-block">スマート</span>に。
                     </h1>
-                    <p class="mt-4 text-slate-500 font-medium text-sm sm:text-base text-balance fade-in-up" style="animation-delay: 0.2s;">
-                        ガーデン八潮の最新スペック・イベント情報を<br class="sm:hidden">AIがわかりやすくお届けします。
+                    <p class="mt-4 text-slate-500 font-medium text-sm sm:text-base text-pretty fade-in-up" style="animation-delay: 0.2s;">
+                        ガーデン八潮の<span class="word-keep">最新スペック</span>・<span class="word-keep">イベント情報</span>を<br class="hidden sm:inline">AIがわかりやすくお届けします。
                     </p>
                 </div>
             </div>
@@ -110,23 +104,22 @@
                 </div>
                 <div class="p-6 sm:p-10">
                     <div class="mb-8 text-center sm:text-left">
-                        <h3 class="text-2xl font-black text-slate-800 leading-tight">
-                            年一の祭典<span class="text-rose-600">「28日」</span>に向けた<br class="sm:hidden">集大成ウィーク
+                        <h3 class="text-2xl font-black text-slate-800 leading-tight text-pretty">
+                            <span class="word-keep">年一の祭典</span><span class="text-rose-600 word-keep">「28日」</span>に向けた<br class="sm:hidden">集大成ウィーク
                         </h3>
                         <p class="text-slate-500 mt-2 font-medium">11月ラスト、定休日なしで駆け抜けます！</p>
                     </div>
 
                     <div class="grid gap-4 sm:grid-cols-2">
-                        <!-- Cards -->
-                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-colors">
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                             <div class="text-xs font-bold text-indigo-500 mb-1">11/24 (月)</div>
                             <div class="font-bold text-slate-800 mb-2">極上マッティー × みーまる</div>
-                            <p class="text-sm text-slate-600 leading-relaxed">スロット全般＆物販開催。朝からの盛り上がり必至！W来店で徹底アピール。</p>
+                            <p class="text-sm text-slate-600 leading-relaxed text-pretty">スロット全般＆物販開催。朝からの盛り上がり必至！W来店で徹底アピール。</p>
                         </div>
-                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-colors">
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                             <div class="text-xs font-bold text-slate-500 mb-1">11/25 (火) ～ 27 (木)</div>
                             <div class="font-bold text-slate-800 mb-2">夕方時差狙い & 月周年</div>
-                            <p class="text-sm text-slate-600 leading-relaxed">27日は月周年日2nd！ポンコツ珍道中収録。夕方からの時差開放も見逃せない。</p>
+                            <p class="text-sm text-slate-600 leading-relaxed text-pretty">27日は月周年日2nd！ポンコツ珍道中収録。夕方からの時差開放も見逃せない。</p>
                         </div>
                         <div class="sm:col-span-2 bg-rose-50/50 p-6 rounded-xl border border-rose-100 relative overflow-hidden">
                             <div class="relative z-10">
@@ -135,16 +128,16 @@
                                     11/28 (金)
                                 </div>
                                 <div class="font-bold text-rose-900 text-lg mb-2">年一「1128」× 8の日</div>
-                                <p class="text-sm text-rose-800 leading-relaxed">
+                                <p class="text-sm text-rose-800 leading-relaxed text-pretty">
                                     <span class="font-bold">【八潮上空 / 真骨超 / くずパチ収録】</span><br>
                                     年に一度のお祭り日。スロット「真骨超」、パチンコ「くずパチ」のWインパクト。
                                 </p>
                             </div>
                         </div>
-                        <div class="sm:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-green-200 transition-colors">
+                        <div class="sm:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                             <div class="text-xs font-bold text-green-600 mb-1">11/29 (土) ～ 30 (日)</div>
                             <div class="font-bold text-slate-800 mb-2">週末豪華リレー</div>
-                            <p class="text-sm text-slate-600 leading-relaxed">
+                            <p class="text-sm text-slate-600 leading-relaxed text-pretty">
                                 29日：天草さん+くろむさん（塊狙い） / 30日：スロパチfor埼玉（AT機＆ジャグラー）
                             </p>
                         </div>
@@ -170,16 +163,11 @@
 
                 <div class="p-6 sm:p-8">
                     <!-- Today's Event Display (Improved) -->
-                    <div id="todayEventContainer" class="bg-white">
-                        <!-- JSでリッチなコンテンツを注入 -->
-                        <div class="animate-pulse flex space-x-4">
-                            <div class="flex-1 space-y-4 py-1">
-                                <div class="h-4 bg-slate-200 rounded w-3/4"></div>
-                                <div class="space-y-2">
-                                    <div class="h-4 bg-slate-200 rounded"></div>
-                                    <div class="h-4 bg-slate-200 rounded w-5/6"></div>
-                                </div>
-                            </div>
+                    <div id="todayEventContainer" class="bg-white min-h-[120px] flex items-center justify-center">
+                        <!-- JSでコンテンツを注入 -->
+                        <div class="animate-pulse flex flex-col items-center gap-3 w-full">
+                            <div class="h-4 bg-slate-100 rounded w-1/3"></div>
+                            <div class="h-20 bg-slate-50 rounded-xl w-full"></div>
                         </div>
                     </div>
 
@@ -215,7 +203,6 @@
 
     <!-- ================= MODALS ================= -->
 
-    <!-- New Opening Modal -->
     <div id="newOpeningModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden modal-enter">
             <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
@@ -224,13 +211,10 @@
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <div id="newOpeningInfo" class="p-5 overflow-y-auto bg-slate-50/50">
-                <!-- Content injected by JS -->
-            </div>
+            <div id="newOpeningInfo" class="p-5 overflow-y-auto bg-slate-50/50"></div>
         </div>
     </div>
 
-    <!-- Machine Detail Modal -->
     <div id="machineDetailModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden z-[60] flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden modal-enter">
             <div class="bg-slate-800 p-6 sm:p-8 flex justify-between items-start shrink-0">
@@ -242,21 +226,15 @@
             <div class="p-6 sm:p-8 overflow-y-auto">
                 <div class="mb-8">
                     <h4 class="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">SALES POINT</h4>
-                    <p id="detailPitch" class="text-slate-700 text-base sm:text-lg font-medium leading-loose tracking-wide text-justify"></p>
+                    <p id="detailPitch" class="text-slate-700 text-base sm:text-lg font-medium leading-loose tracking-wide text-justify text-pretty"></p>
                 </div>
                 <div class="grid sm:grid-cols-2 gap-6">
                     <div class="bg-emerald-50 p-5 rounded-2xl border border-emerald-100">
-                        <div class="flex items-center gap-2 mb-3 text-emerald-700 font-bold">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                            GOOD POINT
-                        </div>
+                        <div class="flex items-center gap-2 mb-3 text-emerald-700 font-bold">GOOD POINT</div>
                         <ul id="detailPros" class="space-y-2 text-sm font-bold text-emerald-800"></ul>
                     </div>
                     <div class="bg-rose-50 p-5 rounded-2xl border border-rose-100">
-                        <div class="flex items-center gap-2 mb-3 text-rose-700 font-bold">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-                            BAD POINT
-                        </div>
+                        <div class="flex items-center gap-2 mb-3 text-rose-700 font-bold">BAD POINT</div>
                         <ul id="detailCons" class="space-y-2 text-sm font-bold text-rose-800"></ul>
                     </div>
                 </div>
@@ -266,7 +244,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         const firebaseConfig = {
           apiKey: "AIzaSyAdxAeBlJkFWAVM1ZWJKhU2urQcmtL0UKo",
@@ -282,7 +260,6 @@
 
         let allMachines = [];
         let newOpeningData = [];
-        let calendarEvents = [];
         let eventMap = new Map();
 
         const $ = s => document.querySelector(s);
@@ -295,24 +272,26 @@
 
         async function fetchData() {
             try {
-                const mSnap = await getDocs(query(collection(db, "machines"), orderBy("name")));
-                allMachines = mSnap.docs.map(d => d.data());
+                // orderByを使わずに全件取得してJSでソートする（インデックスエラー回避）
+                const [mSnap, nSnap, cSnap] = await Promise.all([
+                    getDocs(collection(db, "machines")),
+                    getDocs(collection(db, "newOpening")),
+                    getDocs(collection(db, "calendar"))
+                ]);
 
-                const nSnap = await getDocs(query(collection(db, "newOpening"))); 
+                allMachines = mSnap.docs.map(d => d.data()).sort((a, b) => a.name.localeCompare(b.name));
                 newOpeningData = nSnap.docs.map(d => d.data());
                 
-                const cSnap = await getDocs(query(collection(db, "calendar"), orderBy("date")));
-                calendarEvents = cSnap.docs.map(d => d.data());
+                const calendarEvents = cSnap.docs.map(d => d.data()).sort((a, b) => a.date - b.date);
                 eventMap = new Map(calendarEvents.map(e => [e.date, e]));
 
                 renderToday();
             } catch (e) {
-                console.error(e);
-                $("#todayEventContainer").innerHTML = `<p class="text-rose-500 text-center py-4">データを読み込めませんでした</p>`;
+                console.error("Fetch Error:", e);
+                $("#todayEventContainer").innerHTML = `<p class="text-rose-500 text-center font-bold">データの読み込みに失敗しました</p>`;
             }
         }
 
-        // New Opening List
         function openNewOpening() {
             const container = $("#newOpeningInfo");
             container.innerHTML = "";
@@ -338,16 +317,13 @@
             const createList = (list) => {
                 const ul = document.createElement("ul");
                 ul.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8";
-                
                 list.forEach(item => {
                     const li = document.createElement("li");
                     li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group";
                     
                     const clean = s => s.replace(/\s+/g, '').toLowerCase();
                     const matched = allMachines.find(m => 
-                        m.name === item.name || 
-                        m.name.includes(item.name) || 
-                        clean(m.name) === clean(item.name)
+                        m.name === item.name || m.name.includes(item.name) || clean(m.name) === clean(item.name)
                     );
 
                     const leftDiv = document.createElement("div");
@@ -380,7 +356,7 @@
             if(latest.length > 0) {
                 const h3 = document.createElement("h3");
                 h3.className = "text-lg font-black text-rose-600 mb-4 flex items-center border-b border-rose-100 pb-2";
-                h3.innerHTML = `<span class="mr-2 text-xl">✨</span> 12月8日 最新導入`;
+                h3.innerHTML = `✨ 12月8日 最新導入`;
                 container.appendChild(h3);
                 container.appendChild(createList(latest));
             }
@@ -388,7 +364,7 @@
             if(others.length > 0) {
                 const h3 = document.createElement("h3");
                 h3.className = "text-lg font-black text-slate-600 mb-4 flex items-center border-b border-slate-200 pb-2";
-                h3.innerHTML = `<span class="mr-2 text-xl">🔄</span> 準新台・その他`;
+                h3.innerHTML = `🔄 準新台・その他`;
                 container.appendChild(h3);
                 container.appendChild(createList(others));
             }
@@ -415,7 +391,6 @@
             $("#machineDetailModal").classList.remove("hidden");
         }
 
-        // Calendar
         function renderToday() {
             const today = new Date();
             const d = today.getDate();
@@ -427,39 +402,41 @@
             }
             
             const ev = eventMap.get(d);
-            // デザイン強化した本日のイベント表示
             const html = ev 
                 ? `
-                <div class="flex flex-col md:flex-row gap-6 items-start">
-                    <div class="flex-shrink-0 bg-indigo-600 text-white rounded-2xl p-4 text-center min-w-[100px] shadow-lg shadow-indigo-200">
-                        <div class="text-xs font-bold opacity-80">TODAY</div>
-                        <div class="text-4xl font-black leading-none mt-1">${d}</div>
-                        <div class="text-xs font-bold mt-1 opacity-80">NOV</div>
+                <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 w-full">
+                    <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200/60">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-indigo-600 text-white rounded-xl px-4 py-2 text-center shadow-md shadow-indigo-200">
+                                <div class="text-[10px] font-bold opacity-80 tracking-wider">NOV</div>
+                                <div class="text-2xl font-black leading-none">${d}</div>
+                            </div>
+                            <div class="font-bold text-indigo-900 text-lg">本日のイベント情報</div>
+                        </div>
+                        <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">TODAY</span>
                     </div>
-                    <div class="flex-grow w-full">
-                        <ul class="space-y-3">
-                            ${ev.p_event ? `
-                            <li class="flex items-start bg-indigo-50 p-3 rounded-xl border border-indigo-100">
-                                <span class="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded mr-3 mt-0.5 shrink-0">PACHI</span>
-                                <span class="text-slate-700 font-bold text-sm">${ev.p_event}</span>
-                            </li>` : ''}
-                            ${ev.s_event ? `
-                            <li class="flex items-start bg-purple-50 p-3 rounded-xl border border-purple-100">
-                                <span class="bg-purple-500 text-white text-[10px] font-bold px-2 py-0.5 rounded mr-3 mt-0.5 shrink-0">SLOT</span>
-                                <span class="text-slate-700 font-bold text-sm">${ev.s_event}</span>
-                            </li>` : ''}
-                            ${ev.recommend ? `
-                            <li class="flex items-start bg-rose-50 p-3 rounded-xl border border-rose-100">
-                                <span class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded mr-3 mt-0.5 shrink-0">PICKUP</span>
-                                <span class="text-rose-700 font-bold text-sm">${ev.recommend}</span>
-                            </li>` : ''}
-                        </ul>
-                    </div>
+                    <ul class="space-y-3">
+                        ${ev.p_event ? `
+                        <li class="flex items-start">
+                            <span class="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded mr-3 mt-0.5 shrink-0 tracking-wide">PACHI</span>
+                            <span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.p_event}</span>
+                        </li>` : ''}
+                        ${ev.s_event ? `
+                        <li class="flex items-start">
+                            <span class="bg-purple-500 text-white text-[10px] font-bold px-2 py-0.5 rounded mr-3 mt-0.5 shrink-0 tracking-wide">SLOT</span>
+                            <span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.s_event}</span>
+                        </li>` : ''}
+                        ${ev.recommend ? `
+                        <li class="flex items-start">
+                            <span class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded mr-3 mt-0.5 shrink-0 tracking-wide">PICKUP</span>
+                            <span class="text-rose-600 font-bold text-sm leading-relaxed">${ev.recommend}</span>
+                        </li>` : ''}
+                    </ul>
                 </div>
                 `
                 : `
-                <div class="flex flex-col items-center justify-center py-8 text-slate-400">
-                    <div class="text-4xl font-black text-slate-200 mb-2">${d}</div>
+                <div class="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 rounded-2xl border border-slate-100 w-full">
+                    <div class="text-5xl font-black text-slate-200 mb-3">${d}</div>
                     <p class="text-sm font-bold">特別なイベント情報はありません</p>
                 </div>
                 `;
@@ -479,7 +456,6 @@
                 const btn = document.createElement("button");
                 btn.className = `calendar-day ${hasEv ? 'has-event' : ''}`;
                 btn.textContent = i;
-                
                 if (i === new Date().getDate() && new Date().getMonth() === 10) btn.classList.add('is-today');
 
                 btn.onclick = () => {
@@ -491,7 +467,7 @@
                          detail.innerHTML = `
                          <div class="w-full">
                             <div class="text-indigo-600 font-black mb-3 flex items-center text-lg">
-                                <span class="bg-indigo-100 text-indigo-600 text-xs px-2 py-1 rounded mr-2">11/${i}</span> イベント詳細
+                                <span class="bg-indigo-100 text-indigo-600 text-xs px-2 py-1 rounded mr-2">11/${i}</span> 詳細
                             </div>
                             <ul class="space-y-2 text-sm font-bold text-slate-700">
                                 ${ev.p_event ? `<li class="flex"><span class="text-indigo-400 mr-2">●</span>${ev.p_event}</li>` : ''}
@@ -507,7 +483,7 @@
             }
         }
 
-        window.addEventListener("load", fetchData);
+        window.addEventListener("DOMContentLoaded", fetchData); // load -> DOMContentLoaded
         $("#newOpeningButton").onclick = openNewOpening;
         $("#closeNewOpeningModal").onclick = () => $("#newOpeningModal").classList.add("hidden");
         $("#closeDetailModal").onclick = () => $("#machineDetailModal").classList.add("hidden");
