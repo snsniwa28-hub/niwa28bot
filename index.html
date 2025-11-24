@@ -172,7 +172,6 @@
                         <ul id="detailCons" class="text-sm text-red-900 space-y-1 list-disc list-inside"></ul>
                     </div>
                 </div>
-                <!-- DMMリンク削除 -->
             </div>
         </div>
     </div>
@@ -202,12 +201,12 @@
         const $$ = s => document.querySelectorAll(s);
 
         // 12月8日導入（最新）として扱う機種名のキーワード
+        // ★バーニングエキスプレスを追加しました
         const latestKeywords = [
             "アズールレーン",
             "北斗の拳11",
-            "地獄少女7500",
-            "炎炎ノ消防隊2MS",
-            "海物語極ジャパン",
+            "地獄少女7500", 
+            "海物語極",
             "化物語",
             "プリズムナナ",
             "バーニングエキスプレス"
@@ -221,9 +220,7 @@
 
                 const nSnap = await getDocs(query(collection(db, "newOpening"))); 
                 newOpeningData = nSnap.docs.map(d => d.data());
-                // 台数順にソート (ここでは全体ソートだが、後で分割して再ソートする)
-                newOpeningData.sort((a,b) => b.count - a.count);
-
+                
                 const cSnap = await getDocs(query(collection(db, "calendar"), orderBy("date")));
                 calendarEvents = cSnap.docs.map(d => d.data());
                 eventMap = new Map(calendarEvents.map(e => [e.date, e]));
@@ -235,7 +232,7 @@
             }
         }
 
-        // New Opening Modal Logic (Split by Date & Sort by Count)
+        // New Opening Modal Logic
         function openNewOpening() {
             const container = $("#newOpeningInfo");
             container.innerHTML = "";
@@ -256,7 +253,7 @@
                 else others.push(m);
             });
 
-            // それぞれ台数順にソート
+            // 台数順にソート (降順)
             latest.sort((a,b) => b.count - a.count);
             others.sort((a,b) => b.count - a.count);
 
@@ -297,7 +294,7 @@
                 return ul;
             };
 
-            // 最新導入エリア
+            // 1. 最新導入 (12/8)
             if(latest.length > 0) {
                 const h3 = document.createElement("h3");
                 h3.className = "text-lg font-bold text-red-600 mb-3 flex items-center bg-red-50 p-2 rounded";
@@ -306,11 +303,11 @@
                 container.appendChild(createList(latest));
             }
 
-            // その他エリア
+            // 2. 中古機・増台
             if(others.length > 0) {
                 const h3 = document.createElement("h3");
                 h3.className = "text-lg font-bold text-gray-700 mb-3 flex items-center bg-gray-100 p-2 rounded";
-                h3.innerHTML = "⭐ 準新台・その他";
+                h3.innerHTML = "⭐ 中古機・増台・その他";
                 container.appendChild(h3);
                 container.appendChild(createList(others));
             }
@@ -335,7 +332,6 @@
             fillList("#detailPros", data.pros);
             fillList("#detailCons", data.cons);
             
-            // Link is removed
             $("#machineDetailModal").classList.remove("hidden");
         }
 
