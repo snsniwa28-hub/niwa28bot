@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ガーデン八潮総合BOT</title>
+    <title>ガーデン八潮 総合プラットフォーム</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
+        /* === Base Styles === */
         body {
             font-family: 'Inter', 'Noto Sans JP', sans-serif;
             background-color: #f8fafc;
@@ -15,13 +16,13 @@
             overflow-x: hidden;
         }
         
-        /* アニメーション */
+        /* === Animations === */
         .fade-in-up { animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(20px); }
         @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
         .modal-enter { animation: modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes modalEnter { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
 
-        /* カレンダー */
+        /* === Calendar Styles === */
         .calendar-day {
             aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
             border-radius: 12px; cursor: pointer; position: relative; font-weight: 600;
@@ -35,256 +36,439 @@
         .calendar-day.is-today { background-color: #fef08a; color: #854d0e; border: 2px solid #eab308; }
         .calendar-day.is-selected { background-color: #4f46e5; color: white; box-shadow: 0 4px 10px -2px rgba(79, 70, 229, 0.4); }
 
-        /* QSC チェックボックスアニメーション */
+        /* === QSC Styles === */
         .qsc-checkbox { appearance: none; width: 1.25rem; height: 1.25rem; border: 2px solid #cbd5e1; border-radius: 0.375rem; cursor: pointer; transition: all 0.2s; position: relative; }
         .qsc-checkbox:checked { background-color: #22c55e; border-color: #22c55e; }
         .qsc-checkbox:checked::after { content: '✓'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 0.875rem; font-weight: bold; }
 
-        /* スマホでの改行対策 */
+        /* === Utility === */
         .text-pretty { text-wrap: pretty; }
         .word-keep { display: inline-block; }
+
+        /* =========================================
+           Task Manager Styles (Timeline & Edit)
+           ========================================= */
+        .timeline-container {
+            width: 100%; overflow-x: auto; background-color: #ffffff; border: 1px solid #e2e8f0;
+            border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); position: relative; padding-bottom: 8px;
+        }
+        .timeline-table { width: 100%; min-width: 1200px; border-collapse: separate; border-spacing: 0; }
+        .timeline-table th, .timeline-table td {
+            border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; padding: 0;
+            height: 4rem; vertical-align: top; position: relative; box-sizing: border-box;
+        }
+        .timeline-table thead th {
+            background-color: #f8fafc; color: #64748b; font-size: 0.75rem; font-weight: 700;
+            text-align: center; vertical-align: middle; position: sticky; top: 0; z-index: 20;
+            padding: 0.75rem 0; border-bottom: 2px solid #e2e8f0;
+        }
+        .timeline-table tbody th {
+            background-color: #ffffff; color: #1e293b; font-size: 0.9rem; font-weight: 700;
+            min-width: 160px; max-width: 160px; position: sticky; left: 0; z-index: 10;
+            text-align: left; padding: 0 1rem; vertical-align: middle; border-right: 2px solid #e2e8f0;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 4px 0 10px -5px rgba(0,0,0,0.05);
+        }
+        .task-bar {
+            position: absolute; top: 6px; left: 1px; right: 1px; bottom: 6px; border-radius: 6px;
+            padding: 0 0.5rem; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; white-space: nowrap; z-index: 5; transition: transform 0.1s; cursor: pointer;
+        }
+        .task-bar:hover { z-index: 30; transform: scaleY(1.1) scaleX(1.01); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        
+        /* Task Colors */
+        .task-bar.pair-task { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
+        .task-bar.briefing-task { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
+        .task-bar.money-task { background: #fef9c3; color: #854d0e; border-left: 4px solid #eab308; }
+        .task-bar.free-task { background: #f8fafc; color: #94a3b8; border: 1px dashed #cbd5e1; box-shadow: none; }
+        .task-bar.parking-task { background: #dbeafe; color: #1e40af; border-left: 4px solid #3b82f6; }
+        .task-bar.lock-task, .task-bar.toolbox-task, .task-bar.handoff-task { background: #f3e8ff; color: #6b21a8; border-left: 4px solid #a855f7; }
+        .task-bar.alba-close-task { background: #ffe4e6; color: #be123c; border-left: 4px solid #f43f5e; }
+        .task-bar.staff-15min-task, .task-bar.special-opening-task { background: #cffafe; color: #155e75; border-left: 4px solid #06b6d4; }
+
+        /* Edit Table */
+        .task-table { width: 100%; border-collapse: collapse; }
+        .task-table th { text-align: left; padding: 0.75rem 1rem; font-size: 0.75rem; font-weight: 700; color: #64748b; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+        .task-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+
+        /* Shared Modals */
+        .modal-overlay, .select-modal-overlay {
+            position: fixed; inset: 0; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem;
+        }
+        .modal-content, .select-modal-content {
+            background: white; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            width: 100%; max-width: 500px; overflow: hidden; animation: modalIn 0.2s ease-out forwards;
+        }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .select-modal-body { max-height: 60vh; overflow-y: auto; }
+        .select-modal-option { padding: 0.75rem 1.25rem; cursor: pointer; border-bottom: 1px solid #f1f5f9; transition: background 0.2s; font-size: 0.95rem; font-weight: 500; }
+        .select-modal-option:hover { background-color: #f8fafc; }
+        .select-modal-option.selected { background-color: #eff6ff; color: #2563eb; font-weight: 700; }
+        .custom-select-button {
+            width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem;
+            background: white; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-size: 0.875rem; transition: all 0.2s; text-align: left; height: 2.5rem;
+        }
+        .custom-select-button:hover { border-color: #94a3b8; }
+        .custom-select-button.placeholder { color: #94a3b8; }
+
+        @media (max-width: 767px) {
+            .task-table thead { display: none; }
+            .task-table tr { display: block; margin-bottom: 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 1rem; background: white; }
+            .task-table td { display: block; padding: 0.25rem 0; border: none; }
+            .task-table td::before { content: attr(data-label); font-weight: 700; font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 0.1rem; }
+        }
     </style>
 </head>
 <body class="antialiased pb-20">
 
-    <!-- Header -->
-    <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/60">
-        <div class="container mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <a href="#" class="flex items-center gap-2 group">
-                <span class="text-xl font-black tracking-tighter text-slate-800 group-hover:text-indigo-600 transition-colors">
-                    GARDEN<span class="text-indigo-600 group-hover:text-slate-800 transition-colors">BOT</span>
-                </span>
-            </a>
-            <span id="currentDate" class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full hidden sm:inline-block tracking-wide"></span>
-        </div>
-    </header>
-
-    <main>
-        <!-- Hero Slider -->
-        <section class="relative pt-8 pb-12 sm:pt-12 sm:pb-20 bg-white rounded-b-[2.5rem] shadow-sm overflow-hidden">
-            <div class="container mx-auto px-4 sm:px-6 text-center">
-                <div class="relative w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl shadow-indigo-900/10 border border-slate-100">
-                    <div class="aspect-[16/9] bg-slate-900 flex items-center justify-center">
-                        <img src="sinsou1.jpg" class="w-full h-full object-contain" alt="新装開店">
-                    </div>
-                </div>
-                
-                <div class="mt-10 fade-in-up" style="animation-delay: 0.1s;">
-                    <h1 class="text-3xl sm:text-5xl font-black text-slate-800 tracking-tight leading-tight text-pretty">
-                        最新台の情報を、<br class="sm:hidden">もっと<span class="text-indigo-600 inline-block">スマート</span>に。
-                    </h1>
-                    <p class="mt-4 text-slate-500 font-medium text-sm sm:text-base text-pretty fade-in-up" style="animation-delay: 0.2s;">
-                        ガーデン八潮の<span class="word-keep">最新スペック</span>・<span class="word-keep">イベント情報</span>を<br class="hidden sm:inline">AIがわかりやすくお届けします。
-                    </p>
-                </div>
+    <!-- =========================================
+         【画面1】顧客向け (GARDEN BOT)
+         ========================================= -->
+    <div id="app-customer" class="transition-opacity duration-300">
+        <!-- Header -->
+        <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/60">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <a href="#" class="flex items-center gap-2 group">
+                    <span class="text-xl font-black tracking-tighter text-slate-800 group-hover:text-indigo-600 transition-colors">
+                        GARDEN<span class="text-indigo-600 group-hover:text-slate-800 transition-colors">BOT</span>
+                    </span>
+                </a>
+                <span id="currentDate" class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full hidden sm:inline-block tracking-wide"></span>
             </div>
-        </section>
+        </header>
 
-        <!-- Action Button -->
-        <div class="container mx-auto px-4 -mt-8 sm:-mt-10 relative z-10 fade-in-up" style="animation-delay: 0.3s;">
-            <div id="newOpeningButton" class="group cursor-pointer bg-white rounded-2xl shadow-xl shadow-indigo-900/5 border border-slate-100 p-6 sm:p-8 max-w-xl mx-auto hover:translate-y-[-4px] hover:shadow-2xl transition-all duration-300">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-5">
-                        <div class="bg-indigo-50 text-indigo-600 p-4 rounded-2xl shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
-                            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-                        </div>
-                        <div>
-                            <h2 class="text-xl sm:text-2xl font-bold text-slate-800 group-hover:text-indigo-700 transition-colors">新装開店情報</h2>
-                            <p class="text-slate-500 text-sm sm:text-sm font-medium mt-0.5">12月8日導入機種のスペック詳細</p>
+        <main>
+            <!-- Hero Slider -->
+            <section class="relative pt-8 pb-12 sm:pt-12 sm:pb-20 bg-white rounded-b-[2.5rem] shadow-sm overflow-hidden">
+                <div class="container mx-auto px-4 sm:px-6 text-center">
+                    <div class="relative w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl shadow-indigo-900/10 border border-slate-100">
+                        <div class="aspect-[16/9] bg-slate-900 flex items-center justify-center">
+                            <img src="sinsou1.jpg" class="w-full h-full object-contain" alt="新装開店">
                         </div>
                     </div>
-                    <div class="bg-slate-100 rounded-full p-2 text-slate-400 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pachinko Strategy -->
-        <section class="container mx-auto px-4 mt-16 fade-in-up" style="animation-delay: 0.35s;">
-            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm max-w-4xl mx-auto overflow-hidden">
-                <!-- Header -->
-                <div class="bg-sky-50/80 px-6 py-4 border-b border-sky-100 flex items-center gap-3">
-                    <span class="flex h-2.5 w-2.5 rounded-full bg-sky-500"></span>
-                    <h2 class="font-bold text-sky-900 text-lg">パチンコチームのご案内</h2>
-                </div>
-                
-                <div class="p-6 sm:p-10">
-                    <div class="mb-8 text-center sm:text-left">
-                        <h3 class="text-2xl font-black text-slate-800 leading-tight text-pretty">
-                            今週の<span class="text-sky-600 word-keep">パチンコ戦略</span>
-                        </h3>
-                        <p class="text-slate-500 mt-2 font-medium">週末の時差島15時稼働・満台を目指して徹底強化！</p>
+                    
+                    <div class="mt-8 fade-in-up" style="animation-delay: 0.1s;">
+                        <h1 class="text-3xl sm:text-5xl font-black text-slate-800 tracking-tight leading-tight text-pretty">
+                            最新台の情報を、<br class="sm:hidden">もっと<span class="text-indigo-600 inline-block">スマート</span>に。
+                        </h1>
                     </div>
 
-                    <!-- Main Feature: Eva -->
-                    <div class="mb-6 bg-gradient-to-br from-purple-50 to-white p-6 rounded-2xl border border-purple-100 relative overflow-hidden shadow-sm">
-                        <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center relative z-10">
-                            <div class="bg-purple-100 text-purple-600 p-3 rounded-xl shrink-0">
-                                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    <!-- ▼▼▼ スタッフ用タスクボタン (追加) ▼▼▼ -->
+                    <div class="mt-6 fade-in-up" style="animation-delay: 0.2s;">
+                        <button onclick="switchView('staff')" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold px-6 py-3 rounded-full shadow-lg shadow-slate-200 transition-all transform hover:scale-105">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                            <span>本日のタスクを確認する (スタッフ用)</span>
+                        </button>
+                    </div>
+                    <!-- ▲▲▲ 追加ここまで ▲▲▲ -->
+                </div>
+            </section>
+
+            <!-- Action Button (新装開店情報) -->
+            <div class="container mx-auto px-4 -mt-8 relative z-10 fade-in-up" style="animation-delay: 0.3s;">
+                <div id="newOpeningButton" class="group cursor-pointer bg-white rounded-2xl shadow-xl shadow-indigo-900/5 border border-slate-100 p-6 sm:p-8 max-w-xl mx-auto hover:translate-y-[-4px] hover:shadow-2xl transition-all duration-300">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-5">
+                            <div class="bg-indigo-50 text-indigo-600 p-4 rounded-2xl shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+                                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
                             </div>
                             <div>
-                                <div class="text-xs font-bold text-purple-600 mb-1 flex items-center gap-2">
-                                    <span class="bg-purple-600 text-white px-2 py-0.5 rounded-full text-[10px]">注目</span>
-                                    11/26 (水) ～ 12/2 (火)
+                                <h2 class="text-xl sm:text-2xl font-bold text-slate-800 group-hover:text-indigo-700 transition-colors">新装開店情報</h2>
+                                <p class="text-slate-500 text-sm sm:text-sm font-medium mt-0.5">12月8日導入機種のスペック詳細</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-100 rounded-full p-2 text-slate-400 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pachinko & Slot Strategy (省略せずそのまま) -->
+            <section class="container mx-auto px-4 mt-16 fade-in-up" style="animation-delay: 0.35s;">
+                <div class="bg-white rounded-3xl border border-slate-100 shadow-sm max-w-4xl mx-auto overflow-hidden">
+                    <div class="bg-sky-50/80 px-6 py-4 border-b border-sky-100 flex items-center gap-3">
+                        <span class="flex h-2.5 w-2.5 rounded-full bg-sky-500"></span>
+                        <h2 class="font-bold text-sky-900 text-lg">パチンコチームのご案内</h2>
+                    </div>
+                    <div class="p-6 sm:p-10">
+                        <div class="mb-8 text-center sm:text-left">
+                            <h3 class="text-2xl font-black text-slate-800 leading-tight text-pretty">今週の<span class="text-sky-600 word-keep">パチンコ戦略</span></h3>
+                            <p class="text-slate-500 mt-2 font-medium">週末の時差島15時稼働・満台を目指して徹底強化！</p>
+                        </div>
+                        <div class="mb-6 bg-gradient-to-br from-purple-50 to-white p-6 rounded-2xl border border-purple-100 relative overflow-hidden shadow-sm">
+                            <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center relative z-10">
+                                <div class="bg-purple-100 text-purple-600 p-3 rounded-xl shrink-0">
+                                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                 </div>
-                                <div class="font-bold text-slate-800 text-lg sm:text-xl mb-1">3週連続 エヴァシリーズ推奨</div>
-                                <p class="text-sm text-slate-600">市場内での存在感を確立するため、3週連続で徹底プッシュ！</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Sub Features: Grid -->
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <!-- Enen 2 -->
-                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group hover:border-orange-300 transition-colors">
-                            <div class="absolute top-4 right-4 text-orange-200 group-hover:text-orange-100 transition-colors">
-                                <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.298-2.54a1 1 0 00-1.712-.813c-.769 1.111-1.202 2.59-1.07 4.156.126 1.503.737 2.87 1.696 3.91A6.974 6.974 0 0010 16.924c2.275 0 4.295-1.063 5.568-2.73 1.22-1.597 1.543-3.708.766-5.618a8.91 8.91 0 00-3.94-4.023zM10 18a5.976 5.976 0 01-3.618-1.22C5.973 16.295 5.513 15.487 5.26 14.55c-.066-.246-.118-.492-.158-.737.91.758 1.94 1.353 2.99 1.353 1.96 0 3.584-1.26 4.312-3.084.184-.462.336-.938.455-1.412a6.926 6.926 0 011.697 3.58c.28 1.05.023 2.146-.662 2.97A4.973 4.973 0 0110 18z" clip-rule="evenodd" /></svg>
-                            </div>
-                            <div class="text-xs font-bold text-orange-500 mb-1">時差島 & 平日・週末共通</div>
-                            <div class="font-bold text-slate-800 mb-2 text-lg">炎炎ノ消防隊2</div>
-                            <p class="text-sm text-slate-600 leading-relaxed">
-                                時差島営業の主軸機種。平日も週末も引き続きおすすめ！
-                            </p>
-                        </div>
-
-                        <!-- Karakuri 2 -->
-                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group hover:border-indigo-300 transition-colors">
-                            <div class="text-xs font-bold text-slate-500 mb-1">時差がない日は…</div>
-                            <div class="font-bold text-slate-800 mb-2 text-lg">からくりサーカス2</div>
-                            <p class="text-sm text-slate-600 leading-relaxed">
-                                近隣状況を見て調整。時差対象外のタイミングでは「からくり2」が推奨！
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Slot Strategy -->
-        <section class="container mx-auto px-4 mt-16 fade-in-up" style="animation-delay: 0.4s;">
-            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm max-w-4xl mx-auto overflow-hidden">
-                <div class="bg-slate-50/80 px-6 py-4 border-b border-slate-100 flex items-center gap-3">
-                    <span class="flex h-2.5 w-2.5 rounded-full bg-indigo-500"></span>
-                    <h2 class="font-bold text-slate-700 text-lg">スロットチームのご案内</h2>
-                </div>
-                <div class="p-6 sm:p-10">
-                    <div class="mb-8 text-center sm:text-left">
-                        <h3 class="text-2xl font-black text-slate-800 leading-tight text-pretty">
-                            <span class="word-keep">年一の祭典</span><span class="text-rose-600 word-keep">「28日」</span>に向けた<br class="sm:hidden">集大成ウィーク
-                        </h3>
-                        <p class="text-slate-500 mt-2 font-medium">11月ラスト、定休日なしで駆け抜けます！</p>
-                    </div>
-
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                            <div class="text-xs font-bold text-indigo-500 mb-1">11/24 (月)</div>
-                            <div class="font-bold text-slate-800 mb-2">極上マッティー × みーまる</div>
-                            <p class="text-sm text-slate-600 leading-relaxed text-pretty">スロット全般＆物販開催。朝からの盛り上がり必至！W来店で徹底アピール。</p>
-                        </div>
-                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                            <div class="text-xs font-bold text-slate-500 mb-1">11/25 (火) ～ 27 (木)</div>
-                            <div class="font-bold text-slate-800 mb-2">夕方時差狙い & 月周年</div>
-                            <p class="text-sm text-slate-600 leading-relaxed text-pretty">27日は月周年日2nd！ポンコツ珍道中収録。夕方からの時差開放も見逃せない。</p>
-                        </div>
-                        <div class="sm:col-span-2 bg-rose-50/50 p-6 rounded-xl border border-rose-100 relative overflow-hidden">
-                            <div class="relative z-10">
-                                <div class="text-xs font-bold text-rose-600 mb-1 flex items-center gap-2">
-                                    <span class="bg-rose-600 text-white px-2 py-0.5 rounded-full text-[10px]">最重要</span>
-                                    11/28 (金)
+                                <div>
+                                    <div class="text-xs font-bold text-purple-600 mb-1 flex items-center gap-2"><span class="bg-purple-600 text-white px-2 py-0.5 rounded-full text-[10px]">注目</span>11/26 (水) ～ 12/2 (火)</div>
+                                    <div class="font-bold text-slate-800 text-lg sm:text-xl mb-1">3週連続 エヴァシリーズ推奨</div>
+                                    <p class="text-sm text-slate-600">市場内での存在感を確立するため、3週連続で徹底プッシュ！</p>
                                 </div>
-                                <div class="font-bold text-rose-900 text-lg mb-2">年一「1128」× 8の日</div>
-                                <p class="text-sm text-rose-800 leading-relaxed text-pretty">
-                                    <span class="font-bold">【八潮上空 / 真骨超 / くずパチ収録】</span><br>
-                                    年に一度のお祭り日。スロット「真骨超」、パチンコ「くずパチ」のWインパクト。
-                                </p>
                             </div>
                         </div>
-                        <div class="sm:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                            <div class="text-xs font-bold text-green-600 mb-1">11/29 (土) ～ 30 (日)</div>
-                            <div class="font-bold text-slate-800 mb-2">週末豪華リレー</div>
-                            <p class="text-sm text-slate-600 leading-relaxed text-pretty">
-                                29日：天草さん+くろむさん（塊狙い） / 30日：スロパチfor埼玉（AT機＆ジャグラー）
-                            </p>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group hover:border-orange-300 transition-colors">
+                                <div class="text-xs font-bold text-orange-500 mb-1">時差島 & 平日・週末共通</div>
+                                <div class="font-bold text-slate-800 mb-2 text-lg">炎炎ノ消防隊2</div>
+                                <p class="text-sm text-slate-600 leading-relaxed">時差島営業の主軸機種。平日も週末も引き続きおすすめ！</p>
+                            </div>
+                            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group hover:border-indigo-300 transition-colors">
+                                <div class="text-xs font-bold text-slate-500 mb-1">時差がない日は…</div>
+                                <div class="font-bold text-slate-800 mb-2 text-lg">からくりサーカス2</div>
+                                <p class="text-sm text-slate-600 leading-relaxed">近隣状況を見て調整。時差対象外のタイミングでは「からくり2」が推奨！</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- Calendar & Floor Map (Vertical Layout) -->
-        <section class="container mx-auto px-4 mt-12 max-w-4xl">
-            
-            <!-- Calendar Section -->
-            <div class="bg-white rounded-3xl border border-slate-100 shadow-lg mb-12 overflow-hidden">
-                <div class="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-50">
-                    <div>
-                        <h2 class="text-3xl font-black text-slate-800">Event Calendar</h2>
-                        <p class="text-slate-400 text-sm font-bold mt-1">本日のイベント情報</p>
+            <section class="container mx-auto px-4 mt-16 fade-in-up" style="animation-delay: 0.4s;">
+                <div class="bg-white rounded-3xl border border-slate-100 shadow-sm max-w-4xl mx-auto overflow-hidden">
+                    <div class="bg-slate-50/80 px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+                        <span class="flex h-2.5 w-2.5 rounded-full bg-indigo-500"></span>
+                        <h2 class="font-bold text-slate-700 text-lg">スロットチームのご案内</h2>
                     </div>
-                    <button id="calendarToggleButton" class="text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors">
-                        今月全体を見る
-                    </button>
-                </div>
-
-                <div class="p-6 sm:p-8">
-                    <!-- Today's Event Display -->
-                    <div id="todayEventContainer" class="bg-white min-h-[120px] flex items-center justify-center">
-                        <div class="animate-pulse flex flex-col items-center gap-3 w-full">
-                            <div class="h-4 bg-slate-100 rounded w-1/3"></div>
-                            <div class="h-20 bg-slate-50 rounded-xl w-full"></div>
+                    <div class="p-6 sm:p-10">
+                        <div class="mb-8 text-center sm:text-left">
+                            <h3 class="text-2xl font-black text-slate-800 leading-tight text-pretty"><span class="word-keep">年一の祭典</span><span class="text-rose-600 word-keep">「28日」</span>に向けた<br class="sm:hidden">集大成ウィーク</h3>
+                            <p class="text-slate-500 mt-2 font-medium">11月ラスト、定休日なしで駆け抜けます！</p>
+                        </div>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                                <div class="text-xs font-bold text-indigo-500 mb-1">11/24 (月)</div>
+                                <div class="font-bold text-slate-800 mb-2">極上マッティー × みーまる</div>
+                                <p class="text-sm text-slate-600 leading-relaxed text-pretty">スロット全般＆物販開催。朝からの盛り上がり必至！W来店で徹底アピール。</p>
+                            </div>
+                            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                                <div class="text-xs font-bold text-slate-500 mb-1">11/25 (火) ～ 27 (木)</div>
+                                <div class="font-bold text-slate-800 mb-2">夕方時差狙い & 月周年</div>
+                                <p class="text-sm text-slate-600 leading-relaxed text-pretty">27日は月周年日2nd！ポンコツ珍道中収録。夕方からの時差開放も見逃せない。</p>
+                            </div>
+                            <div class="sm:col-span-2 bg-rose-50/50 p-6 rounded-xl border border-rose-100 relative overflow-hidden">
+                                <div class="relative z-10">
+                                    <div class="text-xs font-bold text-rose-600 mb-1 flex items-center gap-2"><span class="bg-rose-600 text-white px-2 py-0.5 rounded-full text-[10px]">最重要</span>11/28 (金)</div>
+                                    <div class="font-bold text-rose-900 text-lg mb-2">年一「1128」× 8の日</div>
+                                    <p class="text-sm text-rose-800 leading-relaxed text-pretty"><span class="font-bold">【八潮上空 / 真骨超 / くずパチ収録】</span><br>年に一度のお祭り日。スロット「真骨超」、パチンコ「くずパチ」のWインパクト。</p>
+                                </div>
+                            </div>
+                            <div class="sm:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                                <div class="text-xs font-bold text-green-600 mb-1">11/29 (土) ～ 30 (日)</div>
+                                <div class="font-bold text-slate-800 mb-2">週末豪華リレー</div>
+                                <p class="text-sm text-slate-600 leading-relaxed text-pretty">29日：天草さん+くろむさん（塊狙い） / 30日：スロパチfor埼玉（AT機＆ジャグラー）</p>
+                            </div>
                         </div>
                     </div>
-
-                    <!-- Full Calendar (Hidden by default) -->
-                    <div id="fullCalendarContainer" class="hidden mt-6 pt-6 border-t border-slate-100">
-                        <div id="calendarGrid" class="grid grid-cols-7 gap-2 sm:gap-3 mb-6"></div>
-                        <div id="selectedEventDetails" class="bg-slate-50 rounded-xl p-5 border border-slate-100 min-h-[100px] flex items-center justify-center text-slate-400 text-sm font-medium">
-                            日付をタップして詳細を確認
-                        </div>
-                    </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Floor Map Section with QSC -->
-            <div class="bg-white rounded-3xl border border-slate-100 shadow-lg overflow-hidden">
-                <!-- QSC Button Area -->
-                <div class="bg-rose-50 border-b border-rose-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div class="flex items-center gap-2">
-                         <span class="bg-rose-500 text-white p-1.5 rounded-lg">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                        </span>
+            <!-- Calendar & Floor Map -->
+            <section class="container mx-auto px-4 mt-12 max-w-4xl">
+                <div class="bg-white rounded-3xl border border-slate-100 shadow-lg mb-12 overflow-hidden">
+                    <div class="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-50">
                         <div>
-                            <h3 class="font-bold text-rose-900 text-base">QSCチェック (スタッフ共有)</h3>
-                            <p class="text-xs text-rose-700 font-medium" id="qscUnfinishedCount">未実施項目: 読み込み中...</p>
+                            <h2 class="text-3xl font-black text-slate-800">Event Calendar</h2>
+                            <p class="text-slate-400 text-sm font-bold mt-1">本日のイベント情報</p>
+                        </div>
+                        <button id="calendarToggleButton" class="text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors">今月全体を見る</button>
+                    </div>
+                    <div class="p-6 sm:p-8">
+                        <div id="todayEventContainer" class="bg-white min-h-[120px] flex items-center justify-center">
+                            <div class="animate-pulse flex flex-col items-center gap-3 w-full">
+                                <div class="h-4 bg-slate-100 rounded w-1/3"></div>
+                                <div class="h-20 bg-slate-50 rounded-xl w-full"></div>
+                            </div>
+                        </div>
+                        <div id="fullCalendarContainer" class="hidden mt-6 pt-6 border-t border-slate-100">
+                            <div id="calendarGrid" class="grid grid-cols-7 gap-2 sm:gap-3 mb-6"></div>
+                            <div id="selectedEventDetails" class="bg-slate-50 rounded-xl p-5 border border-slate-100 min-h-[100px] flex items-center justify-center text-slate-400 text-sm font-medium">日付をタップして詳細を確認</div>
                         </div>
                     </div>
-                    <button id="openQSCButton" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-rose-200 transition-all flex items-center justify-center gap-2">
-                        リストを開く
-                    </button>
                 </div>
 
-                <div class="p-6 sm:p-8 border-b border-slate-50">
-                    <h2 class="text-2xl font-bold text-slate-800">Floor Map</h2>
-                    <p class="text-slate-400 text-xs font-bold mt-1">フロアマップ</p>
-                </div>
-                <div class="p-4 sm:p-8">
-                    <div class="bg-slate-50 rounded-xl border border-slate-200 p-2">
-                        <img src="simazu.jpg" alt="Map" class="w-full rounded-lg shadow-sm" onerror="this.parentNode.innerHTML='<div class=\'py-20 text-center text-slate-400 font-bold\'>マップ画像を読み込めませんでした</div>'">
+                <!-- QSC -->
+                <div class="bg-white rounded-3xl border border-slate-100 shadow-lg overflow-hidden">
+                    <div class="bg-rose-50 border-b border-rose-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex items-center gap-2">
+                             <span class="bg-rose-500 text-white p-1.5 rounded-lg">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                            </span>
+                            <div>
+                                <h3 class="font-bold text-rose-900 text-base">QSCチェック (スタッフ共有)</h3>
+                                <p class="text-xs text-rose-700 font-medium" id="qscUnfinishedCount">未実施項目: 読み込み中...</p>
+                            </div>
+                        </div>
+                        <button id="openQSCButton" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-rose-200 transition-all flex items-center justify-center gap-2">リストを開く</button>
                     </div>
+                    <div class="p-6 sm:p-8 border-b border-slate-50">
+                        <h2 class="text-2xl font-bold text-slate-800">Floor Map</h2>
+                        <p class="text-slate-400 text-xs font-bold mt-1">フロアマップ</p>
+                    </div>
+                    <div class="p-4 sm:p-8">
+                        <div class="bg-slate-50 rounded-xl border border-slate-200 p-2">
+                            <img src="simazu.jpg" alt="Map" class="w-full rounded-lg shadow-sm" onerror="this.parentNode.innerHTML='<div class=\'py-20 text-center text-slate-400 font-bold\'>マップ画像を読み込めませんでした</div>'">
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        <footer class="mt-20 py-10 text-center border-t border-slate-200 bg-slate-50">
+            <p class="text-xs font-bold text-slate-400 tracking-widest">&copy; 2025 GARDEN YASHIO BOT</p>
+        </footer>
+    </div>
+
+
+    <!-- =========================================
+         【画面2】スタッフ向け (TASK MANAGER)
+         ========================================= -->
+    <div id="app-staff" class="hidden min-h-screen bg-slate-50 text-slate-800 pb-20">
+        <!-- Staff Header -->
+        <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/60">
+            <div class="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <button onclick="switchView('customer')" class="mr-2 p-2 rounded-full hover:bg-slate-100 transition-colors" title="顧客画面に戻る">
+                        <svg class="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    </button>
+                    <span class="text-xl font-black tracking-tighter text-slate-800">
+                        TASK<span class="text-indigo-600">MANAGER</span>
+                    </span>
+                </div>
+                <button id="edit-mode-button" onclick="showPasswordModal()" class="text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full transition-colors">
+                    管理者編集
+                </button>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+            <!-- Title & Date -->
+            <div class="text-center mb-10">
+                <h1 class="text-3xl sm:text-4xl font-black text-slate-800 tracking-tight mb-6 text-balance">
+                    開閉店タスク<span class="text-indigo-600">割り振り</span>
+                </h1>
+                <div class="inline-flex items-center bg-white px-5 py-3 rounded-2xl shadow-sm border border-slate-200">
+                    <span class="text-slate-400 mr-3 font-bold text-xs tracking-widest">DATE</span>
+                    <input type="date" id="date-picker" onchange="handleDateChange(this.value)" class="font-bold text-lg text-slate-700 bg-transparent focus:outline-none cursor-pointer">
                 </div>
             </div>
 
-        </section>
-    </main>
+            <!-- Tabs -->
+            <div class="flex justify-center mb-10">
+                <div class="bg-slate-200 p-1 rounded-xl inline-flex shadow-inner">
+                    <button id="tab-open" class="px-6 py-2.5 rounded-lg text-sm font-bold transition-all bg-white text-indigo-600 shadow-sm" onclick="showSubTab('open')">☀ 開店作業 (早番)</button>
+                    <button id="tab-close" class="px-6 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-500 hover:text-slate-700" onclick="showSubTab('close')">🌙 閉店作業 (遅番)</button>
+                </div>
+            </div>
 
-    <footer class="mt-20 py-10 text-center border-t border-slate-200 bg-slate-50">
-        <p class="text-xs font-bold text-slate-400 tracking-widest">&copy; 2025 GARDEN YASHIO BOT</p>
-    </footer>
+            <!-- VIEW MODE (Timeline) -->
+            <div id="view-mode-container" class="space-y-12">
+                <div id="view-content-open" class="animate-fade-in space-y-12">
+                    <section>
+                        <div class="flex items-center gap-3 mb-4 px-2"><div class="w-1.5 h-6 bg-indigo-500 rounded-full"></div><h2 class="text-xl font-bold text-slate-800">早番 社員タイムライン</h2></div>
+                        <div id="summary-open-employee-container-desktop" class="hidden md:block"></div>
+                        <div id="summary-open-employee-container-mobile" class="md:hidden"></div>
+                    </section>
+                    <section>
+                        <div class="flex items-center gap-3 mb-4 px-2"><div class="w-1.5 h-6 bg-emerald-500 rounded-full"></div><h2 class="text-xl font-bold text-slate-800">早番 アルバイトタイムライン</h2></div>
+                        <div id="summary-open-alba-container-desktop" class="hidden md:block"></div>
+                        <div id="summary-open-alba-container-mobile" class="md:hidden"></div>
+                    </section>
+                </div>
+                <div id="view-content-close" class="hidden animate-fade-in space-y-12">
+                    <section>
+                        <div class="flex items-center gap-3 mb-4 px-2"><div class="w-1.5 h-6 bg-indigo-500 rounded-full"></div><h2 class="text-xl font-bold text-slate-800">遅番 社員タイムライン</h2></div>
+                        <div id="summary-close-employee-container-desktop" class="hidden md:block"></div>
+                        <div id="summary-close-employee-container-mobile" class="md:hidden"></div>
+                    </section>
+                    <section>
+                        <div class="flex items-center gap-3 mb-4 px-2"><div class="w-1.5 h-6 bg-emerald-500 rounded-full"></div><h2 class="text-xl font-bold text-slate-800">遅番 アルバイトタイムライン</h2></div>
+                        <div id="summary-close-alba-container-desktop" class="hidden md:block"></div>
+                        <div id="summary-close-alba-container-mobile" class="md:hidden"></div>
+                    </section>
+                </div>
+            </div>
 
-    <!-- ================= MODALS ================= -->
+            <!-- EDIT MODE -->
+            <div id="edit-mode-container" class="hidden space-y-10">
+                <!-- OPEN EDIT -->
+                <div id="edit-content-open" class="space-y-10">
+                    <section class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
+                        <h2 class="text-lg font-bold text-slate-800 mb-1">指定タスク担当者 (開店)</h2>
+                        <p class="text-slate-500 text-sm mb-6">固定で行う業務の担当者を指定してください。</p>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">金銭業務 (7:00-8:15)</label>
+                                <button id="fixed-money_count-btn" class="custom-select-button bg-slate-50" onclick="openFixedStaffSelect('fixed_money_count', 'early_staff_candidates', '金銭業務 担当者')"><span class="text-slate-400">選択してください</span></button>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">倉庫 (9:15-9:45)</label>
+                                <button id="fixed_open_warehouse-btn" class="custom-select-button bg-slate-50" onclick="openFixedStaffSelect('fixed_open_warehouse', 'open_staff_candidates', '倉庫(開店) 担当者')"><span class="text-slate-400">選択してください</span></button>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-lg font-bold text-slate-800">早番 社員リスト</h2>
+                            <button onclick="autoAssignTasks('early', 'open')" class="text-xs font-bold bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full hover:bg-indigo-100 transition">⚡ 自動割振り</button>
+                        </div>
+                        <div class="mb-6 flex gap-3">
+                            <button id="add-staff-button-early" class="custom-select-button flex-grow" onclick="openStaffSelect('early', 'employees')"><span class="text-slate-400">スタッフを追加...</span></button>
+                            <button onclick="addStaff('early')" class="bg-indigo-600 text-white font-bold px-6 rounded-lg hover:bg-indigo-700 transition">追加</button>
+                        </div>
+                        <div class="overflow-x-auto"><table class="task-table"><thead><tr><th>氏名</th><th>開始</th><th>終了</th><th>タスク</th><th>備考</th><th></th></tr></thead><tbody id="staff-list-open-early"></tbody></table></div>
+                    </section>
+                    <section class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-lg font-bold text-slate-800">早番 アルバイトリスト</h2>
+                            <button onclick="autoAssignTasks('late', 'open')" class="text-xs font-bold bg-emerald-50 text-emerald-600 px-4 py-2 rounded-full hover:bg-emerald-100 transition">⚡ 自動割振り</button>
+                        </div>
+                        <div class="mb-6 flex gap-3">
+                            <button id="add-staff-button-late" class="custom-select-button flex-grow" onclick="openStaffSelect('late', 'alba_early')"><span class="text-slate-400">スタッフを追加...</span></button>
+                            <button onclick="addStaff('late')" class="bg-emerald-600 text-white font-bold px-6 rounded-lg hover:bg-emerald-700 transition">追加</button>
+                        </div>
+                        <div class="overflow-x-auto"><table class="task-table"><thead><tr><th>氏名</th><th>開始</th><th>終了</th><th>タスク</th><th>備考</th><th></th></tr></thead><tbody id="staff-list-open-late"></tbody></table></div>
+                    </section>
+                </div>
+                <!-- CLOSE EDIT -->
+                <div id="edit-content-close" class="space-y-10 hidden">
+                    <section class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
+                        <h2 class="text-lg font-bold text-slate-800 mb-1">指定タスク担当者 (閉店)</h2>
+                        <div class="grid md:grid-cols-3 gap-6">
+                            <div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase">金銭回収</label><button id="fixed-money_collect-btn" class="custom-select-button bg-slate-50" onclick="openFixedStaffSelect('fixed_money_collect', 'closing_staff_candidates', '担当者')"><span class="text-slate-400">選択</span></button></div>
+                            <div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase">倉庫整理</label><button id="fixed-warehouses-btn" class="custom-select-button bg-slate-50" onclick="openFixedStaffSelect('fixed_warehouses', 'closing_staff_candidates', '担当者')"><span class="text-slate-400">選択</span></button></div>
+                            <div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase">カウンター</label><button id="fixed-counters-btn" class="custom-select-button bg-slate-50" onclick="openFixedStaffSelect('fixed_counters', 'closing_staff_candidates', '担当者')"><span class="text-slate-400">選択</span></button></div>
+                        </div>
+                    </section>
+                    <section class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-lg font-bold text-slate-800">遅番 社員リスト</h2>
+                            <button onclick="autoAssignTasks('closing_employee', 'close')" class="text-xs font-bold bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full hover:bg-indigo-100 transition">⚡ 自動割振り</button>
+                        </div>
+                        <div class="mb-6 flex gap-3">
+                            <button id="add-staff-button-closing_employee" class="custom-select-button flex-grow" onclick="openStaffSelect('closing_employee', 'employees')"><span class="text-slate-400">スタッフを追加...</span></button>
+                            <button onclick="addStaff('closing_employee')" class="bg-indigo-600 text-white font-bold px-6 rounded-lg hover:bg-indigo-700 transition">追加</button>
+                        </div>
+                        <div class="overflow-x-auto"><table class="task-table"><thead><tr><th>氏名</th><th>開始</th><th>終了</th><th>タスク</th><th>備考</th><th></th></tr></thead><tbody id="staff-list-close-employee"></tbody></table></div>
+                    </section>
+                    <section class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-lg font-bold text-slate-800">遅番 アルバイトリスト</h2>
+                            <button onclick="autoAssignTasks('closing_alba', 'close')" class="text-xs font-bold bg-emerald-50 text-emerald-600 px-4 py-2 rounded-full hover:bg-emerald-100 transition">⚡ 自動割振り</button>
+                        </div>
+                        <div class="mb-6 flex gap-3">
+                            <button id="add-staff-button-closing_alba" class="custom-select-button flex-grow" onclick="openStaffSelect('closing_alba', 'alba_late')"><span class="text-slate-400">スタッフを追加...</span></button>
+                            <button onclick="addStaff('closing_alba')" class="bg-emerald-600 text-white font-bold px-6 rounded-lg hover:bg-emerald-700 transition">追加</button>
+                        </div>
+                        <div class="overflow-x-auto"><table class="task-table"><thead><tr><th>氏名</th><th>開始</th><th>終了</th><th>タスク</th><th>備考</th><th></th></tr></thead><tbody id="staff-list-close-alba"></tbody></table></div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
 
-    <!-- QSC Modal -->
+    <!-- ================= MODALS (Global) ================= -->
+    
+    <!-- QSC Modal (Customer) -->
     <div id="qscModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden modal-enter">
             <div class="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
@@ -295,68 +479,287 @@
                         <button id="qscTabFinished" class="px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all">完了済</button>
                     </div>
                 </div>
-                <button id="closeQscModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
+                <button id="closeQscModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
-            
-            <div class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6">
-                <div id="qscListContainer" class="space-y-3">
-                    <!-- Javascript populates this -->
-                </div>
-            </div>
-            
-            <div class="p-3 bg-white border-t border-slate-100 text-center">
-                <p class="text-xs text-slate-400 font-bold">チェックを入れると全員に即時反映されます</p>
-            </div>
+            <div class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6"><div id="qscListContainer" class="space-y-3"></div></div>
+            <div class="p-3 bg-white border-t border-slate-100 text-center"><p class="text-xs text-slate-400 font-bold">チェックを入れると全員に即時反映されます</p></div>
         </div>
     </div>
 
-    <!-- Existing Modals -->
+    <!-- Machine Modals (Customer) -->
     <div id="newOpeningModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden modal-enter">
             <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <h3 class="font-bold text-xl text-slate-800">導入機種リスト</h3>
-                <button id="closeNewOpeningModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
+                <button id="closeNewOpeningModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div id="newOpeningInfo" class="p-5 overflow-y-auto bg-slate-50/50"></div>
         </div>
     </div>
-
     <div id="machineDetailModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden z-[60] flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden modal-enter">
             <div class="bg-slate-800 p-6 sm:p-8 flex justify-between items-start shrink-0">
                 <h3 id="detailName" class="text-xl sm:text-2xl font-bold text-white leading-tight pr-4"></h3>
-                <button id="closeDetailModal" class="text-slate-400 hover:text-white transition">
-                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
+                <button id="closeDetailModal" class="text-slate-400 hover:text-white transition"><svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div class="p-6 sm:p-8 overflow-y-auto">
-                <div class="mb-8">
-                    <h4 class="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">SALES POINT</h4>
-                    <p id="detailPitch" class="text-slate-700 text-base sm:text-lg font-medium leading-loose tracking-wide text-justify text-pretty"></p>
-                </div>
+                <div class="mb-8"><h4 class="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">SALES POINT</h4><p id="detailPitch" class="text-slate-700 text-base sm:text-lg font-medium leading-loose tracking-wide text-justify text-pretty"></p></div>
                 <div class="grid sm:grid-cols-2 gap-6">
-                    <div class="bg-emerald-50 p-5 rounded-2xl border border-emerald-100">
-                        <div class="flex items-center gap-2 mb-3 text-emerald-700 font-bold">GOOD POINT</div>
-                        <ul id="detailPros" class="space-y-2 text-sm font-bold text-emerald-800"></ul>
-                    </div>
-                    <div class="bg-rose-50 p-5 rounded-2xl border border-rose-100">
-                        <div class="flex items-center gap-2 mb-3 text-rose-700 font-bold">BAD POINT</div>
-                        <ul id="detailCons" class="space-y-2 text-sm font-bold text-rose-800"></ul>
-                    </div>
+                    <div class="bg-emerald-50 p-5 rounded-2xl border border-emerald-100"><div class="flex items-center gap-2 mb-3 text-emerald-700 font-bold">GOOD POINT</div><ul id="detailPros" class="space-y-2 text-sm font-bold text-emerald-800"></ul></div>
+                    <div class="bg-rose-50 p-5 rounded-2xl border border-rose-100"><div class="flex items-center gap-2 mb-3 text-rose-700 font-bold">BAD POINT</div><ul id="detailCons" class="space-y-2 text-sm font-bold text-rose-800"></ul></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, collection, getDocs, doc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    <!-- Task Manager Modals (Staff) -->
+    <div id="password-modal" class="modal-overlay hidden">
+        <div class="modal-content p-8 text-center">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">管理者認証</h3>
+            <p class="text-sm text-slate-500 mb-6">パスワードを入力してください。</p>
+            <input id="password-input" type="password" class="w-full p-3 border border-slate-200 rounded-lg mb-4 bg-slate-50 text-center font-bold focus:border-indigo-500 focus:outline-none" placeholder="Password">
+            <p id="password-error" class="text-rose-500 text-xs font-bold mb-4 hidden">パスワードが違います</p>
+            <div class="flex gap-3 justify-center">
+                <button onclick="closePasswordModal()" class="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition">キャンセル</button>
+                <button onclick="checkPassword()" class="px-6 py-3 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">認証</button>
+            </div>
+        </div>
+    </div>
+    <div id="select-modal" class="select-modal-overlay hidden">
+        <div class="select-modal-content">
+            <div class="p-4 border-b border-slate-100 font-bold text-slate-700" id="select-modal-title">選択</div>
+            <div id="select-modal-body" class="select-modal-body"></div>
+            <div class="p-4 border-t border-slate-100 text-right"><button onclick="closeSelectModal()" class="text-sm font-bold text-slate-500 hover:text-slate-700">閉じる</button></div>
+        </div>
+    </div>
+    <div id="remarks-modal" class="modal-overlay hidden">
+        <div class="modal-content p-6">
+            <h3 class="text-lg font-bold text-slate-800 mb-1" id="remarks-modal-task"></h3>
+            <p class="text-xs font-bold text-slate-400 mb-4" id="remarks-modal-time"></p>
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-slate-700 text-sm font-medium leading-relaxed mb-6" id="remarks-modal-text"></div>
+            <button onclick="closeRemarksModal()" class="w-full py-3 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">閉じる</button>
+        </div>
+    </div>
+    <div id="delete-modal" class="modal-overlay hidden">
+        <div class="modal-content p-8 text-center">
+            <div class="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">削除確認</h3>
+            <p id="delete-modal-message" class="text-sm text-slate-500 mb-6"></p>
+            <div class="flex gap-3 justify-center">
+                <button onclick="cancelDelete()" class="px-6 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition">キャンセル</button>
+                <button onclick="confirmDelete()" class="px-6 py-2.5 rounded-xl font-bold bg-rose-600 text-white hover:bg-rose-700 transition shadow-lg shadow-rose-200">削除する</button>
+            </div>
+        </div>
+    </div>
 
-        const firebaseConfig = {
+    <!-- =========================================
+         LOGIC: Task Manager (Pure JS)
+         ========================================= -->
+    <script>
+        // Staff & Task Data
+        const masterStaffList = {
+            employees: ["関口 周吾", "鈴木優希", "鈴木 達也", "成田 健吾", "柳谷 圭亮", "石山峻冴", "小野坂隼", "若松脩斗", "生沼彪"],
+            alba_early: ["根岸 麻美", "五十嵐 由衣", "曲山 琴菜", "山北 桃香", "上地佑夏", "中村 仁美", "砂川 愛香", "村上麻衣", "小林夏美", "高橋瑞穂", "細田 竜成"],
+            alba_late: ["富岡 千尋", "浅羽駿汰", "堀切綾", "大山 真菜", "金田 愛伽", "梅津世那", "高橋 良維河", "立岩昭人"]
+        };
+        const openStaffCandidates = [...masterStaffList.employees, ...masterStaffList.alba_early].sort();
+        const closingStaffCandidates = [...masterStaffList.employees, ...masterStaffList.alba_late].sort();
+        const SPECIAL_TASKS = {
+            BRIEFING: { name: "朝礼", slots: 1, class: 'briefing-task' },
+            FREE_TASK: { name: "個人業務、自由時間", slots: 0, class: 'free-task' },
+            MONEY_COUNT: { name: "金銭業務", slots: 5, class: 'money-task' },
+            OUTSIDE_SALES: { name: "外販出し、新聞、岡持", slots: 1, class: 'staff-15min-task' },
+            P_CHECK: { name: "P台チェック", slots: 1, class: 'staff-15min-task' },
+            PROMOTION_CHECK: { name: "販促確認", slots: 1, class: 'staff-15min-task' },
+            OPEN_WAREHOUSE: { name: "倉庫(開店)", slots: 2, class: 'special-opening-task' },
+            LOTTERY: { name: "抽選（準備、片付け）", slots: 3, class: 'special-opening-task' },
+            S_CHECK: { name: "S台チェック、ユニメモ", slots: 2, class: 'special-opening-task' },
+            OVERALL_CHECK: { name: "全体確認", slots: 1, class: 'special-opening-task' },
+            TIME_LAG_POWER: { name: "時差島台電落とし", slots: 1, class: 'special-opening-task' },
+            MONEY_COLLECT: { name: "金銭回収", slots: 2, class: 'money-task' },
+            PARKING_EMP: { name: "立駐（社員）", slots: 1, class: 'parking-task' },
+            LOCK_CHECK: { name: "施錠・工具箱チェック", slots: 1, class: 'lock-task' },
+            HANDOFF_CLEANING: { name: "引継ぎ・事務所清掃", slots: 1, class: 'handoff-task' },
+            WAREHOUSE: { name: "倉庫整理", slots: 2, class: 'free-task' },
+            COUNTER_TASK: { name: "カウンター業務", slots: 1, class: 'alba-close-task' },
+            DRINKS_FLAGS: { name: "飲み残し・フラッグ確認", slots: 1, class: 'alba-close-task' },
+            PARKING_ALBA: { name: "立駐（アルバイト）", slots: 1, class: 'parking-task' },
+            HALL_REFILL: { name: "島上清掃・カード補充", slots: 1, class: 'alba-close-task' }
+        };
+        const taskLists = {
+            open: [SPECIAL_TASKS.MONEY_COUNT.name, SPECIAL_TASKS.OUTSIDE_SALES.name, SPECIAL_TASKS.P_CHECK.name, SPECIAL_TASKS.PROMOTION_CHECK.name, SPECIAL_TASKS.BRIEFING.name, SPECIAL_TASKS.OPEN_WAREHOUSE.name, SPECIAL_TASKS.LOTTERY.name, SPECIAL_TASKS.S_CHECK.name, SPECIAL_TASKS.OVERALL_CHECK.name, SPECIAL_TASKS.TIME_LAG_POWER.name, SPECIAL_TASKS.FREE_TASK.name],
+            close: [SPECIAL_TASKS.MONEY_COLLECT.name, SPECIAL_TASKS.WAREHOUSE.name, SPECIAL_TASKS.COUNTER_TASK.name, SPECIAL_TASKS.PARKING_EMP.name, SPECIAL_TASKS.LOCK_CHECK.name, SPECIAL_TASKS.HANDOFF_CLEANING.name, SPECIAL_TASKS.DRINKS_FLAGS.name, SPECIAL_TASKS.PARKING_ALBA.name, SPECIAL_TASKS.HALL_REFILL.name, SPECIAL_TASKS.FREE_TASK.name]
+        };
+
+        window.isEditing = false;
+        const EDIT_PASSWORD = "admin";
+        window.currentDate = '';
+        window.staffList = { early: [], late: [], closing_employee: [], closing_alba: [], fixed_money_count: "", fixed_open_warehouse: "", fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "" };
+        let deleteInfo = { type: null, sectionKey: null, staffIndex: null, taskIndex: null };
+
+        function generateTimeSlots(startTime, endTime, intervalMinutes) {
+            const slots = []; let [sH, sM] = startTime.split(':').map(Number); const [eH, eM] = endTime.split(':').map(Number);
+            let cur = sH * 60 + sM; const end = eH * 60 + eM;
+            while (cur <= end) { slots.push(`${String(Math.floor(cur/60)).padStart(2,'0')}:${String(cur%60).padStart(2,'0')}`); cur += intervalMinutes; }
+            return slots;
+        }
+        const openTimeSlots = generateTimeSlots('07:00', '10:00', 15);
+        const openAlbaTimeSlots = generateTimeSlots('09:00', '10:00', 15);
+        const closeTimeSlots = generateTimeSlots('22:45', '23:30', 15);
+        const openTimeIndexMap = new Map(); openTimeSlots.forEach((t, i) => openTimeIndexMap.set(t, i));
+        const openAlbaTimeIndexMap = new Map(); openAlbaTimeSlots.forEach((t, i) => openAlbaTimeIndexMap.set(t, i));
+        const closeTimeIndexMap = new Map(); closeTimeSlots.forEach((t, i) => closeTimeIndexMap.set(t, i));
+
+        // Global functions for HTML access
+        window.getTodayDateString = () => { const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`; };
+        
+        window.refreshCurrentView = function() {
+            updateStaffLists(); generateSummaryView();
+            const isOpen = document.getElementById('tab-open').classList.contains('bg-white');
+            showSubTab(isOpen ? 'open' : 'close'); setEditingMode(window.isEditing);
+            if (window.currentDate && document.getElementById('date-picker').value !== window.currentDate) document.getElementById('date-picker').value = window.currentDate;
+            updateFixedStaffButtons();
+        };
+
+        window.setupInitialView = function() {
+            setEditingMode(false); showSubTab('open'); updateStaffLists(); generateSummaryView(); updateFixedStaffButtons();
+            const picker = document.getElementById('date-picker'); if (!picker.value) picker.value = window.getTodayDateString();
+        };
+
+        function updateFixedStaffButtons() {
+            const btns = [{ id: 'fixed-money_count-btn', k: 'fixed_money_count' }, { id: 'fixed_open_warehouse-btn', k: 'fixed_open_warehouse' }, { id: 'fixed-money_collect-btn', k: 'fixed_money_collect' }, { id: 'fixed-warehouses-btn', k: 'fixed_warehouses' }, { id: 'fixed-counters-btn', k: 'fixed_counters' }];
+            btns.forEach(i => { const b = document.getElementById(i.id); if(b) updateSelectButton(b, window.staffList[i.k] || "選択してください", !window.staffList[i.k]); });
+        }
+
+        window.showSubTab = function(tabName) {
+            const isOpen = tabName === 'open';
+            document.getElementById('edit-content-open').classList.toggle('hidden', !isOpen);
+            document.getElementById('edit-content-close').classList.toggle('hidden', isOpen);
+            document.getElementById('view-content-open').classList.toggle('hidden', !isOpen);
+            document.getElementById('view-content-close').classList.toggle('hidden', isOpen);
+            document.getElementById('tab-open').className = isOpen ? "px-6 py-2.5 rounded-lg text-sm font-bold transition-all bg-white text-indigo-600 shadow-sm" : "px-6 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-500 hover:text-slate-700";
+            document.getElementById('tab-close').className = !isOpen ? "px-6 py-2.5 rounded-lg text-sm font-bold transition-all bg-white text-indigo-600 shadow-sm" : "px-6 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-500 hover:text-slate-700";
+        };
+
+        window.showPasswordModal = () => { if(window.isEditing){setEditingMode(false);return;} document.getElementById('password-modal').classList.remove('hidden'); document.getElementById('password-input').value=""; document.getElementById('password-error').classList.add('hidden'); document.getElementById('password-input').focus(); };
+        window.closePasswordModal = () => document.getElementById('password-modal').classList.add('hidden');
+        window.checkPassword = () => { if(document.getElementById('password-input').value === EDIT_PASSWORD) { closePasswordModal(); setEditingMode(true); } else { document.getElementById('password-error').classList.remove('hidden'); } };
+        window.setEditingMode = (isEdit) => { window.isEditing = isEdit; document.getElementById('view-mode-container').classList.toggle('hidden', isEdit); document.getElementById('edit-mode-container').classList.toggle('hidden', !isEdit); const b = document.getElementById('edit-mode-button'); if(b){ b.textContent = isEdit?"閲覧モードに戻る":"管理者編集"; b.className = isEdit?"text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-full transition-colors shadow-md":"text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full transition-colors"; } };
+
+        // Selection & Modals
+        window.openFixedStaffSelect = (k, lk, t) => { if(!window.isEditing)return; let c=[], cl=[]; if(lk==='early_staff_candidates'){c=masterStaffList.employees;cl=[window.staffList.early];}else if(lk==='open_staff_candidates'){c=openStaffCandidates;cl=[window.staffList.early,window.staffList.late];}else{c=closingStaffCandidates;cl=[window.staffList.closing_employee,window.staffList.closing_alba];} const ac=cl.flatMap(l=>l.map(s=>s.name)); const mb=document.getElementById('select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="selectFixedStaff('${k}','')">指定なし</div>`; const render=(l,lbl)=>{if(l.length>0){mb.innerHTML+=`<div class="px-4 py-2 text-xs font-bold text-slate-400 bg-slate-50 sticky top-0">${lbl}</div>`;l.forEach(n=>{mb.innerHTML+=`<div class="select-modal-option ${n===window.staffList[k]?'selected':''}" onclick="selectFixedStaff('${k}','${n}')">${n}</div>`;});}}; render(c.filter(n=>ac.includes(n)),"リスト追加済み"); render(c.filter(n=>!ac.includes(n)),"未追加"); document.getElementById('select-modal-title').textContent=t; document.getElementById('select-modal').classList.remove('hidden'); };
+        window.selectFixedStaff = (k, n) => { window.staffList[k]=n; if(n){const ie=masterStaffList.employees.includes(n); const tk=(k.includes('money')||k.includes('open_warehouse'))?(ie?'early':'late'):(ie?'closing_employee':'closing_alba'); if(!window.staffList[tk].some(s=>s.name===n)) window.staffList[tk].push({name:n,tasks:[{start:"",end:"",task:"",remarks:"（固定）"}]});} updateFixedStaffButtons(); updateStaffLists(); closeSelectModal(); saveStaffListToFirestore(); };
+        window.openStaffSelect = (sk, mk) => { if(!window.isEditing)return; const m=masterStaffList[mk], c=window.staffList[sk].map(s=>s.name); const mb=document.getElementById('select-modal-body'); mb.innerHTML=''; const o=m.filter(n=>!c.includes(n)); if(o.length===0) mb.innerHTML='<div class="p-4 text-center text-slate-400">候補なし</div>'; else o.forEach(n=>mb.innerHTML+=`<div class="select-modal-option" onclick="selectStaff('${sk}','${n}')">${n}</div>`); document.getElementById('select-modal-title').textContent="スタッフ追加"; document.getElementById('select-modal').classList.remove('hidden'); };
+        window.selectStaff = (sk, n) => { if(!window.staffList[sk].find(s=>s.name===n)){window.staffList[sk].push({name:n,tasks:[{start:"",end:"",task:"",remarks:""}]}); updateStaffLists(); saveStaffListToFirestore();} closeSelectModal(); };
+        window.closeSelectModal = () => document.getElementById('select-modal').classList.add('hidden');
+        function updateSelectButton(b, t, p) { if(b){const s=b.querySelector('span');if(s)s.textContent=t; b.classList.toggle('placeholder',p);} }
+        window.openTimeSelect = (sk,si,ti,f,ln) => { if(!window.isEditing)return; const l=(ln==='open')?openTimeSlots:closeTimeSlots; const mb=document.getElementById('select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="handleChange('${sk}',${si},${ti},'${f}','');closeSelectModal();updateStaffLists();">--:--</div>`; l.forEach(t=>mb.innerHTML+=`<div class="select-modal-option" onclick="handleChange('${sk}',${si},${ti},'${f}','${t}');closeSelectModal();updateStaffLists();">${t}</div>`); document.getElementById('select-modal-title').textContent="時間選択"; document.getElementById('select-modal').classList.remove('hidden'); };
+        window.openTaskSelect = (sk,si,ti,ln) => { if(!window.isEditing)return; const l=[...new Set(taskLists[ln])]; const mb=document.getElementById('select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="handleChange('${sk}',${si},${ti},'task','');closeSelectModal();updateStaffLists();">未選択</div>`; l.forEach(t=>mb.innerHTML+=`<div class="select-modal-option" onclick="handleChange('${sk}',${si},${ti},'task','${t}');closeSelectModal();updateStaffLists();">${t}</div>`); document.getElementById('select-modal-title').textContent="タスク選択"; document.getElementById('select-modal').classList.remove('hidden'); };
+        window.handleChange = (sk,si,ti,f,v) => { window.staffList[sk][si].tasks[ti][f]=v; saveStaffListToFirestore(); };
+        window.addStaff = () => {}; window.addTask = (sk,si) => { window.staffList[sk][si].tasks.push({start:"",end:"",task:"",remarks:""}); updateStaffLists(); saveStaffListToFirestore(); };
+        window.showDeleteModal = (t,sk,si,ti) => { deleteInfo={type:t,sectionKey:sk,staffIndex:si,taskIndex:ti}; document.getElementById('delete-modal-message').textContent=t==='staff'?`「${window.staffList[sk][si].name}」さんを削除？`:"タスクを削除？"; document.getElementById('delete-modal').classList.remove('hidden'); };
+        window.cancelDelete = () => document.getElementById('delete-modal').classList.add('hidden');
+        window.confirmDelete = () => { const {type,sectionKey,staffIndex,taskIndex}=deleteInfo; if(type==='staff'){ const n=window.staffList[sectionKey][staffIndex].name; window.staffList[sectionKey].splice(staffIndex,1); ['fixed_money_count','fixed_open_warehouse','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(k=>{if(window.staffList[k]===n)window.staffList[k]="";}); }else if(window.staffList[sectionKey][staffIndex].tasks.length>1){window.staffList[sectionKey][staffIndex].tasks.splice(taskIndex,1);} cancelDelete(); updateStaffLists(); generateSummaryView(); updateFixedStaffButtons(); saveStaffListToFirestore(); };
+
+        // Auto Assign Logic
+        function calcTime(t,m){let v=0; t.forEach(x=>{const s=m.get(x.start),e=m.get(x.end);if(s!==undefined&&e!==undefined&&e>s)v+=(e-s);}); return v;}
+        function isOverlap(t,s,e,m){for(const x of t){const S=m.get(x.start),E=m.get(x.end);if(S!==undefined&&E!==undefined&&S<e&&E>s)return true;}return false;}
+        function findStaff(g,s,e,m){let min=Infinity,tgt=null; const idx=g.map((_,i)=>i).sort(()=>Math.random()-0.5); for(const i of idx){if(isOverlap(g[i].tasks,s,e,m))continue; const v=calcTime(g[i].tasks,m); if(v<min){min=v;tgt={staff:g[i]};}} return tgt;}
+        window.autoAssignTasks = (sec, list) => {
+            const emp=window.staffList[sec==='early'?'early':'closing_employee'], alba=window.staffList[sec==='late'?'late':'closing_alba'], all=[...emp,...alba];
+            all.forEach(s=>s.tasks=[]);
+            if(list==='open'){
+                const m=emp.find(s=>s.name===window.staffList.fixed_money_count); if(m) m.tasks.push({start:'07:00',end:'08:15',task:SPECIAL_TASKS.MONEY_COUNT.name,remarks:'（固定）'});
+                const w=all.find(s=>s.name===window.staffList.fixed_open_warehouse); if(w) w.tasks.push({start:'09:15',end:'09:45',task:SPECIAL_TASKS.OPEN_WAREHOUSE.name,remarks:'（固定）'});
+                const t=[{t:SPECIAL_TASKS.OUTSIDE_SALES,s:'07:00',e:'07:15',g:emp.filter(s=>s!==m)}, {t:SPECIAL_TASKS.P_CHECK,s:'07:15',e:'07:30',g:emp.filter(s=>s!==m)}, {t:SPECIAL_TASKS.PROMOTION_CHECK,s:'07:30',e:'07:45',g:emp.filter(s=>s!==m)}, {t:SPECIAL_TASKS.LOTTERY,s:'09:15',e:'10:00',g:all,c:2}, {t:SPECIAL_TASKS.S_CHECK,s:'09:30',e:'10:00',g:alba,c:1}, {t:SPECIAL_TASKS.OVERALL_CHECK,s:'09:45',e:'10:00',g:emp,c:1}];
+                if(!w) t.push({t:SPECIAL_TASKS.OPEN_WAREHOUSE,s:'09:15',e:'09:45',g:emp,c:1});
+                all.forEach(s=>s.tasks.push({start:'09:00',end:'09:15',task:SPECIAL_TASKS.BRIEFING.name,remarks:""}));
+                t.forEach(i=>{for(let k=0;k<(i.c||1);k++){const x=findStaff(i.g,openTimeIndexMap.get(i.s),openTimeIndexMap.get(i.e),openTimeIndexMap); if(x)x.staff.tasks.push({start:i.s,end:i.e,task:i.t.name,remarks:""});}});
+                fillFree(all,openTimeSlots,openTimeIndexMap,emp);
+            } else {
+                const fix=[{k:'fixed_money_collect',t:SPECIAL_TASKS.MONEY_COLLECT,s:'22:45',e:'23:15',g:emp},{k:'fixed_warehouses',t:SPECIAL_TASKS.WAREHOUSE,s:'22:45',e:'23:15',g:all},{k:'fixed_counters',t:SPECIAL_TASKS.COUNTER_TASK,s:'22:45',e:'23:00',g:all}];
+                const as=new Set(); fix.forEach(f=>{const s=f.g.find(p=>p.name===window.staffList[f.k]); if(s){s.tasks.push({start:f.s,end:f.e,task:f.t.name,remarks:'（固定）'}); as.add(s);}});
+                const t=[{t:SPECIAL_TASKS.LOCK_CHECK,s:1,g:emp.filter(s=>!as.has(s))},{t:SPECIAL_TASKS.HANDOFF_CLEANING,s:1,g:emp.filter(s=>!as.has(s))},{t:SPECIAL_TASKS.DRINKS_FLAGS,s:1,g:alba.filter(s=>!as.has(s))},{t:SPECIAL_TASKS.HALL_REFILL,s:1,g:alba.filter(s=>!as.has(s))}];
+                fix.forEach(f=>{if(!window.staffList[f.k]) t.push({t:f.t,s:f.t.slots,g:(f.t===SPECIAL_TASKS.MONEY_COLLECT?emp:all.filter(s=>!as.has(s)))});});
+                t.forEach(i=>{ for(let k=0;k<=closeTimeSlots.length-i.s;k++){ const x=findStaff(i.g,k,k+i.s,closeTimeIndexMap); if(x){x.staff.tasks.push({start:closeTimeSlots[k],end:closeTimeSlots[k+i.s],task:i.t.name,remarks:""}); break;} } });
+                fillFree(all,closeTimeSlots,closeTimeIndexMap,[]);
+            }
+            updateStaffLists(); generateSummaryView(); saveStaffListToFirestore();
+        };
+        function fillFree(all,sl,m,emp){all.forEach(s=>{const st=emp.includes(s)?'07:00':'09:00'; const si=m.get(st)||0; for(let i=si;i<sl.length-1;i++){if(!isOverlap(s.tasks,i,i+1,m))s.tasks.push({start:sl[i],end:sl[i+1],task:SPECIAL_TASKS.FREE_TASK.name,remarks:""});} s.tasks.sort((a,b)=>(a.start||"").localeCompare(b.start||""));});}
+
+        // UI Generation
+        function updateStaffLists() { populate('staff-list-open-early','early','open'); populate('staff-list-open-late','late','open'); populate('staff-list-close-employee','closing_employee','close'); populate('staff-list-close-alba','closing_alba','close'); }
+        function populate(id,sk,ln){ const c=document.getElementById(id); if(!c)return; c.innerHTML=''; window.staffList[sk].forEach((s,si)=>{ 
+            let h=''; const st=s.tasks.sort((a,b)=>(a.start||'99').localeCompare(b.start||'99')); if(st.length===0)st.push({start:"",end:"",task:"",remarks:""});
+            st.forEach((t,ti)=>{
+                const f=t.remarks==="（固定）", dis=f?'disabled':'', rem=(t.remarks||'').replace(/"/g,'&quot;');
+                const act=f?`<span class="text-slate-300 text-lg px-2">×</span>`:`<button onclick="showDeleteModal('task','${sk}',${si},${ti})" class="w-8 h-8 rounded-full bg-rose-50 text-rose-500 hover:bg-rose-100 flex items-center justify-center">×</button>`;
+                const add=`<button onclick="addTask('${sk}',${si})" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center">＋</button>`;
+                const btn=(st.length>1||ti>0)?act:add;
+                const cls="custom-select-button text-left w-full truncate " + (t.start?'':'placeholder');
+                h+=`<tr class="edit-row ${ti>0?'border-t-0':''}"><td class="${ti>0?'hidden md:table-cell border-t-0':''}" data-label="スタッフ">${ti===0?`<div class="flex items-center gap-2"><span>${s.name}</span><button onclick="showDeleteModal('staff','${sk}',${si})" class="text-slate-300 hover:text-rose-500 transition text-lg ml-2">×</button></div>`:''}</td>
+                <td data-label="開始"><button class="${cls}" onclick="${!f?`openTimeSelect('${sk}',${si},${ti},'start','${ln}')`:''}" ${dis}><span>${t.start||'--'}</span></button></td>
+                <td data-label="終了"><button class="${cls}" onclick="${!f?`openTimeSelect('${sk}',${si},${ti},'end','${ln}')`:''}" ${dis}><span>${t.end||'--'}</span></button></td>
+                <td data-label="タスク"><button class="${cls}" onclick="${!f?`openTaskSelect('${sk}',${si},${ti},'${ln}')`:''}" ${dis}><span>${t.task||'未選択'}</span></button></td>
+                <td data-label="備考"><input type="text" class="w-full bg-slate-50 border border-slate-200 rounded p-1 text-sm" value="${rem}" onchange="handleChange('${sk}',${si},${ti},'remarks',this.value)" ${f?'readonly':''}></td>
+                <td data-label="操作">${btn}</td></tr>`;
+            }); c.innerHTML+=h;
+        });}
+        function generateSummaryView() {
+            const r=(id,l,sl)=>{
+                const t=[]; l.forEach(s=>s.tasks.forEach(x=>{if(x.task&&x.task!==SPECIAL_TASKS.FREE_TASK.name)t.push({...x,name:s.name});}));
+                const n=[...new Set(l.map(s=>s.name))].sort();
+                document.getElementById(`${id}-desktop`).innerHTML=createTable(t,n,sl);
+                document.getElementById(`${id}-mobile`).innerHTML=createList(t,n);
+            };
+            r('summary-open-employee-container',window.staffList.early,openTimeSlots);
+            r('summary-open-alba-container',window.staffList.late,openAlbaTimeSlots);
+            r('summary-close-employee-container',window.staffList.closing_employee,closeTimeSlots);
+            r('summary-close-alba-container',window.staffList.closing_alba,closeTimeSlots);
+        }
+        function createTable(t,n,s){
+            if(n.length===0)return '<p class="p-8 text-center text-slate-400">スタッフなし</p>';
+            let h=`<div class="timeline-container"><table class="timeline-table"><thead><tr><th>STAFF</th>${s.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>`;
+            const m=new Map(); s.forEach((x,i)=>m.set(x,i));
+            n.forEach(name=>{
+                h+=`<tr><th>${name}</th>`; const st=t.filter(x=>x.name===name).sort((a,b)=>a.start.localeCompare(b.start));
+                let idx=0; while(idx<s.length){
+                    const slot=s[idx], task=st.find(x=>x.start===slot);
+                    if(task){
+                        const start=m.get(task.start), end=m.get(task.end); let span=1;
+                        if(end!==undefined&&end>start) span=end-start; else if(task.end==="10:00"||task.end==="23:30") span=1;
+                        const cls=Object.values(SPECIAL_TASKS).find(v=>v.name===task.task)?.class||'';
+                        h+=`<td colspan="${span}"><div class="task-bar ${cls}" onclick="showRemarksModal('${task.task}','${task.start}-${task.end}','${task.remarks||''}')">${task.task}${task.remarks?'★':''}</div></td>`; idx+=span;
+                    }else{h+='<td></td>'; idx++;}
+                } h+='</tr>';
+            }); return h+'</tbody></table></div>';
+        }
+        function createList(t,n){
+            if(n.length===0)return'<p class="text-center text-slate-400">なし</p>';
+            let h='<div class="space-y-4">'; n.forEach(name=>{
+                const st=t.filter(x=>x.name===name).sort((a,b)=>a.start.localeCompare(b.start));
+                h+=`<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="bg-slate-50 px-4 py-2 font-bold text-slate-700 border-b border-slate-100 flex justify-between"><span>${name}</span><span class="text-xs bg-white px-2 py-1 rounded border">${st.length}</span></div><div class="p-2 space-y-2">`;
+                if(st.length===0)h+='<div class="text-center text-xs text-slate-400">タスクなし</div>';
+                st.forEach(x=>{ const cls=Object.values(SPECIAL_TASKS).find(v=>v.name===x.task)?.class||''; h+=`<div class="task-bar relative top-0 left-0 w-full h-auto block p-2 ${cls}"><div class="flex justify-between"><span>${x.task}</span><span class="opacity-70 text-xs">${x.start}-${x.end}</span></div>${x.remarks?`<div class="text-xs mt-1 border-t border-black/10 pt-1">${x.remarks}</div>`:''}</div>`; });
+                h+='</div></div>';
+            }); return h+'</div>';
+        }
+        window.showRemarksModal=(t,m,r)=>{document.getElementById('remarks-modal-task').textContent=t;document.getElementById('remarks-modal-time').textContent=m;document.getElementById('remarks-modal-text').textContent=r||"備考なし";document.getElementById('remarks-modal').classList.remove('hidden');};
+        window.closeRemarksModal=()=>document.getElementById('remarks-modal').classList.add('hidden');
+    </script>
+
+    <!-- =========================================
+         FIREBASE & INTEGRATION MODULE
+         ========================================= -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, updateDoc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 1. Customer App Config (Garden Yashio Bot)
+        const configCustomer = {
           apiKey: "AIzaSyAdxAeBlJkFWAVM1ZWJKhU2urQcmtL0UKo",
           authDomain: "gardenyashiobot.firebaseapp.com",
           projectId: "gardenyashiobot",
@@ -365,348 +768,173 @@
           appId: "1:692971442685:web:ae4a65988ad1716ed84994"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        // 2. Staff App Config (Task Manager - WakaTest)
+        const configStaff = {
+          apiKey: "AIzaSyBdjf2YJIo9OSJhPDBuEJAxqjVvS0qTN3E",
+          authDomain: "wakatest-46f14.firebaseapp.com",
+          projectId: "wakatest-46f14",
+          storageBucket: "wakatest-46f14.firebasestorage.app",
+          messagingSenderId: "770004156053",
+          appId: "1:770004156053:web:04645f8fa745b07c03659c"
+        };
 
-        let allMachines = [];
-        let newOpeningData = [];
-        let eventMap = new Map();
-        let qscItems = []; // QSCデータ格納用
-        let currentQscTab = '未実施'; // '未実施' or '完了'
+        // Initialize Both Apps
+        const appCustomer = initializeApp(configCustomer, "customerApp");
+        const dbCustomer = getFirestore(appCustomer);
 
+        const appStaff = initializeApp(configStaff, "staffApp");
+        const dbStaff = getFirestore(appStaff);
+
+        // --- Logic for Customer App ---
+        let allMachines = [], newOpeningData = [], eventMap = new Map(), qscItems = [], currentQscTab = '未実施';
         const $ = s => document.querySelector(s);
         const $$ = s => document.querySelectorAll(s);
+        const latestKeywords = ["アズールレーン", "北斗の拳11", "地獄少女7500", "海物語極", "化物語", "プリズムナナ", "バーニングエキスプレス"];
 
-        const latestKeywords = [
-            "アズールレーン", "北斗の拳11", "地獄少女7500", "海物語極", 
-            "化物語", "プリズムナナ", "バーニングエキスプレス"
-        ];
-
-        // Fetch Initial Data
         async function fetchData() {
             try {
                 const [mSnap, nSnap, cSnap] = await Promise.all([
-                    getDocs(collection(db, "machines")),
-                    getDocs(collection(db, "newOpening")),
-                    getDocs(collection(db, "calendar"))
+                    getDocs(collection(dbCustomer, "machines")),
+                    getDocs(collection(dbCustomer, "newOpening")),
+                    getDocs(collection(dbCustomer, "calendar"))
                 ]);
-
                 allMachines = mSnap.docs.map(d => d.data()).sort((a, b) => a.name.localeCompare(b.name));
                 newOpeningData = nSnap.docs.map(d => d.data());
-                
-                const calendarEvents = cSnap.docs.map(d => d.data()).sort((a, b) => a.date - b.date);
-                eventMap = new Map(calendarEvents.map(e => [e.date, e]));
-
+                eventMap = new Map(cSnap.docs.map(d => d.data()).sort((a, b) => a.date - b.date).map(e => [e.date, e]));
                 renderToday();
-            } catch (e) {
-                console.error("Fetch Error:", e);
-                $("#todayEventContainer").innerHTML = `<p class="text-rose-500 text-center font-bold">データの読み込みに失敗しました</p>`;
-            }
+            } catch (e) { console.error("Fetch Error:", e); $("#todayEventContainer").innerHTML = `<p class="text-rose-500 text-center font-bold">データの読み込みに失敗しました</p>`; }
         }
 
-        // QSC Real-time Listener
         function subscribeQSC() {
-            onSnapshot(collection(db, "qsc_items"), (snapshot) => {
-                qscItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // No順にソート
-                qscItems.sort((a,b) => a.no - b.no);
-                
-                // 未実施カウント更新
+            onSnapshot(collection(dbCustomer, "qsc_items"), (snapshot) => {
+                qscItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => a.no - b.no);
                 const unfinishedCount = qscItems.filter(i => i.status === "未実施").length;
-                $("#qscUnfinishedCount").textContent = unfinishedCount > 0 
-                    ? `残り ${unfinishedCount} 件の対応が必要です` 
-                    : `すべて完了しました！`;
-                
-                // リストが開かれていれば再描画
-                if(!$("#qscModal").classList.contains("hidden")) {
-                    renderQSCList();
-                }
+                $("#qscUnfinishedCount").textContent = unfinishedCount > 0 ? `残り ${unfinishedCount} 件の対応が必要です` : `すべて完了しました！`;
+                if(!$("#qscModal").classList.contains("hidden")) renderQSCList();
             });
         }
-
-        // QSC Render Function
         function renderQSCList() {
-            const container = $("#qscListContainer");
-            container.innerHTML = "";
-
-            const filteredItems = qscItems.filter(item => 
-                currentQscTab === '未実施' ? item.status === "未実施" : item.status === "完了"
-            );
-
-            if (filteredItems.length === 0) {
-                container.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">項目はありません</div>`;
-                return;
-            }
-
-            // エリアごとにグルーピング
-            const grouped = {};
-            filteredItems.forEach(item => {
-                if(!grouped[item.area]) grouped[item.area] = [];
-                grouped[item.area].push(item);
-            });
-
+            const container = $("#qscListContainer"); container.innerHTML = "";
+            const filteredItems = qscItems.filter(item => currentQscTab === '未実施' ? item.status === "未実施" : item.status === "完了");
+            if (filteredItems.length === 0) { container.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">項目はありません</div>`; return; }
+            const grouped = {}; filteredItems.forEach(item => { if(!grouped[item.area]) grouped[item.area] = []; grouped[item.area].push(item); });
             for(const [area, items] of Object.entries(grouped)) {
-                // Area Header
-                const header = document.createElement("div");
-                header.className = "text-xs font-bold text-slate-500 bg-slate-200/50 px-3 py-1 rounded mt-4 mb-2 first:mt-0";
-                header.textContent = area;
-                container.appendChild(header);
-
-                // Items
+                const header = document.createElement("div"); header.className = "text-xs font-bold text-slate-500 bg-slate-200/50 px-3 py-1 rounded mt-4 mb-2 first:mt-0"; header.textContent = area; container.appendChild(header);
                 items.forEach(item => {
-                    const div = document.createElement("div");
-                    div.className = `bg-white p-4 rounded-xl border ${item.status === '完了' ? 'border-slate-100 opacity-60' : 'border-slate-200'} shadow-sm flex items-start gap-4 transition-all`;
-                    
-                    const checkbox = document.createElement("input");
-                    checkbox.type = "checkbox";
-                    checkbox.className = "qsc-checkbox shrink-0 mt-0.5";
-                    checkbox.checked = item.status === "完了";
-                    
-                    // チェック時の動作
-                    checkbox.onchange = async () => {
-                        const newStatus = checkbox.checked ? "完了" : "未実施";
-                        // Optimistic UI update (即時反映っぽく見せるが、実際はonSnapshotで戻ってくる)
-                        try {
-                            const ref = doc(db, "qsc_items", item.id);
-                            await updateDoc(ref, { status: newStatus });
-                        } catch(e) {
-                            console.error("Update error", e);
-                            checkbox.checked = !checkbox.checked; // Revert
-                        }
-                    };
-
-                    const textDiv = document.createElement("div");
-                    textDiv.className = "flex-1";
-                    textDiv.innerHTML = `
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="text-xs font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">No.${item.no}</span>
-                            ${item.status === '完了' ? '<span class="text-xs font-bold text-green-600">DONE</span>' : ''}
-                        </div>
-                        <p class="text-sm font-bold text-slate-700 leading-snug ${item.status === '完了' ? 'line-through text-slate-400' : ''}">${item.content}</p>
-                    `;
-
-                    div.appendChild(checkbox);
-                    div.appendChild(textDiv);
-                    container.appendChild(div);
+                    const div = document.createElement("div"); div.className = `bg-white p-4 rounded-xl border ${item.status === '完了' ? 'border-slate-100 opacity-60' : 'border-slate-200'} shadow-sm flex items-start gap-4 transition-all`;
+                    const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.className = "qsc-checkbox shrink-0 mt-0.5"; checkbox.checked = item.status === "完了";
+                    checkbox.onchange = async () => { const newStatus = checkbox.checked ? "完了" : "未実施"; try { await updateDoc(doc(dbCustomer, "qsc_items", item.id), { status: newStatus }); } catch(e) { console.error(e); checkbox.checked = !checkbox.checked; } };
+                    const textDiv = document.createElement("div"); textDiv.className = "flex-1"; textDiv.innerHTML = `<div class="flex items-center gap-2 mb-1"><span class="text-xs font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">No.${item.no}</span>${item.status === '完了' ? '<span class="text-xs font-bold text-green-600">DONE</span>' : ''}</div><p class="text-sm font-bold text-slate-700 leading-snug ${item.status === '完了' ? 'line-through text-slate-400' : ''}">${item.content}</p>`;
+                    div.appendChild(checkbox); div.appendChild(textDiv); container.appendChild(div);
                 });
             }
         }
-
-        // QSC Tabs
-        $("#qscTabUnfinished").onclick = () => {
-            currentQscTab = '未実施';
-            $("#qscTabUnfinished").className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm transition-all";
-            $("#qscTabFinished").className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all";
-            renderQSCList();
-        };
-        $("#qscTabFinished").onclick = () => {
-            currentQscTab = '完了';
-            $("#qscTabFinished").className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-green-600 shadow-sm transition-all";
-            $("#qscTabUnfinished").className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all";
-            renderQSCList();
-        };
-
-        // Existing Functions (unchanged logic, just kept for context)
+        function renderToday() {
+            const today = new Date(); const d = today.getDate(); const m = today.getMonth(); const y = today.getFullYear();
+            const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+            const ev = eventMap.get(d);
+            const html = ev ? `<div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 w-full"><div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200/60"><div class="flex items-center gap-3"><div class="bg-indigo-600 text-white rounded-xl px-4 py-2 text-center shadow-md shadow-indigo-200"><div class="text-[10px] font-bold opacity-80 tracking-wider">${monthNames[m]}</div><div class="text-2xl font-black leading-none">${d}</div></div><div class="font-bold text-indigo-900 text-lg">本日のイベント情報</div></div><span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">TODAY</span></div><ul class="space-y-3">${ev.p_event ? `<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.p_event}</span></li>` : ''}${ev.s_event ? `<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.s_event}</span></li>` : ''}${ev.recommend ? `<li class="flex items-start p-2 rounded-lg hover:bg-rose-50 transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 mt-2 mr-3 shrink-0"></span><span class="text-rose-600 font-bold text-sm leading-relaxed">${ev.recommend}</span></li>` : ''}</ul></div>` : `<div class="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 rounded-2xl border border-slate-100 w-full"><div class="text-5xl font-black text-slate-200 mb-3">${d}</div><p class="text-sm font-bold">特別なイベント情報はありません</p></div>`;
+            $("#todayEventContainer").innerHTML = html; $("#currentDate").textContent = `${y}.${m + 1}.${d}`;
+        }
         function openNewOpening() {
-            const container = $("#newOpeningInfo");
-            container.innerHTML = "";
-            if (newOpeningData.length === 0) {
-                container.innerHTML = "<p class='text-center text-slate-400 py-10'>データがありません</p>";
-                $("#newOpeningModal").classList.remove("hidden");
-                return;
-            }
-            // ... (New Opening Logic same as before) ...
-             const latest = [];
-            const others = [];
-
-            newOpeningData.forEach(m => {
-                const isLatest = latestKeywords.some(k => m.name.includes(k));
-                if(isLatest) latest.push(m);
-                else others.push(m);
-            });
-
-            latest.sort((a,b) => b.count - a.count);
-            others.sort((a,b) => b.count - a.count);
-
+            const container = $("#newOpeningInfo"); container.innerHTML = "";
+            if (newOpeningData.length === 0) { container.innerHTML = "<p class='text-center text-slate-400 py-10'>データがありません</p>"; $("#newOpeningModal").classList.remove("hidden"); return; }
+            const latest = [], others = []; newOpeningData.forEach(m => { (latestKeywords.some(k => m.name.includes(k)) ? latest : others).push(m); });
             const createList = (list) => {
-                const ul = document.createElement("ul");
-                ul.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8";
-                list.forEach(item => {
-                    const li = document.createElement("li");
-                    li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group";
-                    const clean = s => s.replace(/\s+/g, '').toLowerCase();
-                    const matched = allMachines.find(m => 
-                        m.name === item.name || m.name.includes(item.name) || clean(m.name) === clean(item.name)
-                    );
-                    const leftDiv = document.createElement("div");
-                    leftDiv.className = "flex flex-col overflow-hidden mr-2";
-                    const nameSpan = document.createElement("span");
-                    nameSpan.className = "font-bold text-slate-700 truncate text-sm sm:text-base group-hover:text-indigo-700 transition-colors";
-                    nameSpan.textContent = item.name;
-                    leftDiv.appendChild(nameSpan);
-                    if (matched && matched.salesPitch) {
-                        const sub = document.createElement("span");
-                        sub.className = "text-xs text-slate-400 font-medium mt-1 flex items-center";
-                        sub.innerHTML = `<span class="w-1.5 h-1.5 bg-indigo-400 rounded-full mr-1.5"></span>タップして詳細`;
-                        leftDiv.appendChild(sub);
-                        li.onclick = () => openDetail(matched);
-                    }
-                    const badge = document.createElement("span");
-                    badge.className = "text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0";
-                    badge.textContent = `${item.count}台`;
-                    li.appendChild(leftDiv);
-                    li.appendChild(badge);
+                const ul = document.createElement("ul"); ul.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8";
+                list.sort((a,b)=>b.count-a.count).forEach(item => {
+                    const li = document.createElement("li"); li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group";
+                    const matched = allMachines.find(m => m.name === item.name || m.name.includes(item.name));
+                    li.innerHTML = `<div class="flex flex-col overflow-hidden mr-2"><span class="font-bold text-slate-700 truncate text-sm sm:text-base group-hover:text-indigo-700 transition-colors">${item.name}</span>${matched&&matched.salesPitch?`<span class="text-xs text-slate-400 font-medium mt-1 flex items-center"><span class="w-1.5 h-1.5 bg-indigo-400 rounded-full mr-1.5"></span>タップして詳細</span>`:''}</div><span class="text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0">${item.count}台</span>`;
+                    if(matched && matched.salesPitch) li.onclick = () => { $("#detailName").textContent = matched.name; $("#detailPitch").textContent = matched.salesPitch || "情報なし"; const f=(i,l)=>{$(i).innerHTML="";(l||["情報なし"]).forEach(t=>$(i).innerHTML+=`<li class="flex items-start"><span class="mr-2 mt-1.5 w-1.5 h-1.5 bg-current rounded-full flex-shrink-0"></span><span>${t}</span></li>`);}; f("#detailPros", matched.pros); f("#detailCons", matched.cons); $("#machineDetailModal").classList.remove("hidden"); };
                     ul.appendChild(li);
-                });
-                return ul;
+                }); return ul;
             };
-
-            if(latest.length > 0) {
-                const h3 = document.createElement("h3");
-                h3.className = "text-lg font-black text-rose-600 mb-4 flex items-center border-b border-rose-100 pb-2";
-                h3.innerHTML = `✨ 12月8日 最新導入`;
-                container.appendChild(h3);
-                container.appendChild(createList(latest));
-            }
-
-            if(others.length > 0) {
-                const h3 = document.createElement("h3");
-                h3.className = "text-lg font-black text-slate-600 mb-4 flex items-center border-b border-slate-200 pb-2";
-                h3.innerHTML = `🔄 準新台・その他`;
-                container.appendChild(h3);
-                container.appendChild(createList(others));
-            }
-
+            if(latest.length > 0) { const h = document.createElement("h3"); h.className = "text-lg font-black text-rose-600 mb-4 flex items-center border-b border-rose-100 pb-2"; h.innerHTML = `✨ 最新導入`; container.appendChild(h); container.appendChild(createList(latest)); }
+            if(others.length > 0) { const h = document.createElement("h3"); h.className = "text-lg font-black text-slate-600 mb-4 flex items-center border-b border-slate-200 pb-2"; h.innerHTML = `🔄 準新台・その他`; container.appendChild(h); container.appendChild(createList(others)); }
             $("#newOpeningModal").classList.remove("hidden");
         }
 
-        function openDetail(data) {
-            $("#detailName").textContent = data.name;
-            $("#detailPitch").textContent = data.salesPitch || "情報なし";
-            const fill = (id, list) => {
-                const el = $(id);
-                el.innerHTML = "";
-                (list || ["情報なし"]).forEach(t => {
-                    const li = document.createElement("li");
-                    li.className = "flex items-start";
-                    li.innerHTML = `<span class="mr-2 mt-1.5 w-1.5 h-1.5 bg-current rounded-full flex-shrink-0"></span><span>${t}</span>`;
-                    el.appendChild(li);
-                });
-            };
-            fill("#detailPros", data.pros);
-            fill("#detailCons", data.cons);
-            $("#machineDetailModal").classList.remove("hidden");
-        }
+        // --- Logic for Staff App (Wiring) ---
+        let unsubscribeFromTasks = null;
+        window.taskDocRef = null;
+        
+        // Expose Staff DB functions to global window for script.js to use
+        window.saveStaffListToFirestore = async function() {
+            if (!window.isEditing || !window.taskDocRef) return;
+            try { const cleanData = JSON.parse(JSON.stringify(window.staffList, (key, value) => (value === null || value === undefined) ? "" : value)); await setDoc(window.taskDocRef, cleanData); } catch (error) { console.error("Error saving:", error); }
+        };
+        
+        window.handleDateChange = function(dateString) {
+            if (!dateString) dateString = window.getTodayDateString();
+            window.currentDate = dateString;
+            const picker = document.getElementById('date-picker'); if(picker) picker.value = dateString;
+            window.taskDocRef = doc(dbStaff, 'artifacts', configStaff.projectId, 'public', 'data', 'task_assignments', dateString);
+            
+            if (unsubscribeFromTasks) unsubscribeFromTasks();
+            unsubscribeFromTasks = onSnapshot(window.taskDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    window.staffList.early = data.early || [];
+                    window.staffList.late = data.late || [];
+                    window.staffList.closing_employee = data.closing_employee || [];
+                    window.staffList.closing_alba = data.closing_alba || [];
+                    window.staffList.fixed_warehouses = data.fixed_warehouses || "";
+                    window.staffList.fixed_counters = data.fixed_counters || "";
+                    window.staffList.fixed_money_count = data.fixed_money_count || "";
+                    window.staffList.fixed_money_collect = data.fixed_money_collect || "";
+                    window.staffList.fixed_open_warehouse = data.fixed_open_warehouse || "";
+                } else {
+                    window.staffList = { early: [], late: [], closing_employee: [], closing_alba: [], fixed_money_count: "", fixed_open_warehouse: "", fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "" };
+                }
+                if(window.refreshCurrentView) window.refreshCurrentView();
+            });
+        };
 
-        function renderToday() {
-            const today = new Date();
-            const d = today.getDate();
-            const m = today.getMonth();
-            const y = today.getFullYear();
-            const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-            const currentMonthName = monthNames[m];
-            const ev = eventMap.get(d);
-            const html = ev ? `
-                <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 w-full">
-                    <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200/60">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-indigo-600 text-white rounded-xl px-4 py-2 text-center shadow-md shadow-indigo-200">
-                                <div class="text-[10px] font-bold opacity-80 tracking-wider">${currentMonthName}</div>
-                                <div class="text-2xl font-black leading-none">${d}</div>
-                            </div>
-                            <div class="font-bold text-indigo-900 text-lg">本日のイベント情報</div>
-                        </div>
-                        <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">TODAY</span>
-                    </div>
-                    <ul class="space-y-3">
-                        ${ev.p_event ? `<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.p_event}</span></li>` : ''}
-                        ${ev.s_event ? `<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.s_event}</span></li>` : ''}
-                        ${ev.recommend ? `<li class="flex items-start p-2 rounded-lg hover:bg-rose-50 transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 mt-2 mr-3 shrink-0"></span><span class="text-rose-600 font-bold text-sm leading-relaxed">${ev.recommend}</span></li>` : ''}
-                    </ul>
-                </div>` : `
-                <div class="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 rounded-2xl border border-slate-100 w-full">
-                    <div class="text-5xl font-black text-slate-200 mb-3">${d}</div>
-                    <p class="text-sm font-bold">特別なイベント情報はありません</p>
-                </div>`;
-            $("#todayEventContainer").innerHTML = html;
-            $("#currentDate").textContent = `${y}.${m + 1}.${d}`;
-            const btn = $("#calendarToggleButton");
-            if(btn.textContent.includes("全体を見る")) btn.textContent = `${m + 1}月全体を見る`;
-        }
-
-        function renderFullCalendar() {
-             const today = new Date();
-            const currentMonth = today.getMonth();
-            const currentDay = today.getDate();
-            const currentYear = today.getFullYear();
-            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-            const grid = $("#calendarGrid");
-            grid.innerHTML = ["日","月","火","水","木","金","土"].map(d => `<div class="text-xs font-bold text-slate-300 text-center py-2">${d}</div>`).join("");
-            for(let i=0; i<6; i++) grid.innerHTML += `<div></div>`;
-            for(let i=1; i<=daysInMonth; i++) {
-                const ev = eventMap.get(i);
-                const hasEv = ev && (ev.p_event || ev.s_event);
-                const btn = document.createElement("button");
-                btn.className = `calendar-day ${hasEv ? 'has-event' : ''}`;
-                btn.textContent = i;
-                if (i === currentDay) btn.classList.add('is-today');
-                btn.onclick = () => {
-                    $$(".calendar-day").forEach(b => b.classList.remove("is-selected"));
-                    btn.classList.add("is-selected");
-                    const detail = $("#selectedEventDetails");
-                    if(ev) {
-                         detail.innerHTML = `
-                         <div class="w-full">
-                            <div class="text-indigo-600 font-black mb-3 flex items-center text-lg">
-                                <span class="bg-indigo-100 text-indigo-600 text-xs px-2 py-1 rounded mr-2">${currentMonth + 1}/${i}</span> 詳細
-                            </div>
-                            <ul class="space-y-2 text-sm font-bold text-slate-700">
-                                ${ev.p_event ? `<li class="flex items-start"><span class="w-1.5 h-1.5 bg-indigo-400 rounded-full mr-2 mt-1.5 shrink-0"></span>${ev.p_event}</li>` : ''}
-                                ${ev.s_event ? `<li class="flex items-start"><span class="w-1.5 h-1.5 bg-purple-400 rounded-full mr-2 mt-1.5 shrink-0"></span>${ev.s_event}</li>` : ''}
-                                ${ev.recommend ? `<li class="flex items-start text-rose-600"><span class="w-1.5 h-1.5 bg-rose-400 rounded-full mr-2 mt-1.5 shrink-0"></span>${ev.recommend}</li>` : ''}
-                            </ul>
-                         </div>`;
-                    } else {
-                        detail.innerHTML = `<p class='text-slate-400'>情報なし</p>`;
-                    }
-                };
-                grid.appendChild(btn);
-            }
-        }
-
-        // Init
+        // Event Listeners (Customer)
         window.addEventListener("DOMContentLoaded", () => {
             fetchData();
             subscribeQSC();
+            // QSC Tabs
+            $("#qscTabUnfinished").onclick = () => { currentQscTab = '未実施'; $("#qscTabUnfinished").className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm transition-all"; $("#qscTabFinished").className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all"; renderQSCList(); };
+            $("#qscTabFinished").onclick = () => { currentQscTab = '完了'; $("#qscTabFinished").className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-green-600 shadow-sm transition-all"; $("#qscTabUnfinished").className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all"; renderQSCList(); };
+            $("#newOpeningButton").onclick = openNewOpening;
+            $("#closeNewOpeningModal").onclick = () => $("#newOpeningModal").classList.add("hidden");
+            $("#closeDetailModal").onclick = () => $("#machineDetailModal").classList.add("hidden");
+            $("#openQSCButton").onclick = () => { $("#qscModal").classList.remove("hidden"); renderQSCList(); };
+            $("#closeQscModal").onclick = () => $("#qscModal").classList.add("hidden");
+            $("#calendarToggleButton").onclick = () => {
+                const full = $("#fullCalendarContainer"), today = $("#todayEventContainer"), btn = $("#calendarToggleButton");
+                if (full.classList.contains("hidden")) {
+                    full.classList.remove("hidden"); today.classList.add("hidden"); btn.textContent = "本日のイベントに戻る";
+                    const grid = $("#calendarGrid"); grid.innerHTML = ["日","月","火","水","木","金","土"].map(d => `<div class="text-xs font-bold text-slate-300 text-center py-2">${d}</div>`).join(""); for(let i=0; i<6; i++) grid.innerHTML += `<div></div>`;
+                    const days = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+                    for(let i=1; i<=days; i++) {
+                        const ev = eventMap.get(i); const btn = document.createElement("button"); btn.className = `calendar-day ${ev&&(ev.p_event||ev.s_event)?'has-event':''}`; btn.textContent = i;
+                        if (i === new Date().getDate()) btn.classList.add('is-today');
+                        btn.onclick = () => { $$(".calendar-day").forEach(b => b.classList.remove("is-selected")); btn.classList.add("is-selected"); $("#selectedEventDetails").innerHTML = ev ? `<div class="w-full"><div class="text-indigo-600 font-black mb-3 flex items-center text-lg"><span class="bg-indigo-100 text-indigo-600 text-xs px-2 py-1 rounded mr-2">${new Date().getMonth() + 1}/${i}</span> 詳細</div><ul class="space-y-2 text-sm font-bold text-slate-700">${ev.p_event ? `<li class="flex items-start"><span class="w-1.5 h-1.5 bg-indigo-400 rounded-full mr-2 mt-1.5 shrink-0"></span>${ev.p_event}</li>` : ''}${ev.s_event ? `<li class="flex items-start"><span class="w-1.5 h-1.5 bg-purple-400 rounded-full mr-2 mt-1.5 shrink-0"></span>${ev.s_event}</li>` : ''}${ev.recommend ? `<li class="flex items-start text-rose-600"><span class="w-1.5 h-1.5 bg-rose-400 rounded-full mr-2 mt-1.5 shrink-0"></span>${ev.recommend}</li>` : ''}</ul></div>` : `<p class='text-slate-400'>情報なし</p>`; };
+                        grid.appendChild(btn);
+                    }
+                } else { full.classList.add("hidden"); today.classList.remove("hidden"); btn.textContent = "今月全体を見る"; }
+            };
         });
 
-        // Event Listeners
-        $("#newOpeningButton").onclick = openNewOpening;
-        $("#closeNewOpeningModal").onclick = () => $("#newOpeningModal").classList.add("hidden");
-        $("#closeDetailModal").onclick = () => $("#machineDetailModal").classList.add("hidden");
-        
-        // QSC Modal
-        $("#openQSCButton").onclick = () => {
-            $("#qscModal").classList.remove("hidden");
-            renderQSCList();
-        };
-        $("#closeQscModal").onclick = () => $("#qscModal").classList.add("hidden");
-
-        $("#calendarToggleButton").onclick = () => {
-            const full = $("#fullCalendarContainer");
-            const today = $("#todayEventContainer");
-            const btn = $("#calendarToggleButton");
-            const m = new Date().getMonth() + 1;
-            
-            if (full.classList.contains("hidden")) {
-                full.classList.remove("hidden");
-                today.classList.add("hidden");
-                btn.textContent = "本日のイベントに戻る";
-                renderFullCalendar();
+        // VIEW SWITCHER
+        window.switchView = function(viewName) {
+            const customerApp = document.getElementById('app-customer');
+            const staffApp = document.getElementById('app-staff');
+            window.scrollTo(0,0);
+            if (viewName === 'staff') {
+                customerApp.classList.add('hidden');
+                staffApp.classList.remove('hidden');
+                // Initialize Staff App on first click
+                if (!window.taskDocRef) {
+                    window.setupInitialView();
+                    window.handleDateChange(window.getTodayDateString());
+                }
             } else {
-                full.classList.add("hidden");
-                today.classList.remove("hidden");
-                btn.textContent = `${m}月全体を見る`;
+                staffApp.classList.add('hidden');
+                customerApp.classList.remove('hidden');
             }
         };
     </script>
