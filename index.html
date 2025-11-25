@@ -95,6 +95,67 @@
             </div>
         </div>
 
+        <!-- Pachinko Strategy -->
+        <section class="container mx-auto px-4 mt-16 fade-in-up" style="animation-delay: 0.35s;">
+            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm max-w-4xl mx-auto overflow-hidden">
+                <!-- Header -->
+                <div class="bg-sky-50/80 px-6 py-4 border-b border-sky-100 flex items-center gap-3">
+                    <span class="flex h-2.5 w-2.5 rounded-full bg-sky-500"></span>
+                    <h2 class="font-bold text-sky-900 text-lg">パチンコチームのご案内</h2>
+                </div>
+                
+                <div class="p-6 sm:p-10">
+                    <div class="mb-8 text-center sm:text-left">
+                        <h3 class="text-2xl font-black text-slate-800 leading-tight text-pretty">
+                            今週の<span class="text-sky-600 word-keep">パチンコ戦略</span>
+                        </h3>
+                        <p class="text-slate-500 mt-2 font-medium">週末の時差島15時稼働・満台を目指して徹底強化！</p>
+                    </div>
+
+                    <!-- Main Feature: Eva -->
+                    <div class="mb-6 bg-gradient-to-br from-purple-50 to-white p-6 rounded-2xl border border-purple-100 relative overflow-hidden shadow-sm">
+                        <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center relative z-10">
+                            <div class="bg-purple-100 text-purple-600 p-3 rounded-xl shrink-0">
+                                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-purple-600 mb-1 flex items-center gap-2">
+                                    <span class="bg-purple-600 text-white px-2 py-0.5 rounded-full text-[10px]">注目</span>
+                                    11/26 (水) ～ 12/2 (火)
+                                </div>
+                                <div class="font-bold text-slate-800 text-lg sm:text-xl mb-1">3週連続 エヴァシリーズ推奨</div>
+                                <p class="text-sm text-slate-600">市場内での存在感を確立するため、3週連続で徹底プッシュ！</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sub Features: Grid -->
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <!-- Enen 2 -->
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group hover:border-orange-300 transition-colors">
+                            <div class="absolute top-4 right-4 text-orange-200 group-hover:text-orange-100 transition-colors">
+                                <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.298-2.54a1 1 0 00-1.712-.813c-.769 1.111-1.202 2.59-1.07 4.156.126 1.503.737 2.87 1.696 3.91A6.974 6.974 0 0010 16.924c2.275 0 4.295-1.063 5.568-2.73 1.22-1.597 1.543-3.708.766-5.618a8.91 8.91 0 00-3.94-4.023zM10 18a5.976 5.976 0 01-3.618-1.22C5.973 16.295 5.513 15.487 5.26 14.55c-.066-.246-.118-.492-.158-.737.91.758 1.94 1.353 2.99 1.353 1.96 0 3.584-1.26 4.312-3.084.184-.462.336-.938.455-1.412a6.926 6.926 0 011.697 3.58c.28 1.05.023 2.146-.662 2.97A4.973 4.973 0 0110 18z" clip-rule="evenodd" /></svg>
+                            </div>
+                            <div class="text-xs font-bold text-orange-500 mb-1">時差島 & 平日・週末共通</div>
+                            <div class="font-bold text-slate-800 mb-2 text-lg">炎炎ノ消防隊2</div>
+                            <p class="text-sm text-slate-600 leading-relaxed">
+                                時差島営業の主軸機種。平日も週末も引き続きおすすめ！
+                            </p>
+                        </div>
+
+                        <!-- Karakuri 2 -->
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group hover:border-indigo-300 transition-colors">
+                            <div class="text-xs font-bold text-slate-500 mb-1">時差がない日は…</div>
+                            <div class="font-bold text-slate-800 mb-2 text-lg">からくりサーカス2</div>
+                            <p class="text-sm text-slate-600 leading-relaxed">
+                                近隣状況を見て調整。時差対象外のタイミングでは「からくり2」が推奨！
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Slot Strategy -->
         <section class="container mx-auto px-4 mt-16 fade-in-up" style="animation-delay: 0.4s;">
             <div class="bg-white rounded-3xl border border-slate-100 shadow-sm max-w-4xl mx-auto overflow-hidden">
@@ -157,7 +218,7 @@
                         <p class="text-slate-400 text-sm font-bold mt-1">本日のイベント情報</p>
                     </div>
                     <button id="calendarToggleButton" class="text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors">
-                        11月全体を見る
+                        今月全体を見る
                     </button>
                 </div>
 
@@ -392,21 +453,23 @@
         function renderToday() {
             const today = new Date();
             const d = today.getDate();
-            const m = today.getMonth(); // 11=10
+            const m = today.getMonth(); // 0=1月, 11=12月
+            const y = today.getFullYear();
             
-            if (m !== 10) {
-                $("#todayEventContainer").innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">11月のカレンダーを表示中</div>`;
-                return;
-            }
-            
+            const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+            const currentMonthName = monthNames[m];
+
+            // カレンダーイベント取得
             const ev = eventMap.get(d);
+            
+            // HTML生成
             const html = ev 
                 ? `
                 <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 w-full">
                     <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200/60">
                         <div class="flex items-center gap-3">
                             <div class="bg-indigo-600 text-white rounded-xl px-4 py-2 text-center shadow-md shadow-indigo-200">
-                                <div class="text-[10px] font-bold opacity-80 tracking-wider">NOV</div>
+                                <div class="text-[10px] font-bold opacity-80 tracking-wider">${currentMonthName}</div>
                                 <div class="text-2xl font-black leading-none">${d}</div>
                             </div>
                             <div class="font-bold text-indigo-900 text-lg">本日のイベント情報</div>
@@ -438,23 +501,40 @@
                     <p class="text-sm font-bold">特別なイベント情報はありません</p>
                 </div>
                 `;
+            
             $("#todayEventContainer").innerHTML = html;
-            $("#currentDate").textContent = `2025.11.${d}`;
+            $("#currentDate").textContent = `${y}.${m + 1}.${d}`;
+            
+            const btn = $("#calendarToggleButton");
+            if(btn.textContent.includes("全体を見る")) {
+                btn.textContent = `${m + 1}月全体を見る`;
+            }
         }
 
         function renderFullCalendar() {
+            const today = new Date();
+            const currentMonth = today.getMonth();
+            const currentDay = today.getDate();
+            const currentYear = today.getFullYear();
+            
+            // 月の最終日を取得
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
             const grid = $("#calendarGrid");
             grid.innerHTML = ["日","月","火","水","木","金","土"].map(d => `<div class="text-xs font-bold text-slate-300 text-center py-2">${d}</div>`).join("");
             
+            // 簡易的に空セルを追加（実際の曜日合わせをするなら new Date(y, m, 1).getDay() が必要）
+            // 既存コードの挙動を維持しつつ、動的に生成
             for(let i=0; i<6; i++) grid.innerHTML += `<div></div>`;
             
-            for(let i=1; i<=30; i++) {
+            for(let i=1; i<=daysInMonth; i++) {
                 const ev = eventMap.get(i);
                 const hasEv = ev && (ev.p_event || ev.s_event);
                 const btn = document.createElement("button");
                 btn.className = `calendar-day ${hasEv ? 'has-event' : ''}`;
                 btn.textContent = i;
-                if (i === new Date().getDate() && new Date().getMonth() === 10) btn.classList.add('is-today');
+                
+                if (i === currentDay) btn.classList.add('is-today');
 
                 btn.onclick = () => {
                     $$(".calendar-day").forEach(b => b.classList.remove("is-selected"));
@@ -465,7 +545,7 @@
                          detail.innerHTML = `
                          <div class="w-full">
                             <div class="text-indigo-600 font-black mb-3 flex items-center text-lg">
-                                <span class="bg-indigo-100 text-indigo-600 text-xs px-2 py-1 rounded mr-2">11/${i}</span> 詳細
+                                <span class="bg-indigo-100 text-indigo-600 text-xs px-2 py-1 rounded mr-2">${currentMonth + 1}/${i}</span> 詳細
                             </div>
                             <ul class="space-y-2 text-sm font-bold text-slate-700">
                                 ${ev.p_event ? `<li class="flex items-start"><span class="w-1.5 h-1.5 bg-indigo-400 rounded-full mr-2 mt-1.5 shrink-0"></span>${ev.p_event}</li>` : ''}
@@ -481,7 +561,7 @@
             }
         }
 
-        window.addEventListener("DOMContentLoaded", fetchData); // load -> DOMContentLoaded
+        window.addEventListener("DOMContentLoaded", fetchData); 
         $("#newOpeningButton").onclick = openNewOpening;
         $("#closeNewOpeningModal").onclick = () => $("#newOpeningModal").classList.add("hidden");
         $("#closeDetailModal").onclick = () => $("#machineDetailModal").classList.add("hidden");
@@ -489,6 +569,7 @@
             const full = $("#fullCalendarContainer");
             const today = $("#todayEventContainer");
             const btn = $("#calendarToggleButton");
+            const m = new Date().getMonth() + 1;
             
             if (full.classList.contains("hidden")) {
                 full.classList.remove("hidden");
@@ -498,7 +579,7 @@
             } else {
                 full.classList.add("hidden");
                 today.classList.remove("hidden");
-                btn.textContent = "11月全体を見る";
+                btn.textContent = `${m}月全体を見る`;
             }
         };
 
