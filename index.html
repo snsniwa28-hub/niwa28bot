@@ -35,6 +35,11 @@
         .calendar-day.is-today { background-color: #fef08a; color: #854d0e; border: 2px solid #eab308; }
         .calendar-day.is-selected { background-color: #4f46e5; color: white; box-shadow: 0 4px 10px -2px rgba(79, 70, 229, 0.4); }
 
+        /* QSC チェックボックスアニメーション */
+        .qsc-checkbox { appearance: none; width: 1.25rem; height: 1.25rem; border: 2px solid #cbd5e1; border-radius: 0.375rem; cursor: pointer; transition: all 0.2s; position: relative; }
+        .qsc-checkbox:checked { background-color: #22c55e; border-color: #22c55e; }
+        .qsc-checkbox:checked::after { content: '✓'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 0.875rem; font-weight: bold; }
+
         /* スマホでの改行対策 */
         .text-pretty { text-wrap: pretty; }
         .word-keep { display: inline-block; }
@@ -241,8 +246,24 @@
                 </div>
             </div>
 
-            <!-- Floor Map Section -->
+            <!-- Floor Map Section with QSC -->
             <div class="bg-white rounded-3xl border border-slate-100 shadow-lg overflow-hidden">
+                <!-- QSC Button Area -->
+                <div class="bg-rose-50 border-b border-rose-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex items-center gap-2">
+                         <span class="bg-rose-500 text-white p-1.5 rounded-lg">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                        </span>
+                        <div>
+                            <h3 class="font-bold text-rose-900 text-base">QSCチェック (スタッフ共有)</h3>
+                            <p class="text-xs text-rose-700 font-medium" id="qscUnfinishedCount">未実施項目: 読み込み中...</p>
+                        </div>
+                    </div>
+                    <button id="openQSCButton" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-rose-200 transition-all flex items-center justify-center gap-2">
+                        リストを開く
+                    </button>
+                </div>
+
                 <div class="p-6 sm:p-8 border-b border-slate-50">
                     <h2 class="text-2xl font-bold text-slate-800">Floor Map</h2>
                     <p class="text-slate-400 text-xs font-bold mt-1">フロアマップ</p>
@@ -263,6 +284,35 @@
 
     <!-- ================= MODALS ================= -->
 
+    <!-- QSC Modal -->
+    <div id="qscModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden modal-enter">
+            <div class="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                <div class="flex items-center gap-2">
+                    <h3 class="font-bold text-xl text-slate-800">QSC チェックリスト</h3>
+                    <div class="flex bg-slate-100 p-1 rounded-lg">
+                        <button id="qscTabUnfinished" class="px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm transition-all">未実施</button>
+                        <button id="qscTabFinished" class="px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all">完了済</button>
+                    </div>
+                </div>
+                <button id="closeQscModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6">
+                <div id="qscListContainer" class="space-y-3">
+                    <!-- Javascript populates this -->
+                </div>
+            </div>
+            
+            <div class="p-3 bg-white border-t border-slate-100 text-center">
+                <p class="text-xs text-slate-400 font-bold">チェックを入れると全員に即時反映されます</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Existing Modals -->
     <div id="newOpeningModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden modal-enter">
             <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
@@ -304,7 +354,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, doc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         const firebaseConfig = {
           apiKey: "AIzaSyAdxAeBlJkFWAVM1ZWJKhU2urQcmtL0UKo",
@@ -321,6 +371,8 @@
         let allMachines = [];
         let newOpeningData = [];
         let eventMap = new Map();
+        let qscItems = []; // QSCデータ格納用
+        let currentQscTab = '未実施'; // '未実施' or '完了'
 
         const $ = s => document.querySelector(s);
         const $$ = s => document.querySelectorAll(s);
@@ -330,6 +382,7 @@
             "化物語", "プリズムナナ", "バーニングエキスプレス"
         ];
 
+        // Fetch Initial Data
         async function fetchData() {
             try {
                 const [mSnap, nSnap, cSnap] = await Promise.all([
@@ -351,17 +404,119 @@
             }
         }
 
+        // QSC Real-time Listener
+        function subscribeQSC() {
+            onSnapshot(collection(db, "qsc_items"), (snapshot) => {
+                qscItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // No順にソート
+                qscItems.sort((a,b) => a.no - b.no);
+                
+                // 未実施カウント更新
+                const unfinishedCount = qscItems.filter(i => i.status === "未実施").length;
+                $("#qscUnfinishedCount").textContent = unfinishedCount > 0 
+                    ? `残り ${unfinishedCount} 件の対応が必要です` 
+                    : `すべて完了しました！`;
+                
+                // リストが開かれていれば再描画
+                if(!$("#qscModal").classList.contains("hidden")) {
+                    renderQSCList();
+                }
+            });
+        }
+
+        // QSC Render Function
+        function renderQSCList() {
+            const container = $("#qscListContainer");
+            container.innerHTML = "";
+
+            const filteredItems = qscItems.filter(item => 
+                currentQscTab === '未実施' ? item.status === "未実施" : item.status === "完了"
+            );
+
+            if (filteredItems.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">項目はありません</div>`;
+                return;
+            }
+
+            // エリアごとにグルーピング
+            const grouped = {};
+            filteredItems.forEach(item => {
+                if(!grouped[item.area]) grouped[item.area] = [];
+                grouped[item.area].push(item);
+            });
+
+            for(const [area, items] of Object.entries(grouped)) {
+                // Area Header
+                const header = document.createElement("div");
+                header.className = "text-xs font-bold text-slate-500 bg-slate-200/50 px-3 py-1 rounded mt-4 mb-2 first:mt-0";
+                header.textContent = area;
+                container.appendChild(header);
+
+                // Items
+                items.forEach(item => {
+                    const div = document.createElement("div");
+                    div.className = `bg-white p-4 rounded-xl border ${item.status === '完了' ? 'border-slate-100 opacity-60' : 'border-slate-200'} shadow-sm flex items-start gap-4 transition-all`;
+                    
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.className = "qsc-checkbox shrink-0 mt-0.5";
+                    checkbox.checked = item.status === "完了";
+                    
+                    // チェック時の動作
+                    checkbox.onchange = async () => {
+                        const newStatus = checkbox.checked ? "完了" : "未実施";
+                        // Optimistic UI update (即時反映っぽく見せるが、実際はonSnapshotで戻ってくる)
+                        try {
+                            const ref = doc(db, "qsc_items", item.id);
+                            await updateDoc(ref, { status: newStatus });
+                        } catch(e) {
+                            console.error("Update error", e);
+                            checkbox.checked = !checkbox.checked; // Revert
+                        }
+                    };
+
+                    const textDiv = document.createElement("div");
+                    textDiv.className = "flex-1";
+                    textDiv.innerHTML = `
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xs font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">No.${item.no}</span>
+                            ${item.status === '完了' ? '<span class="text-xs font-bold text-green-600">DONE</span>' : ''}
+                        </div>
+                        <p class="text-sm font-bold text-slate-700 leading-snug ${item.status === '完了' ? 'line-through text-slate-400' : ''}">${item.content}</p>
+                    `;
+
+                    div.appendChild(checkbox);
+                    div.appendChild(textDiv);
+                    container.appendChild(div);
+                });
+            }
+        }
+
+        // QSC Tabs
+        $("#qscTabUnfinished").onclick = () => {
+            currentQscTab = '未実施';
+            $("#qscTabUnfinished").className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm transition-all";
+            $("#qscTabFinished").className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all";
+            renderQSCList();
+        };
+        $("#qscTabFinished").onclick = () => {
+            currentQscTab = '完了';
+            $("#qscTabFinished").className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-green-600 shadow-sm transition-all";
+            $("#qscTabUnfinished").className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all";
+            renderQSCList();
+        };
+
+        // Existing Functions (unchanged logic, just kept for context)
         function openNewOpening() {
             const container = $("#newOpeningInfo");
             container.innerHTML = "";
-            
             if (newOpeningData.length === 0) {
                 container.innerHTML = "<p class='text-center text-slate-400 py-10'>データがありません</p>";
                 $("#newOpeningModal").classList.remove("hidden");
                 return;
             }
-
-            const latest = [];
+            // ... (New Opening Logic same as before) ...
+             const latest = [];
             const others = [];
 
             newOpeningData.forEach(m => {
@@ -379,20 +534,16 @@
                 list.forEach(item => {
                     const li = document.createElement("li");
                     li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group";
-                    
                     const clean = s => s.replace(/\s+/g, '').toLowerCase();
                     const matched = allMachines.find(m => 
                         m.name === item.name || m.name.includes(item.name) || clean(m.name) === clean(item.name)
                     );
-
                     const leftDiv = document.createElement("div");
                     leftDiv.className = "flex flex-col overflow-hidden mr-2";
-                    
                     const nameSpan = document.createElement("span");
                     nameSpan.className = "font-bold text-slate-700 truncate text-sm sm:text-base group-hover:text-indigo-700 transition-colors";
                     nameSpan.textContent = item.name;
                     leftDiv.appendChild(nameSpan);
-
                     if (matched && matched.salesPitch) {
                         const sub = document.createElement("span");
                         sub.className = "text-xs text-slate-400 font-medium mt-1 flex items-center";
@@ -400,11 +551,9 @@
                         leftDiv.appendChild(sub);
                         li.onclick = () => openDetail(matched);
                     }
-
                     const badge = document.createElement("span");
                     badge.className = "text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0";
                     badge.textContent = `${item.count}台`;
-                    
                     li.appendChild(leftDiv);
                     li.appendChild(badge);
                     ul.appendChild(li);
@@ -434,7 +583,6 @@
         function openDetail(data) {
             $("#detailName").textContent = data.name;
             $("#detailPitch").textContent = data.salesPitch || "情報なし";
-            
             const fill = (id, list) => {
                 const el = $(id);
                 el.innerHTML = "";
@@ -453,18 +601,12 @@
         function renderToday() {
             const today = new Date();
             const d = today.getDate();
-            const m = today.getMonth(); // 0=1月, 11=12月
+            const m = today.getMonth();
             const y = today.getFullYear();
-            
             const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
             const currentMonthName = monthNames[m];
-
-            // カレンダーイベント取得
             const ev = eventMap.get(d);
-            
-            // HTML生成
-            const html = ev 
-                ? `
+            const html = ev ? `
                 <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 w-full">
                     <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200/60">
                         <div class="flex items-center gap-3">
@@ -477,69 +619,40 @@
                         <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">TODAY</span>
                     </div>
                     <ul class="space-y-3">
-                        ${ev.p_event ? `
-                        <li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors">
-                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 mr-3 shrink-0"></span>
-                            <span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.p_event}</span>
-                        </li>` : ''}
-                        ${ev.s_event ? `
-                        <li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors">
-                            <span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 mr-3 shrink-0"></span>
-                            <span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.s_event}</span>
-                        </li>` : ''}
-                        ${ev.recommend ? `
-                        <li class="flex items-start p-2 rounded-lg hover:bg-rose-50 transition-colors">
-                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 mt-2 mr-3 shrink-0"></span>
-                            <span class="text-rose-600 font-bold text-sm leading-relaxed">${ev.recommend}</span>
-                        </li>` : ''}
+                        ${ev.p_event ? `<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.p_event}</span></li>` : ''}
+                        ${ev.s_event ? `<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.s_event}</span></li>` : ''}
+                        ${ev.recommend ? `<li class="flex items-start p-2 rounded-lg hover:bg-rose-50 transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 mt-2 mr-3 shrink-0"></span><span class="text-rose-600 font-bold text-sm leading-relaxed">${ev.recommend}</span></li>` : ''}
                     </ul>
-                </div>
-                `
-                : `
+                </div>` : `
                 <div class="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 rounded-2xl border border-slate-100 w-full">
                     <div class="text-5xl font-black text-slate-200 mb-3">${d}</div>
                     <p class="text-sm font-bold">特別なイベント情報はありません</p>
-                </div>
-                `;
-            
+                </div>`;
             $("#todayEventContainer").innerHTML = html;
             $("#currentDate").textContent = `${y}.${m + 1}.${d}`;
-            
             const btn = $("#calendarToggleButton");
-            if(btn.textContent.includes("全体を見る")) {
-                btn.textContent = `${m + 1}月全体を見る`;
-            }
+            if(btn.textContent.includes("全体を見る")) btn.textContent = `${m + 1}月全体を見る`;
         }
 
         function renderFullCalendar() {
-            const today = new Date();
+             const today = new Date();
             const currentMonth = today.getMonth();
             const currentDay = today.getDate();
             const currentYear = today.getFullYear();
-            
-            // 月の最終日を取得
             const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
             const grid = $("#calendarGrid");
             grid.innerHTML = ["日","月","火","水","木","金","土"].map(d => `<div class="text-xs font-bold text-slate-300 text-center py-2">${d}</div>`).join("");
-            
-            // 簡易的に空セルを追加（実際の曜日合わせをするなら new Date(y, m, 1).getDay() が必要）
-            // 既存コードの挙動を維持しつつ、動的に生成
             for(let i=0; i<6; i++) grid.innerHTML += `<div></div>`;
-            
             for(let i=1; i<=daysInMonth; i++) {
                 const ev = eventMap.get(i);
                 const hasEv = ev && (ev.p_event || ev.s_event);
                 const btn = document.createElement("button");
                 btn.className = `calendar-day ${hasEv ? 'has-event' : ''}`;
                 btn.textContent = i;
-                
                 if (i === currentDay) btn.classList.add('is-today');
-
                 btn.onclick = () => {
                     $$(".calendar-day").forEach(b => b.classList.remove("is-selected"));
                     btn.classList.add("is-selected");
-                    
                     const detail = $("#selectedEventDetails");
                     if(ev) {
                          detail.innerHTML = `
@@ -561,10 +674,24 @@
             }
         }
 
-        window.addEventListener("DOMContentLoaded", fetchData); 
+        // Init
+        window.addEventListener("DOMContentLoaded", () => {
+            fetchData();
+            subscribeQSC();
+        });
+
+        // Event Listeners
         $("#newOpeningButton").onclick = openNewOpening;
         $("#closeNewOpeningModal").onclick = () => $("#newOpeningModal").classList.add("hidden");
         $("#closeDetailModal").onclick = () => $("#machineDetailModal").classList.add("hidden");
+        
+        // QSC Modal
+        $("#openQSCButton").onclick = () => {
+            $("#qscModal").classList.remove("hidden");
+            renderQSCList();
+        };
+        $("#closeQscModal").onclick = () => $("#qscModal").classList.add("hidden");
+
         $("#calendarToggleButton").onclick = () => {
             const full = $("#fullCalendarContainer");
             const today = $("#todayEventContainer");
@@ -582,8 +709,6 @@
                 btn.textContent = `${m}月全体を見る`;
             }
         };
-
-        setInterval(() => {}, 5000);
     </script>
 </body>
 </html>
