@@ -153,14 +153,13 @@
                         </h1>
                     </div>
 
-                    <!-- ▼▼▼ スタッフ用タスクボタン (追加) ▼▼▼ -->
+                    <!-- Staff Task Button -->
                     <div class="mt-6 fade-in-up" style="animation-delay: 0.2s;">
                         <button onclick="switchView('staff')" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold px-6 py-3 rounded-full shadow-lg shadow-slate-200 transition-all transform hover:scale-105">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                             <span>本日のタスクを確認する (スタッフ用)</span>
                         </button>
                     </div>
-                    <!-- ▲▲▲ 追加ここまで ▲▲▲ -->
                 </div>
             </section>
 
@@ -184,7 +183,7 @@
                 </div>
             </div>
 
-            <!-- Pachinko & Slot Strategy (省略せずそのまま) -->
+            <!-- Pachinko Strategy (UPDATED) -->
             <section class="container mx-auto px-4 mt-16 fade-in-up" style="animation-delay: 0.35s;">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-sm max-w-4xl mx-auto overflow-hidden">
                     <div class="bg-sky-50/80 px-6 py-4 border-b border-sky-100 flex items-center gap-3">
@@ -194,7 +193,7 @@
                     <div class="p-6 sm:p-10">
                         <div class="mb-8 text-center sm:text-left">
                             <h3 class="text-2xl font-black text-slate-800 leading-tight text-pretty">今週の<span class="text-sky-600 word-keep">パチンコ戦略</span></h3>
-                            <p class="text-slate-500 mt-2 font-medium">週末の時差島15時稼働・満台を目指して徹底強化！</p>
+                            <p class="text-slate-500 mt-2 font-medium">時差島平日19時・週末12時開放 & エヴァシリーズ徹底強化！</p>
                         </div>
                         <div class="mb-6 bg-gradient-to-br from-purple-50 to-white p-6 rounded-2xl border border-purple-100 relative overflow-hidden shadow-sm">
                             <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center relative z-10">
@@ -202,28 +201,37 @@
                                     <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                 </div>
                                 <div>
-                                    <div class="text-xs font-bold text-purple-600 mb-1 flex items-center gap-2"><span class="bg-purple-600 text-white px-2 py-0.5 rounded-full text-[10px]">注目</span>11/26 (水) ～ 12/2 (火)</div>
+                                    <div class="text-xs font-bold text-purple-600 mb-1 flex items-center gap-2"><span class="bg-purple-600 text-white px-2 py-0.5 rounded-full text-[10px]">推奨</span>11/26 (水) ～ 12/2 (火)</div>
                                     <div class="font-bold text-slate-800 text-lg sm:text-xl mb-1">3週連続 エヴァシリーズ推奨</div>
-                                    <p class="text-sm text-slate-600">市場内での存在感を確立するため、3週連続で徹底プッシュ！</p>
+                                    <p class="text-sm text-slate-600">期間中はエヴァシリーズが徹底的におすすめです！</p>
                                 </div>
                             </div>
                         </div>
                         <div class="grid gap-4 sm:grid-cols-2">
                             <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group hover:border-orange-300 transition-colors">
-                                <div class="text-xs font-bold text-orange-500 mb-1">時差島 & 平日・週末共通</div>
+                                <div class="text-xs font-bold text-orange-500 mb-1">時差島 (平日19時/週末12時)</div>
                                 <div class="font-bold text-slate-800 mb-2 text-lg">炎炎ノ消防隊2</div>
-                                <p class="text-sm text-slate-600 leading-relaxed">時差島営業の主軸機種。平日も週末も引き続きおすすめ！</p>
+                                <p class="text-sm text-slate-600 leading-relaxed">平日も週末も引き続きおすすめ！<br><span class="text-xs text-rose-500 font-bold">※28日は年一のため時差なし</span></p>
                             </div>
                             <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group hover:border-indigo-300 transition-colors">
                                 <div class="text-xs font-bold text-slate-500 mb-1">時差がない日は…</div>
                                 <div class="font-bold text-slate-800 mb-2 text-lg">からくりサーカス2</div>
-                                <p class="text-sm text-slate-600 leading-relaxed">近隣状況を見て調整。時差対象外のタイミングでは「からくり2」が推奨！</p>
+                                <p class="text-sm text-slate-600 leading-relaxed">時差をやらない日は是非「からくり2」がオススメ！</p>
                             </div>
+                        </div>
+                        <!-- 1円パチンコ告知 -->
+                        <div class="mt-4 bg-yellow-50 p-4 rounded-xl border border-yellow-100 flex items-start gap-3">
+                             <div class="text-2xl">📢</div>
+                             <div>
+                                 <div class="font-bold text-yellow-800 text-sm sm:text-base">1円パチンコ増台計画</div>
+                                 <p class="text-xs sm:text-sm text-yellow-700 leading-snug">次回入替で「アイマリン」＆「スマパチ人気機種」増台予定！ご期待ください。</p>
+                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
+            <!-- Slot Strategy (UNCHANGED) -->
             <section class="container mx-auto px-4 mt-16 fade-in-up" style="animation-delay: 0.4s;">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-sm max-w-4xl mx-auto overflow-hidden">
                     <div class="bg-slate-50/80 px-6 py-4 border-b border-slate-100 flex items-center gap-3">
