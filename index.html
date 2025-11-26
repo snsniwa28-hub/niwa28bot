@@ -487,7 +487,13 @@
                         <button id="qscTabFinished" class="px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all">完了済</button>
                     </div>
                 </div>
-                <button id="closeQscModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <div class="flex items-center gap-2">
+                    <!-- 編集モード切替ボタン -->
+                    <button id="qscEditButton" class="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition">
+                        ✏️ 画像登録
+                    </button>
+                    <button id="closeQscModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                </div>
             </div>
             <div class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6"><div id="qscListContainer" class="space-y-3"></div></div>
             <div class="p-3 bg-white border-t border-slate-100 text-center"><p class="text-xs text-slate-400 font-bold">チェックを入れると全員に即時反映されます</p></div>
@@ -826,7 +832,7 @@
         const dbStaff = getFirestore(appStaff);
 
         // --- Logic for Customer App ---
-        let allMachines = [], newOpeningData = [], eventMap = new Map(), qscItems = [], currentQscTab = '未実施';
+        let allMachines = [], newOpeningData = [], eventMap = new Map(), qscItems = [], currentQscTab = '未実施', qscEditMode = false;
         const $ = s => document.querySelector(s);
         const $$ = s => document.querySelectorAll(s);
         const latestKeywords = ["アズールレーン", "北斗の拳11", "地獄少女7500", "海物語極", "化物語", "プリズムナナ", "バーニングエキスプレス"];
@@ -865,6 +871,13 @@
             return url;
         }
 
+        // QSCの画像URLを保存する関数（windowに公開）
+        window.saveQscImage = async (id, url) => {
+            try {
+                await updateDoc(doc(dbCustomer, "qsc_items", id), { image_url: url.trim() });
+            } catch(e) { console.error("Error saving image url:", e); alert("保存に失敗しました"); }
+        };
+
         function renderQSCList() {
             const container = $("#qscListContainer"); container.innerHTML = "";
             const filteredItems = qscItems.filter(item => currentQscTab === '未実施' ? item.status === "未実施" : item.status === "完了");
@@ -875,21 +888,40 @@
             for(const [area, items] of Object.entries(grouped)) {
                 const header = document.createElement("div"); header.className = "text-xs font-bold text-slate-500 bg-slate-200/50 px-3 py-1 rounded mt-4 mb-2 first:mt-0"; header.textContent = area; container.appendChild(header);
                 items.forEach(item => {
-                    const div = document.createElement("div"); div.className = `bg-white p-4 rounded-xl border ${item.status === '完了' ? 'border-slate-100 opacity-60' : 'border-slate-200'} shadow-sm flex items-start gap-4 transition-all`;
-                    const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.className = "qsc-checkbox shrink-0 mt-0.5"; checkbox.checked = item.status === "完了";
-                    checkbox.onchange = async () => { const newStatus = checkbox.checked ? "完了" : "未実施"; try { await updateDoc(doc(dbCustomer, "qsc_items", item.id), { status: newStatus }); } catch(e) { console.error(e); checkbox.checked = !checkbox.checked; } };
-                    const textDiv = document.createElement("div"); textDiv.className = "flex-1"; 
+                    const div = document.createElement("div"); div.className = `bg-white p-4 rounded-xl border ${item.status === '完了' ? 'border-slate-100 opacity-60' : 'border-slate-200'} shadow-sm flex flex-col gap-2 transition-all`;
                     
-                    // 画像ボタン (UPDATED)
-                    const imgBtn = item.image_url ? `
-                        <button onclick="openQscImage('${convertDriveLink(item.image_url)}')" class="mt-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg flex items-center gap-1 transition w-fit">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                            参考画像を見る
-                        </button>
-                    ` : '';
-                    
-                    textDiv.innerHTML = `<div class="flex items-center gap-2 mb-1"><span class="text-xs font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">No.${item.no}</span>${item.status === '完了' ? '<span class="text-xs font-bold text-green-600">DONE</span>' : ''}</div><p class="text-sm font-bold text-slate-700 leading-snug ${item.status === '完了' ? 'line-through text-slate-400' : ''}">${item.content}</p>${imgBtn}`;
-                    div.appendChild(checkbox); div.appendChild(textDiv); container.appendChild(div);
+                    // Edit Mode: Input Field
+                    if (qscEditMode) {
+                        const inputGroup = document.createElement("div");
+                        inputGroup.className = "flex gap-2 items-center w-full";
+                        inputGroup.innerHTML = `
+                            <span class="text-xs font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded whitespace-nowrap">No.${item.no}</span>
+                            <input type="text" class="flex-1 border border-slate-300 rounded px-2 py-1 text-sm" placeholder="画像URLをここにペースト" value="${item.image_url || ''}" onchange="saveQscImage('${item.id}', this.value)">
+                        `;
+                        const label = document.createElement("div");
+                        label.className = "text-xs text-slate-400 font-bold truncate";
+                        label.textContent = item.content;
+                        div.appendChild(inputGroup);
+                        div.appendChild(label);
+                    } 
+                    // Normal Mode
+                    else {
+                        div.className += " flex-row items-start"; // Restore flex-row layout
+                        const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.className = "qsc-checkbox shrink-0 mt-0.5"; checkbox.checked = item.status === "完了";
+                        checkbox.onchange = async () => { const newStatus = checkbox.checked ? "完了" : "未実施"; try { await updateDoc(doc(dbCustomer, "qsc_items", item.id), { status: newStatus }); } catch(e) { console.error(e); checkbox.checked = !checkbox.checked; } };
+                        const textDiv = document.createElement("div"); textDiv.className = "flex-1"; 
+                        
+                        const imgBtn = item.image_url ? `
+                            <button onclick="openQscImage('${convertDriveLink(item.image_url)}')" class="mt-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg flex items-center gap-1 transition w-fit">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                参考画像を見る
+                            </button>
+                        ` : '';
+                        
+                        textDiv.innerHTML = `<div class="flex items-center gap-2 mb-1"><span class="text-xs font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">No.${item.no}</span>${item.status === '完了' ? '<span class="text-xs font-bold text-green-600">DONE</span>' : ''}</div><p class="text-sm font-bold text-slate-700 leading-snug ${item.status === '完了' ? 'line-through text-slate-400' : ''}">${item.content}</p>${imgBtn}`;
+                        div.appendChild(checkbox); div.appendChild(textDiv);
+                    }
+                    container.appendChild(div);
                 });
             }
         }
@@ -959,9 +991,32 @@
         window.addEventListener("DOMContentLoaded", () => {
             fetchData();
             subscribeQSC();
-            // QSC Tabs
+            // QSC Tabs & Edit Toggle
             $("#qscTabUnfinished").onclick = () => { currentQscTab = '未実施'; $("#qscTabUnfinished").className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm transition-all"; $("#qscTabFinished").className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all"; renderQSCList(); };
             $("#qscTabFinished").onclick = () => { currentQscTab = '完了'; $("#qscTabFinished").className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-green-600 shadow-sm transition-all"; $("#qscTabUnfinished").className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all"; renderQSCList(); };
+            
+            // Edit Button Logic
+            $("#qscEditButton").onclick = () => {
+                if(qscEditMode) {
+                    // Turn off edit mode
+                    qscEditMode = false;
+                    $("#qscEditButton").textContent = "✏️ 画像登録";
+                    $("#qscEditButton").className = "text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition";
+                    renderQSCList();
+                } else {
+                    // Turn on edit mode (Password Check)
+                    const pass = prompt("管理者パスワードを入力してください:");
+                    if(pass === "admin") { // You can change this password
+                        qscEditMode = true;
+                        $("#qscEditButton").textContent = "✅ 編集終了";
+                        $("#qscEditButton").className = "text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition";
+                        renderQSCList();
+                    } else if (pass !== null) {
+                        alert("パスワードが違います");
+                    }
+                }
+            };
+
             $("#newOpeningButton").onclick = openNewOpening;
             $("#closeNewOpeningModal").onclick = () => $("#newOpeningModal").classList.add("hidden");
             $("#closeDetailModal").onclick = () => $("#machineDetailModal").classList.add("hidden");
