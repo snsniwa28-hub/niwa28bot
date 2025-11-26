@@ -139,7 +139,7 @@
 
         <main>
             <!-- Hero Slider -->
-            <section class="relative pt-8 pb-12 sm:pt-12 sm:pb-20 bg-white rounded-b-[2.5rem] shadow-sm overflow-hidden">
+            <section class="relative pt-8 pb-8 sm:pt-12 sm:pb-12 bg-white rounded-b-[2.5rem] shadow-sm overflow-hidden">
                 <div class="container mx-auto px-4 sm:px-6 text-center">
                     <div class="relative w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl shadow-indigo-900/10 border border-slate-100">
                         <div class="aspect-[16/9] bg-slate-900 flex items-center justify-center">
@@ -152,19 +152,31 @@
                             最新台の情報を、<br class="sm:hidden">もっと<span class="text-indigo-600 inline-block">スマート</span>に。
                         </h1>
                     </div>
-
-                    <!-- Staff Task Button -->
-                    <div class="mt-6 fade-in-up" style="animation-delay: 0.2s;">
-                        <button onclick="switchView('staff')" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold px-6 py-3 rounded-full shadow-lg shadow-slate-200 transition-all transform hover:scale-105">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                            <span>本日のタスクを確認する (スタッフ用)</span>
-                        </button>
-                    </div>
                 </div>
             </section>
 
-            <!-- Action Button (新装開店情報) -->
-            <div class="container mx-auto px-4 -mt-8 relative z-10 fade-in-up" style="animation-delay: 0.3s;">
+            <!-- Staff Task Button (Redesigned) -->
+            <div class="container mx-auto px-4 mt-2 relative z-10 fade-in-up" style="animation-delay: 0.2s;">
+                <div onclick="switchView('staff')" class="group cursor-pointer bg-slate-800 rounded-2xl shadow-xl shadow-slate-900/10 border border-slate-700 p-5 sm:p-6 max-w-xl mx-auto hover:translate-y-[-4px] hover:shadow-2xl transition-all duration-300">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-5">
+                            <div class="bg-slate-700/50 text-indigo-400 p-3 rounded-2xl shrink-0 group-hover:bg-indigo-500 group-hover:text-white transition-colors duration-300">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                            </div>
+                            <div>
+                                <h2 class="text-lg sm:text-xl font-bold text-white group-hover:text-indigo-300 transition-colors">本日のタスクを確認する</h2>
+                                <p class="text-slate-400 text-xs sm:text-sm font-medium mt-0.5">スタッフ専用 / 開閉店作業</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-700/50 rounded-full p-2 text-slate-500 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Action Button -->
+            <div class="container mx-auto px-4 mt-4 relative z-10 fade-in-up" style="animation-delay: 0.3s;">
                 <div id="newOpeningButton" class="group cursor-pointer bg-white rounded-2xl shadow-xl shadow-indigo-900/5 border border-slate-100 p-6 sm:p-8 max-w-xl mx-auto hover:translate-y-[-4px] hover:shadow-2xl transition-all duration-300">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-5">
@@ -271,9 +283,9 @@
                 </div>
             </section>
 
-            <!-- Calendar & Floor Map -->
+            <!-- Calendar Section -->
             <section class="container mx-auto px-4 mt-12 max-w-4xl">
-                <div class="bg-white rounded-3xl border border-slate-100 shadow-lg mb-12 overflow-hidden">
+                <div class="bg-white rounded-3xl border border-slate-100 shadow-lg mb-8 overflow-hidden">
                     <div class="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-50">
                         <div>
                             <h2 class="text-3xl font-black text-slate-800">Event Calendar</h2>
@@ -294,8 +306,10 @@
                         </div>
                     </div>
                 </div>
+            </section>
 
-                <!-- QSC -->
+            <!-- QSC Section (Separated) -->
+            <section class="container mx-auto px-4 mt-8 max-w-4xl">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-lg overflow-hidden">
                     <div class="bg-rose-50 border-b border-rose-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div class="flex items-center gap-2">
@@ -309,6 +323,15 @@
                         </div>
                         <button id="openQSCButton" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-rose-200 transition-all flex items-center justify-center gap-2">リストを開く</button>
                     </div>
+                    <div class="p-6 bg-rose-50/30">
+                       <p class="text-xs text-slate-500 font-medium">お客様に快適に過ごしていただくための品質チェックリストです。</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Floor Map Section (Separated) -->
+            <section class="container mx-auto px-4 mt-8 max-w-4xl">
+                <div class="bg-white rounded-3xl border border-slate-100 shadow-lg overflow-hidden">
                     <div class="p-6 sm:p-8 border-b border-slate-50">
                         <h2 class="text-2xl font-bold text-slate-800">Floor Map</h2>
                         <p class="text-slate-400 text-xs font-bold mt-1">フロアマップ</p>
@@ -320,6 +343,7 @@
                     </div>
                 </div>
             </section>
+
         </main>
         <footer class="mt-20 py-10 text-center border-t border-slate-200 bg-slate-50">
             <p class="text-xs font-bold text-slate-400 tracking-widest">&copy; 2025 GARDEN YASHIO BOT</p>
@@ -488,25 +512,29 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <!-- 編集モード切替ボタン -->
+                    <!-- 管理ボタン -->
                     <button id="qscEditButton" class="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition">
-                        ✏️ 画像登録
+                        ⚙️ 管理
                     </button>
                     <button id="closeQscModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
                 </div>
             </div>
-            <div class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6"><div id="qscListContainer" class="space-y-3"></div></div>
+            <div class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6">
+                <!-- 新規追加フォーム (編集モード時のみ表示) -->
+                <div id="qscAddForm" class="hidden mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                    <h4 class="text-xs font-bold text-indigo-600 mb-2 uppercase tracking-widest">新規項目の追加</h4>
+                    <div class="flex flex-col gap-2">
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="number" id="newQscNo" placeholder="No." class="border border-slate-200 rounded p-2 text-sm" min="1">
+                            <input type="text" id="newQscArea" placeholder="エリア (例: トイレ)" class="col-span-2 border border-slate-200 rounded p-2 text-sm">
+                        </div>
+                        <input type="text" id="newQscContent" placeholder="チェック内容を入力..." class="border border-slate-200 rounded p-2 text-sm">
+                        <button onclick="addQscItem()" class="bg-indigo-600 text-white font-bold text-sm py-2 rounded-lg hover:bg-indigo-700 transition">追加する</button>
+                    </div>
+                </div>
+                <div id="qscListContainer" class="space-y-3"></div>
+            </div>
             <div class="p-3 bg-white border-t border-slate-100 text-center"><p class="text-xs text-slate-400 font-bold">チェックを入れると全員に即時反映されます</p></div>
-        </div>
-    </div>
-
-    <!-- QSC Image Modal (追加) -->
-    <div id="qscImageModal" class="fixed inset-0 bg-black/90 hidden z-[60] flex items-center justify-center p-4 transition-opacity" onclick="closeQscImage()">
-        <div class="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center">
-            <img id="qscPreviewImage" src="" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl bg-white">
-            <button onclick="closeQscImage()" class="mt-4 bg-white/20 hover:bg-white/40 text-white rounded-full p-2 transition">
-                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
         </div>
     </div>
 
@@ -784,17 +812,6 @@
         }
         window.showRemarksModal=(t,m,r)=>{document.getElementById('remarks-modal-task').textContent=t;document.getElementById('remarks-modal-time').textContent=m;document.getElementById('remarks-modal-text').textContent=r||"備考なし";document.getElementById('remarks-modal').classList.remove('hidden');};
         window.closeRemarksModal=()=>document.getElementById('remarks-modal').classList.add('hidden');
-        
-        // QSC画像モーダル制御
-        window.openQscImage = (url) => {
-            const img = document.getElementById('qscPreviewImage');
-            img.src = url;
-            document.getElementById('qscImageModal').classList.remove('hidden');
-        };
-        window.closeQscImage = () => {
-            document.getElementById('qscImageModal').classList.add('hidden');
-            setTimeout(() => { document.getElementById('qscPreviewImage').src = ""; }, 200);
-        };
     </script>
 
     <!-- =========================================
@@ -802,7 +819,7 @@
          ========================================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, doc, updateDoc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, doc, updateDoc, onSnapshot, setDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // 1. Customer App Config (Garden Yashio Bot)
         const configCustomer = {
@@ -859,23 +876,27 @@
                 if(!$("#qscModal").classList.contains("hidden")) renderQSCList();
             });
         }
-        
-        // Googleドライブの共有リンクを画像表示用URLに変換
-        function convertDriveLink(url) {
-            if (!url) return null;
-            const match = url.match(/\/d\/(.+?)\/|\/d\/(.+?)$|id=(.+?)&/);
-            if (match) {
-                const id = match[1] || match[2] || match[3];
-                return `https://drive.google.com/uc?export=view&id=${id}`;
-            }
-            return url;
-        }
 
-        // QSCの画像URLを保存する関数（windowに公開）
-        window.saveQscImage = async (id, url) => {
+        // QSC項目の追加・削除関数
+        window.addQscItem = async () => {
+            const no = document.getElementById('newQscNo').value;
+            const area = document.getElementById('newQscArea').value;
+            const content = document.getElementById('newQscContent').value;
+            if(!no || !area || !content) return alert("すべての項目を入力してください");
             try {
-                await updateDoc(doc(dbCustomer, "qsc_items", id), { image_url: url.trim() });
-            } catch(e) { console.error("Error saving image url:", e); alert("保存に失敗しました"); }
+                await addDoc(collection(dbCustomer, "qsc_items"), {
+                    no: Number(no), area: area, content: content, status: "未実施"
+                });
+                document.getElementById('newQscNo').value = '';
+                document.getElementById('newQscContent').value = '';
+            } catch(e) { console.error(e); alert("追加に失敗しました"); }
+        };
+
+        window.deleteQscItem = async (id) => {
+            if(confirm("この項目を削除しますか？")) {
+                try { await deleteDoc(doc(dbCustomer, "qsc_items", id)); } 
+                catch(e) { console.error(e); alert("削除に失敗しました"); }
+            }
         };
 
         function renderQSCList() {
@@ -888,37 +909,23 @@
             for(const [area, items] of Object.entries(grouped)) {
                 const header = document.createElement("div"); header.className = "text-xs font-bold text-slate-500 bg-slate-200/50 px-3 py-1 rounded mt-4 mb-2 first:mt-0"; header.textContent = area; container.appendChild(header);
                 items.forEach(item => {
-                    const div = document.createElement("div"); div.className = `bg-white p-4 rounded-xl border ${item.status === '完了' ? 'border-slate-100 opacity-60' : 'border-slate-200'} shadow-sm flex flex-col gap-2 transition-all`;
+                    const div = document.createElement("div"); div.className = `bg-white p-4 rounded-xl border ${item.status === '完了' ? 'border-slate-100 opacity-60' : 'border-slate-200'} shadow-sm flex items-center gap-4 transition-all`;
                     
-                    // Edit Mode: Input Field
                     if (qscEditMode) {
-                        const inputGroup = document.createElement("div");
-                        inputGroup.className = "flex gap-2 items-center w-full";
-                        inputGroup.innerHTML = `
-                            <span class="text-xs font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded whitespace-nowrap">No.${item.no}</span>
-                            <input type="text" class="flex-1 border border-slate-300 rounded px-2 py-1 text-sm" placeholder="画像URLをここにペースト" value="${item.image_url || ''}" onchange="saveQscImage('${item.id}', this.value)">
+                        // 編集モード：削除ボタン表示
+                        div.innerHTML = `
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1"><span class="text-xs font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">No.${item.no}</span></div>
+                                <p class="text-sm font-bold text-slate-700 leading-snug">${item.content}</p>
+                            </div>
+                            <button onclick="deleteQscItem('${item.id}')" class="p-2 bg-rose-50 text-rose-500 rounded-full hover:bg-rose-100"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
                         `;
-                        const label = document.createElement("div");
-                        label.className = "text-xs text-slate-400 font-bold truncate";
-                        label.textContent = item.content;
-                        div.appendChild(inputGroup);
-                        div.appendChild(label);
-                    } 
-                    // Normal Mode
-                    else {
-                        div.className += " flex-row items-start"; // Restore flex-row layout
+                    } else {
+                        // 通常モード
                         const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.className = "qsc-checkbox shrink-0 mt-0.5"; checkbox.checked = item.status === "完了";
                         checkbox.onchange = async () => { const newStatus = checkbox.checked ? "完了" : "未実施"; try { await updateDoc(doc(dbCustomer, "qsc_items", item.id), { status: newStatus }); } catch(e) { console.error(e); checkbox.checked = !checkbox.checked; } };
                         const textDiv = document.createElement("div"); textDiv.className = "flex-1"; 
-                        
-                        const imgBtn = item.image_url ? `
-                            <button onclick="openQscImage('${convertDriveLink(item.image_url)}')" class="mt-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg flex items-center gap-1 transition w-fit">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                参考画像を見る
-                            </button>
-                        ` : '';
-                        
-                        textDiv.innerHTML = `<div class="flex items-center gap-2 mb-1"><span class="text-xs font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">No.${item.no}</span>${item.status === '完了' ? '<span class="text-xs font-bold text-green-600">DONE</span>' : ''}</div><p class="text-sm font-bold text-slate-700 leading-snug ${item.status === '完了' ? 'line-through text-slate-400' : ''}">${item.content}</p>${imgBtn}`;
+                        textDiv.innerHTML = `<div class="flex items-center gap-2 mb-1"><span class="text-xs font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">No.${item.no}</span>${item.status === '完了' ? '<span class="text-xs font-bold text-green-600">DONE</span>' : ''}</div><p class="text-sm font-bold text-slate-700 leading-snug ${item.status === '完了' ? 'line-through text-slate-400' : ''}">${item.content}</p>`;
                         div.appendChild(checkbox); div.appendChild(textDiv);
                     }
                     container.appendChild(div);
@@ -998,18 +1005,18 @@
             // Edit Button Logic
             $("#qscEditButton").onclick = () => {
                 if(qscEditMode) {
-                    // Turn off edit mode
                     qscEditMode = false;
-                    $("#qscEditButton").textContent = "✏️ 画像登録";
+                    $("#qscEditButton").textContent = "⚙️ 管理";
                     $("#qscEditButton").className = "text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition";
+                    $("#qscAddForm").classList.add("hidden");
                     renderQSCList();
                 } else {
-                    // Turn on edit mode (Password Check)
                     const pass = prompt("管理者パスワードを入力してください:");
                     if(pass === "admin") { // You can change this password
                         qscEditMode = true;
-                        $("#qscEditButton").textContent = "✅ 編集終了";
+                        $("#qscEditButton").textContent = "✅ 完了";
                         $("#qscEditButton").className = "text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition";
+                        $("#qscAddForm").classList.remove("hidden");
                         renderQSCList();
                     } else if (pass !== null) {
                         alert("パスワードが違います");
