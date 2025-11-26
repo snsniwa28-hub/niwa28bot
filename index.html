@@ -494,6 +494,16 @@
         </div>
     </div>
 
+    <!-- QSC Image Modal (追加) -->
+    <div id="qscImageModal" class="fixed inset-0 bg-black/90 hidden z-[60] flex items-center justify-center p-4 transition-opacity" onclick="closeQscImage()">
+        <div class="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center">
+            <img id="qscPreviewImage" src="" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl bg-white">
+            <button onclick="closeQscImage()" class="mt-4 bg-white/20 hover:bg-white/40 text-white rounded-full p-2 transition">
+                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+    </div>
+
     <!-- Machine Modals (Customer) -->
     <div id="newOpeningModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden modal-enter">
@@ -504,6 +514,8 @@
             <div id="newOpeningInfo" class="p-5 overflow-y-auto bg-slate-50/50"></div>
         </div>
     </div>
+    
+    <!-- Machine Detail Modal (UPDATED) -->
     <div id="machineDetailModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden z-[60] flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden modal-enter">
             <div class="bg-slate-800 p-6 sm:p-8 flex justify-between items-start shrink-0">
@@ -511,7 +523,16 @@
                 <button id="closeDetailModal" class="text-slate-400 hover:text-white transition"><svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div class="p-6 sm:p-8 overflow-y-auto">
-                <div class="mb-8"><h4 class="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">SALES POINT</h4><p id="detailPitch" class="text-slate-700 text-base sm:text-lg font-medium leading-loose tracking-wide text-justify text-pretty"></p></div>
+                <!-- Sales Pitch Area (Redesigned) -->
+                <div class="mb-8 bg-slate-50 rounded-2xl p-6 border border-slate-200 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
+                    <h4 class="flex items-center gap-2 text-xs font-black text-indigo-600 uppercase tracking-widest mb-4">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/></svg>
+                        SALES POINT / 担当者コメント
+                    </h4>
+                    <p id="detailPitch" class="text-slate-700 text-base sm:text-lg font-medium leading-loose whitespace-pre-line"></p>
+                </div>
+
                 <div class="grid sm:grid-cols-2 gap-6">
                     <div class="bg-emerald-50 p-5 rounded-2xl border border-emerald-100"><div class="flex items-center gap-2 mb-3 text-emerald-700 font-bold">GOOD POINT</div><ul id="detailPros" class="space-y-2 text-sm font-bold text-emerald-800"></ul></div>
                     <div class="bg-rose-50 p-5 rounded-2xl border border-rose-100"><div class="flex items-center gap-2 mb-3 text-rose-700 font-bold">BAD POINT</div><ul id="detailCons" class="space-y-2 text-sm font-bold text-rose-800"></ul></div>
@@ -757,6 +778,17 @@
         }
         window.showRemarksModal=(t,m,r)=>{document.getElementById('remarks-modal-task').textContent=t;document.getElementById('remarks-modal-time').textContent=m;document.getElementById('remarks-modal-text').textContent=r||"備考なし";document.getElementById('remarks-modal').classList.remove('hidden');};
         window.closeRemarksModal=()=>document.getElementById('remarks-modal').classList.add('hidden');
+        
+        // QSC画像モーダル制御
+        window.openQscImage = (url) => {
+            const img = document.getElementById('qscPreviewImage');
+            img.src = url;
+            document.getElementById('qscImageModal').classList.remove('hidden');
+        };
+        window.closeQscImage = () => {
+            document.getElementById('qscImageModal').classList.add('hidden');
+            setTimeout(() => { document.getElementById('qscPreviewImage').src = ""; }, 200);
+        };
     </script>
 
     <!-- =========================================
@@ -821,18 +853,42 @@
                 if(!$("#qscModal").classList.contains("hidden")) renderQSCList();
             });
         }
+        
+        // Googleドライブの共有リンクを画像表示用URLに変換
+        function convertDriveLink(url) {
+            if (!url) return null;
+            const match = url.match(/\/d\/(.+?)\/|\/d\/(.+?)$|id=(.+?)&/);
+            if (match) {
+                const id = match[1] || match[2] || match[3];
+                return `https://drive.google.com/uc?export=view&id=${id}`;
+            }
+            return url;
+        }
+
         function renderQSCList() {
             const container = $("#qscListContainer"); container.innerHTML = "";
             const filteredItems = qscItems.filter(item => currentQscTab === '未実施' ? item.status === "未実施" : item.status === "完了");
             if (filteredItems.length === 0) { container.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">項目はありません</div>`; return; }
+            
             const grouped = {}; filteredItems.forEach(item => { if(!grouped[item.area]) grouped[item.area] = []; grouped[item.area].push(item); });
+            
             for(const [area, items] of Object.entries(grouped)) {
                 const header = document.createElement("div"); header.className = "text-xs font-bold text-slate-500 bg-slate-200/50 px-3 py-1 rounded mt-4 mb-2 first:mt-0"; header.textContent = area; container.appendChild(header);
                 items.forEach(item => {
                     const div = document.createElement("div"); div.className = `bg-white p-4 rounded-xl border ${item.status === '完了' ? 'border-slate-100 opacity-60' : 'border-slate-200'} shadow-sm flex items-start gap-4 transition-all`;
                     const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.className = "qsc-checkbox shrink-0 mt-0.5"; checkbox.checked = item.status === "完了";
                     checkbox.onchange = async () => { const newStatus = checkbox.checked ? "完了" : "未実施"; try { await updateDoc(doc(dbCustomer, "qsc_items", item.id), { status: newStatus }); } catch(e) { console.error(e); checkbox.checked = !checkbox.checked; } };
-                    const textDiv = document.createElement("div"); textDiv.className = "flex-1"; textDiv.innerHTML = `<div class="flex items-center gap-2 mb-1"><span class="text-xs font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">No.${item.no}</span>${item.status === '完了' ? '<span class="text-xs font-bold text-green-600">DONE</span>' : ''}</div><p class="text-sm font-bold text-slate-700 leading-snug ${item.status === '完了' ? 'line-through text-slate-400' : ''}">${item.content}</p>`;
+                    const textDiv = document.createElement("div"); textDiv.className = "flex-1"; 
+                    
+                    // 画像ボタン (UPDATED)
+                    const imgBtn = item.image_url ? `
+                        <button onclick="openQscImage('${convertDriveLink(item.image_url)}')" class="mt-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg flex items-center gap-1 transition w-fit">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            参考画像を見る
+                        </button>
+                    ` : '';
+                    
+                    textDiv.innerHTML = `<div class="flex items-center gap-2 mb-1"><span class="text-xs font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">No.${item.no}</span>${item.status === '完了' ? '<span class="text-xs font-bold text-green-600">DONE</span>' : ''}</div><p class="text-sm font-bold text-slate-700 leading-snug ${item.status === '完了' ? 'line-through text-slate-400' : ''}">${item.content}</p>${imgBtn}`;
                     div.appendChild(checkbox); div.appendChild(textDiv); container.appendChild(div);
                 });
             }
