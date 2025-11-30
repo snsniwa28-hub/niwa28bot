@@ -1,0 +1,118 @@
+/* === Base Styles === */
+body {
+    font-family: 'Inter', 'Noto Sans JP', sans-serif;
+    background-color: #f8fafc;
+    color: #334155;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+/* === Animations === */
+.fade-in-up { animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(20px); }
+@keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+.modal-enter { animation: modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes modalEnter { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+
+/* === Calendar Styles === */
+.calendar-day {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    border-radius: 12px; cursor: pointer; position: relative; font-weight: 600;
+    transition: all 0.2s ease; color: #64748b;
+}
+.calendar-day:hover:not(.empty-day) { background-color: #e2e8f0; color: #1e293b; }
+.calendar-day.has-event::after {
+    content: ''; position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%);
+    width: 5px; height: 5px; border-radius: 50%; background-color: #ef4444;
+}
+.calendar-day.is-today { background-color: #fef08a; color: #854d0e; border: 2px solid #eab308; }
+.calendar-day.is-selected { background-color: #4f46e5; color: white; box-shadow: 0 4px 10px -2px rgba(79, 70, 229, 0.4); }
+
+/* === QSC Styles === */
+.qsc-checkbox { appearance: none; width: 1.25rem; height: 1.25rem; border: 2px solid #cbd5e1; border-radius: 0.375rem; cursor: pointer; transition: all 0.2s; position: relative; }
+.qsc-checkbox:checked { background-color: #22c55e; border-color: #22c55e; }
+.qsc-checkbox:checked::after { content: '✓'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 0.875rem; font-weight: bold; }
+
+/* === Utility === */
+.text-pretty { text-wrap: pretty; }
+.word-keep { display: inline-block; }
+
+/* =========================================
+   Task Manager Styles (Timeline & Edit)
+   ========================================= */
+.timeline-container {
+    width: 100%; overflow-x: auto; background-color: #ffffff; border: 1px solid #e2e8f0;
+    border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); position: relative; padding-bottom: 8px;
+}
+.timeline-table { width: 100%; min-width: 1200px; border-collapse: separate; border-spacing: 0; }
+.timeline-table th, .timeline-table td {
+    border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; padding: 0;
+    height: 4rem; vertical-align: top; position: relative; box-sizing: border-box;
+}
+.timeline-table thead th {
+    background-color: #f8fafc; color: #64748b; font-size: 0.75rem; font-weight: 700;
+    text-align: center; vertical-align: middle; position: sticky; top: 0; z-index: 20;
+    padding: 0.75rem 0; border-bottom: 2px solid #e2e8f0;
+}
+.timeline-table tbody th {
+    background-color: #ffffff; color: #1e293b; font-size: 0.9rem; font-weight: 700;
+    min-width: 160px; max-width: 160px; position: sticky; left: 0; z-index: 10;
+    text-align: left; padding: 0 1rem; vertical-align: middle; border-right: 2px solid #e2e8f0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 4px 0 10px -5px rgba(0,0,0,0.05);
+}
+.task-bar {
+    position: absolute; top: 6px; left: 1px; right: 1px; bottom: 6px; border-radius: 6px;
+    padding: 0 0.5rem; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; white-space: nowrap; z-index: 5; transition: transform 0.1s; cursor: pointer;
+}
+.task-bar:hover { z-index: 30; transform: scaleY(1.1) scaleX(1.01); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+/* Task Colors - Modified to apply without .task-bar wrapper for previews */
+.task-bar.pair-task, .pair-task { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
+.task-bar.briefing-task, .briefing-task { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
+.task-bar.money-task, .money-task { background: #fef9c3; color: #854d0e; border-left: 4px solid #eab308; }
+.task-bar.free-task, .free-task { background: #f8fafc; color: #94a3b8; border: 1px dashed #cbd5e1; box-shadow: none; }
+.task-bar.parking-task, .parking-task { background: #dbeafe; color: #1e40af; border-left: 4px solid #3b82f6; }
+.task-bar.lock-task, .lock-task, .task-bar.toolbox-task, .toolbox-task, .task-bar.handoff-task, .handoff-task { background: #f3e8ff; color: #6b21a8; border-left: 4px solid #a855f7; }
+.task-bar.alba-close-task, .alba-close-task { background: #ffe4e6; color: #be123c; border-left: 4px solid #f43f5e; }
+.task-bar.staff-15min-task, .staff-15min-task, .task-bar.special-opening-task, .special-opening-task { background: #cffafe; color: #155e75; border-left: 4px solid #06b6d4; }
+
+/* Generic Colors */
+.task-bar.color-red, .color-red { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
+.task-bar.color-green, .color-green { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
+.task-bar.color-yellow, .color-yellow { background: #fef9c3; color: #854d0e; border-left: 4px solid #eab308; }
+.task-bar.color-blue, .color-blue { background: #dbeafe; color: #1e40af; border-left: 4px solid #3b82f6; }
+.task-bar.color-purple, .color-purple { background: #f3e8ff; color: #6b21a8; border-left: 4px solid #a855f7; }
+.task-bar.color-gray, .color-gray { background: #f1f5f9; color: #475569; border-left: 4px solid #94a3b8; }
+
+/* Edit Table */
+.task-table { width: 100%; border-collapse: collapse; }
+.task-table th { text-align: left; padding: 0.75rem 1rem; font-size: 0.75rem; font-weight: 700; color: #64748b; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+.task-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+
+/* Shared Modals */
+.modal-overlay, .select-modal-overlay {
+    position: fixed; inset: 0; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem;
+}
+.modal-content, .select-modal-content {
+    background: white; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    width: 100%; max-width: 500px; overflow: hidden; animation: modalIn 0.2s ease-out forwards;
+}
+@keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.select-modal-body { max-height: 60vh; overflow-y: auto; }
+.select-modal-option { padding: 0.75rem 1.25rem; cursor: pointer; border-bottom: 1px solid #f1f5f9; transition: background 0.2s; font-size: 0.95rem; font-weight: 500; }
+.select-modal-option:hover { background-color: #f8fafc; }
+.select-modal-option.selected { background-color: #eff6ff; color: #2563eb; font-weight: 700; }
+.custom-select-button {
+    width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem;
+    background: white; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-size: 0.875rem; transition: all 0.2s; text-align: left; height: 2.5rem;
+}
+.custom-select-button:hover { border-color: #94a3b8; }
+.custom-select-button.placeholder { color: #94a3b8; }
+
+@media (max-width: 767px) {
+    .task-table thead { display: none; }
+    .task-table tr { display: block; margin-bottom: 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 1rem; background: white; }
+    .task-table td { display: block; padding: 0.25rem 0; border: none; }
+    .task-table td::before { content: attr(data-label); font-weight: 700; font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 0.1rem; }
+}

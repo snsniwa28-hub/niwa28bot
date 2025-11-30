@@ -6,118 +6,7 @@
     <title>ガーデン八潮 総合プラットフォーム</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
-    <style>
-        /* === Base Styles === */
-        body {
-            font-family: 'Inter', 'Noto Sans JP', sans-serif;
-            background-color: #f8fafc;
-            color: #334155;
-            -webkit-font-smoothing: antialiased;
-            overflow-x: hidden;
-        }
-        
-        /* === Animations === */
-        .fade-in-up { animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(20px); }
-        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
-        .modal-enter { animation: modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes modalEnter { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
-
-        /* === Calendar Styles === */
-        .calendar-day {
-            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-            border-radius: 12px; cursor: pointer; position: relative; font-weight: 600;
-            transition: all 0.2s ease; color: #64748b;
-        }
-        .calendar-day:hover:not(.empty-day) { background-color: #e2e8f0; color: #1e293b; }
-        .calendar-day.has-event::after {
-            content: ''; position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%);
-            width: 5px; height: 5px; border-radius: 50%; background-color: #ef4444;
-        }
-        .calendar-day.is-today { background-color: #fef08a; color: #854d0e; border: 2px solid #eab308; }
-        .calendar-day.is-selected { background-color: #4f46e5; color: white; box-shadow: 0 4px 10px -2px rgba(79, 70, 229, 0.4); }
-
-        /* === QSC Styles === */
-        .qsc-checkbox { appearance: none; width: 1.25rem; height: 1.25rem; border: 2px solid #cbd5e1; border-radius: 0.375rem; cursor: pointer; transition: all 0.2s; position: relative; }
-        .qsc-checkbox:checked { background-color: #22c55e; border-color: #22c55e; }
-        .qsc-checkbox:checked::after { content: '✓'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 0.875rem; font-weight: bold; }
-
-        /* === Utility === */
-        .text-pretty { text-wrap: pretty; }
-        .word-keep { display: inline-block; }
-
-        /* =========================================
-           Task Manager Styles (Timeline & Edit)
-           ========================================= */
-        .timeline-container {
-            width: 100%; overflow-x: auto; background-color: #ffffff; border: 1px solid #e2e8f0;
-            border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); position: relative; padding-bottom: 8px;
-        }
-        .timeline-table { width: 100%; min-width: 1200px; border-collapse: separate; border-spacing: 0; }
-        .timeline-table th, .timeline-table td {
-            border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; padding: 0;
-            height: 4rem; vertical-align: top; position: relative; box-sizing: border-box;
-        }
-        .timeline-table thead th {
-            background-color: #f8fafc; color: #64748b; font-size: 0.75rem; font-weight: 700;
-            text-align: center; vertical-align: middle; position: sticky; top: 0; z-index: 20;
-            padding: 0.75rem 0; border-bottom: 2px solid #e2e8f0;
-        }
-        .timeline-table tbody th {
-            background-color: #ffffff; color: #1e293b; font-size: 0.9rem; font-weight: 700;
-            min-width: 160px; max-width: 160px; position: sticky; left: 0; z-index: 10;
-            text-align: left; padding: 0 1rem; vertical-align: middle; border-right: 2px solid #e2e8f0;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 4px 0 10px -5px rgba(0,0,0,0.05);
-        }
-        .task-bar {
-            position: absolute; top: 6px; left: 1px; right: 1px; bottom: 6px; border-radius: 6px;
-            padding: 0 0.5rem; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: space-between;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; white-space: nowrap; z-index: 5; transition: transform 0.1s; cursor: pointer;
-        }
-        .task-bar:hover { z-index: 30; transform: scaleY(1.1) scaleX(1.01); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        
-        /* Task Colors */
-        .task-bar.pair-task { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
-        .task-bar.briefing-task { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
-        .task-bar.money-task { background: #fef9c3; color: #854d0e; border-left: 4px solid #eab308; }
-        .task-bar.free-task { background: #f8fafc; color: #94a3b8; border: 1px dashed #cbd5e1; box-shadow: none; }
-        .task-bar.parking-task { background: #dbeafe; color: #1e40af; border-left: 4px solid #3b82f6; }
-        .task-bar.lock-task, .task-bar.toolbox-task, .task-bar.handoff-task { background: #f3e8ff; color: #6b21a8; border-left: 4px solid #a855f7; }
-        .task-bar.alba-close-task { background: #ffe4e6; color: #be123c; border-left: 4px solid #f43f5e; }
-        .task-bar.staff-15min-task, .task-bar.special-opening-task { background: #cffafe; color: #155e75; border-left: 4px solid #06b6d4; }
-
-        /* Edit Table */
-        .task-table { width: 100%; border-collapse: collapse; }
-        .task-table th { text-align: left; padding: 0.75rem 1rem; font-size: 0.75rem; font-weight: 700; color: #64748b; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; }
-        .task-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-
-        /* Shared Modals */
-        .modal-overlay, .select-modal-overlay {
-            position: fixed; inset: 0; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
-            display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem;
-        }
-        .modal-content, .select-modal-content {
-            background: white; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            width: 100%; max-width: 500px; overflow: hidden; animation: modalIn 0.2s ease-out forwards;
-        }
-        @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-        .select-modal-body { max-height: 60vh; overflow-y: auto; }
-        .select-modal-option { padding: 0.75rem 1.25rem; cursor: pointer; border-bottom: 1px solid #f1f5f9; transition: background 0.2s; font-size: 0.95rem; font-weight: 500; }
-        .select-modal-option:hover { background-color: #f8fafc; }
-        .select-modal-option.selected { background-color: #eff6ff; color: #2563eb; font-weight: 700; }
-        .custom-select-button {
-            width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem;
-            background: white; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-size: 0.875rem; transition: all 0.2s; text-align: left; height: 2.5rem;
-        }
-        .custom-select-button:hover { border-color: #94a3b8; }
-        .custom-select-button.placeholder { color: #94a3b8; }
-
-        @media (max-width: 767px) {
-            .task-table thead { display: none; }
-            .task-table tr { display: block; margin-bottom: 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 1rem; background: white; }
-            .task-table td { display: block; padding: 0.25rem 0; border: none; }
-            .task-table td::before { content: attr(data-label); font-weight: 700; font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 0.1rem; }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body class="antialiased pb-20">
 
@@ -125,7 +14,6 @@
          【画面1】顧客向け (GARDEN BOT)
          ========================================= -->
     <div id="app-customer" class="transition-opacity duration-300">
-        <!-- Header -->
         <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/60">
             <div class="container mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                 <a href="#" class="flex items-center gap-2 group">
@@ -138,7 +26,6 @@
         </header>
 
         <main>
-            <!-- Hero Slider -->
             <section class="relative pt-8 pb-8 sm:pt-12 sm:pb-12 bg-white rounded-b-[2.5rem] shadow-sm overflow-hidden">
                 <div class="container mx-auto px-4 sm:px-6 text-center">
                     <div class="relative w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl shadow-indigo-900/10 border border-slate-100">
@@ -146,7 +33,6 @@
                             <img src="sinsou1.jpg" class="w-full h-full object-contain" alt="新装開店">
                         </div>
                     </div>
-                    
                     <div class="mt-8 fade-in-up" style="animation-delay: 0.1s;">
                         <h1 class="text-3xl sm:text-5xl font-black text-slate-800 tracking-tight leading-tight text-pretty">
                             最新台の情報を、<br class="sm:hidden">もっと<span class="text-indigo-600 inline-block">スマート</span>に。
@@ -155,7 +41,6 @@
                 </div>
             </section>
 
-            <!-- Staff Task Button (Redesigned) -->
             <div class="container mx-auto px-4 mt-2 relative z-10 fade-in-up" style="animation-delay: 0.2s;">
                 <div onclick="switchView('staff')" class="group cursor-pointer bg-slate-800 rounded-2xl shadow-xl shadow-slate-900/10 border border-slate-700 p-5 sm:p-6 max-w-xl mx-auto hover:translate-y-[-4px] hover:shadow-2xl transition-all duration-300">
                     <div class="flex items-center justify-between">
@@ -174,7 +59,6 @@
                 </div>
             </div>
 
-            <!-- Customer Action Button -->
             <div class="container mx-auto px-4 mt-4 relative z-10 fade-in-up" style="animation-delay: 0.3s;">
                 <div id="newOpeningButton" class="group cursor-pointer bg-white rounded-2xl shadow-xl shadow-indigo-900/5 border border-slate-100 p-6 sm:p-8 max-w-xl mx-auto hover:translate-y-[-4px] hover:shadow-2xl transition-all duration-300">
                     <div class="flex items-center justify-between">
@@ -194,7 +78,7 @@
                 </div>
             </div>
 
-            <!-- Pachinko Strategy (UPDATED) -->
+            <!-- Pachinko & Slot Sections -->
             <section class="container mx-auto px-4 mt-16 fade-in-up" style="animation-delay: 0.35s;">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-sm max-w-4xl mx-auto overflow-hidden">
                     <div class="bg-sky-50/80 px-6 py-4 border-b border-sky-100 flex items-center gap-3">
@@ -230,7 +114,6 @@
                                 <p class="text-sm text-slate-600 leading-relaxed">時差をやらない日は是非「からくり2」がオススメ！</p>
                             </div>
                         </div>
-                        <!-- 1円パチンコ告知 -->
                         <div class="mt-4 bg-yellow-50 p-4 rounded-xl border border-yellow-100 flex items-start gap-3">
                              <div class="text-2xl">📢</div>
                              <div>
@@ -242,7 +125,6 @@
                 </div>
             </section>
 
-            <!-- Slot Strategy (UNCHANGED) -->
             <section class="container mx-auto px-4 mt-16 fade-in-up" style="animation-delay: 0.4s;">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-sm max-w-4xl mx-auto overflow-hidden">
                     <div class="bg-slate-50/80 px-6 py-4 border-b border-slate-100 flex items-center gap-3">
@@ -283,7 +165,7 @@
             </section>
 
             <!-- Calendar Section -->
-            <section class="container mx-auto px-4 mt-12 max-w-4xl">
+            <section class="container mx-auto px-4 mt-12 max-w-4xl fade-in-up" style="animation-delay: 0.4s;">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-lg mb-8 overflow-hidden">
                     <div class="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-50">
                         <div>
@@ -307,8 +189,8 @@
                 </div>
             </section>
 
-            <!-- QSC Section (Separated) -->
-            <section class="container mx-auto px-4 mt-8 max-w-4xl">
+             <!-- QSC Section -->
+            <section class="container mx-auto px-4 mt-8 max-w-4xl fade-in-up" style="animation-delay: 0.5s;">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-lg overflow-hidden">
                     <div class="bg-rose-50 border-b border-rose-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div class="flex items-center gap-2">
@@ -322,14 +204,11 @@
                         </div>
                         <button id="openQSCButton" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-rose-200 transition-all flex items-center justify-center gap-2">リストを開く</button>
                     </div>
-                    <div class="p-6 bg-rose-50/30">
-                       <p class="text-xs text-slate-500 font-medium">やったらチェックお願いします。</p>
-                    </div>
                 </div>
             </section>
 
-            <!-- Floor Map Section (Separated) -->
-            <section class="container mx-auto px-4 mt-8 max-w-4xl">
+            <!-- Floor Map -->
+            <section class="container mx-auto px-4 mt-8 max-w-4xl fade-in-up" style="animation-delay: 0.6s;">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-lg overflow-hidden">
                     <div class="p-6 sm:p-8 border-b border-slate-50">
                         <h2 class="text-2xl font-bold text-slate-800">Floor Map</h2>
@@ -342,7 +221,6 @@
                     </div>
                 </div>
             </section>
-
         </main>
         <footer class="mt-20 py-10 text-center border-t border-slate-200 bg-slate-50">
             <p class="text-xs font-bold text-slate-400 tracking-widest">&copy; 2025 GARDEN YASHIO BOT</p>
@@ -365,9 +243,16 @@
                         TASK<span class="text-indigo-600">MANAGER</span>
                     </span>
                 </div>
-                <button id="edit-mode-button" onclick="showPasswordModal()" class="text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full transition-colors">
-                    管理者編集
-                </button>
+                <div class="flex items-center gap-2">
+                    <!-- マスタ設定ボタン（編集中のみ表示） -->
+                    <button id="master-settings-button" onclick="openMasterModal()" class="hidden text-xs font-bold text-white bg-slate-700 hover:bg-slate-800 px-3 py-2 rounded-full transition-colors shadow-md flex items-center gap-1">
+                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        マスタ設定
+                    </button>
+                    <button id="edit-mode-button" onclick="showPasswordModal()" class="text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full transition-colors">
+                        管理者編集
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -425,16 +310,9 @@
                 <div id="edit-content-open" class="space-y-10">
                     <section class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
                         <h2 class="text-lg font-bold text-slate-800 mb-1">指定タスク担当者 (開店)</h2>
-                        <p class="text-slate-500 text-sm mb-6">固定で行う業務の担当者を指定してください。</p>
                         <div class="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">金銭業務 (7:00-8:15)</label>
-                                <button id="fixed-money_count-btn" class="custom-select-button bg-slate-50" onclick="openFixedStaffSelect('fixed_money_count', 'early_staff_candidates', '金銭業務 担当者')"><span class="text-slate-400">選択してください</span></button>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">倉庫 (9:15-9:45)</label>
-                                <button id="fixed_open_warehouse-btn" class="custom-select-button bg-slate-50" onclick="openFixedStaffSelect('fixed_open_warehouse', 'open_staff_candidates', '倉庫(開店) 担当者')"><span class="text-slate-400">選択してください</span></button>
-                            </div>
+                            <div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase">金銭業務 (7:00-8:15)</label><button id="fixed-money_count-btn" class="custom-select-button bg-slate-50" onclick="openFixedStaffSelect('fixed_money_count', 'early_staff_candidates', '金銭業務 担当者')"><span class="text-slate-400">選択してください</span></button></div>
+                            <div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase">倉庫 (9:15-9:45)</label><button id="fixed_open_warehouse-btn" class="custom-select-button bg-slate-50" onclick="openFixedStaffSelect('fixed_open_warehouse', 'open_staff_candidates', '倉庫(開店) 担当者')"><span class="text-slate-400">選択してください</span></button></div>
                         </div>
                     </section>
                     <section class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
@@ -499,9 +377,119 @@
 
     <!-- ================= MODALS (Global) ================= -->
     
+    <!-- MASTER SETTINGS MODAL -->
+    <div id="master-modal" class="modal-overlay hidden">
+        <div class="modal-content w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                <h3 class="font-bold text-xl text-slate-800 flex items-center gap-2">
+                    <span class="bg-slate-800 text-white p-1 rounded">⚙️</span> マスタ設定 (管理者用)
+                </h3>
+                <button onclick="closeMasterModal()" class="p-2 bg-white rounded-full text-slate-400 hover:text-slate-600 border border-slate-200 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="flex border-b border-slate-200">
+                <button onclick="switchMasterTab('staff')" id="master-tab-staff" class="flex-1 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50">👥 スタッフ名簿</button>
+                <button onclick="switchMasterTab('task')" id="master-tab-task" class="flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:bg-slate-50">📋 タスク定義</button>
+            </div>
+            <div class="flex-1 overflow-y-auto bg-slate-50 p-6">
+                <!-- STAFF TAB -->
+                <div id="master-content-staff" class="space-y-8">
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <!-- Employees -->
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <h4 class="font-bold text-slate-700 mb-3 flex items-center justify-between">社員 <span class="text-xs bg-slate-100 px-2 py-1 rounded-full text-slate-500 count-employees">0</span></h4>
+                            <div class="flex gap-2 mb-3">
+                                <input type="text" id="new-employee-name" placeholder="氏名を入力" class="w-full text-sm border border-slate-300 rounded p-2">
+                                <button onclick="addMasterStaff('employees')" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm font-bold hover:bg-indigo-700">追加</button>
+                            </div>
+                            <ul id="master-list-employees" class="space-y-1 text-sm max-h-[300px] overflow-y-auto"></ul>
+                        </div>
+                        <!-- Alba Early -->
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <h4 class="font-bold text-slate-700 mb-3 flex items-center justify-between">早番アルバイト <span class="text-xs bg-slate-100 px-2 py-1 rounded-full text-slate-500 count-alba_early">0</span></h4>
+                            <div class="flex gap-2 mb-3">
+                                <input type="text" id="new-alba_early-name" placeholder="氏名を入力" class="w-full text-sm border border-slate-300 rounded p-2">
+                                <button onclick="addMasterStaff('alba_early')" class="bg-emerald-600 text-white px-3 py-1 rounded text-sm font-bold hover:bg-emerald-700">追加</button>
+                            </div>
+                            <ul id="master-list-alba_early" class="space-y-1 text-sm max-h-[300px] overflow-y-auto"></ul>
+                        </div>
+                        <!-- Alba Late -->
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <h4 class="font-bold text-slate-700 mb-3 flex items-center justify-between">遅番アルバイト <span class="text-xs bg-slate-100 px-2 py-1 rounded-full text-slate-500 count-alba_late">0</span></h4>
+                            <div class="flex gap-2 mb-3">
+                                <input type="text" id="new-alba_late-name" placeholder="氏名を入力" class="w-full text-sm border border-slate-300 rounded p-2">
+                                <button onclick="addMasterStaff('alba_late')" class="bg-emerald-600 text-white px-3 py-1 rounded text-sm font-bold hover:bg-emerald-700">追加</button>
+                            </div>
+                            <ul id="master-list-alba_late" class="space-y-1 text-sm max-h-[300px] overflow-y-auto"></ul>
+                        </div>
+                    </div>
+                </div>
+                <!-- TASK TAB -->
+                <div id="master-content-task" class="hidden space-y-6">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                         <h4 class="font-bold text-slate-800 mb-4 text-sm uppercase tracking-wider">新規タスク追加</h4>
+                         <div class="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
+                             <div class="col-span-2">
+                                 <label class="text-xs font-bold text-slate-500 mb-1 block">タスク名</label>
+                                 <input type="text" id="new-task-name" placeholder="例: ホール巡回" class="w-full border border-slate-300 rounded p-2 text-sm">
+                             </div>
+                             <div>
+                                 <label class="text-xs font-bold text-slate-500 mb-1 block">時間 (コマ)</label>
+                                 <input type="number" id="new-task-slots" value="1" min="0" class="w-full border border-slate-300 rounded p-2 text-sm">
+                                 <div class="text-[10px] text-slate-400 text-right mt-0.5">1コマ=15分</div>
+                             </div>
+                             <div>
+                                 <label class="text-xs font-bold text-slate-500 mb-1 block">色タイプ</label>
+                                 <select id="new-task-color" class="w-full border border-slate-300 rounded p-2 text-sm bg-white">
+                                     <option value="color-gray">グレー (標準)</option>
+                                     <option value="color-red">赤 (重要)</option>
+                                     <option value="color-green">緑 (作業)</option>
+                                     <option value="color-yellow">黄 (金銭)</option>
+                                     <option value="color-blue">青 (場所)</option>
+                                     <option value="color-purple">紫 (管理)</option>
+                                 </select>
+                             </div>
+                             <div>
+                                 <label class="text-xs font-bold text-slate-500 mb-1 block">利用シーン</label>
+                                 <select id="new-task-type" class="w-full border border-slate-300 rounded p-2 text-sm bg-white">
+                                     <option value="both">両方</option>
+                                     <option value="open">開店のみ</option>
+                                     <option value="close">閉店のみ</option>
+                                 </select>
+                             </div>
+                         </div>
+                         <button onclick="addMasterTask()" class="mt-4 w-full md:w-auto bg-slate-800 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-700 transition">タスクを追加保存</button>
+                    </div>
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="bg-slate-100 px-5 py-3 border-b border-slate-200 font-bold text-slate-600 text-sm">登録済みタスク一覧</div>
+                        <div class="max-h-[400px] overflow-y-auto p-2">
+                            <table class="w-full text-sm text-left">
+                                <thead class="text-xs text-slate-500 bg-slate-50 uppercase sticky top-0">
+                                    <tr>
+                                        <th class="px-3 py-2">色</th>
+                                        <th class="px-3 py-2">タスク名</th>
+                                        <th class="px-3 py-2">時間</th>
+                                        <th class="px-3 py-2">区分</th>
+                                        <th class="px-3 py-2 text-right">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="master-task-list-body" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 bg-slate-100 border-t border-slate-200 text-right">
+                <p class="text-xs text-slate-400 font-bold inline-block mr-4">※変更は即座にデータベースに保存されます</p>
+                <button onclick="closeMasterModal()" class="px-6 py-2 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-700 transition">閉じる</button>
+            </div>
+        </div>
+    </div>
+
     <!-- QSC Modal (Customer) -->
-    <div id="qscModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 transition-opacity">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden modal-enter">
+    <div id="qscModal" class="modal-overlay hidden">
+        <div class="modal-content w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
             <div class="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <div class="flex items-center gap-2">
                     <h3 class="font-bold text-xl text-slate-800">QSC チェックリスト</h3>
@@ -511,15 +499,13 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <!-- 管理ボタン -->
-                    <button id="qscEditButton" class="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition">
-                        ⚙️ 管理
+                    <button id="qscEditButton" class="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition">⚙️ 管理</button>
+                    <button id="closeQscModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
-                    <button id="closeQscModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
                 </div>
             </div>
             <div class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6">
-                <!-- 新規追加フォーム (編集モード時のみ表示) -->
                 <div id="qscAddForm" class="hidden mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
                     <h4 class="text-xs font-bold text-indigo-600 mb-2 uppercase tracking-widest">新規項目の追加</h4>
                     <div class="flex flex-col gap-2">
@@ -538,34 +524,32 @@
     </div>
 
     <!-- Machine Modals (Customer) -->
-    <div id="newOpeningModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 transition-opacity">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden modal-enter">
+    <div id="newOpeningModal" class="modal-overlay hidden">
+        <div class="modal-content w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
             <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <h3 class="font-bold text-xl text-slate-800">導入機種リスト</h3>
-                <button id="closeNewOpeningModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <button id="closeNewOpeningModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
             <div id="newOpeningInfo" class="p-5 overflow-y-auto bg-slate-50/50"></div>
         </div>
     </div>
     
-    <!-- Machine Detail Modal (UPDATED) -->
-    <div id="machineDetailModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden z-[60] flex items-center justify-center p-4 transition-opacity">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden modal-enter">
+    <div id="machineDetailModal" class="modal-overlay hidden">
+        <div class="modal-content w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
             <div class="bg-slate-800 p-6 sm:p-8 flex justify-between items-start shrink-0">
                 <h3 id="detailName" class="text-xl sm:text-2xl font-bold text-white leading-tight pr-4"></h3>
-                <button id="closeDetailModal" class="text-slate-400 hover:text-white transition"><svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <button id="closeDetailModal" class="text-slate-400 hover:text-white transition">
+                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
             <div class="p-6 sm:p-8 overflow-y-auto">
-                <!-- Sales Pitch Area (Redesigned) -->
                 <div class="mb-8 bg-slate-50 rounded-2xl p-6 border border-slate-200 relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
-                    <h4 class="flex items-center gap-2 text-xs font-black text-indigo-600 uppercase tracking-widest mb-4">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/></svg>
-                        SALES POINT / 担当者コメント
-                    </h4>
+                    <h4 class="flex items-center gap-2 text-xs font-black text-indigo-600 uppercase tracking-widest mb-4">SALES POINT / 担当者コメント</h4>
                     <p id="detailPitch" class="text-slate-700 text-base sm:text-lg font-medium leading-loose whitespace-pre-line"></p>
                 </div>
-
                 <div class="grid sm:grid-cols-2 gap-6">
                     <div class="bg-emerald-50 p-5 rounded-2xl border border-emerald-100"><div class="flex items-center gap-2 mb-3 text-emerald-700 font-bold">GOOD POINT</div><ul id="detailPros" class="space-y-2 text-sm font-bold text-emerald-800"></ul></div>
                     <div class="bg-rose-50 p-5 rounded-2xl border border-rose-100"><div class="flex items-center gap-2 mb-3 text-rose-700 font-bold">BAD POINT</div><ul id="detailCons" class="space-y-2 text-sm font-bold text-rose-800"></ul></div>
@@ -574,7 +558,7 @@
         </div>
     </div>
 
-    <!-- Task Manager Modals (Staff) -->
+    <!-- Shared Modals -->
     <div id="password-modal" class="modal-overlay hidden">
         <div class="modal-content p-8 text-center">
             <h3 class="text-xl font-bold text-slate-800 mb-2">管理者認証</h3>
@@ -616,452 +600,7 @@
         </div>
     </div>
 
-    <!-- =========================================
-         LOGIC: Task Manager (Pure JS)
-         ========================================= -->
-    <script>
-        // Staff & Task Data
-        const masterStaffList = {
-            employees: ["関口 周吾", "鈴木優希", "鈴木 達也", "成田 健吾", "柳谷 圭亮", "石山峻冴", "小野坂隼", "若松脩斗", "生沼彪"],
-            alba_early: ["根岸 麻美", "五十嵐 由衣", "曲山 琴菜", "山北 桃香", "上地佑夏", "中村 仁美", "砂川 愛香", "村上麻衣", "小林夏美", "高橋瑞穂", "細田 竜成"],
-            alba_late: ["富岡 千尋", "浅羽駿汰", "堀切綾", "大山 真菜", "金田 愛伽", "梅津世那", "高橋 良維河", "立岩昭人"]
-        };
-        const openStaffCandidates = [...masterStaffList.employees, ...masterStaffList.alba_early].sort();
-        const closingStaffCandidates = [...masterStaffList.employees, ...masterStaffList.alba_late].sort();
-        const SPECIAL_TASKS = {
-            BRIEFING: { name: "朝礼", slots: 1, class: 'briefing-task' },
-            FREE_TASK: { name: "個人業務、自由時間", slots: 0, class: 'free-task' },
-            MONEY_COUNT: { name: "金銭業務", slots: 5, class: 'money-task' },
-            OUTSIDE_SALES: { name: "外販出し、新聞、岡持", slots: 1, class: 'staff-15min-task' },
-            P_CHECK: { name: "P台チェック", slots: 1, class: 'staff-15min-task' },
-            PROMOTION_CHECK: { name: "販促確認", slots: 1, class: 'staff-15min-task' },
-            OPEN_WAREHOUSE: { name: "倉庫(開店)", slots: 2, class: 'special-opening-task' },
-            LOTTERY: { name: "抽選（準備、片付け）", slots: 3, class: 'special-opening-task' },
-            S_CHECK: { name: "S台チェック、ユニメモ", slots: 2, class: 'special-opening-task' },
-            OVERALL_CHECK: { name: "全体確認", slots: 1, class: 'special-opening-task' },
-            TIME_LAG_POWER: { name: "時差島台電落とし", slots: 1, class: 'special-opening-task' },
-            MONEY_COLLECT: { name: "金銭回収", slots: 2, class: 'money-task' },
-            PARKING_EMP: { name: "立駐（社員）", slots: 1, class: 'parking-task' },
-            LOCK_CHECK: { name: "施錠・工具箱チェック", slots: 1, class: 'lock-task' },
-            HANDOFF_CLEANING: { name: "引継ぎ・事務所清掃", slots: 1, class: 'handoff-task' },
-            WAREHOUSE: { name: "倉庫整理", slots: 2, class: 'free-task' },
-            COUNTER_TASK: { name: "カウンター業務", slots: 1, class: 'alba-close-task' },
-            DRINKS_FLAGS: { name: "飲み残し・フラッグ確認", slots: 1, class: 'alba-close-task' },
-            PARKING_ALBA: { name: "立駐（アルバイト）", slots: 1, class: 'parking-task' },
-            HALL_REFILL: { name: "島上清掃・カード補充", slots: 1, class: 'alba-close-task' }
-        };
-        const taskLists = {
-            open: [SPECIAL_TASKS.MONEY_COUNT.name, SPECIAL_TASKS.OUTSIDE_SALES.name, SPECIAL_TASKS.P_CHECK.name, SPECIAL_TASKS.PROMOTION_CHECK.name, SPECIAL_TASKS.BRIEFING.name, SPECIAL_TASKS.OPEN_WAREHOUSE.name, SPECIAL_TASKS.LOTTERY.name, SPECIAL_TASKS.S_CHECK.name, SPECIAL_TASKS.OVERALL_CHECK.name, SPECIAL_TASKS.TIME_LAG_POWER.name, SPECIAL_TASKS.FREE_TASK.name],
-            close: [SPECIAL_TASKS.MONEY_COLLECT.name, SPECIAL_TASKS.WAREHOUSE.name, SPECIAL_TASKS.COUNTER_TASK.name, SPECIAL_TASKS.PARKING_EMP.name, SPECIAL_TASKS.LOCK_CHECK.name, SPECIAL_TASKS.HANDOFF_CLEANING.name, SPECIAL_TASKS.DRINKS_FLAGS.name, SPECIAL_TASKS.PARKING_ALBA.name, SPECIAL_TASKS.HALL_REFILL.name, SPECIAL_TASKS.FREE_TASK.name]
-        };
-
-        window.isEditing = false;
-        const EDIT_PASSWORD = "admin";
-        window.currentDate = '';
-        window.staffList = { early: [], late: [], closing_employee: [], closing_alba: [], fixed_money_count: "", fixed_open_warehouse: "", fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "" };
-        let deleteInfo = { type: null, sectionKey: null, staffIndex: null, taskIndex: null };
-
-        function generateTimeSlots(startTime, endTime, intervalMinutes) {
-            const slots = []; let [sH, sM] = startTime.split(':').map(Number); const [eH, eM] = endTime.split(':').map(Number);
-            let cur = sH * 60 + sM; const end = eH * 60 + eM;
-            while (cur <= end) { slots.push(`${String(Math.floor(cur/60)).padStart(2,'0')}:${String(cur%60).padStart(2,'0')}`); cur += intervalMinutes; }
-            return slots;
-        }
-        const openTimeSlots = generateTimeSlots('07:00', '10:00', 15);
-        const openAlbaTimeSlots = generateTimeSlots('09:00', '10:00', 15);
-        const closeTimeSlots = generateTimeSlots('22:45', '23:30', 15);
-        const openTimeIndexMap = new Map(); openTimeSlots.forEach((t, i) => openTimeIndexMap.set(t, i));
-        const openAlbaTimeIndexMap = new Map(); openAlbaTimeSlots.forEach((t, i) => openAlbaTimeIndexMap.set(t, i));
-        const closeTimeIndexMap = new Map(); closeTimeSlots.forEach((t, i) => closeTimeIndexMap.set(t, i));
-
-        // Global functions for HTML access
-        window.getTodayDateString = () => { const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`; };
-        
-        window.refreshCurrentView = function() {
-            updateStaffLists(); generateSummaryView();
-            const isOpen = document.getElementById('tab-open').classList.contains('bg-white');
-            showSubTab(isOpen ? 'open' : 'close'); setEditingMode(window.isEditing);
-            if (window.currentDate && document.getElementById('date-picker').value !== window.currentDate) document.getElementById('date-picker').value = window.currentDate;
-            updateFixedStaffButtons();
-        };
-
-        window.setupInitialView = function() {
-            setEditingMode(false); showSubTab('open'); updateStaffLists(); generateSummaryView(); updateFixedStaffButtons();
-            const picker = document.getElementById('date-picker'); if (!picker.value) picker.value = window.getTodayDateString();
-        };
-
-        function updateFixedStaffButtons() {
-            const btns = [{ id: 'fixed-money_count-btn', k: 'fixed_money_count' }, { id: 'fixed_open_warehouse-btn', k: 'fixed_open_warehouse' }, { id: 'fixed-money_collect-btn', k: 'fixed_money_collect' }, { id: 'fixed-warehouses-btn', k: 'fixed_warehouses' }, { id: 'fixed-counters-btn', k: 'fixed_counters' }];
-            btns.forEach(i => { const b = document.getElementById(i.id); if(b) updateSelectButton(b, window.staffList[i.k] || "選択してください", !window.staffList[i.k]); });
-        }
-
-        window.showSubTab = function(tabName) {
-            const isOpen = tabName === 'open';
-            document.getElementById('edit-content-open').classList.toggle('hidden', !isOpen);
-            document.getElementById('edit-content-close').classList.toggle('hidden', isOpen);
-            document.getElementById('view-content-open').classList.toggle('hidden', !isOpen);
-            document.getElementById('view-content-close').classList.toggle('hidden', isOpen);
-            document.getElementById('tab-open').className = isOpen ? "px-6 py-2.5 rounded-lg text-sm font-bold transition-all bg-white text-indigo-600 shadow-sm" : "px-6 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-500 hover:text-slate-700";
-            document.getElementById('tab-close').className = !isOpen ? "px-6 py-2.5 rounded-lg text-sm font-bold transition-all bg-white text-indigo-600 shadow-sm" : "px-6 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-500 hover:text-slate-700";
-        };
-
-        window.showPasswordModal = () => { if(window.isEditing){setEditingMode(false);return;} document.getElementById('password-modal').classList.remove('hidden'); document.getElementById('password-input').value=""; document.getElementById('password-error').classList.add('hidden'); document.getElementById('password-input').focus(); };
-        window.closePasswordModal = () => document.getElementById('password-modal').classList.add('hidden');
-        window.checkPassword = () => { if(document.getElementById('password-input').value === EDIT_PASSWORD) { closePasswordModal(); setEditingMode(true); } else { document.getElementById('password-error').classList.remove('hidden'); } };
-        window.setEditingMode = (isEdit) => { window.isEditing = isEdit; document.getElementById('view-mode-container').classList.toggle('hidden', isEdit); document.getElementById('edit-mode-container').classList.toggle('hidden', !isEdit); const b = document.getElementById('edit-mode-button'); if(b){ b.textContent = isEdit?"閲覧モードに戻る":"管理者編集"; b.className = isEdit?"text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-full transition-colors shadow-md":"text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full transition-colors"; } };
-
-        // Selection & Modals
-        window.openFixedStaffSelect = (k, lk, t) => { if(!window.isEditing)return; let c=[], cl=[]; if(lk==='early_staff_candidates'){c=masterStaffList.employees;cl=[window.staffList.early];}else if(lk==='open_staff_candidates'){c=openStaffCandidates;cl=[window.staffList.early,window.staffList.late];}else{c=closingStaffCandidates;cl=[window.staffList.closing_employee,window.staffList.closing_alba];} const ac=cl.flatMap(l=>l.map(s=>s.name)); const mb=document.getElementById('select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="selectFixedStaff('${k}','')">指定なし</div>`; const render=(l,lbl)=>{if(l.length>0){mb.innerHTML+=`<div class="px-4 py-2 text-xs font-bold text-slate-400 bg-slate-50 sticky top-0">${lbl}</div>`;l.forEach(n=>{mb.innerHTML+=`<div class="select-modal-option ${n===window.staffList[k]?'selected':''}" onclick="selectFixedStaff('${k}','${n}')">${n}</div>`;});}}; render(c.filter(n=>ac.includes(n)),"リスト追加済み"); render(c.filter(n=>!ac.includes(n)),"未追加"); document.getElementById('select-modal-title').textContent=t; document.getElementById('select-modal').classList.remove('hidden'); };
-        window.selectFixedStaff = (k, n) => { window.staffList[k]=n; if(n){const ie=masterStaffList.employees.includes(n); const tk=(k.includes('money')||k.includes('open_warehouse'))?(ie?'early':'late'):(ie?'closing_employee':'closing_alba'); if(!window.staffList[tk].some(s=>s.name===n)) window.staffList[tk].push({name:n,tasks:[{start:"",end:"",task:"",remarks:"（固定）"}]});} updateFixedStaffButtons(); updateStaffLists(); closeSelectModal(); saveStaffListToFirestore(); };
-        window.openStaffSelect = (sk, mk) => { if(!window.isEditing)return; const m=masterStaffList[mk], c=window.staffList[sk].map(s=>s.name); const mb=document.getElementById('select-modal-body'); mb.innerHTML=''; const o=m.filter(n=>!c.includes(n)); if(o.length===0) mb.innerHTML='<div class="p-4 text-center text-slate-400">候補なし</div>'; else o.forEach(n=>mb.innerHTML+=`<div class="select-modal-option" onclick="selectStaff('${sk}','${n}')">${n}</div>`); document.getElementById('select-modal-title').textContent="スタッフ追加"; document.getElementById('select-modal').classList.remove('hidden'); };
-        window.selectStaff = (sk, n) => { if(!window.staffList[sk].find(s=>s.name===n)){window.staffList[sk].push({name:n,tasks:[{start:"",end:"",task:"",remarks:""}]}); updateStaffLists(); saveStaffListToFirestore();} closeSelectModal(); };
-        window.closeSelectModal = () => document.getElementById('select-modal').classList.add('hidden');
-        function updateSelectButton(b, t, p) { if(b){const s=b.querySelector('span');if(s)s.textContent=t; b.classList.toggle('placeholder',p);} }
-        window.openTimeSelect = (sk,si,ti,f,ln) => { if(!window.isEditing)return; const l=(ln==='open')?openTimeSlots:closeTimeSlots; const mb=document.getElementById('select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="handleChange('${sk}',${si},${ti},'${f}','');closeSelectModal();updateStaffLists();">--:--</div>`; l.forEach(t=>mb.innerHTML+=`<div class="select-modal-option" onclick="handleChange('${sk}',${si},${ti},'${f}','${t}');closeSelectModal();updateStaffLists();">${t}</div>`); document.getElementById('select-modal-title').textContent="時間選択"; document.getElementById('select-modal').classList.remove('hidden'); };
-        window.openTaskSelect = (sk,si,ti,ln) => { if(!window.isEditing)return; const l=[...new Set(taskLists[ln])]; const mb=document.getElementById('select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="handleChange('${sk}',${si},${ti},'task','');closeSelectModal();updateStaffLists();">未選択</div>`; l.forEach(t=>mb.innerHTML+=`<div class="select-modal-option" onclick="handleChange('${sk}',${si},${ti},'task','${t}');closeSelectModal();updateStaffLists();">${t}</div>`); document.getElementById('select-modal-title').textContent="タスク選択"; document.getElementById('select-modal').classList.remove('hidden'); };
-        window.handleChange = (sk,si,ti,f,v) => { window.staffList[sk][si].tasks[ti][f]=v; saveStaffListToFirestore(); };
-        window.addStaff = () => {}; window.addTask = (sk,si) => { window.staffList[sk][si].tasks.push({start:"",end:"",task:"",remarks:""}); updateStaffLists(); saveStaffListToFirestore(); };
-        window.showDeleteModal = (t,sk,si,ti) => { deleteInfo={type:t,sectionKey:sk,staffIndex:si,taskIndex:ti}; document.getElementById('delete-modal-message').textContent=t==='staff'?`「${window.staffList[sk][si].name}」さんを削除？`:"タスクを削除？"; document.getElementById('delete-modal').classList.remove('hidden'); };
-        window.cancelDelete = () => document.getElementById('delete-modal').classList.add('hidden');
-        window.confirmDelete = () => { const {type,sectionKey,staffIndex,taskIndex}=deleteInfo; if(type==='staff'){ const n=window.staffList[sectionKey][staffIndex].name; window.staffList[sectionKey].splice(staffIndex,1); ['fixed_money_count','fixed_open_warehouse','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(k=>{if(window.staffList[k]===n)window.staffList[k]="";}); }else if(window.staffList[sectionKey][staffIndex].tasks.length>1){window.staffList[sectionKey][staffIndex].tasks.splice(taskIndex,1);} cancelDelete(); updateStaffLists(); generateSummaryView(); updateFixedStaffButtons(); saveStaffListToFirestore(); };
-
-        // Auto Assign Logic
-        function calcTime(t,m){let v=0; t.forEach(x=>{const s=m.get(x.start),e=m.get(x.end);if(s!==undefined&&e!==undefined&&e>s)v+=(e-s);}); return v;}
-        function isOverlap(t,s,e,m){for(const x of t){const S=m.get(x.start),E=m.get(x.end);if(S!==undefined&&E!==undefined&&S<e&&E>s)return true;}return false;}
-        function findStaff(g,s,e,m){let min=Infinity,tgt=null; const idx=g.map((_,i)=>i).sort(()=>Math.random()-0.5); for(const i of idx){if(isOverlap(g[i].tasks,s,e,m))continue; const v=calcTime(g[i].tasks,m); if(v<min){min=v;tgt={staff:g[i]};}} return tgt;}
-        window.autoAssignTasks = (sec, list) => {
-            const emp=window.staffList[sec==='early'?'early':'closing_employee'], alba=window.staffList[sec==='late'?'late':'closing_alba'], all=[...emp,...alba];
-            all.forEach(s=>s.tasks=[]);
-            if(list==='open'){
-                const m=emp.find(s=>s.name===window.staffList.fixed_money_count); if(m) m.tasks.push({start:'07:00',end:'08:15',task:SPECIAL_TASKS.MONEY_COUNT.name,remarks:'（固定）'});
-                const w=all.find(s=>s.name===window.staffList.fixed_open_warehouse); if(w) w.tasks.push({start:'09:15',end:'09:45',task:SPECIAL_TASKS.OPEN_WAREHOUSE.name,remarks:'（固定）'});
-                const t=[{t:SPECIAL_TASKS.OUTSIDE_SALES,s:'07:00',e:'07:15',g:emp.filter(s=>s!==m)}, {t:SPECIAL_TASKS.P_CHECK,s:'07:15',e:'07:30',g:emp.filter(s=>s!==m)}, {t:SPECIAL_TASKS.PROMOTION_CHECK,s:'07:30',e:'07:45',g:emp.filter(s=>s!==m)}, {t:SPECIAL_TASKS.LOTTERY,s:'09:15',e:'10:00',g:all,c:2}, {t:SPECIAL_TASKS.S_CHECK,s:'09:30',e:'10:00',g:alba,c:1}, {t:SPECIAL_TASKS.OVERALL_CHECK,s:'09:45',e:'10:00',g:emp,c:1}];
-                if(!w) t.push({t:SPECIAL_TASKS.OPEN_WAREHOUSE,s:'09:15',e:'09:45',g:emp,c:1});
-                all.forEach(s=>s.tasks.push({start:'09:00',end:'09:15',task:SPECIAL_TASKS.BRIEFING.name,remarks:""}));
-                t.forEach(i=>{for(let k=0;k<(i.c||1);k++){const x=findStaff(i.g,openTimeIndexMap.get(i.s),openTimeIndexMap.get(i.e),openTimeIndexMap); if(x)x.staff.tasks.push({start:i.s,end:i.e,task:i.t.name,remarks:""});}});
-                fillFree(all,openTimeSlots,openTimeIndexMap,emp);
-            } else {
-                const fix=[{k:'fixed_money_collect',t:SPECIAL_TASKS.MONEY_COLLECT,s:'22:45',e:'23:15',g:emp},{k:'fixed_warehouses',t:SPECIAL_TASKS.WAREHOUSE,s:'22:45',e:'23:15',g:all},{k:'fixed_counters',t:SPECIAL_TASKS.COUNTER_TASK,s:'22:45',e:'23:00',g:all}];
-                const as=new Set(); fix.forEach(f=>{const s=f.g.find(p=>p.name===window.staffList[f.k]); if(s){s.tasks.push({start:f.s,end:f.e,task:f.t.name,remarks:'（固定）'}); as.add(s);}});
-                const t=[{t:SPECIAL_TASKS.LOCK_CHECK,s:1,g:emp.filter(s=>!as.has(s))},{t:SPECIAL_TASKS.HANDOFF_CLEANING,s:1,g:emp.filter(s=>!as.has(s))},{t:SPECIAL_TASKS.DRINKS_FLAGS,s:1,g:alba.filter(s=>!as.has(s))},{t:SPECIAL_TASKS.HALL_REFILL,s:1,g:alba.filter(s=>!as.has(s))}];
-                fix.forEach(f=>{if(!window.staffList[f.k]) t.push({t:f.t,s:f.t.slots,g:(f.t===SPECIAL_TASKS.MONEY_COLLECT?emp:all.filter(s=>!as.has(s)))});});
-                t.forEach(i=>{ for(let k=0;k<=closeTimeSlots.length-i.s;k++){ const x=findStaff(i.g,k,k+i.s,closeTimeIndexMap); if(x){x.staff.tasks.push({start:closeTimeSlots[k],end:closeTimeSlots[k+i.s],task:i.t.name,remarks:""}); break;} } });
-                fillFree(all,closeTimeSlots,closeTimeIndexMap,[]);
-            }
-            updateStaffLists(); generateSummaryView(); saveStaffListToFirestore();
-        };
-        function fillFree(all,sl,m,emp){all.forEach(s=>{const st=emp.includes(s)?'07:00':'09:00'; const si=m.get(st)||0; for(let i=si;i<sl.length-1;i++){if(!isOverlap(s.tasks,i,i+1,m))s.tasks.push({start:sl[i],end:sl[i+1],task:SPECIAL_TASKS.FREE_TASK.name,remarks:""});} s.tasks.sort((a,b)=>(a.start||"").localeCompare(b.start||""));});}
-
-        // UI Generation
-        function updateStaffLists() { populate('staff-list-open-early','early','open'); populate('staff-list-open-late','late','open'); populate('staff-list-close-employee','closing_employee','close'); populate('staff-list-close-alba','closing_alba','close'); }
-        function populate(id,sk,ln){ const c=document.getElementById(id); if(!c)return; c.innerHTML=''; window.staffList[sk].forEach((s,si)=>{ 
-            let h=''; const st=s.tasks.sort((a,b)=>(a.start||'99').localeCompare(b.start||'99')); if(st.length===0)st.push({start:"",end:"",task:"",remarks:""});
-            st.forEach((t,ti)=>{
-                const f=t.remarks==="（固定）", dis=f?'disabled':'', rem=(t.remarks||'').replace(/"/g,'&quot;');
-                const act=f?`<span class="text-slate-300 text-lg px-2">×</span>`:`<button onclick="showDeleteModal('task','${sk}',${si},${ti})" class="w-8 h-8 rounded-full bg-rose-50 text-rose-500 hover:bg-rose-100 flex items-center justify-center">×</button>`;
-                const add=`<button onclick="addTask('${sk}',${si})" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center">＋</button>`;
-                const btn=(st.length>1||ti>0)?act:add;
-                const cls="custom-select-button text-left w-full truncate " + (t.start?'':'placeholder');
-                h+=`<tr class="edit-row ${ti>0?'border-t-0':''}"><td class="${ti>0?'hidden md:table-cell border-t-0':''}" data-label="スタッフ">${ti===0?`<div class="flex items-center gap-2"><span>${s.name}</span><button onclick="showDeleteModal('staff','${sk}',${si})" class="text-slate-300 hover:text-rose-500 transition text-lg ml-2">×</button></div>`:''}</td>
-                <td data-label="開始"><button class="${cls}" onclick="${!f?`openTimeSelect('${sk}',${si},${ti},'start','${ln}')`:''}" ${dis}><span>${t.start||'--'}</span></button></td>
-                <td data-label="終了"><button class="${cls}" onclick="${!f?`openTimeSelect('${sk}',${si},${ti},'end','${ln}')`:''}" ${dis}><span>${t.end||'--'}</span></button></td>
-                <td data-label="タスク"><button class="${cls}" onclick="${!f?`openTaskSelect('${sk}',${si},${ti},'${ln}')`:''}" ${dis}><span>${t.task||'未選択'}</span></button></td>
-                <td data-label="備考"><input type="text" class="w-full bg-slate-50 border border-slate-200 rounded p-1 text-sm" value="${rem}" onchange="handleChange('${sk}',${si},${ti},'remarks',this.value)" ${f?'readonly':''}></td>
-                <td data-label="操作">${btn}</td></tr>`;
-            }); c.innerHTML+=h;
-        });}
-        function generateSummaryView() {
-            const r=(id,l,sl)=>{
-                const t=[]; l.forEach(s=>s.tasks.forEach(x=>{if(x.task&&x.task!==SPECIAL_TASKS.FREE_TASK.name)t.push({...x,name:s.name});}));
-                const n=[...new Set(l.map(s=>s.name))].sort();
-                document.getElementById(`${id}-desktop`).innerHTML=createTable(t,n,sl);
-                document.getElementById(`${id}-mobile`).innerHTML=createList(t,n);
-            };
-            r('summary-open-employee-container',window.staffList.early,openTimeSlots);
-            r('summary-open-alba-container',window.staffList.late,openAlbaTimeSlots);
-            r('summary-close-employee-container',window.staffList.closing_employee,closeTimeSlots);
-            r('summary-close-alba-container',window.staffList.closing_alba,closeTimeSlots);
-        }
-        function createTable(t,n,s){
-            if(n.length===0)return '<p class="p-8 text-center text-slate-400">スタッフなし</p>';
-            let h=`<div class="timeline-container"><table class="timeline-table"><thead><tr><th>STAFF</th>${s.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>`;
-            const m=new Map(); s.forEach((x,i)=>m.set(x,i));
-            n.forEach(name=>{
-                h+=`<tr><th>${name}</th>`; const st=t.filter(x=>x.name===name).sort((a,b)=>a.start.localeCompare(b.start));
-                let idx=0; while(idx<s.length){
-                    const slot=s[idx], task=st.find(x=>x.start===slot);
-                    if(task){
-                        const start=m.get(task.start), end=m.get(task.end); let span=1;
-                        if(end!==undefined&&end>start) span=end-start; else if(task.end==="10:00"||task.end==="23:30") span=1;
-                        const cls=Object.values(SPECIAL_TASKS).find(v=>v.name===task.task)?.class||'';
-                        h+=`<td colspan="${span}"><div class="task-bar ${cls}" onclick="showRemarksModal('${task.task}','${task.start}-${task.end}','${task.remarks||''}')">${task.task}${task.remarks?'★':''}</div></td>`; idx+=span;
-                    }else{h+='<td></td>'; idx++;}
-                } h+='</tr>';
-            }); return h+'</tbody></table></div>';
-        }
-        function createList(t,n){
-            if(n.length===0)return'<p class="text-center text-slate-400">なし</p>';
-            let h='<div class="space-y-4">'; n.forEach(name=>{
-                const st=t.filter(x=>x.name===name).sort((a,b)=>a.start.localeCompare(b.start));
-                h+=`<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="bg-slate-50 px-4 py-2 font-bold text-slate-700 border-b border-slate-100 flex justify-between"><span>${name}</span><span class="text-xs bg-white px-2 py-1 rounded border">${st.length}</span></div><div class="p-2 space-y-2">`;
-                if(st.length===0)h+='<div class="text-center text-xs text-slate-400">タスクなし</div>';
-                st.forEach(x=>{ const cls=Object.values(SPECIAL_TASKS).find(v=>v.name===x.task)?.class||''; h+=`<div class="task-bar relative top-0 left-0 w-full h-auto block p-2 ${cls}"><div class="flex justify-between"><span>${x.task}</span><span class="opacity-70 text-xs">${x.start}-${x.end}</span></div>${x.remarks?`<div class="text-xs mt-1 border-t border-black/10 pt-1">${x.remarks}</div>`:''}</div>`; });
-                h+='</div></div>';
-            }); return h+'</div>';
-        }
-        window.showRemarksModal=(t,m,r)=>{document.getElementById('remarks-modal-task').textContent=t;document.getElementById('remarks-modal-time').textContent=m;document.getElementById('remarks-modal-text').textContent=r||"備考なし";document.getElementById('remarks-modal').classList.remove('hidden');};
-        window.closeRemarksModal=()=>document.getElementById('remarks-modal').classList.add('hidden');
-    </script>
-
-    <!-- =========================================
-         FIREBASE & INTEGRATION MODULE
-         ========================================= -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, doc, updateDoc, onSnapshot, setDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // 1. Customer App Config (Garden Yashio Bot)
-        const configCustomer = {
-          apiKey: "AIzaSyAdxAeBlJkFWAVM1ZWJKhU2urQcmtL0UKo",
-          authDomain: "gardenyashiobot.firebaseapp.com",
-          projectId: "gardenyashiobot",
-          storageBucket: "gardenyashiobot.firebasestorage.app",
-          messagingSenderId: "692971442685",
-          appId: "1:692971442685:web:ae4a65988ad1716ed84994"
-        };
-
-        // 2. Staff App Config (Task Manager - WakaTest)
-        const configStaff = {
-          apiKey: "AIzaSyBdjf2YJIo9OSJhPDBuEJAxqjVvS0qTN3E",
-          authDomain: "wakatest-46f14.firebaseapp.com",
-          projectId: "wakatest-46f14",
-          storageBucket: "wakatest-46f14.firebasestorage.app",
-          messagingSenderId: "770004156053",
-          appId: "1:770004156053:web:04645f8fa745b07c03659c"
-        };
-
-        // Initialize Both Apps
-        const appCustomer = initializeApp(configCustomer, "customerApp");
-        const dbCustomer = getFirestore(appCustomer);
-
-        const appStaff = initializeApp(configStaff, "staffApp");
-        const dbStaff = getFirestore(appStaff);
-
-        // --- Logic for Customer App ---
-        let allMachines = [], newOpeningData = [], eventMap = new Map(), qscItems = [], currentQscTab = '未実施', qscEditMode = false;
-        const $ = s => document.querySelector(s);
-        const $$ = s => document.querySelectorAll(s);
-        const latestKeywords = ["アズールレーン", "北斗の拳11", "地獄少女7500", "海物語極", "化物語", "プリズムナナ", "バーニングエキスプレス"];
-
-        async function fetchData() {
-            try {
-                const [mSnap, nSnap, cSnap] = await Promise.all([
-                    getDocs(collection(dbCustomer, "machines")),
-                    getDocs(collection(dbCustomer, "newOpening")),
-                    getDocs(collection(dbCustomer, "calendar"))
-                ]);
-                allMachines = mSnap.docs.map(d => d.data()).sort((a, b) => a.name.localeCompare(b.name));
-                newOpeningData = nSnap.docs.map(d => d.data());
-                eventMap = new Map(cSnap.docs.map(d => d.data()).sort((a, b) => a.date - b.date).map(e => [e.date, e]));
-                renderToday();
-            } catch (e) { console.error("Fetch Error:", e); $("#todayEventContainer").innerHTML = `<p class="text-rose-500 text-center font-bold">データの読み込みに失敗しました</p>`; }
-        }
-
-        function subscribeQSC() {
-            onSnapshot(collection(dbCustomer, "qsc_items"), (snapshot) => {
-                qscItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => a.no - b.no);
-                const unfinishedCount = qscItems.filter(i => i.status === "未実施").length;
-                $("#qscUnfinishedCount").textContent = unfinishedCount > 0 ? `残り ${unfinishedCount} 件の対応が必要です` : `すべて完了しました！`;
-                if(!$("#qscModal").classList.contains("hidden")) renderQSCList();
-            });
-        }
-
-        // QSC項目の追加・削除関数
-        window.addQscItem = async () => {
-            const no = document.getElementById('newQscNo').value;
-            const area = document.getElementById('newQscArea').value;
-            const content = document.getElementById('newQscContent').value;
-            if(!no || !area || !content) return alert("すべての項目を入力してください");
-            try {
-                await addDoc(collection(dbCustomer, "qsc_items"), {
-                    no: Number(no), area: area, content: content, status: "未実施"
-                });
-                document.getElementById('newQscNo').value = '';
-                document.getElementById('newQscContent').value = '';
-            } catch(e) { console.error(e); alert("追加に失敗しました"); }
-        };
-
-        window.deleteQscItem = async (id) => {
-            if(confirm("この項目を削除しますか？")) {
-                try { await deleteDoc(doc(dbCustomer, "qsc_items", id)); } 
-                catch(e) { console.error(e); alert("削除に失敗しました"); }
-            }
-        };
-
-        function renderQSCList() {
-            const container = $("#qscListContainer"); container.innerHTML = "";
-            const filteredItems = qscItems.filter(item => currentQscTab === '未実施' ? item.status === "未実施" : item.status === "完了");
-            if (filteredItems.length === 0) { container.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">項目はありません</div>`; return; }
-            
-            const grouped = {}; filteredItems.forEach(item => { if(!grouped[item.area]) grouped[item.area] = []; grouped[item.area].push(item); });
-            
-            for(const [area, items] of Object.entries(grouped)) {
-                const header = document.createElement("div"); header.className = "text-xs font-bold text-slate-500 bg-slate-200/50 px-3 py-1 rounded mt-4 mb-2 first:mt-0"; header.textContent = area; container.appendChild(header);
-                items.forEach(item => {
-                    const div = document.createElement("div"); div.className = `bg-white p-4 rounded-xl border ${item.status === '完了' ? 'border-slate-100 opacity-60' : 'border-slate-200'} shadow-sm flex items-center gap-4 transition-all`;
-                    
-                    if (qscEditMode) {
-                        // 編集モード：削除ボタン表示
-                        div.innerHTML = `
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2 mb-1"><span class="text-xs font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">No.${item.no}</span></div>
-                                <p class="text-sm font-bold text-slate-700 leading-snug">${item.content}</p>
-                            </div>
-                            <button onclick="deleteQscItem('${item.id}')" class="p-2 bg-rose-50 text-rose-500 rounded-full hover:bg-rose-100"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
-                        `;
-                    } else {
-                        // 通常モード
-                        const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.className = "qsc-checkbox shrink-0 mt-0.5"; checkbox.checked = item.status === "完了";
-                        checkbox.onchange = async () => { const newStatus = checkbox.checked ? "完了" : "未実施"; try { await updateDoc(doc(dbCustomer, "qsc_items", item.id), { status: newStatus }); } catch(e) { console.error(e); checkbox.checked = !checkbox.checked; } };
-                        const textDiv = document.createElement("div"); textDiv.className = "flex-1"; 
-                        textDiv.innerHTML = `<div class="flex items-center gap-2 mb-1"><span class="text-xs font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">No.${item.no}</span>${item.status === '完了' ? '<span class="text-xs font-bold text-green-600">DONE</span>' : ''}</div><p class="text-sm font-bold text-slate-700 leading-snug ${item.status === '完了' ? 'line-through text-slate-400' : ''}">${item.content}</p>`;
-                        div.appendChild(checkbox); div.appendChild(textDiv);
-                    }
-                    container.appendChild(div);
-                });
-            }
-        }
-        function renderToday() {
-            const today = new Date(); const d = today.getDate(); const m = today.getMonth(); const y = today.getFullYear();
-            const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-            const ev = eventMap.get(d);
-            const html = ev ? `<div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 w-full"><div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200/60"><div class="flex items-center gap-3"><div class="bg-indigo-600 text-white rounded-xl px-4 py-2 text-center shadow-md shadow-indigo-200"><div class="text-[10px] font-bold opacity-80 tracking-wider">${monthNames[m]}</div><div class="text-2xl font-black leading-none">${d}</div></div><div class="font-bold text-indigo-900 text-lg">本日のイベント情報</div></div><span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">TODAY</span></div><ul class="space-y-3">${ev.p_event ? `<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.p_event}</span></li>` : ''}${ev.s_event ? `<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.s_event}</span></li>` : ''}${ev.recommend ? `<li class="flex items-start p-2 rounded-lg hover:bg-rose-50 transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 mt-2 mr-3 shrink-0"></span><span class="text-rose-600 font-bold text-sm leading-relaxed">${ev.recommend}</span></li>` : ''}</ul></div>` : `<div class="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 rounded-2xl border border-slate-100 w-full"><div class="text-5xl font-black text-slate-200 mb-3">${d}</div><p class="text-sm font-bold">特別なイベント情報はありません</p></div>`;
-            $("#todayEventContainer").innerHTML = html; $("#currentDate").textContent = `${y}.${m + 1}.${d}`;
-        }
-        function openNewOpening() {
-            const container = $("#newOpeningInfo"); container.innerHTML = "";
-            if (newOpeningData.length === 0) { container.innerHTML = "<p class='text-center text-slate-400 py-10'>データがありません</p>"; $("#newOpeningModal").classList.remove("hidden"); return; }
-            const latest = [], others = []; newOpeningData.forEach(m => { (latestKeywords.some(k => m.name.includes(k)) ? latest : others).push(m); });
-            const createList = (list) => {
-                const ul = document.createElement("ul"); ul.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8";
-                list.sort((a,b)=>b.count-a.count).forEach(item => {
-                    const li = document.createElement("li"); li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group";
-                    const matched = allMachines.find(m => m.name === item.name || m.name.includes(item.name));
-                    li.innerHTML = `<div class="flex flex-col overflow-hidden mr-2"><span class="font-bold text-slate-700 truncate text-sm sm:text-base group-hover:text-indigo-700 transition-colors">${item.name}</span>${matched&&matched.salesPitch?`<span class="text-xs text-slate-400 font-medium mt-1 flex items-center"><span class="w-1.5 h-1.5 bg-indigo-400 rounded-full mr-1.5"></span>タップして詳細</span>`:''}</div><span class="text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0">${item.count}台</span>`;
-                    if(matched && matched.salesPitch) li.onclick = () => { $("#detailName").textContent = matched.name; $("#detailPitch").textContent = matched.salesPitch || "情報なし"; const f=(i,l)=>{$(i).innerHTML="";(l||["情報なし"]).forEach(t=>$(i).innerHTML+=`<li class="flex items-start"><span class="mr-2 mt-1.5 w-1.5 h-1.5 bg-current rounded-full flex-shrink-0"></span><span>${t}</span></li>`);}; f("#detailPros", matched.pros); f("#detailCons", matched.cons); $("#machineDetailModal").classList.remove("hidden"); };
-                    ul.appendChild(li);
-                }); return ul;
-            };
-            if(latest.length > 0) { const h = document.createElement("h3"); h.className = "text-lg font-black text-rose-600 mb-4 flex items-center border-b border-rose-100 pb-2"; h.innerHTML = `✨ 最新導入`; container.appendChild(h); container.appendChild(createList(latest)); }
-            if(others.length > 0) { const h = document.createElement("h3"); h.className = "text-lg font-black text-slate-600 mb-4 flex items-center border-b border-slate-200 pb-2"; h.innerHTML = `🔄 準新台・その他`; container.appendChild(h); container.appendChild(createList(others)); }
-            $("#newOpeningModal").classList.remove("hidden");
-        }
-
-        // --- Logic for Staff App (Wiring) ---
-        let unsubscribeFromTasks = null;
-        window.taskDocRef = null;
-        
-        // Expose Staff DB functions to global window for script.js to use
-        window.saveStaffListToFirestore = async function() {
-            if (!window.isEditing || !window.taskDocRef) return;
-            try { const cleanData = JSON.parse(JSON.stringify(window.staffList, (key, value) => (value === null || value === undefined) ? "" : value)); await setDoc(window.taskDocRef, cleanData); } catch (error) { console.error("Error saving:", error); }
-        };
-        
-        window.handleDateChange = function(dateString) {
-            if (!dateString) dateString = window.getTodayDateString();
-            window.currentDate = dateString;
-            const picker = document.getElementById('date-picker'); if(picker) picker.value = dateString;
-            window.taskDocRef = doc(dbStaff, 'artifacts', configStaff.projectId, 'public', 'data', 'task_assignments', dateString);
-            
-            if (unsubscribeFromTasks) unsubscribeFromTasks();
-            unsubscribeFromTasks = onSnapshot(window.taskDocRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    window.staffList.early = data.early || [];
-                    window.staffList.late = data.late || [];
-                    window.staffList.closing_employee = data.closing_employee || [];
-                    window.staffList.closing_alba = data.closing_alba || [];
-                    window.staffList.fixed_warehouses = data.fixed_warehouses || "";
-                    window.staffList.fixed_counters = data.fixed_counters || "";
-                    window.staffList.fixed_money_count = data.fixed_money_count || "";
-                    window.staffList.fixed_money_collect = data.fixed_money_collect || "";
-                    window.staffList.fixed_open_warehouse = data.fixed_open_warehouse || "";
-                } else {
-                    window.staffList = { early: [], late: [], closing_employee: [], closing_alba: [], fixed_money_count: "", fixed_open_warehouse: "", fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "" };
-                }
-                if(window.refreshCurrentView) window.refreshCurrentView();
-            });
-        };
-
-        // Event Listeners (Customer)
-        window.addEventListener("DOMContentLoaded", () => {
-            fetchData();
-            subscribeQSC();
-            // QSC Tabs & Edit Toggle
-            $("#qscTabUnfinished").onclick = () => { currentQscTab = '未実施'; $("#qscTabUnfinished").className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm transition-all"; $("#qscTabFinished").className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all"; renderQSCList(); };
-            $("#qscTabFinished").onclick = () => { currentQscTab = '完了'; $("#qscTabFinished").className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-green-600 shadow-sm transition-all"; $("#qscTabUnfinished").className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all"; renderQSCList(); };
-            
-            // Edit Button Logic
-            $("#qscEditButton").onclick = () => {
-                if(qscEditMode) {
-                    qscEditMode = false;
-                    $("#qscEditButton").textContent = "⚙️ 管理";
-                    $("#qscEditButton").className = "text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition";
-                    $("#qscAddForm").classList.add("hidden");
-                    renderQSCList();
-                } else {
-                    const pass = prompt("管理者パスワードを入力してください:");
-                    if(pass === "admin") { // You can change this password
-                        qscEditMode = true;
-                        $("#qscEditButton").textContent = "✅ 完了";
-                        $("#qscEditButton").className = "text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition";
-                        $("#qscAddForm").classList.remove("hidden");
-                        renderQSCList();
-                    } else if (pass !== null) {
-                        alert("パスワードが違います");
-                    }
-                }
-            };
-
-            $("#newOpeningButton").onclick = openNewOpening;
-            $("#closeNewOpeningModal").onclick = () => $("#newOpeningModal").classList.add("hidden");
-            $("#closeDetailModal").onclick = () => $("#machineDetailModal").classList.add("hidden");
-            $("#openQSCButton").onclick = () => { $("#qscModal").classList.remove("hidden"); renderQSCList(); };
-            $("#closeQscModal").onclick = () => $("#qscModal").classList.add("hidden");
-            $("#calendarToggleButton").onclick = () => {
-                const full = $("#fullCalendarContainer"), today = $("#todayEventContainer"), btn = $("#calendarToggleButton");
-                if (full.classList.contains("hidden")) {
-                    full.classList.remove("hidden"); today.classList.add("hidden"); btn.textContent = "本日のイベントに戻る";
-                    const grid = $("#calendarGrid"); grid.innerHTML = ["日","月","火","水","木","金","土"].map(d => `<div class="text-xs font-bold text-slate-300 text-center py-2">${d}</div>`).join(""); for(let i=0; i<6; i++) grid.innerHTML += `<div></div>`;
-                    const days = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-                    for(let i=1; i<=days; i++) {
-                        const ev = eventMap.get(i); const btn = document.createElement("button"); btn.className = `calendar-day ${ev&&(ev.p_event||ev.s_event)?'has-event':''}`; btn.textContent = i;
-                        if (i === new Date().getDate()) btn.classList.add('is-today');
-                        btn.onclick = () => { $$(".calendar-day").forEach(b => b.classList.remove("is-selected")); btn.classList.add("is-selected"); $("#selectedEventDetails").innerHTML = ev ? `<div class="w-full"><div class="text-indigo-600 font-black mb-3 flex items-center text-lg"><span class="bg-indigo-100 text-indigo-600 text-xs px-2 py-1 rounded mr-2">${new Date().getMonth() + 1}/${i}</span> 詳細</div><ul class="space-y-2 text-sm font-bold text-slate-700">${ev.p_event ? `<li class="flex items-start"><span class="w-1.5 h-1.5 bg-indigo-400 rounded-full mr-2 mt-1.5 shrink-0"></span>${ev.p_event}</li>` : ''}${ev.s_event ? `<li class="flex items-start"><span class="w-1.5 h-1.5 bg-purple-400 rounded-full mr-2 mt-1.5 shrink-0"></span>${ev.s_event}</li>` : ''}${ev.recommend ? `<li class="flex items-start text-rose-600"><span class="w-1.5 h-1.5 bg-rose-400 rounded-full mr-2 mt-1.5 shrink-0"></span>${ev.recommend}</li>` : ''}</ul></div>` : `<p class='text-slate-400'>情報なし</p>`; };
-                        grid.appendChild(btn);
-                    }
-                } else { full.classList.add("hidden"); today.classList.remove("hidden"); btn.textContent = "今月全体を見る"; }
-            };
-        });
-
-        // VIEW SWITCHER
-        window.switchView = function(viewName) {
-            const customerApp = document.getElementById('app-customer');
-            const staffApp = document.getElementById('app-staff');
-            window.scrollTo(0,0);
-            if (viewName === 'staff') {
-                customerApp.classList.add('hidden');
-                staffApp.classList.remove('hidden');
-                // Initialize Staff App on first click
-                if (!window.taskDocRef) {
-                    window.setupInitialView();
-                    window.handleDateChange(window.getTodayDateString());
-                }
-            } else {
-                staffApp.classList.add('hidden');
-                customerApp.classList.remove('hidden');
-            }
-        };
-    </script>
+    <!-- JS Module -->
+    <script type="module" src="main.js"></script>
 </body>
 </html>
