@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getFirestore, collection, getDocs, doc, updateDoc, onSnapshot, setDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 /* =========================================
-   CONFIG (Unified: Garden Yashio Bot)
+   CONFIG (完全統合: Garden Yashio Bot)
    ========================================= */
 const firebaseConfig = {
     apiKey: "AIzaSyAdxAeBlJkFWAVM1ZWJKhU2urQcmtL0UKo",
@@ -13,7 +13,7 @@ const firebaseConfig = {
     appId: "1:692971442685:web:ae4a65988ad1716ed84994"
 };
 
-// Initialize Firebase
+// Initialize Firebase (1つに統一)
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -52,6 +52,7 @@ const closeTimeIndexMap = new Map(); closeTimeSlots.forEach((t, i) => closeTimeI
    CORE FUNCTIONS
    ========================================= */
 
+// 1. View Switcher
 window.switchView = function(viewName) {
     window.scrollTo(0,0);
     if (viewName === 'staff') {
@@ -67,7 +68,7 @@ window.switchView = function(viewName) {
     }
 };
 
-// Customer Data Fetch
+// 2. Customer App Logic
 window.fetchCustomerData = async function() {
     try {
         const [mSnap, nSnap, cSnap] = await Promise.all([
@@ -91,6 +92,7 @@ window.renderToday = function() {
     const m = today.getMonth();
     const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
     const ev = eventMap.get(d);
+    
     const html = ev ? 
         `<div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 w-full"><div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200/60"><div class="flex items-center gap-3"><div class="bg-indigo-600 text-white rounded-xl px-4 py-2 text-center shadow-md shadow-indigo-200"><div class="text-[10px] font-bold opacity-80 tracking-wider">${monthNames[m]}</div><div class="text-2xl font-black leading-none">${d}</div></div><div class="font-bold text-indigo-900 text-lg">本日のイベント情報</div></div><span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">TODAY</span></div><ul class="space-y-3">${ev.p_event ? `<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.p_event}</span></li>` : ''}${ev.s_event ? `<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.s_event}</span></li>` : ''}${ev.recommend ? `<li class="flex items-start p-2 rounded-lg hover:bg-rose-50 transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 mt-2 mr-3 shrink-0"></span><span class="text-rose-600 font-bold text-sm leading-relaxed">${ev.recommend}</span></li>` : ''}</ul></div>` 
         : `<div class="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 rounded-2xl border border-slate-100 w-full"><div class="text-5xl font-black text-slate-200 mb-3">${d}</div><p class="text-sm font-bold">特別なイベント情報はありません</p></div>`;
@@ -180,10 +182,9 @@ window.addQscItem = async function() {
 };
 window.deleteQscItem = async function(id) { if(confirm("削除しますか？")) await deleteDoc(doc(db, "qsc_items", id)); };
 
-// Staff App Logic (Unified DB)
+// 3. Staff App Logic (Unified DB: gardenyashiobot)
 let unsubscribeFromTasks = null;
 window.taskDocRef = null;
-// Updated Path: gardenyashiobot
 const staffRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'masters', 'staff_data');
 const taskDefRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'masters', 'task_data');
 
@@ -196,7 +197,6 @@ window.handleDateChange = function(dateString) {
     if (!dateString) dateString = window.getTodayDateString();
     window.currentDate = dateString;
     const picker = document.getElementById('date-picker'); if(picker) picker.value = dateString;
-    // Updated Path: gardenyashiobot
     window.taskDocRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'task_assignments', dateString);
     if (unsubscribeFromTasks) unsubscribeFromTasks();
     unsubscribeFromTasks = onSnapshot(window.taskDocRef, (docSnap) => {
@@ -254,9 +254,17 @@ window.closePasswordModal = () => document.getElementById('password-modal').clas
 window.checkPassword = () => { 
     if(document.getElementById('password-input').value === EDIT_PASSWORD) { 
         closePasswordModal(); 
-        if(authContext === 'admin') setEditingMode(true);
-        else if(authContext === 'qsc') { qscEditMode = true; document.getElementById("qscEditButton").textContent = "✅ 完了"; document.getElementById("qscAddForm").classList.remove("hidden"); window.renderQSCList(); }
-    } else { document.getElementById('password-error').classList.remove('hidden'); } 
+        if(authContext === 'admin') {
+            setEditingMode(true);
+        } else if(authContext === 'qsc') {
+            qscEditMode = true; 
+            document.getElementById("qscEditButton").textContent = "✅ 完了"; 
+            document.getElementById("qscAddForm").classList.remove("hidden"); 
+            window.renderQSCList();
+        }
+    } else { 
+        document.getElementById('password-error').classList.remove('hidden'); 
+    } 
 };
 
 window.openFixedStaffSelect = (k, lk, t) => { 
@@ -352,25 +360,23 @@ window.autoAssignTasks = (sec, list) => {
         const m=emp.find(s=>s.name===window.staffList.fixed_money_count); if(m) m.tasks.push({start:'07:00',end:'08:15',task:t_money.name,remarks:'（固定）'});
         const w=all.find(s=>s.name===window.staffList.fixed_open_warehouse); if(w) w.tasks.push({start:'09:15',end:'09:45',task:t_warehouse.name,remarks:'（固定）'});
         
-        // --- ルール更新: 社員用は維持、アルバイト用は最新化 ---
         const rules = [
-            {n:"抽選（準備、片付け）", s:3, g:all, c:2}, // 共通
-            // 社員用既存タスク
+            {n:"抽選（準備、片付け）", s:3, g:all, c:2},
             {n:"外販出し、新聞、岡持", s:1, g:emp.filter(s=>s!==m)},
-            {n:"P台チェック", s:1, g:emp.filter(s=>s!==m)}, // 社員もやる可能性あり(同名タスク)
+            {n:"P台チェック", s:1, g:emp.filter(s=>s!==m)},
             {n:"販促確認", s:1, g:emp.filter(s=>s!==m)},
             {n:"全体確認", s:1, g:emp.filter(s=>s!==m)},
-            // アルバイト用新規タスク
             {n:"P台チェック", s:1, g:alba.filter(s=>s!==m)},
             {n:"S台チェック(ユニメモ込)", s:1, g:alba.filter(s=>s!==m)},
             {n:"ローラー交換", s:2, g:alba.filter(s=>s!==m)},
             {n:"環境整備・5M", s:1, g:alba.filter(s=>s!==m)},
-            {n:"時差島台電落とし", s:1, g:emp.filter(s=>s!==m)}, // 基本社員だが一応
+            {n:"時差島台電落とし", s:1, g:emp.filter(s=>s!==m)},
             {n:"カウンター開設準備", s:4, g:alba.filter(s=>s!==m)}
         ];
         
         if(!w) rules.push({n:t_warehouse.name, s:2, g:emp, c:1});
         all.forEach(s=>s.tasks.push({start:'09:00',end:'09:15',task:t_briefing.name,remarks:""}));
+        
         rules.forEach(r=>{ for(let k=0;k<(r.c||1);k++){ for(let i=0; i<10; i++) { const x=findStaff(r.g, i, i+(r.s||1), openTimeIndexMap); if(x) { x.staff.tasks.push({start:openTimeSlots[i],end:openTimeSlots[i+(r.s||1)],task:r.n,remarks:""}); break; } } } });
         fillFree(all,openTimeSlots,openTimeIndexMap,emp);
     } else {
