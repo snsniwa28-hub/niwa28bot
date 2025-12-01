@@ -38,7 +38,7 @@ body {
 .word-keep { display: inline-block; }
 
 /* =========================================
-   Task Manager Styles
+   Task Manager Styles (Timeline & Edit)
    ========================================= */
 .timeline-container {
     width: 100%; overflow-x: auto; background-color: #ffffff; border: 1px solid #e2e8f0;
@@ -65,7 +65,7 @@ body {
     padding: 0 0.5rem; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: space-between;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; white-space: nowrap; z-index: 5; transition: transform 0.1s; cursor: default;
 }
-/* Hover effect only for showing details, no interaction hint */
+/* Just simple hover for readability */
 .task-bar:hover { z-index: 30; transform: scaleY(1.1) scaleX(1.01); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
 
 /* Task Colors */
