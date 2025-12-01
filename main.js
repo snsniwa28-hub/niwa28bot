@@ -18,7 +18,7 @@ const db = getFirestore(app);
 
 // --- Global State ---
 window.masterStaffList = { employees: [], alba_early: [], alba_late: [] };
-window.specialTasks = [];
+window.specialTasks = []; // Firebaseから読み込んだタスク定義リスト
 window.isEditing = false;
 const EDIT_PASSWORD = "admin";
 window.currentDate = '';
@@ -46,6 +46,11 @@ const openTimeIndexMap = new Map(); openTimeSlots.forEach((t, i) => openTimeInde
 const openAlbaTimeIndexMap = new Map(); openAlbaTimeSlots.forEach((t, i) => openAlbaTimeIndexMap.set(t, i));
 const closeTimeIndexMap = new Map(); closeTimeSlots.forEach((t, i) => closeTimeIndexMap.set(t, i));
 
+// 【重要】タスク名から定義オブジェクトを取得するヘルパー（Firebase依存）
+function getTaskDefByName(name) {
+    // Firebaseからタスク定義を取得。見つからなければデフォルト値でエラー回避。
+    return window.specialTasks.find(t => t.name === name) || { name: name, slots: 1, class: 'free-task', type: 'both' };
+}
 
 /* =========================================
    CORE FUNCTIONS
@@ -67,7 +72,7 @@ window.switchView = function(viewName) {
     }
 };
 
-// 2. Customer App Logic
+// 2. Customer App Logic (新装開店ロジックなど省略 - 変更なし)
 window.fetchCustomerData = async function() {
     try {
         const [mSnap, nSnap, cSnap] = await Promise.all([
@@ -142,8 +147,7 @@ window.showMachineDetail = (name) => {
     f("#detailPros", matched.pros); f("#detailCons", matched.cons);
     document.getElementById("machineDetailModal").classList.remove("hidden");
 };
-
-// QSC Logic
+// QSC Logic (省略 - 変更なし)
 window.subscribeQSC = function() {
     onSnapshot(collection(db, "qsc_items"), (snapshot) => {
         qscItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => a.no - b.no);
@@ -194,7 +198,8 @@ window.addQscItem = async function() {
 };
 window.deleteQscItem = async function(id) { if(confirm("削除しますか？")) await deleteDoc(doc(db, "qsc_items", id)); };
 
-// 3. Staff App Logic
+
+// 3. Staff App Logic (省略 - 変更なし)
 let unsubscribeFromTasks = null;
 window.taskDocRef = null;
 const staffRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'masters', 'staff_data');
@@ -289,7 +294,9 @@ window.openFixedStaffSelect = (k, lk, t) => {
 
 window.selectFixedStaff = (k, n) => { 
     window.staffList[k]=n; 
+    
     if (n) {
+        // 固定タスク名と時間 (マスタ登録を前提)
         const config = {
             'fixed_money_count': { sec: 'early', task: '金銭業務', start: '07:00', end: '08:15' },
             'fixed_open_warehouse': { sec: 'early', task: '倉庫(開店)', start: '09:15', end: '09:45' },
@@ -323,6 +330,7 @@ function updateFixedStaffButtons() {
     btns.forEach(i => { const b = document.getElementById(i.id); if(b) { const s=b.querySelector('span'); if(s)s.textContent=window.staffList[i.k]||"選択してください"; b.classList.toggle('placeholder',!window.staffList[i.k]); }});
 }
 
+// (以下、スタッフリスト操作関数群は省略 - 変更なし)
 window.openStaffSelect = (sk, mk) => { 
     if(!window.isEditing)return; const m=window.masterStaffList[mk], c=window.staffList[sk].map(s=>s.name); const mb=document.getElementById('select-modal-body'); mb.innerHTML=''; 
     const o=m.filter(n=>!c.includes(n)); 
@@ -410,7 +418,7 @@ function findPairStaff(empList, albaList, startIdx, endIdx, map) {
     return null;
 }
 
-// 【修正】自動割り振りロジック (ルールの復元)
+// 【最終改修】自動割り振りロジック (タスク・コマ数・タイプをFirebaseに完全に依存)
 window.autoAssignTasks = (mode, timeZone) => {
     const empList = window.staffList[timeZone === 'open' ? 'early' : 'closing_employee'];
     const albaList = window.staffList[timeZone === 'open' ? 'late' : 'closing_alba'];
@@ -421,91 +429,125 @@ window.autoAssignTasks = (mode, timeZone) => {
     // 固定タスク以外をクリア
     [empList, albaList].forEach(list => { list.forEach(s => { s.tasks = s.tasks.filter(t => t.remarks === '（固定）'); }); });
 
+    // --- タスク定義と識別名（Firebaseに依存） ---
+    const TASK_CHUSEN = getTaskDefByName("抽選（準備、片付け）");
+    const TASK_ASARE = getTaskDefByName("朝礼");
+    const TASK_RITSUCHU_EMP = getTaskDefByName("立駐（社員）");
+    const TASK_RITSUCHU_ALBA = getTaskDefByName("立駐（アルバイト）");
+    const TASK_FREE = getTaskDefByName("個人業務、自由時間");
+
     if (timeZone === 'open') {
         // Rule: バイト 9:00-9:15 朝礼固定
         const asS = timeMap.get("09:00"), asE = timeMap.get("09:15");
-        albaList.forEach(s => { if (!isOverlap(s.tasks, asS, asE, timeMap)) s.tasks.push({ start: "09:00", end: "09:15", task: "朝礼", remarks: "" }); });
+        const slotsAsare = TASK_ASARE.slots || 1;
+        albaList.forEach(s => { 
+            const endIdx = asS + slotsAsare;
+            if (endIdx <= timeSlots.length && !isOverlap(s.tasks, asS, endIdx, timeMap)) {
+                 s.tasks.push({ start: timeSlots[asS], end: timeSlots[endIdx], task: TASK_ASARE.name, remarks: "" });
+            }
+        });
 
         // Rule: 抽選 2名 (9:15-10:00)
-        const cS = timeMap.get("09:15"), cE = timeMap.get("10:00");
+        const cS = timeMap.get("09:15");
+        const slotsChusen = TASK_CHUSEN.slots || 3; // 45分想定
+        const cE = cS + slotsChusen;
+
         for (let i=0; i<2; i++) {
             let s = findAvailableStaff(albaList, cS, cE, timeMap) || findAvailableStaff(empList, cS, cE, timeMap);
-            if (s) s.tasks.push({ start: "09:15", end: "10:00", task: "抽選（準備、片付け）", remarks: "" });
+            if (s) s.tasks.push({ start: timeSlots[cS], end: timeSlots[cE], task: TASK_CHUSEN.name, remarks: "" });
         }
 
-        // Loop Tasks: 1回ずつ埋める (社員業務とバイト業務を分離)
-        // タスク名はこの場での指定に戻します
-        const TASKS_EMP = ["外販出し", "新聞・岡持", "P台チェック", "販促確認", "全体確認", "時差島台電落とし"];
-        const TASKS_ALBA = ["P台チェック", "S台チェック(ユニメモ込)", "ローラー交換", "環境整備・5M", "カウンター開設準備"];
+        // Loop Tasks: 1回ずつ埋める
+        const MUST_TASKS_OPEN = window.specialTasks.filter(t => t.type === 'open' || t.type === 'both').filter(t => 
+            !['朝礼', '抽選（準備、片付け）', '金銭業務', '倉庫(開店)', '個人業務、自由時間'].includes(t.name)
+        );
 
-        TASKS_EMP.forEach(name => {
-            for (let t=0; t < timeSlots.length-1; t++) {
-                const s = findAvailableStaff(empList, t, t+1, timeMap);
-                if (s) { s.tasks.push({ start: timeSlots[t], end: timeSlots[t+1], task: name, remarks: "" }); break; }
+        MUST_TASKS_OPEN.forEach(taskDef => {
+            const slots = taskDef.slots || 1;
+            const isAlbaTask = taskDef.name.includes('清掃') || taskDef.name.includes('補充') || taskDef.name.includes('カウンター');
+            
+            // 割り当て対象リスト
+            let targetList = isAlbaTask ? albaList : empList;
+            let startLimit = isAlbaTask ? timeMap.get("09:15") : timeMap.get("07:00");
+            
+            for (let t = startLimit; t < timeSlots.length - slots; t++) {
+                const s = findAvailableStaff(targetList, t, t + slots, timeMap) || findAvailableStaff(allStaff, t, t + slots, timeMap);
+                if (s) { s.tasks.push({ start: timeSlots[t], end: timeSlots[t + slots], task: taskDef.name, remarks: "" }); break; }
             }
         });
-        TASKS_ALBA.forEach(name => {
-            const startLimit = timeMap.get("09:15");
-            for (let t=startLimit; t < timeSlots.length-1; t++) {
-                const s = findAvailableStaff(albaList, t, t+1, timeMap);
-                if (s) { s.tasks.push({ start: timeSlots[t], end: timeSlots[t+1], task: name, remarks: "" }); break; }
-            }
-        });
 
-    } else {
-        // Rule: 駐車場 (ペア)
-        const pS = timeMap.get("23:00"), pE = timeMap.get("23:15");
-        if(pS !== undefined) {
+    } else { // 閉店 (CLOSE)
+        // Rule: 立体駐車場 (ペア)
+        const pS = timeMap.get("23:00");
+        const slotsRitsuchu = TASK_RITSUCHU_EMP.slots || 1; // 15分想定
+        const pE = pS + slotsRitsuchu;
+        
+        if(pS !== undefined && pE <= timeSlots.length) {
             const pair = findPairStaff(empList, albaList, pS, pE, timeMap);
             if(pair) {
-                pair.emp.tasks.push({start:"23:00",end:"23:15",task:"立体駐車場",remarks:"ペア"});
-                pair.alba.tasks.push({start:"23:00",end:"23:15",task:"立体駐車場",remarks:"ペア"});
+                pair.emp.tasks.push({start:timeSlots[pS], end:timeSlots[pE], task:TASK_RITSUCHU_EMP.name, remarks:"ペア"});
+                pair.alba.tasks.push({start:timeSlots[pS], end:timeSlots[pE], task:TASK_RITSUCHU_ALBA.name, remarks:"ペア"});
             } else {
                 // ペア組めなければ無理やり
                  let c = 0;
                 while(c < 2) {
                     const s = findAvailableStaff([...empList, ...albaList], pS, pE, timeMap);
-                    if(s) { s.tasks.push({ start: "23:00", end: "23:15", task: "立体駐車場", remarks: "要ペア確認" }); c++; } else break;
+                    if(s) { 
+                        const taskName = empList.includes(s) ? TASK_RITSUCHU_EMP.name : TASK_RITSUCHU_ALBA.name;
+                        s.tasks.push({ start: timeSlots[pS], end: timeSlots[pE], task: taskName, remarks: "要ペア確認" }); c++; 
+                    } else break;
                 }
             }
         }
         
         // Loop Tasks (必須業務)
-        const REQ = [
-            {n:"施錠・工具箱チェック", g:empList, bk:albaList}, 
-            {n:"引継ぎ・事務所清掃", g:empList, bk:albaList},
-            {n:"飲み残し・フラッグ確認", g:albaList, bk:empList}, 
-            {n:"島上清掃・カード補充", g:albaList, bk:empList}
-        ];
-        REQ.forEach(r => {
-            for (let t=0; t < timeSlots.length-1; t++) {
-                // 優先グループ -> バックアップグループの順で探す
-                let s = findAvailableStaff(r.g, t, t+1, timeMap) || findAvailableStaff(r.bk, t, t+1, timeMap);
-                if (s) { s.tasks.push({ start: timeSlots[t], end: timeSlots[t+1], task: r.n, remarks: "" }); break; }
+        const MUST_TASKS_CLOSE = window.specialTasks.filter(t => t.type === 'close' || t.type === 'both').filter(t => 
+            !['立駐（社員）', '立駐（アルバイト）', '金銭回収', '倉庫整理', 'カウンター', '個人業務、自由時間'].includes(t.name)
+        );
+        
+        TASKS_CLOSE.forEach(taskDef => {
+            const slots = taskDef.slots || 1;
+            const isEmpTask = taskDef.name.includes('施錠') || taskDef.name.includes('引継ぎ'); // 社員優先の業務
+            
+            // 優先グループを設定
+            let primaryList = isEmpTask ? empList : albaList;
+            let secondaryList = isEmpTask ? albaList : empList;
+
+            for (let t=0; t < timeSlots.length - slots; t++) {
+                let s = findAvailableStaff(primaryList, t, t + slots, timeMap) || findAvailableStaff(secondaryList, t, t + slots, timeMap);
+                if (s) { s.tasks.push({ start: timeSlots[t], end: timeSlots[t + slots], task: taskDef.name, remarks: "" }); break; }
             }
         });
 
-        // 金銭回収 (社員優先)
-        const colS = timeMap.get("22:45"), colE = timeMap.get("23:15");
-        // 固定で埋まっていなければ割り当てる
-        if(!window.staffList['fixed_money_collect']) {
-            let s = findAvailableStaff(empList, colS, colE, timeMap);
-            if(s) s.tasks.push({ start: "22:45", end: "23:15", task: "金銭回収", remarks: "" });
+        // 固定タスクの強制割り当てチェック（固定プルダウンで選ばれていない場合）
+        // Rule: 金銭回収 (社員優先)
+        const taskCol = getTaskDefByName("金銭回収");
+        const colS = timeMap.get("22:45"), slotsCol = taskCol.slots || 2, colE = colS + slotsCol;
+        if(!window.staffList['fixed_money_collect'] && colE <= timeSlots.length) {
+            let s = findAvailableStaff(empList, colS, colE, timeMap) || findAvailableStaff(albaList, colS, colE, timeMap);
+            if(s) s.tasks.push({ start: timeSlots[colS], end: timeSlots[colE], task: taskCol.name, remarks: "" });
         }
-        
-        // 倉庫・カウンター (バイト優先)
-        if(!window.staffList['fixed_warehouses']) {
-            let s = findAvailableStaff(albaList, colS, colE, timeMap) || findAvailableStaff(empList, colS, colE, timeMap);
-            if(s) s.tasks.push({ start: "22:45", end: "23:15", task: "倉庫整理", remarks: "" });
+        // Rule: 倉庫整理 (バイト優先)
+        if(!window.staffList['fixed_warehouses'] && colE <= timeSlots.length) {
+             const taskWare = getTaskDefByName("倉庫整理");
+             const slotsWare = taskWare.slots || 2;
+             const wareE = colS + slotsWare;
+            let s = findAvailableStaff(albaList, colS, wareE, timeMap) || findAvailableStaff(empList, colS, wareE, timeMap);
+            if(s) s.tasks.push({ start: timeSlots[colS], end: timeSlots[wareE], task: taskWare.name, remarks: "" });
         }
     }
 
-    // Fill Free (ホール巡回)
+    // Fill Free (個人業務、自由時間)
+    const slotsFree = TASK_FREE.slots || 1;
     allStaff.forEach(s => {
         s.tasks.sort((a,b)=>(a.start||"").localeCompare(b.start||""));
         const startTime = (timeZone==='open' && albaList.includes(s)) ? timeMap.get("09:15") : 0;
-        for (let i=startTime; i < timeSlots.length-1; i++) {
-            if (!isOverlap(s.tasks, i, i+1, timeMap)) s.tasks.push({ start: timeSlots[i], end: timeSlots[i+1], task: "ホール巡回", remarks: "" });
+        
+        for (let i=startTime; i < timeSlots.length - slotsFree; i++) {
+            const endIdx = i + slotsFree;
+            if (endIdx <= timeSlots.length && !isOverlap(s.tasks, i, endIdx, timeMap)) {
+                 s.tasks.push({ start: timeSlots[i], end: timeSlots[endIdx], task: TASK_FREE.name, remarks: "" });
+            }
         }
         s.tasks.sort((a,b)=>(a.start||"").localeCompare(b.start||""));
     });
