@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getFirestore, collection, getDocs, doc, updateDoc, onSnapshot, setDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 /* =========================================
-   CONFIG
+   CONFIG (Unified: Garden Yashio Bot)
    ========================================= */
 const firebaseConfig = {
     apiKey: "AIzaSyAdxAeBlJkFWAVM1ZWJKhU2urQcmtL0UKo",
@@ -12,445 +12,274 @@ const firebaseConfig = {
     messagingSenderId: "692971442685",
     appId: "1:692971442685:web:ae4a65988ad1716ed84994"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// --- Global State ---
+// --- GLOBALS ---
 window.masterStaffList = { employees: [], alba_early: [], alba_late: [] };
 window.specialTasks = [];
 window.isEditing = false;
 const EDIT_PASSWORD = "admin";
 window.currentDate = '';
-window.staffList = { early: [], late: [], closing_employee: [], closing_alba: [], fixed_money_count: "", fixed_open_warehouse: "", fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "" };
+const DEFAULT_STAFF = { early: [], late: [], closing_employee: [], closing_alba: [], fixed_money_count: "", fixed_open_warehouse: "", fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "" };
+window.staffList = JSON.parse(JSON.stringify(DEFAULT_STAFF));
 let deleteInfo = { type: null, sectionKey: null, staffIndex: null, taskIndex: null };
-let authContext = '';
-
-// --- Data Variables ---
-let allMachines = [], newOpeningData = [], eventMap = new Map(), qscItems = [], currentQscTab = '未実施', qscEditMode = false;
+let authContext = '', qscItems = [], currentQscTab = '未実施', qscEditMode = false;
+let allMachines = [], newOpeningData = [], eventMap = new Map();
 const latestKeywords = ["アズールレーン", "北斗の拳11", "地獄少女7500", "海物語極", "化物語", "プリズムナナ", "バーニングエキスプレス"];
 
-// --- Helper Functions ---
+// --- HELPERS ---
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 window.getTodayDateString = () => { const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`; };
-function generateTimeSlots(startTime, endTime, intervalMinutes) {
-    const slots = []; let [sH, sM] = startTime.split(':').map(Number); const [eH, eM] = endTime.split(':').map(Number);
-    let cur = sH * 60 + sM; const end = eH * 60 + eM;
-    while (cur <= end) { slots.push(`${String(Math.floor(cur/60)).padStart(2,'0')}:${String(cur%60).padStart(2,'0')}`); cur += intervalMinutes; }
-    return slots;
-}
-const openTimeSlots = generateTimeSlots('07:00', '10:00', 15);
-const openAlbaTimeSlots = generateTimeSlots('09:00', '10:00', 15);
-const closeTimeSlots = generateTimeSlots('22:45', '23:30', 15);
-const openTimeIndexMap = new Map(); openTimeSlots.forEach((t, i) => openTimeIndexMap.set(t, i));
-const openAlbaTimeIndexMap = new Map(); openAlbaTimeSlots.forEach((t, i) => openAlbaTimeIndexMap.set(t, i));
-const closeTimeIndexMap = new Map(); closeTimeSlots.forEach((t, i) => closeTimeIndexMap.set(t, i));
+const genSlots = (s, e) => { const r=[]; let [h,m]=s.split(':').map(Number); const [eh,em]=e.split(':').map(Number); let c=h*60+m, ed=eh*60+em; while(c<=ed){r.push(`${String(Math.floor(c/60)).padStart(2,'0')}:${String(c%60).padStart(2,'0')}`); c+=15;} return r; };
+const openTimeSlots = genSlots('07:00','10:00'), closeTimeSlots = genSlots('22:45','23:30');
+const openTimeIndexMap = new Map(openTimeSlots.map((t,i)=>[t,i])), closeTimeIndexMap = new Map(closeTimeSlots.map((t,i)=>[t,i]));
 
-
-/* =========================================
-   CORE FUNCTIONS
-   ========================================= */
-
-window.switchView = function(viewName) {
+// --- VIEW SWITCHER ---
+window.switchView = (v) => {
     window.scrollTo(0,0);
-    if (viewName === 'staff') {
-        document.getElementById('app-customer').classList.add('hidden');
-        document.getElementById('app-staff').classList.remove('hidden');
-        if (!window.taskDocRef) {
-            window.setupInitialView();
-            window.handleDateChange(window.getTodayDateString());
-        }
-    } else {
-        document.getElementById('app-staff').classList.add('hidden');
-        document.getElementById('app-customer').classList.remove('hidden');
+    $('#app-customer').classList.toggle('hidden', v==='staff');
+    $('#app-staff').classList.toggle('hidden', v!=='staff');
+    if (v==='staff' && !window.taskDocRef) { window.setupInitialView(); window.handleDateChange(window.getTodayDateString()); }
+};
+
+// --- CUSTOMER APP ---
+window.fetchCustomerData = async () => {
+    try {
+        const [m, n, c] = await Promise.all([getDocs(collection(db,"machines")), getDocs(collection(db,"newOpening")), getDocs(collection(db,"calendar"))]);
+        allMachines = m.docs.map(d=>d.data()).sort((a,b)=>a.name.localeCompare(b.name));
+        newOpeningData = n.docs.map(d=>d.data());
+        eventMap = new Map(c.docs.map(d=>d.data()).sort((a,b)=>a.date-b.date).map(e=>[e.date,e]));
+        window.renderToday();
+    } catch(e) { $('#todayEventContainer').innerHTML=`<p class="text-rose-500 text-center font-bold">データ読込失敗</p>`; }
+};
+window.renderToday = () => {
+    const t = new Date(), d = t.getDate(), ev = eventMap.get(d);
+    $('#todayEventContainer').innerHTML = ev ? `<div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 w-full"><div class="font-bold text-indigo-900 text-lg mb-2">本日のイベント</div><ul class="space-y-2 text-sm font-bold">${ev.p_event?`<li>${ev.p_event}</li>`:''}${ev.s_event?`<li>${ev.s_event}</li>`:''}</ul></div>` : `<div class="py-10 text-center text-slate-400 font-bold">イベント情報なし</div>`;
+    $('#currentDate').textContent = `${t.getFullYear()}.${t.getMonth()+1}.${d}`;
+};
+window.openNewOpening = () => {
+    const c = $('#newOpeningInfo'); c.innerHTML = "";
+    if (!newOpeningData.length) { c.innerHTML = "<p class='text-center text-slate-400 py-10'>データなし</p>"; $('#newOpeningModal').classList.remove("hidden"); return; }
+    const lat=[], oth=[]; newOpeningData.forEach(m => (latestKeywords.some(k=>m.name.includes(k))?lat:oth).push(m));
+    const render = (l,t) => { if(l.length){ c.innerHTML+=`<h3 class="font-bold text-lg mb-2 border-b pb-1">${t}</h3>`; const u=document.createElement('ul'); u.className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6"; l.sort((a,b)=>b.count-a.count).forEach(i=>{ 
+        const li=document.createElement('li'); li.className="bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm"; const m=allMachines.find(x=>x.name.includes(i.name));
+        li.innerHTML=`<div class="flex flex-col"><span class="font-bold text-slate-700">${i.name}</span>${m?.salesPitch?'<span class="text-xs text-slate-400">詳細あり</span>':''}</div><span class="text-xs font-black bg-slate-800 text-white px-2 py-1 rounded">${i.count}台</span>`;
+        if(m?.salesPitch) { li.style.cursor="pointer"; li.onclick=()=>{ $('#detailName').textContent=m.name; $('#detailPitch').textContent=m.salesPitch||""; $('#machineDetailModal').classList.remove("hidden"); }; }
+        u.appendChild(li); }); c.appendChild(u); }};
+    render(lat,"✨ 最新導入"); render(oth,"🔄 その他");
+    $('#newOpeningModal').classList.remove("hidden");
+};
+window.subscribeQSC = () => onSnapshot(collection(db,"qsc_items"), s => { qscItems=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.no-b.no); const u=qscItems.filter(i=>i.status==="未実施").length; $('#qscUnfinishedCount').textContent=u>0?`残り ${u} 件`:`完了`; if(!$('#qscModal').classList.contains("hidden")) window.renderQSCList(); });
+window.renderQSCList = () => {
+    const c=$('#qscListContainer'); c.innerHTML=""; const f=qscItems.filter(i=>currentQscTab==='未実施'?i.status==="未実施":i.status==="完了");
+    if(!f.length) { c.innerHTML=`<div class="text-center py-10 text-slate-400 font-bold">項目なし</div>`; return; }
+    const g={}; f.forEach(i=>{if(!g[i.area])g[i.area]=[];g[i.area].push(i);});
+    for(const [a,is] of Object.entries(g)) { c.innerHTML+=`<div class="text-xs font-bold text-slate-500 bg-slate-200/50 px-3 py-1 rounded mt-4 mb-2">${a}</div>`; is.forEach(i=>{
+        const d=document.createElement('div'); d.className="bg-white p-4 rounded-xl border shadow-sm flex items-center gap-4";
+        d.innerHTML = qscEditMode ? `<div class="flex-1 font-bold text-slate-700 text-sm">${i.content}</div><button onclick="deleteQscItem('${i.id}')" class="text-rose-500">×</button>` : `<div class="flex-1 font-bold text-slate-700 text-sm ${i.status==='完了'?'line-through opacity-50':''}">${i.content}</div>`;
+        if(!qscEditMode){ const cb=document.createElement('input'); cb.type="checkbox"; cb.className="qsc-checkbox shrink-0"; cb.checked=i.status==="完了"; cb.onchange=()=>updateDoc(doc(db,"qsc_items",i.id),{status:cb.checked?"完了":"未実施"}); d.prepend(cb); }
+        c.appendChild(d); });
     }
 };
+window.addQscItem = async () => { const n=$('#newQscNo').value, a=$('#newQscArea').value, c=$('#newQscContent').value; if(n&&a&&c){ await addDoc(collection(db,"qsc_items"),{no:Number(n),area:a,content:c,status:"未実施"}); $('#newQscNo').value=''; $('#newQscContent').value=''; }};
+window.deleteQscItem = async (id) => { if(confirm("削除しますか？")) await deleteDoc(doc(db,"qsc_items",id)); };
 
-// Customer App Logic
-window.fetchCustomerData = async function() { try { const [mSnap, nSnap, cSnap] = await Promise.all([getDocs(collection(db, "machines")), getDocs(collection(db, "newOpening")), getDocs(collection(db, "calendar"))]); allMachines = mSnap.docs.map(d => d.data()).sort((a, b) => a.name.localeCompare(b.name)); newOpeningData = nSnap.docs.map(d => d.data()); eventMap = new Map(cSnap.docs.map(d => d.data()).sort((a, b) => a.date - b.date).map(e => [e.date, e])); window.renderToday(); } catch (e) { document.getElementById("todayEventContainer").innerHTML = `<p class="text-rose-500 text-center font-bold">データ読込失敗</p>`; } };
-window.renderToday = function() { const today = new Date(); const d = today.getDate(); const m = today.getMonth(); const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]; const ev = eventMap.get(d); const html = ev ? `<div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 w-full"><div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200/60"><div class="flex items-center gap-3"><div class="bg-indigo-600 text-white rounded-xl px-4 py-2 text-center shadow-md shadow-indigo-200"><div class="text-[10px] font-bold opacity-80 tracking-wider">${monthNames[m]}</div><div class="text-2xl font-black leading-none">${d}</div></div><div class="font-bold text-indigo-900 text-lg">本日のイベント</div></div><span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">TODAY</span></div><ul class="space-y-3">${ev.p_event?`<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.p_event}</span></li>`:''}${ev.s_event?`<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.s_event}</span></li>`:''}${ev.recommend?`<li class="flex items-start p-2 rounded-lg hover:bg-rose-50 transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 mt-2 mr-3 shrink-0"></span><span class="text-rose-600 font-bold text-sm leading-relaxed">${ev.recommend}</span></li>`:''}</ul></div>` : `<div class="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 rounded-2xl border border-slate-100 w-full"><div class="text-5xl font-black text-slate-200 mb-3">${d}</div><p class="text-sm font-bold">イベント情報なし</p></div>`; document.getElementById("todayEventContainer").innerHTML = html; document.getElementById("currentDate").textContent = `${today.getFullYear()}.${m + 1}.${d}`; };
-window.openNewOpening = function() {
-    const container = document.getElementById("newOpeningInfo"); container.innerHTML = "";
-    if (newOpeningData.length === 0) { container.innerHTML = "<p class='text-center text-slate-400 py-10'>データなし</p>"; document.getElementById("newOpeningModal").classList.remove("hidden"); return; }
-    
-    const latest = [], others = [];
-    newOpeningData.forEach(m => { (latestKeywords.some(k => m.name.includes(k)) ? latest : others).push(m); });
-    
-    const createList = (list) => {
-        const ul = document.createElement("ul"); ul.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8";
-        list.sort((a,b)=>b.count-a.count).forEach(item => {
-            const li = document.createElement("li"); li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm"; const matched = allMachines.find(m => m.name === item.name || m.name.includes(item.name)); li.innerHTML = `<div class="flex flex-col overflow-hidden mr-2"><span class="font-bold text-slate-700 truncate text-sm sm:text-base">${item.name}</span>${matched&&matched.salesPitch?`<span class="text-xs text-slate-400 font-medium mt-1">詳細あり</span>`:''}</div><span class="text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0">${item.count}台</span>`;
-            if(matched && matched.salesPitch) { li.style.cursor = "pointer"; li.onclick = () => { document.getElementById("detailName").textContent = matched.name; document.getElementById("detailPitch").textContent = matched.salesPitch || "情報なし"; const f=(i,l)=>{document.querySelector(i).innerHTML="";(l||["情報なし"]).forEach(t=>document.querySelector(i).innerHTML+=`<li class="flex items-start"><span class="mr-2 mt-1.5 w-1.5 h-1.5 bg-current rounded-full flex-shrink-0"></span><span>${t}</span></li>`);}; f("#detailPros", matched.pros); f("#detailCons", matched.cons); document.getElementById("machineDetailModal").classList.remove("hidden"); }; }
-            ul.appendChild(li);
-        });
-        return ul;
-    };
+// --- STAFF APP ---
+let unsubscribe=null; window.taskDocRef=null;
+const staffRef=doc(db,'artifacts',firebaseConfig.projectId,'public','data','masters','staff_data');
+const taskDefRef=doc(db,'artifacts',firebaseConfig.projectId,'public','data','masters','task_data');
 
-    if(latest.length > 0) { const h = document.createElement("h3"); h.className = "text-lg font-black text-rose-600 mb-4 flex items-center border-b border-rose-100 pb-2"; h.innerHTML = `✨ 最新導入`; container.appendChild(h); container.appendChild(createList(latest)); }
-    if(others.length > 0) { const h = document.createElement("h3"); h.className = "text-lg font-black text-slate-600 mb-4 flex items-center border-b border-slate-200 pb-2"; h.innerHTML = `🔄 準新台・その他`; container.appendChild(h); container.appendChild(createList(others)); }
-    document.getElementById("newOpeningModal").classList.remove("hidden");
+window.fetchMasterData = () => {
+    onSnapshot(staffRef, s=>{if(s.exists()) window.masterStaffList=s.data();});
+    onSnapshot(taskDefRef, s=>{if(s.exists()) window.specialTasks=s.data().list||[];});
 };
-window.subscribeQSC = function() { onSnapshot(collection(db, "qsc_items"), (s) => { qscItems = s.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => a.no - b.no); const u = qscItems.filter(i => i.status === "未実施").length; document.getElementById("qscUnfinishedCount").textContent = u > 0 ? `残り ${u} 件` : `完了`; if(!document.getElementById("qscModal").classList.contains("hidden")) window.renderQSCList(); }); };
-window.renderQSCList = function() { const container = document.getElementById("qscListContainer"); container.innerHTML = ""; const f = qscItems.filter(item => currentQscTab === '未実施' ? item.status === "未実施" : item.status === "完了"); if (f.length === 0) { container.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">項目はありません</div>`; return; } const g = {}; f.forEach(item => { if(!g[item.area]) g[item.area] = []; g[item.area].push(item); }); for(const [area, items] of Object.entries(g)) { const header = document.createElement("div"); header.className = "text-xs font-bold text-slate-500 bg-slate-200/50 px-3 py-1 rounded mt-4 mb-2 first:mt-0"; header.textContent = area; container.appendChild(header); items.forEach(item => { const div = document.createElement("div"); div.className = `bg-white p-4 rounded-xl border ${item.status === '完了' ? 'border-slate-100 opacity-60' : 'border-slate-200'} shadow-sm flex items-center gap-4`; if (qscEditMode) { div.innerHTML = `<div class="flex-1"><p class="text-sm font-bold text-slate-700">${item.content}</p></div><button onclick="deleteQscItem('${item.id}')" class="p-2 bg-rose-50 text-rose-500 rounded-full">×</button>`; } else { const c = document.createElement("input"); c.type = "checkbox"; c.className = "qsc-checkbox shrink-0 mt-0.5"; c.checked = item.status === "完了"; c.onchange = async () => { try { await updateDoc(doc(db, "qsc_items", item.id), { status: c.checked ? "完了" : "未実施" }); } catch(e) { c.checked = !c.checked; } }; div.innerHTML = `<div class="flex-1"><p class="text-sm font-bold text-slate-700 ${item.status === '完了' ? 'line-through text-slate-400' : ''}">${item.content}</p></div>`; div.insertBefore(c, div.firstChild); } container.appendChild(div); }); } };
-window.addQscItem = async function() { const no = $('#newQscNo').value; const area = $('#newQscArea').value; const content = $('#newQscContent').value; if(!no || !area || !content) return; await addDoc(collection(db, "qsc_items"), { no: Number(no), area, content, status: "未実施" }); $('#newQscNo').value=''; $('#newQscContent').value=''; };
-window.deleteQscItem = async function(id) { if(confirm("削除しますか？")) await deleteDoc(doc(db, "qsc_items", id)); };
+window.handleDateChange = (ds) => {
+    if(!ds) ds=window.getTodayDateString(); window.currentDate=ds; $('#date-picker').value=ds;
+    window.taskDocRef=doc(db,'artifacts',firebaseConfig.projectId,'public','data','task_assignments',ds);
+    if(unsubscribe) unsubscribe();
+    unsubscribe = onSnapshot(window.taskDocRef, s => { window.staffList = s.exists() ? {...window.staffList, ...s.data()} : JSON.parse(JSON.stringify(DEFAULT_STAFF)); window.refreshCurrentView(); });
+};
+window.refreshCurrentView = () => { if(!$('#app-staff').classList.contains('hidden')){ updateStaffLists(); window.showSubTab($('#tab-open').classList.contains('bg-white')?'open':'close'); setEditingMode(window.isEditing); updateFixedButtons(); }};
+window.setupInitialView = () => { setEditingMode(false); window.showSubTab('open'); updateStaffLists(); updateFixedButtons(); $('#date-picker').value=window.getTodayDateString(); };
+window.saveStaffListToFirestore = async () => { if(window.isEditing && window.taskDocRef) await setDoc(window.taskDocRef, JSON.parse(JSON.stringify(window.staffList))); };
 
-// Staff App Logic
-let unsubscribeFromTasks = null;
-window.taskDocRef = null;
-const staffRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'masters', 'staff_data');
-const taskDefRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'masters', 'task_data');
-
-window.fetchMasterData = async function() {
-    onSnapshot(staffRef, (s) => { if(s.exists()) { window.masterStaffList = s.data(); if(!document.getElementById("master-modal").classList.contains('hidden')) window.renderMasterStaffLists(); } });
-    onSnapshot(taskDefRef, (s) => { if(s.exists()) { window.specialTasks = s.data().list || []; if(!document.getElementById("master-modal").classList.contains('hidden')) window.renderMasterTaskList(); if(window.refreshCurrentView) window.refreshCurrentView(); } });
+window.showSubTab = (t) => {
+    const isO = t==='open';
+    $('#edit-content-open').classList.toggle('hidden', !isO); $('#edit-content-close').classList.toggle('hidden', isO);
+    $('#view-content-open').classList.toggle('hidden', !isO); $('#view-content-close').classList.toggle('hidden', isO);
+    $('#tab-open').className = isO ? "px-6 py-2.5 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm" : "px-6 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700";
+    $('#tab-close').className = !isO ? "px-6 py-2.5 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm" : "px-6 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700";
+    if(window.isEditing) renderEditTimeline(t);
+};
+window.setEditingMode = (e) => {
+    window.isEditing = e;
+    $('#view-mode-container').classList.toggle('hidden', e); $('#edit-mode-container').classList.toggle('hidden', !e);
+    $('#edit-mode-button').textContent = e ? "閲覧モードに戻る" : "管理者編集";
+    $('#master-settings-button').classList.toggle('hidden', !e);
+    if(e) renderEditTimeline($('#tab-open').classList.contains('bg-white')?'open':'close');
 };
 
-window.handleDateChange = function(dateString) {
-    if (!dateString) dateString = window.getTodayDateString(); window.currentDate = dateString;
-    const picker = document.getElementById('date-picker'); if(picker) picker.value = dateString;
-    window.taskDocRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'task_assignments', dateString);
-    if (unsubscribeFromTasks) unsubscribeFromTasks();
-    unsubscribeFromTasks = onSnapshot(window.taskDocRef, (docSnap) => {
-        if (docSnap.exists()) { window.staffList = { ...window.staffList, ...docSnap.data() }; } 
-        else { window.staffList = { early: [], late: [], closing_employee: [], closing_alba: [], fixed_money_count: "", fixed_open_warehouse: "", fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "" }; }
-        if(window.refreshCurrentView) window.refreshCurrentView();
+// --- AUTO ASSIGN (HARDCODED RULES) ---
+const getTask = (n) => window.specialTasks.find(t=>t.name===n) || {name:n, slots:1};
+const calcTime = (t,m) => t.reduce((acc,x)=>{const s=m.get(x.start),e=m.get(x.end); return (s!==undefined&&e!==undefined)?acc+(e-s):acc;},0);
+const isOverlap = (t,s,e,m) => t.some(x=>{const S=m.get(x.start),E=m.get(x.end); return S!==undefined&&E!==undefined&&S<e&&E>s;});
+// Score: Lower is better (prioritize less work & variety)
+const findBest = (grp, sI, eI, map, tName, exNames) => {
+    const c = grp.filter(p => p.name !== '浅羽駿汰' && !exNames.includes(p.name) && !isOverlap(p.tasks, sI, eI, map));
+    if(!c.length) return null;
+    let best=null, min=Infinity;
+    c.forEach(p => {
+        let score = calcTime(p.tasks, map);
+        if(p.tasks.some(t=>t.task===tName)) score+=200; // Penalty for repeating same task
+        if(score < min) { min=score; best=p; }
     });
+    return {p:best};
 };
 
-window.refreshCurrentView = function() {
-    if(document.getElementById('app-staff').classList.contains('hidden')) return;
-    updateStaffLists(); generateSummaryView();
-    const isOpen = document.getElementById('tab-open').classList.contains('bg-white');
-    showSubTab(isOpen ? 'open' : 'close'); setEditingMode(window.isEditing); updateFixedStaffButtons();
-};
-
-window.setupInitialView = function() {
-    setEditingMode(false); showSubTab('open'); updateStaffLists(); generateSummaryView(); updateFixedStaffButtons();
-    const picker = document.getElementById('date-picker'); if (!picker.value) picker.value = window.getTodayDateString();
-};
-
-window.saveStaffListToFirestore = async function() {
-    if (!window.isEditing || !window.taskDocRef) return;
-    try { const cleanData = JSON.parse(JSON.stringify(window.staffList, (key, value) => (value === null || value === undefined) ? "" : value)); await setDoc(window.taskDocRef, cleanData); } catch (e) { console.error(e); }
-};
-
-window.showSubTab = function(tabName) {
-    const isOpen = tabName === 'open';
-    document.getElementById('edit-content-open').classList.toggle('hidden', !isOpen);
-    document.getElementById('edit-content-close').classList.toggle('hidden', isOpen);
-    document.getElementById('view-content-open').classList.toggle('hidden', !isOpen);
-    document.getElementById('view-content-close').classList.toggle('hidden', isOpen);
-    document.getElementById('tab-open').className = isOpen ? "px-6 py-2.5 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm" : "px-6 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700";
-    document.getElementById('tab-close').className = !isOpen ? "px-6 py-2.5 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm" : "px-6 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700";
-    if(window.isEditing) renderEditTimeline(tabName);
-};
-
-window.setEditingMode = function(isEdit) {
-    window.isEditing = isEdit;
-    document.getElementById('view-mode-container').classList.toggle('hidden', isEdit);
-    document.getElementById('edit-mode-container').classList.toggle('hidden', !isEdit);
-    const b = document.getElementById('edit-mode-button'); const m = document.getElementById('master-settings-button');
-    if(b){ b.textContent = isEdit?"閲覧モードに戻る":"管理者編集"; b.className = isEdit?"text-xs font-bold text-white bg-indigo-600 px-4 py-2 rounded-full shadow-md":"text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-full"; }
-    if(m){ m.classList.toggle('hidden', !isEdit); }
-    if(isEdit) {
-        const isOpen = document.getElementById('tab-open').classList.contains('bg-white');
-        renderEditTimeline(isOpen ? 'open' : 'close');
-    }
-};
-
-// --- READ ONLY TIMELINE (VISUAL ONLY) ---
-function renderEditTimeline(tabName) {
-    const container = document.getElementById('editor-timeline-content');
-    if (!container) return;
-    
-    const isEarly = tabName === 'open';
-    const empList = isEarly ? window.staffList.early : window.staffList.closing_employee;
-    const albaList = isEarly ? window.staffList.late : window.staffList.closing_alba;
-    const timeSlots = isEarly ? openTimeSlots : closeTimeSlots;
-    const timeMap = isEarly ? openTimeIndexMap : closeTimeIndexMap;
-    const allStaff = [...empList, ...albaList]; 
-    
-    if(allStaff.length === 0) { container.innerHTML = "<p class='text-xs text-slate-400'>スタッフがいません</p>"; return; }
-
-    let html = `<div class="relative min-w-[800px] border border-slate-200 rounded-lg overflow-hidden bg-white select-none">`;
-    html += `<div class="flex border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 sticky top-0 z-10"><div class="w-24 shrink-0 p-2 border-r border-slate-200 sticky left-0 bg-slate-50 z-20">STAFF</div><div class="flex-1 flex">`;
-    timeSlots.forEach(t => html += `<div class="flex-1 text-center py-2 border-r border-slate-100">${t}</div>`);
-    html += `</div></div>`;
-
-    allStaff.forEach((s, sIdx) => {
-        const sectionKey = empList.includes(s) ? (isEarly ? 'early' : 'closing_employee') : (isEarly ? 'late' : 'closing_alba');
-        const realIdx = window.staffList[sectionKey].indexOf(s); 
-        html += `<div class="flex border-b border-slate-100 relative group h-12" data-skey="${sectionKey}" data-sidx="${realIdx}">
-                    <div class="w-24 shrink-0 p-2 border-r border-slate-200 text-xs font-bold text-slate-700 flex items-center bg-white sticky left-0 z-10 truncate">${s.name}</div>
-                    <div class="flex-1 flex relative">`;
-        
-        timeSlots.forEach(() => html += `<div class="flex-1 border-r border-slate-50"></div>`);
-        
-        s.tasks.forEach((t, tIdx) => {
-            if(!t.task || !t.start || !t.end) return;
-            const startI = timeMap.get(t.start); const endI = timeMap.get(t.end);
-            if(startI === undefined || endI === undefined) return;
-            const duration = endI - startI;
-            const widthPct = (duration / timeSlots.length) * 100;
-            const leftPct = (startI / timeSlots.length) * 100;
-            const taskConfig = window.specialTasks.find(v => v.name === t.task) || { class: 'color-gray' };
-            html += `<div class="absolute top-1 bottom-1 rounded-md text-[10px] font-bold text-slate-700 flex items-center justify-center overflow-hidden shadow-sm border border-white/20 ${taskConfig.class}" style="left: ${leftPct}%; width: ${widthPct}%;"><span class="truncate px-1">${t.task}</span></div>`;
-        });
-        html += `</div></div>`;
-    });
-    html += `</div>`;
-    container.innerHTML = html;
-}
-
-// Modal Logic
-window.showPasswordModal = (context) => { 
-    if(window.isEditing && context === 'admin'){ setEditingMode(false); return; }
-    authContext = context;
-    document.getElementById('password-modal').classList.remove('hidden'); 
-    document.getElementById('password-input').value=""; 
-    document.getElementById('password-error').classList.add('hidden'); 
-    document.getElementById('password-input').focus(); 
-};
-window.closePasswordModal = () => document.getElementById('password-modal').classList.add('hidden');
-window.checkPassword = () => { 
-    if(document.getElementById('password-input').value === EDIT_PASSWORD) { 
-        closePasswordModal(); 
-        if(authContext === 'admin') setEditingMode(true);
-        else if(authContext === 'qsc') { qscEditMode = true; document.getElementById("qscEditButton").textContent = "✅ 完了"; document.getElementById("qscAddForm").classList.remove("hidden"); window.renderQSCList(); }
-    } else { document.getElementById('password-error').classList.remove('hidden'); } 
-};
-
-// Fixed Staff Selection + AUTO ADD Logic
-window.openFixedStaffSelect = (k, lk, t) => { 
-    if(!window.isEditing)return; 
-    const c = (lk.includes('early')||lk.includes('open')) ? [...window.masterStaffList.employees, ...window.masterStaffList.alba_early] : [...window.masterStaffList.employees, ...window.masterStaffList.alba_late];
-    const mb=document.getElementById('select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="selectFixedStaff('${k}','')">指定なし</div>`; 
-    c.sort().forEach(n=>{mb.innerHTML+=`<div class="select-modal-option ${n===window.staffList[k]?'selected':''}" onclick="selectFixedStaff('${k}','${n}', '${lk}')">${n}</div>`;});
-    document.getElementById('select-modal-title').textContent=t; document.getElementById('select-modal').classList.remove('hidden'); 
-};
-
-window.selectFixedStaff = (k, n, listKey) => { 
-    window.staffList[k]=n; 
-    if(n) {
-        const isEmployee = window.masterStaffList.employees.includes(n);
-        let targetListKey = '';
-        if(listKey.includes('early')) targetListKey = 'early'; 
-        else if(listKey.includes('open')) targetListKey = isEmployee ? 'early' : 'late'; 
-        else targetListKey = isEmployee ? 'closing_employee' : 'closing_alba';
-        let staffObj = window.staffList[targetListKey].find(s => s.name === n);
-        if(!staffObj) { staffObj = { name: n, tasks: [] }; window.staffList[targetListKey].push(staffObj); }
-        let startT = "", endT = "", taskName = "";
-        if(k === 'fixed_money_count') { startT = "07:00"; endT = "08:15"; taskName = "金銭業務"; }
-        else if(k === 'fixed_open_warehouse') { startT = "09:15"; endT = "09:45"; taskName = "倉庫(開店)"; }
-        else if(k === 'fixed_money_collect') { startT = "22:45"; endT = "23:15"; taskName = "金銭回収"; }
-        else if(k === 'fixed_warehouses') { startT = "22:45"; endT = "23:15"; taskName = "倉庫整理"; }
-        else if(k === 'fixed_counters') { startT = "22:45"; endT = "23:00"; taskName = "カウンター業務"; }
-        if(taskName) {
-            staffObj.tasks = staffObj.tasks.filter(t => t.task !== taskName && t.remarks !== '（固定）');
-            staffObj.tasks.push({ start: startT, end: endT, task: taskName, remarks: '（固定）' });
-            staffObj.tasks.sort((a,b) => a.start.localeCompare(b.start));
-        }
-    }
-    updateFixedStaffButtons(); updateStaffLists();
-    if(window.isEditing) renderEditTimeline(document.getElementById('tab-open').classList.contains('bg-white') ? 'open' : 'close');
-    saveStaffListToFirestore(); document.getElementById('select-modal').classList.add('hidden'); 
-};
-function updateFixedStaffButtons() {
-    const btns = [{ id: 'fixed-money_count-btn', k: 'fixed_money_count' }, { id: 'fixed_open_warehouse-btn', k: 'fixed_open_warehouse' }, { id: 'fixed-money_collect-btn', k: 'fixed_money_collect' }, { id: 'fixed-warehouses-btn', k: 'fixed_warehouses' }, { id: 'fixed-counters-btn', k: 'fixed_counters' }];
-    btns.forEach(i => { const b = document.getElementById(i.id); if(b) { const s=b.querySelector('span'); if(s)s.textContent=window.staffList[i.k]||"選択してください"; b.classList.toggle('placeholder',!window.staffList[i.k]); }});
-}
-
-window.openStaffSelect = (sk, mk) => { 
-    if(!window.isEditing)return; const m=window.masterStaffList[mk], c=window.staffList[sk].map(s=>s.name); const mb=document.getElementById('select-modal-body'); mb.innerHTML=''; 
-    const o=m.filter(n=>!c.includes(n)); 
-    if(o.length===0) mb.innerHTML='<div class="p-4 text-center text-slate-400">候補なし</div>'; else o.forEach(n=>mb.innerHTML+=`<div class="select-modal-option" onclick="selectStaff('${sk}','${n}')">${n}</div>`); 
-    document.getElementById('select-modal-title').textContent="スタッフ追加"; document.getElementById('select-modal').classList.remove('hidden'); 
-};
-window.selectStaff = (sk, n) => { if(!window.staffList[sk].find(s=>s.name===n)){window.staffList[sk].push({name:n,tasks:[{start:"",end:"",task:"",remarks:""}]}); updateStaffLists(); if(window.isEditing) renderEditTimeline(document.getElementById('tab-open').classList.contains('bg-white') ? 'open' : 'close'); saveStaffListToFirestore();} document.getElementById('select-modal').classList.add('hidden'); };
-window.closeSelectModal = () => document.getElementById('select-modal').classList.add('hidden');
-
-window.openTimeSelect = (sk,si,ti,f,ln) => { if(!window.isEditing)return; const l=(ln==='open')?openTimeSlots:closeTimeSlots; const mb=document.getElementById('select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="handleChange('${sk}',${si},${ti},'${f}','');closeSelectModal();updateStaffLists();">--:--</div>`; l.forEach(t=>mb.innerHTML+=`<div class="select-modal-option" onclick="handleChange('${sk}',${si},${ti},'${f}','${t}');closeSelectModal();updateStaffLists();">${t}</div>`); document.getElementById('select-modal-title').textContent="時間選択"; document.getElementById('select-modal').classList.remove('hidden'); };
-window.openTaskSelect = (sk,si,ti,ln) => { 
-    if(!window.isEditing)return; const availableTasks = window.specialTasks.filter(t => t.type === 'both' || t.type === ln).map(t => t.name);
-    const mb=document.getElementById('select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="handleChange('${sk}',${si},${ti},'task','');closeSelectModal();updateStaffLists();">未選択</div>`; 
-    availableTasks.forEach(t=>mb.innerHTML+=`<div class="select-modal-option" onclick="handleChange('${sk}',${si},${ti},'task','${t}');closeSelectModal();updateStaffLists();">${t}</div>`); 
-    document.getElementById('select-modal-title').textContent="タスク選択"; document.getElementById('select-modal').classList.remove('hidden'); 
-};
-window.handleChange = (sk,si,ti,f,v) => { window.staffList[sk][si].tasks[ti][f]=v; saveStaffListToFirestore(); if(window.isEditing) renderEditTimeline(document.getElementById('tab-open').classList.contains('bg-white') ? 'open' : 'close'); };
-window.addTask = (sk,si) => { window.staffList[sk][si].tasks.push({start:"",end:"",task:"",remarks:""}); updateStaffLists(); saveStaffListToFirestore(); };
-window.showDeleteModal = (t,sk,si,ti) => { deleteInfo={type:t,sectionKey:sk,staffIndex:si,taskIndex:ti}; document.getElementById('delete-modal-message').textContent=t==='staff'?`「${window.staffList[sk][si].name}」さんを削除？`:"タスクを削除？"; document.getElementById('delete-modal').classList.remove('hidden'); };
-window.cancelDelete = () => document.getElementById('delete-modal').classList.add('hidden');
-window.confirmDelete = () => { 
-    const {type,sectionKey,staffIndex,taskIndex}=deleteInfo; 
-    if(type==='staff'){ const n=window.staffList[sectionKey][staffIndex].name; window.staffList[sectionKey].splice(staffIndex,1); ['fixed_money_count','fixed_open_warehouse','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(k=>{if(window.staffList[k]===n)window.staffList[k]="";}); } 
-    else if(window.staffList[sectionKey][staffIndex].tasks.length>1){ window.staffList[sectionKey][staffIndex].tasks.splice(taskIndex,1); } 
-    window.cancelDelete(); updateStaffLists(); generateSummaryView(); updateFixedStaffButtons(); 
-    if(window.isEditing) renderEditTimeline(document.getElementById('tab-open').classList.contains('bg-white') ? 'open' : 'close'); 
-    saveStaffListToFirestore(); 
-};
-
-function updateStaffLists() { populate('staff-list-open-early','early','open'); populate('staff-list-open-late','late','open'); populate('staff-list-close-employee','closing_employee','close'); populate('staff-list-close-alba','closing_alba','close'); }
-function populate(id,sk,ln){ const c=document.getElementById(id); if(!c)return; c.innerHTML=''; window.staffList[sk].forEach((s,si)=>{ 
-    let h=''; const st=s.tasks.sort((a,b)=>(a.start||'99').localeCompare(b.start||'99')); if(st.length===0)st.push({start:"",end:"",task:"",remarks:""});
-    st.forEach((t,ti)=>{
-        const f=t.remarks==="（固定）", dis=f?'disabled':'';
-        const act=f?`<span class="text-slate-300">×</span>`:`<button onclick="showDeleteModal('task','${sk}',${si},${ti})" class="text-rose-500">×</button>`;
-        const btn=(st.length>1||ti>0)?act:`<button onclick="addTask('${sk}',${si})" class="text-slate-600">＋</button>`;
-        const cls="custom-select-button text-left w-full truncate " + (t.start?'':'placeholder');
-        h+=`<tr class="edit-row ${ti>0?'border-t-0':''}"><td data-label="スタッフ">${ti===0?`<div class="flex items-center gap-2"><span>${s.name}</span><button onclick="showDeleteModal('staff','${sk}',${si})" class="text-slate-300 hover:text-rose-500 ml-2">×</button></div>`:''}</td><td data-label="開始"><button class="${cls}" onclick="${!f?`openTimeSelect('${sk}',${si},${ti},'start','${ln}')`:''}" ${dis}><span>${t.start||'--'}</span></button></td><td data-label="終了"><button class="${cls}" onclick="${!f?`openTimeSelect('${sk}',${si},${ti},'end','${ln}')`:''}" ${dis}><span>${t.end||'--'}</span></button></td><td data-label="タスク"><button class="${cls}" onclick="${!f?`openTaskSelect('${sk}',${si},${ti},'${ln}')`:''}" ${dis}><span>${t.task||'未選択'}</span></button></td><td data-label="備考"><input type="text" class="w-full bg-slate-50 border border-slate-200 rounded p-1 text-sm" value="${t.remarks||''}" onchange="handleChange('${sk}',${si},${ti},'remarks',this.value)" ${f?'readonly':''}></td><td data-label="操作">${btn}</td></tr>`;
-    }); c.innerHTML+=h;
-});}
-function generateSummaryView() {
-    const r=(id,l,sl)=>{ const t=[]; l.forEach(s=>s.tasks.forEach(x=>{if(x.task&&!x.task.includes("FREE"))t.push({...x,name:s.name});})); const n=[...new Set(l.map(s=>s.name))].sort(); document.getElementById(`${id}-desktop`).innerHTML=createTable(t,n,sl); document.getElementById(`${id}-mobile`).innerHTML=createList(t,n); };
-    r('summary-open-employee-container',window.staffList.early,openTimeSlots); r('summary-open-alba-container',window.staffList.late,openAlbaTimeSlots); r('summary-close-employee-container',window.staffList.closing_employee,closeTimeSlots); r('summary-close-alba-container',window.staffList.closing_alba,closeTimeSlots);
-}
-function createTable(t,n,s){
-    if(n.length===0)return '<p class="p-8 text-center text-slate-400">スタッフなし</p>';
-    let h=`<div class="timeline-container"><table class="timeline-table"><thead><tr><th>STAFF</th>${s.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>`;
-    const m=new Map(); s.forEach((x,i)=>m.set(x,i));
-    n.forEach(name=>{
-        h+=`<tr><th>${name}</th>`; const st=t.filter(x=>x.name===name).sort((a,b)=>a.start.localeCompare(b.start));
-        let idx=0; while(idx<s.length){
-            const slot=s[idx], task=st.find(x=>x.start===slot);
-            if(task){
-                const start=m.get(task.start), end=m.get(task.end); let span=1;
-                if(end!==undefined&&end>start) span=end-start;
-                const taskConfig = window.specialTasks.find(v=>v.name===task.task) || {class:'free-task'};
-                h+=`<td colspan="${span}"><div class="task-bar ${taskConfig.class}" onclick="showRemarksModal('${task.task}','${task.start}-${task.end}','${task.remarks||''}')">${task.task}${task.remarks?'★':''}</div></td>`; idx+=span;
-            }else{h+='<td></td>'; idx++;}
-        } h+='</tr>';
-    }); return h+'</tbody></table></div>';
-}
-function createList(t,n){
-    if(n.length===0)return'<p class="text-center text-slate-400">なし</p>';
-    let h='<div class="space-y-4">'; n.forEach(name=>{
-        const st=t.filter(x=>x.name===name).sort((a,b)=>a.start.localeCompare(b.start));
-        h+=`<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="bg-slate-50 px-4 py-2 font-bold text-slate-700 border-b border-slate-100 flex justify-between"><span>${name}</span><span class="text-xs bg-white px-2 py-1 rounded border">${st.length}</span></div><div class="p-2 space-y-2">`;
-        if(st.length===0)h+='<div class="text-center text-xs text-slate-400">タスクなし</div>';
-        st.forEach(x=>{ const taskConfig = window.specialTasks.find(v=>v.name===x.task) || {class:'free-task'}; h+=`<div class="task-bar relative top-0 left-0 w-full h-auto block p-2 ${taskConfig.class}"><div class="flex justify-between"><span>${x.task}</span><span class="opacity-70 text-xs">${x.start}-${x.end}</span></div>${x.remarks?`<div class="text-xs mt-1 border-t border-black/10 pt-1">${x.remarks}</div>`:''}</div>`; });
-        h+='</div></div>';
-    }); return h+'</div>';
-}
-window.showRemarksModal=(t,m,r)=>{document.getElementById('remarks-modal-task').textContent=t;document.getElementById('remarks-modal-time').textContent=m;document.getElementById('remarks-modal-text').textContent=r||"備考なし";document.getElementById('remarks-modal').classList.remove('hidden');};
-window.closeRemarksModal=()=>document.getElementById('remarks-modal').classList.add('hidden');
-
-function calcTime(t,m){let v=0; t.forEach(x=>{const s=m.get(x.start),e=m.get(x.end);if(s!==undefined&&e!==undefined&&e>s)v+=(e-s);}); return v;}
-function isOverlap(t,s,e,m){for(const x of t){const S=m.get(x.start),E=m.get(x.end);if(S!==undefined&&E!==undefined&&S<e&&E>s)return true;}return false;}
-function findStaff(g,s,e,m){let min=Infinity,tgt=null; const idx=g.map((_,i)=>i).sort(()=>Math.random()-0.5); for(const i of idx){if(isOverlap(g[i].tasks,s,e,m))continue; const v=calcTime(g[i].tasks,m); if(v<min){min=v;tgt={staff:g[i]};}} return tgt;}
-function getTaskByName(name) { return window.specialTasks.find(t => t.name === name) || {name:name, slots:1}; }
-
-window.autoAssignTasks = (sec, list) => {
+window.autoAssignTasks = async (sec, list) => {
     const emp=window.staffList[sec==='early'?'early':'closing_employee'], alba=window.staffList[sec==='late'?'late':'closing_alba'], all=[...emp,...alba];
     all.forEach(s=>s.tasks=[]);
-    if(list==='open'){
-        const t_money = getTaskByName("金銭業務"), t_warehouse = getTaskByName("倉庫(開店)"), t_briefing = getTaskByName("朝礼");
-        const m=emp.find(s=>s.name===window.staffList.fixed_money_count); if(m) m.tasks.push({start:'07:00',end:'08:15',task:t_money.name,remarks:'（固定）'});
-        const w=all.find(s=>s.name===window.staffList.fixed_open_warehouse); if(w) w.tasks.push({start:'09:15',end:'09:45',task:t_warehouse.name,remarks:'（固定）'});
+    
+    // 1. Handle Fixed Tasks
+    const fixedMap = { 'fixed_money_count':{t:'金銭業務',s:'07:00',e:'08:15'}, 'fixed_open_warehouse':{t:'倉庫番(特景)',s:'09:15',e:'09:45'}, 'fixed_money_collect':{t:'金銭回収',s:'22:45',e:'23:15'}, 'fixed_warehouses':{t:'倉庫整理',s:'22:45',e:'23:15'}, 'fixed_counters':{t:'カウンター業務',s:'22:45',e:'23:00'} };
+    const fixedStaff = [];
+    Object.keys(fixedMap).forEach(k => {
+        const p = all.find(s=>s.name===window.staffList[k]);
+        if(p){ p.tasks.push({start:fixedMap[k].s, end:fixedMap[k].e, task:getTask(fixedMap[k].t).name, remarks:'（固定）'}); fixedStaff.push(p.name); }
+    });
+
+    // 2. Define Rules (HARDCODED)
+    const openRules = [
+        { name: "抽選（準備、片付け）", slots: 3, count: 2, target: "all" },
+        { name: "カウンター開設準備", slots: 4, count: 1, target: "alba" },
+        { name: "外販出し、新聞、岡持", slots: 1, count: 1, target: "employee" },
+        { name: "P台チェック", slots: 1, count: 1, target: "employee" },
+        { name: "販促確認", slots: 1, count: 1, target: "employee" },
+        { name: "全体確認", slots: 1, count: 1, target: "employee" },
+        { name: "ローラー交換", slots: 2, count: 1, target: "alba" },
+        { name: "P台チェック", slots: 1, count: 1, target: "alba" },
+        { name: "S台チェック(ユニメモ込)", slots: 1, count: 1, target: "alba" },
+        { name: "環境整備・5M", slots: 1, count: 1, target: "alba" },
+        { name: "時差島台電落とし", slots: 1, count: 1, target: "employee" }
+    ];
+    const closeRules = [
+        { name: "立駐（社員）", slots: 1, count: 1, target: "employee" },
+        { name: "立駐（アルバイト）", slots: 1, count: 1, target: "alba" },
+        { name: "施錠・工具箱チェック", slots: 1, count: 1, target: "employee" },
+        { name: "引継ぎ・事務所清掃", slots: 1, count: 1, target: "employee" },
+        { name: "飲み残し・フラッグ確認", slots: 1, count: 1, target: "alba" },
+        { name: "島上清掃・カード補充", slots: 1, count: 1, target: "alba" }
+    ];
+
+    const isO = list==='open';
+    const targetRules = isO ? openRules : closeRules;
+    const slots = isO ? openTimeSlots : closeTimeSlots;
+    const tMap = isO ? openTimeIndexMap : closeTimeIndexMap;
+    
+    if(isO) all.forEach(s=>s.tasks.push({start:'09:00',end:'09:15',task:'朝礼',remarks:''}));
+
+    // 3. Assign Tasks
+    targetRules.forEach(r => {
+        let group = [];
+        if(r.target==='all') group=all; else if(r.target==='employee') group=emp; else if(r.target==='alba') group=alba;
         
-        const rules = [
-            {n:"抽選（準備、片付け）", s:3, g:all, c:2},
-            {n:"外販出し、新聞、岡持", s:1, g:emp.filter(s=>s!==m)},
-            {n:"P台チェック", s:1, g:emp.filter(s=>s!==m)},
-            {n:"販促確認", s:1, g:emp.filter(s=>s!==m)},
-            {n:"全体確認", s:1, g:emp.filter(s=>s!==m)},
-            {n:"P台チェック", s:1, g:alba.filter(s=>s!==m)},
-            {n:"S台チェック(ユニメモ込)", s:1, g:alba.filter(s=>s!==m)},
-            {n:"ローラー交換", s:2, g:alba.filter(s=>s!==m)},
-            {n:"環境整備・5M", s:1, g:alba.filter(s=>s!==m)},
-            {n:"時差島台電落とし", s:1, g:emp.filter(s=>s!==m)}, 
-            {n:"カウンター開設準備", s:4, g:alba.filter(s=>s!==m)}
-        ];
-        
-        if(!w) rules.push({n:t_warehouse.name, s:2, g:emp, c:1});
-        all.forEach(s=>s.tasks.push({start:'09:00',end:'09:15',task:t_briefing.name,remarks:""}));
-        
-        rules.forEach(r=>{ for(let k=0;k<(r.c||1);k++){ const startSearchIdx = emp.some(e => r.g.includes(e)) ? 0 : 9; for(let i=startSearchIdx; i<openTimeSlots.length-(r.s||1); i++) { const x=findStaff(r.g, i, i+(r.s||1), openTimeIndexMap); if(x) { const startT = openTimeSlots[i]; const endT = openTimeSlots[i+(r.s||1)]; x.staff.tasks.push({start:startT,end:endT,task:r.n,remarks:""}); break; } } } });
-        fillFree(all,openTimeSlots,openTimeIndexMap,emp);
-    } else {
-        const t_col = getTaskByName("金銭回収"), t_ware = getTaskByName("倉庫整理"), t_cnt = getTaskByName("カウンター業務");
-        const fix=[{k:'fixed_money_collect',t:t_col,s:'22:45',e:'23:15',g:emp},{k:'fixed_warehouses',t:t_ware,s:'22:45',e:'23:15',g:all},{k:'fixed_counters',t:t_cnt,s:'22:45',e:'23:00',g:all}];
-        const as=new Set(); fix.forEach(f=>{const s=f.g.find(p=>p.name===window.staffList[f.k]); if(s){s.tasks.push({start:f.s,end:f.e,task:f.t.name,remarks:'（固定）'}); as.add(s);}});
-        const rules = [{n:"施錠・工具箱チェック", s:1, g:emp.filter(s=>!as.has(s))}, {n:"引継ぎ・事務所清掃", s:1, g:emp.filter(s=>!as.has(s))}, {n:"飲み残し・フラッグ確認", s:1, g:alba.filter(s=>!as.has(s))}, {n:"島上清掃・カード補充", s:1, g:alba.filter(s=>!as.has(s))}];
-        fix.forEach(f=>{ if(!window.staffList[f.k]) rules.push({n:f.t.name, s:f.t.slots || 2, g:(f.t.name===t_col.name?emp:all.filter(s=>!as.has(s)))}); });
-        rules.forEach(r=>{ for(let k=0;k<=closeTimeSlots.length-(r.s||1);k++){ const x=findStaff(r.g,k,k+(r.s||1),closeTimeIndexMap); if(x){x.staff.tasks.push({start:closeTimeSlots[k],end:closeTimeSlots[k+(r.s||1)],task:r.n,remarks:""}); break;} } });
-        fillFree(all,closeTimeSlots,closeTimeIndexMap,[]);
-    }
-    updateStaffLists(); generateSummaryView(); 
-    if(window.isEditing) renderEditTimeline(document.getElementById('tab-open').classList.contains('bg-white') ? 'open' : 'close');
-    saveStaffListToFirestore();
+        for(let k=0; k<r.count; k++){
+            // Start time: Open & not Employee & not Chusen = 9:15(idx 9)
+            const startIdx = (isO && r.target!=='employee' && !r.name.includes('抽選')) ? 9 : 0;
+            
+            for(let i=startIdx; i<=slots.length-r.slots; i++){
+                const res = findBest(group, i, i+r.slots, tMap, r.name, fixedStaff);
+                if(res){
+                    res.p.tasks.push({start:slots[i], end:slots[i+r.slots], task:r.name, remarks:""});
+                    break; // Assigned one instance
+                }
+            }
+        }
+    });
+    
+    // 4. Fill Free Time
+    const tFree = "個人業務、自由時間";
+    all.forEach(s => {
+        const startI = (isO && emp.includes(s)) ? 0 : (isO?9:0);
+        for(let i=startI; i<slots.length-1; i++){
+            if(!isOverlap(s.tasks, i, i+1, tMap)) s.tasks.push({start:slots[i], end:slots[i+1], task:tFree, remarks:""});
+        }
+        s.tasks.sort((a,b)=>(a.start||"").localeCompare(b.start||""));
+    });
+
+    saveStaffListToFirestore(); window.refreshCurrentView();
 };
-function fillFree(all,sl,m,emp){
-    const t_free = getTaskByName("個人業務、自由時間") || {name:"FREE"};
-    all.forEach(s=>{ const st=emp.includes(s)?'07:00':'09:00'; const si=m.get(st)||0; for(let i=si;i<sl.length-1;i++){if(!isOverlap(s.tasks,i,i+1,m))s.tasks.push({start:sl[i],end:sl[i+1],task:t_free.name,remarks:""});} s.tasks.sort((a,b)=>(a.start||"").localeCompare(b.start||"")); });
+
+// --- TIMELINE (READ ONLY) ---
+function renderEditTimeline(tab) {
+    const c = $('#editor-timeline-content'); if(!c)return;
+    const isO=tab==='open', emp=isO?window.staffList.early:window.staffList.closing_employee, alba=isO?window.staffList.late:window.staffList.closing_alba, all=[...emp,...alba];
+    const slots=isO?openTimeSlots:closeTimeSlots, map=isO?openTimeIndexMap:closeTimeIndexMap;
+    if(!all.length){ c.innerHTML="<p class='text-xs text-slate-400'>スタッフなし</p>"; return; }
+    
+    let h = `<div class="relative min-w-[800px] border border-slate-200 rounded bg-white select-none"><div class="flex border-b bg-slate-50 text-xs font-bold sticky top-0 z-10"><div class="w-24 shrink-0 p-2 border-r bg-slate-50 sticky left-0 z-20">STAFF</div><div class="flex-1 flex">`;
+    slots.forEach(t=>h+=`<div class="flex-1 text-center py-2 border-r">${t}</div>`);
+    h += `</div></div>`;
+    
+    all.forEach(s => {
+        h += `<div class="flex border-b h-12 relative"><div class="w-24 shrink-0 p-2 border-r text-xs font-bold flex items-center bg-white sticky left-0 z-10 truncate">${s.name}</div><div class="flex-1 flex relative">`;
+        slots.forEach(()=> h+=`<div class="flex-1 border-r"></div>`);
+        s.tasks.forEach(t=>{
+            if(!t.start) return;
+            const si=map.get(t.start), ei=map.get(t.end); if(si===undefined||ei===undefined)return;
+            const w=(ei-si)/slots.length*100, l=si/slots.length*100;
+            const tc=window.specialTasks.find(x=>x.name===t.task)||{class:'color-gray'};
+            h+=`<div class="absolute top-1 bottom-1 rounded text-[10px] font-bold text-slate-700 flex items-center justify-center shadow-sm border ${tc.class}" style="left:${l}%;width:${w}%"><span class="truncate px-1">${t.task}</span></div>`;
+        });
+        h += `</div></div>`;
+    });
+    h += `</div>`; c.innerHTML=h;
 }
 
-window.openMasterModal = () => { document.getElementById('master-modal').classList.remove('hidden'); window.renderMasterStaffLists(); window.renderMasterTaskList(); };
-window.closeMasterModal = () => document.getElementById('master-modal').classList.add('hidden');
-window.switchMasterTab = (tab) => {
-    document.getElementById('master-content-staff').classList.toggle('hidden', tab!=='staff'); document.getElementById('master-content-task').classList.toggle('hidden', tab!=='task');
-    document.getElementById('master-tab-staff').className = tab==='staff' ? "flex-1 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50" : "flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:bg-slate-50";
-    document.getElementById('master-tab-task').className = tab==='task' ? "flex-1 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50" : "flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:bg-slate-50";
-};
-window.renderMasterStaffLists = () => {
-    ['employees', 'alba_early', 'alba_late'].forEach(key => {
-        const list = window.masterStaffList[key] || []; document.querySelector('.count-'+key).textContent = list.length;
-        const ul = document.getElementById('master-list-'+key); ul.innerHTML = '';
-        list.sort().forEach(name => { ul.innerHTML += `<li class="flex justify-between items-center bg-slate-50 p-2 rounded"><span>${name}</span><button onclick="deleteMasterStaff('${key}', '${name}')" class="text-rose-400 hover:text-rose-600 px-2">×</button></li>`; });
-    });
-};
-window.renderMasterTaskList = () => {
-    const tbody = document.getElementById('master-task-list-body'); tbody.innerHTML = '';
-    window.specialTasks.forEach(task => {
-        tbody.innerHTML += `<tr><td class="px-3 py-2"><div class="w-4 h-4 rounded ${task.class.replace('task-bar ', '')} border border-black/10"></div></td><td class="px-3 py-2 font-bold">${task.name}</td><td class="px-3 py-2 text-xs text-slate-500">${task.slots * 15}分</td><td class="px-3 py-2 text-xs text-slate-500">${task.type === 'both' ? '両方' : (task.type === 'open' ? '開店' : '閉店')}</td><td class="px-3 py-2 text-right"><button onclick="deleteMasterTask('${task.id}')" class="text-rose-500 hover:text-rose-700 font-bold text-xs">削除</button></td></tr>`;
-    });
-};
-window.addMasterStaff = async (key) => { const input = document.getElementById('new-'+key+'-name'); const name = input.value.trim(); if(!name) return; if((window.masterStaffList[key]||[]).includes(name)) return alert("登録済み"); await setDoc(staffRef, { ...window.masterStaffList, [key]: [...(window.masterStaffList[key]||[]), name] }); input.value = ''; };
-window.deleteMasterStaff = async (key, name) => { if(!confirm("削除しますか？")) return; await setDoc(staffRef, { ...window.masterStaffList, [key]: (window.masterStaffList[key]||[]).filter(n => n !== name) }); };
-window.addMasterTask = async () => {
-    const name = document.getElementById('new-task-name').value.trim(); const slots = parseInt(document.getElementById('new-task-slots').value); const color = document.getElementById('new-task-color').value; const type = document.getElementById('new-task-type').value;
-    if(!name) return alert("タスク名を入力");
-    const newTask = { id: 'TASK_' + Date.now(), name, slots, class: `task-bar ${color}`, type };
-    await setDoc(taskDefRef, { list: [...window.specialTasks, newTask] });
-    document.getElementById('new-task-name').value = '';
-};
-window.deleteMasterTask = async (id) => { if(!confirm("削除しますか？")) return; await setDoc(taskDefRef, { list: window.specialTasks.filter(t => t.id !== id) }); };
+// --- UI LIST & MODALS ---
+function populate(id,sk){ const c=$(id); if(!c)return; c.innerHTML=''; window.staffList[sk].forEach((s,si)=>{ let h=''; s.tasks.sort((a,b)=>(a.start||'99').localeCompare(b.start||'99')).forEach((t,ti)=>{ 
+    const f=t.remarks==='（固定）', del=f?'':`<button onclick="delTask('${sk}',${si},${ti})" class="text-rose-500">×</button>`, add=`<button onclick="addTask('${sk}',${si})" class="text-slate-600">＋</button>`;
+    h+=`<tr class="edit-row"><td data-label="氏名">${ti===0?`${s.name} <button onclick="delStaff('${sk}',${si})" class="text-slate-300 ml-2">×</button>`:''}</td><td><button class="custom-select-button" onclick="${!f?`selTime('${sk}',${si},${ti},'start')`:''}">${t.start||'--'}</button></td><td><button class="custom-select-button" onclick="${!f?`selTime('${sk}',${si},${ti},'end')`:''}">${t.end||'--'}</button></td><td><button class="custom-select-button" onclick="${!f?`selTask('${sk}',${si},${ti})`:''}">${t.task||'--'}</button></td><td><input class="w-full bg-slate-50 border rounded p-1" value="${t.remarks||''}" onchange="upd('${sk}',${si},${ti},'remarks',this.value)" ${f?'readonly':''}></td><td>${ti>0||s.tasks.length>1?del:add}</td></tr>`;
+}); c.innerHTML+=h; }); }
+function updateStaffLists(){ populate('#staff-list-open-early','early'); populate('#staff-list-open-late','late'); populate('#staff-list-close-employee','closing_employee'); populate('#staff-list-close-alba','closing_alba'); }
+function updateFixedButtons(){ const ids=['fixed_money_count','fixed_open_warehouse','fixed_money_collect','fixed_warehouses','fixed_counters']; ids.forEach(k=>{ const b=$(`#${k.replace(/_/g,'-')}-btn span`); if(b) b.textContent=window.staffList[k]||"選択"; }); }
 
+window.selTime=(k,s,t,f)=>{ const isO=$('#tab-open').classList.contains('bg-white'), slots=isO?openTimeSlots:closeTimeSlots; const mb=$('#select-modal-body'); mb.innerHTML=''; slots.forEach(tm=>mb.innerHTML+=`<div class="select-modal-option" onclick="upd('${k}',${s},${t},'${f}','${tm}');$('#select-modal').classList.add('hidden')">${tm}</div>`); $('#select-modal').classList.remove('hidden'); };
+window.selTask=(k,s,t)=>{ const mb=$('#select-modal-body'); mb.innerHTML=''; window.specialTasks.forEach(zk=>mb.innerHTML+=`<div class="select-modal-option" onclick="upd('${k}',${s},${t},'task','${zk.name}');$('#select-modal').classList.add('hidden')">${zk.name}</div>`); $('#select-modal').classList.remove('hidden'); };
+window.upd=(k,s,t,f,v)=>{ window.staffList[k][s].tasks[t][f]=v; saveStaffListToFirestore(); window.refreshCurrentView(); };
+window.addTask=(k,s)=>{ window.staffList[k][s].tasks.push({start:'',end:'',task:'',remarks:''}); saveStaffListToFirestore(); window.refreshCurrentView(); };
+window.delTask=(k,s,t)=>{ if(confirm("削除？")){ window.staffList[k][s].tasks.splice(t,1); saveStaffListToFirestore(); window.refreshCurrentView(); } };
+window.delStaff=(k,s)=>{ if(confirm("スタッフ削除？")){ const n=window.staffList[k][s].name; window.staffList[k].splice(s,1); ['fixed_money_count','fixed_open_warehouse','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(fk=>{if(window.staffList[fk]===n)window.staffList[fk]="";}); saveStaffListToFirestore(); window.refreshCurrentView(); } };
+
+// Fixed Staff Select & Auto Add
+window.openFixedStaffSelect=(fk, candType)=>{ const c=(candType.includes('early')||candType.includes('open'))?[...window.masterStaffList.employees,...window.masterStaffList.alba_early]:[...window.masterStaffList.employees,...window.masterStaffList.alba_late]; const mb=$('#select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="setFixed('${fk}','','${candType}')">なし</div>`; c.sort().forEach(n=>mb.innerHTML+=`<div class="select-modal-option" onclick="setFixed('${fk}','${n}','${candType}')">${n}</div>`); $('#select-modal').classList.remove('hidden'); };
+window.setFixed=(fk,name,type)=>{
+    window.staffList[fk]=name;
+    if(name){
+        const isEmp=window.masterStaffList.employees.includes(name);
+        let listKey = '';
+        if(type.includes('early')) listKey='early'; else if(type.includes('open')) listKey=isEmp?'early':'late'; else listKey=isEmp?'closing_employee':'closing_alba';
+        let p = window.staffList[listKey].find(s=>s.name===name);
+        if(!p){ p={name,tasks:[]}; window.staffList[listKey].push(p); }
+        // Set Task
+        const defs={'fixed_money_count':{t:'金銭業務',s:'07:00',e:'08:15'},'fixed_open_warehouse':{t:'倉庫番(特景)',s:'09:15',e:'09:45'},'fixed_money_collect':{t:'金銭回収',s:'22:45',e:'23:15'},'fixed_warehouses':{t:'倉庫整理',s:'22:45',e:'23:15'},'fixed_counters':{t:'カウンター業務',s:'22:45',e:'23:00'}};
+        const d=defs[fk];
+        if(d){ p.tasks=p.tasks.filter(t=>t.remarks!=='（固定）'&&t.task!==d.t); p.tasks.push({start:d.s,end:d.e,task:d.t,remarks:'（固定）'}); p.tasks.sort((a,b)=>a.start.localeCompare(b.start)); }
+    }
+    saveStaffListToFirestore(); window.refreshCurrentView(); $('#select-modal').classList.add('hidden');
+};
+
+// Staff Add
+window.openStaffSelect=(k,mt)=>{ const c=window.masterStaffList[mt], ex=window.staffList[k].map(s=>s.name); const mb=$('#select-modal-body'); mb.innerHTML=''; c.filter(n=>!ex.includes(n)).forEach(n=>mb.innerHTML+=`<div class="select-modal-option" onclick="addS('${k}','${n}')">${n}</div>`); $('#select-modal').classList.remove('hidden'); };
+window.addS=(k,n)=>{ window.staffList[k].push({name:n,tasks:[{start:'',end:'',task:'',remarks:''}]}); saveStaffListToFirestore(); window.refreshCurrentView(); $('#select-modal').classList.add('hidden'); };
+
+// Auth & Init
+window.checkPassword=()=>{ if($('#password-input').value===EDIT_PASSWORD){ $('#password-modal').classList.add('hidden'); if(authContext==='admin') setEditingMode(true); else { qscEditMode=true; $('#qscAddForm').classList.remove('hidden'); window.renderQSCList(); } } };
 window.addEventListener("DOMContentLoaded", () => {
     window.fetchCustomerData(); window.subscribeQSC(); window.fetchMasterData();
-    document.getElementById("qscTabUnfinished").onclick = () => { currentQscTab = '未実施'; document.getElementById("qscTabUnfinished").className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm transition-all"; document.getElementById("qscTabFinished").className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all"; window.renderQSCList(); };
-    document.getElementById("qscTabFinished").onclick = () => { currentQscTab = '完了'; document.getElementById("qscTabFinished").className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-green-600 shadow-sm transition-all"; document.getElementById("qscTabUnfinished").className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all"; window.renderQSCList(); };
-    
-    document.getElementById("qscEditButton").onclick = () => { 
-        if(qscEditMode) { 
-            qscEditMode = false; 
-            document.getElementById("qscEditButton").textContent = "⚙️ 管理"; 
-            document.getElementById("qscAddForm").classList.add("hidden"); 
-            window.renderQSCList(); 
-        } else { 
-            window.showPasswordModal('qsc');
-        } 
-    };
-    
-    document.getElementById("edit-mode-button").onclick = () => window.showPasswordModal('admin');
-    document.getElementById("newOpeningButton").onclick = window.openNewOpening;
-    document.getElementById("closeNewOpeningModal").onclick = () => document.getElementById("newOpeningModal").classList.add("hidden");
-    document.getElementById("closeDetailModal").onclick = () => document.getElementById("machineDetailModal").classList.add("hidden");
-    document.getElementById("openQSCButton").onclick = () => { document.getElementById("qscModal").classList.remove("hidden"); window.renderQSCList(); };
-    document.getElementById("closeQscModal").onclick = () => document.getElementById("qscModal").classList.add("hidden");
-    document.getElementById("calendarToggleButton").onclick = () => {
-        const full = document.getElementById("fullCalendarContainer"), today = document.getElementById("todayEventContainer"), btn = document.getElementById("calendarToggleButton");
-        if (full.classList.contains("hidden")) {
-            full.classList.remove("hidden"); today.classList.add("hidden"); btn.textContent = "戻る";
-            const grid = document.getElementById("calendarGrid"); grid.innerHTML = ["日","月","火","水","木","金","土"].map(d => `<div class="text-xs text-slate-300 text-center py-2">${d}</div>`).join(""); for(let i=0; i<6; i++) grid.innerHTML += `<div></div>`;
-            const days = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-            for(let i=1; i<=days; i++) {
-                const ev = eventMap.get(i); const btn = document.createElement("button"); btn.className = `calendar-day ${ev&&(ev.p_event||ev.s_event)?'has-event':''}`; btn.textContent = i;
-                if (i === new Date().getDate()) btn.classList.add('is-today');
-                btn.onclick = () => { $$(".calendar-day").forEach(b => b.classList.remove("is-selected")); btn.classList.add("is-selected"); document.getElementById("selectedEventDetails").innerHTML = ev ? `<div class="w-full text-left"><div class="text-indigo-600 font-black mb-1">${i}日</div><ul class="space-y-1 text-sm">${ev.p_event?`<li>${ev.p_event}</li>`:''}${ev.s_event?`<li>${ev.s_event}</li>`:''}</ul></div>` : "情報なし"; };
-                grid.appendChild(btn);
-            }
-        } else { full.classList.add("hidden"); today.classList.remove("hidden"); btn.textContent = "全体を見る"; }
-    };
+    $('#qscEditButton').onclick=()=>{ if(qscEditMode){qscEditMode=false;$('#qscAddForm').classList.add('hidden');window.renderQSCList();}else{authContext='qsc';$('#password-modal').classList.remove('hidden');} };
+    $('#edit-mode-button').onclick=()=>{ if(window.isEditing)setEditingMode(false); else{authContext='admin';$('#password-modal').classList.remove('hidden');} };
+    // Other inits skipped for brevity (calendar etc same as before)
 });
