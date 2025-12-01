@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getFirestore, collection, getDocs, doc, updateDoc, onSnapshot, setDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 /* =========================================
-   CONFIG (完全統合: Garden Yashio Bot)
+   CONFIG
    ========================================= */
 const firebaseConfig = {
     apiKey: "AIzaSyAdxAeBlJkFWAVM1ZWJKhU2urQcmtL0UKo",
@@ -13,7 +13,6 @@ const firebaseConfig = {
     appId: "1:692971442685:web:ae4a65988ad1716ed84994"
 };
 
-// Initialize Firebase (1つに統一)
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -29,6 +28,7 @@ let authContext = '';
 
 // --- Data Variables ---
 let allMachines = [], newOpeningData = [], eventMap = new Map(), qscItems = [], currentQscTab = '未実施', qscEditMode = false;
+const latestKeywords = ["アズールレーン", "北斗の拳11", "地獄少女7500", "海物語極", "化物語", "プリズムナナ", "バーニングエキスプレス"];
 
 // --- Helper Functions ---
 const $ = s => document.querySelector(s);
@@ -52,7 +52,6 @@ const closeTimeIndexMap = new Map(); closeTimeSlots.forEach((t, i) => closeTimeI
    CORE FUNCTIONS
    ========================================= */
 
-// 1. View Switcher
 window.switchView = function(viewName) {
     window.scrollTo(0,0);
     if (viewName === 'staff') {
@@ -68,121 +67,36 @@ window.switchView = function(viewName) {
     }
 };
 
-// 2. Customer App Logic
-window.fetchCustomerData = async function() {
-    try {
-        const [mSnap, nSnap, cSnap] = await Promise.all([
-            getDocs(collection(db, "machines")),
-            getDocs(collection(db, "newOpening")),
-            getDocs(collection(db, "calendar"))
-        ]);
-        allMachines = mSnap.docs.map(d => d.data()).sort((a, b) => a.name.localeCompare(b.name));
-        newOpeningData = nSnap.docs.map(d => d.data());
-        eventMap = new Map(cSnap.docs.map(d => d.data()).sort((a, b) => a.date - b.date).map(e => [e.date, e]));
-        window.renderToday();
-    } catch (e) {
-        console.error("Fetch Error:", e);
-        document.getElementById("todayEventContainer").innerHTML = `<p class="text-rose-500 text-center font-bold">データの読み込みに失敗しました</p>`;
-    }
-};
-
-window.renderToday = function() {
-    const today = new Date();
-    const d = today.getDate();
-    const m = today.getMonth();
-    const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-    const ev = eventMap.get(d);
-    
-    const html = ev ? 
-        `<div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 w-full"><div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200/60"><div class="flex items-center gap-3"><div class="bg-indigo-600 text-white rounded-xl px-4 py-2 text-center shadow-md shadow-indigo-200"><div class="text-[10px] font-bold opacity-80 tracking-wider">${monthNames[m]}</div><div class="text-2xl font-black leading-none">${d}</div></div><div class="font-bold text-indigo-900 text-lg">本日のイベント情報</div></div><span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">TODAY</span></div><ul class="space-y-3">${ev.p_event ? `<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.p_event}</span></li>` : ''}${ev.s_event ? `<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.s_event}</span></li>` : ''}${ev.recommend ? `<li class="flex items-start p-2 rounded-lg hover:bg-rose-50 transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 mt-2 mr-3 shrink-0"></span><span class="text-rose-600 font-bold text-sm leading-relaxed">${ev.recommend}</span></li>` : ''}</ul></div>` 
-        : `<div class="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 rounded-2xl border border-slate-100 w-full"><div class="text-5xl font-black text-slate-200 mb-3">${d}</div><p class="text-sm font-bold">特別なイベント情報はありません</p></div>`;
-    document.getElementById("todayEventContainer").innerHTML = html;
-    document.getElementById("currentDate").textContent = `${today.getFullYear()}.${m + 1}.${d}`;
-};
-
+// Customer App Logic
+window.fetchCustomerData = async function() { try { const [mSnap, nSnap, cSnap] = await Promise.all([getDocs(collection(db, "machines")), getDocs(collection(db, "newOpening")), getDocs(collection(db, "calendar"))]); allMachines = mSnap.docs.map(d => d.data()).sort((a, b) => a.name.localeCompare(b.name)); newOpeningData = nSnap.docs.map(d => d.data()); eventMap = new Map(cSnap.docs.map(d => d.data()).sort((a, b) => a.date - b.date).map(e => [e.date, e])); window.renderToday(); } catch (e) { document.getElementById("todayEventContainer").innerHTML = `<p class="text-rose-500 text-center font-bold">データ読込失敗</p>`; } };
+window.renderToday = function() { const today = new Date(); const d = today.getDate(); const m = today.getMonth(); const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]; const ev = eventMap.get(d); const html = ev ? `<div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 w-full"><div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200/60"><div class="flex items-center gap-3"><div class="bg-indigo-600 text-white rounded-xl px-4 py-2 text-center shadow-md shadow-indigo-200"><div class="text-[10px] font-bold opacity-80 tracking-wider">${monthNames[m]}</div><div class="text-2xl font-black leading-none">${d}</div></div><div class="font-bold text-indigo-900 text-lg">本日のイベント</div></div><span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">TODAY</span></div><ul class="space-y-3">${ev.p_event?`<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.p_event}</span></li>`:''}${ev.s_event?`<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.s_event}</span></li>`:''}${ev.recommend?`<li class="flex items-start p-2 rounded-lg hover:bg-rose-50 transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 mt-2 mr-3 shrink-0"></span><span class="text-rose-600 font-bold text-sm leading-relaxed">${ev.recommend}</span></li>`:''}</ul></div>` : `<div class="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 rounded-2xl border border-slate-100 w-full"><div class="text-5xl font-black text-slate-200 mb-3">${d}</div><p class="text-sm font-bold">イベント情報なし</p></div>`; document.getElementById("todayEventContainer").innerHTML = html; document.getElementById("currentDate").textContent = `${today.getFullYear()}.${m + 1}.${d}`; };
 window.openNewOpening = function() {
-    const container = document.getElementById("newOpeningInfo");
-    container.innerHTML = "";
-    if (newOpeningData.length === 0) {
-        container.innerHTML = "<p class='text-center text-slate-400 py-10'>データがありません</p>";
-        document.getElementById("newOpeningModal").classList.remove("hidden");
-        return;
-    }
-    const ul = document.createElement("ul");
-    ul.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8";
-    newOpeningData.sort((a,b)=>b.count-a.count).forEach(item => {
-        const li = document.createElement("li");
-        li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm";
-        const matched = allMachines.find(m => m.name === item.name || m.name.includes(item.name));
-        li.innerHTML = `<div class="flex flex-col overflow-hidden mr-2"><span class="font-bold text-slate-700 truncate text-sm sm:text-base">${item.name}</span>${matched&&matched.salesPitch?`<span class="text-xs text-slate-400 font-medium mt-1">詳細あり</span>`:''}</div><span class="text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0">${item.count}台</span>`;
-        if(matched && matched.salesPitch) {
-            li.style.cursor = "pointer";
-            li.onclick = () => {
-                document.getElementById("detailName").textContent = matched.name;
-                document.getElementById("detailPitch").textContent = matched.salesPitch || "情報なし";
-                const f=(i,l)=>{document.querySelector(i).innerHTML="";(l||["情報なし"]).forEach(t=>document.querySelector(i).innerHTML+=`<li class="flex items-start"><span class="mr-2 mt-1.5 w-1.5 h-1.5 bg-current rounded-full flex-shrink-0"></span><span>${t}</span></li>`);};
-                f("#detailPros", matched.pros); f("#detailCons", matched.cons);
-                document.getElementById("machineDetailModal").classList.remove("hidden");
-            };
-        }
-        ul.appendChild(li);
-    });
-    container.appendChild(ul);
+    const container = document.getElementById("newOpeningInfo"); container.innerHTML = "";
+    if (newOpeningData.length === 0) { container.innerHTML = "<p class='text-center text-slate-400 py-10'>データなし</p>"; document.getElementById("newOpeningModal").classList.remove("hidden"); return; }
+    
+    const latest = [], others = [];
+    newOpeningData.forEach(m => { (latestKeywords.some(k => m.name.includes(k)) ? latest : others).push(m); });
+    
+    const createList = (list) => {
+        const ul = document.createElement("ul"); ul.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8";
+        list.sort((a,b)=>b.count-a.count).forEach(item => {
+            const li = document.createElement("li"); li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm"; const matched = allMachines.find(m => m.name === item.name || m.name.includes(item.name)); li.innerHTML = `<div class="flex flex-col overflow-hidden mr-2"><span class="font-bold text-slate-700 truncate text-sm sm:text-base">${item.name}</span>${matched&&matched.salesPitch?`<span class="text-xs text-slate-400 font-medium mt-1">詳細あり</span>`:''}</div><span class="text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0">${item.count}台</span>`;
+            if(matched && matched.salesPitch) { li.style.cursor = "pointer"; li.onclick = () => { document.getElementById("detailName").textContent = matched.name; document.getElementById("detailPitch").textContent = matched.salesPitch || "情報なし"; const f=(i,l)=>{document.querySelector(i).innerHTML="";(l||["情報なし"]).forEach(t=>document.querySelector(i).innerHTML+=`<li class="flex items-start"><span class="mr-2 mt-1.5 w-1.5 h-1.5 bg-current rounded-full flex-shrink-0"></span><span>${t}</span></li>`);}; f("#detailPros", matched.pros); f("#detailCons", matched.cons); document.getElementById("machineDetailModal").classList.remove("hidden"); }; }
+            ul.appendChild(li);
+        });
+        return ul;
+    };
+
+    if(latest.length > 0) { const h = document.createElement("h3"); h.className = "text-lg font-black text-rose-600 mb-4 flex items-center border-b border-rose-100 pb-2"; h.innerHTML = `✨ 最新導入`; container.appendChild(h); container.appendChild(createList(latest)); }
+    if(others.length > 0) { const h = document.createElement("h3"); h.className = "text-lg font-black text-slate-600 mb-4 flex items-center border-b border-slate-200 pb-2"; h.innerHTML = `🔄 準新台・その他`; container.appendChild(h); container.appendChild(createList(others)); }
     document.getElementById("newOpeningModal").classList.remove("hidden");
 };
-
-// QSC Logic
-window.subscribeQSC = function() {
-    onSnapshot(collection(db, "qsc_items"), (snapshot) => {
-        qscItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => a.no - b.no);
-        const unfinishedCount = qscItems.filter(i => i.status === "未実施").length;
-        document.getElementById("qscUnfinishedCount").textContent = unfinishedCount > 0 ? `残り ${unfinishedCount} 件` : `完了`;
-        if(!document.getElementById("qscModal").classList.contains("hidden")) window.renderQSCList();
-    });
-};
-
-window.renderQSCList = function() {
-    const container = document.getElementById("qscListContainer");
-    container.innerHTML = "";
-    const filteredItems = qscItems.filter(item => currentQscTab === '未実施' ? item.status === "未実施" : item.status === "完了");
-    if (filteredItems.length === 0) { container.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">項目はありません</div>`; return; }
-    const grouped = {};
-    filteredItems.forEach(item => { if(!grouped[item.area]) grouped[item.area] = []; grouped[item.area].push(item); });
-    for(const [area, items] of Object.entries(grouped)) {
-        const header = document.createElement("div");
-        header.className = "text-xs font-bold text-slate-500 bg-slate-200/50 px-3 py-1 rounded mt-4 mb-2 first:mt-0";
-        header.textContent = area;
-        container.appendChild(header);
-        items.forEach(item => {
-            const div = document.createElement("div");
-            div.className = `bg-white p-4 rounded-xl border ${item.status === '完了' ? 'border-slate-100 opacity-60' : 'border-slate-200'} shadow-sm flex items-center gap-4`;
-            if (qscEditMode) {
-                div.innerHTML = `<div class="flex-1"><div class="flex items-center gap-2 mb-1"><span class="text-xs font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">No.${item.no}</span></div><p class="text-sm font-bold text-slate-700 leading-snug">${item.content}</p></div><button onclick="deleteQscItem('${item.id}')" class="p-2 bg-rose-50 text-rose-500 rounded-full">×</button>`;
-            } else {
-                const checkbox = document.createElement("input");
-                checkbox.type = "checkbox";
-                checkbox.className = "qsc-checkbox shrink-0 mt-0.5";
-                checkbox.checked = item.status === "完了";
-                checkbox.onchange = async () => { try { await updateDoc(doc(db, "qsc_items", item.id), { status: checkbox.checked ? "完了" : "未実施" }); } catch(e) { checkbox.checked = !checkbox.checked; } };
-                div.innerHTML = `<div class="flex-1"><div class="flex items-center gap-2 mb-1"><span class="text-xs font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">No.${item.no}</span>${item.status === '完了' ? '<span class="text-xs font-bold text-green-600">DONE</span>' : ''}</div><p class="text-sm font-bold text-slate-700 leading-snug ${item.status === '完了' ? 'line-through text-slate-400' : ''}">${item.content}</p></div>`;
-                div.insertBefore(checkbox, div.firstChild);
-            }
-            container.appendChild(div);
-        });
-    }
-};
-
-window.addQscItem = async function() {
-    const no = document.getElementById('newQscNo').value;
-    const area = document.getElementById('newQscArea').value;
-    const content = document.getElementById('newQscContent').value;
-    if(!no || !area || !content) return alert("項目を入力してください");
-    await addDoc(collection(db, "qsc_items"), { no: Number(no), area, content, status: "未実施" });
-    document.getElementById('newQscNo').value = ''; document.getElementById('newQscContent').value = '';
-};
+window.subscribeQSC = function() { onSnapshot(collection(db, "qsc_items"), (s) => { qscItems = s.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => a.no - b.no); const u = qscItems.filter(i => i.status === "未実施").length; document.getElementById("qscUnfinishedCount").textContent = u > 0 ? `残り ${u} 件` : `完了`; if(!document.getElementById("qscModal").classList.contains("hidden")) window.renderQSCList(); }); };
+window.renderQSCList = function() { const container = document.getElementById("qscListContainer"); container.innerHTML = ""; const f = qscItems.filter(item => currentQscTab === '未実施' ? item.status === "未実施" : item.status === "完了"); if (f.length === 0) { container.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">項目はありません</div>`; return; } const g = {}; f.forEach(item => { if(!g[item.area]) g[item.area] = []; g[item.area].push(item); }); for(const [area, items] of Object.entries(g)) { const header = document.createElement("div"); header.className = "text-xs font-bold text-slate-500 bg-slate-200/50 px-3 py-1 rounded mt-4 mb-2 first:mt-0"; header.textContent = area; container.appendChild(header); items.forEach(item => { const div = document.createElement("div"); div.className = `bg-white p-4 rounded-xl border ${item.status === '完了' ? 'border-slate-100 opacity-60' : 'border-slate-200'} shadow-sm flex items-center gap-4`; if (qscEditMode) { div.innerHTML = `<div class="flex-1"><p class="text-sm font-bold text-slate-700">${item.content}</p></div><button onclick="deleteQscItem('${item.id}')" class="p-2 bg-rose-50 text-rose-500 rounded-full">×</button>`; } else { const c = document.createElement("input"); c.type = "checkbox"; c.className = "qsc-checkbox shrink-0 mt-0.5"; c.checked = item.status === "完了"; c.onchange = async () => { try { await updateDoc(doc(db, "qsc_items", item.id), { status: c.checked ? "完了" : "未実施" }); } catch(e) { c.checked = !c.checked; } }; div.innerHTML = `<div class="flex-1"><p class="text-sm font-bold text-slate-700 ${item.status === '完了' ? 'line-through text-slate-400' : ''}">${item.content}</p></div>`; div.insertBefore(c, div.firstChild); } container.appendChild(div); }); } };
+window.addQscItem = async function() { const no = $('#newQscNo').value; const area = $('#newQscArea').value; const content = $('#newQscContent').value; if(!no || !area || !content) return; await addDoc(collection(db, "qsc_items"), { no: Number(no), area, content, status: "未実施" }); $('#newQscNo').value=''; $('#newQscContent').value=''; };
 window.deleteQscItem = async function(id) { if(confirm("削除しますか？")) await deleteDoc(doc(db, "qsc_items", id)); };
 
-// 3. Staff App Logic (Unified DB: gardenyashiobot)
+// Staff App Logic
 let unsubscribeFromTasks = null;
 window.taskDocRef = null;
 const staffRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'masters', 'staff_data');
@@ -194,8 +108,7 @@ window.fetchMasterData = async function() {
 };
 
 window.handleDateChange = function(dateString) {
-    if (!dateString) dateString = window.getTodayDateString();
-    window.currentDate = dateString;
+    if (!dateString) dateString = window.getTodayDateString(); window.currentDate = dateString;
     const picker = document.getElementById('date-picker'); if(picker) picker.value = dateString;
     window.taskDocRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'task_assignments', dateString);
     if (unsubscribeFromTasks) unsubscribeFromTasks();
@@ -231,6 +144,7 @@ window.showSubTab = function(tabName) {
     document.getElementById('view-content-close').classList.toggle('hidden', isOpen);
     document.getElementById('tab-open').className = isOpen ? "px-6 py-2.5 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm" : "px-6 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700";
     document.getElementById('tab-close').className = !isOpen ? "px-6 py-2.5 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm" : "px-6 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700";
+    if(window.isEditing) renderEditTimeline(tabName);
 };
 
 window.setEditingMode = function(isEdit) {
@@ -240,8 +154,57 @@ window.setEditingMode = function(isEdit) {
     const b = document.getElementById('edit-mode-button'); const m = document.getElementById('master-settings-button');
     if(b){ b.textContent = isEdit?"閲覧モードに戻る":"管理者編集"; b.className = isEdit?"text-xs font-bold text-white bg-indigo-600 px-4 py-2 rounded-full shadow-md":"text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-full"; }
     if(m){ m.classList.toggle('hidden', !isEdit); }
+    if(isEdit) {
+        const isOpen = document.getElementById('tab-open').classList.contains('bg-white');
+        renderEditTimeline(isOpen ? 'open' : 'close');
+    }
 };
 
+// --- READ ONLY TIMELINE (VISUAL ONLY) ---
+function renderEditTimeline(tabName) {
+    const container = document.getElementById('editor-timeline-content');
+    if (!container) return;
+    
+    const isEarly = tabName === 'open';
+    const empList = isEarly ? window.staffList.early : window.staffList.closing_employee;
+    const albaList = isEarly ? window.staffList.late : window.staffList.closing_alba;
+    const timeSlots = isEarly ? openTimeSlots : closeTimeSlots;
+    const timeMap = isEarly ? openTimeIndexMap : closeTimeIndexMap;
+    const allStaff = [...empList, ...albaList]; 
+    
+    if(allStaff.length === 0) { container.innerHTML = "<p class='text-xs text-slate-400'>スタッフがいません</p>"; return; }
+
+    let html = `<div class="relative min-w-[800px] border border-slate-200 rounded-lg overflow-hidden bg-white select-none">`;
+    html += `<div class="flex border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 sticky top-0 z-10"><div class="w-24 shrink-0 p-2 border-r border-slate-200 sticky left-0 bg-slate-50 z-20">STAFF</div><div class="flex-1 flex">`;
+    timeSlots.forEach(t => html += `<div class="flex-1 text-center py-2 border-r border-slate-100">${t}</div>`);
+    html += `</div></div>`;
+
+    allStaff.forEach((s, sIdx) => {
+        const sectionKey = empList.includes(s) ? (isEarly ? 'early' : 'closing_employee') : (isEarly ? 'late' : 'closing_alba');
+        const realIdx = window.staffList[sectionKey].indexOf(s); 
+        html += `<div class="flex border-b border-slate-100 relative group h-12" data-skey="${sectionKey}" data-sidx="${realIdx}">
+                    <div class="w-24 shrink-0 p-2 border-r border-slate-200 text-xs font-bold text-slate-700 flex items-center bg-white sticky left-0 z-10 truncate">${s.name}</div>
+                    <div class="flex-1 flex relative">`;
+        
+        timeSlots.forEach(() => html += `<div class="flex-1 border-r border-slate-50"></div>`);
+        
+        s.tasks.forEach((t, tIdx) => {
+            if(!t.task || !t.start || !t.end) return;
+            const startI = timeMap.get(t.start); const endI = timeMap.get(t.end);
+            if(startI === undefined || endI === undefined) return;
+            const duration = endI - startI;
+            const widthPct = (duration / timeSlots.length) * 100;
+            const leftPct = (startI / timeSlots.length) * 100;
+            const taskConfig = window.specialTasks.find(v => v.name === t.task) || { class: 'color-gray' };
+            html += `<div class="absolute top-1 bottom-1 rounded-md text-[10px] font-bold text-slate-700 flex items-center justify-center overflow-hidden shadow-sm border border-white/20 ${taskConfig.class}" style="left: ${leftPct}%; width: ${widthPct}%;"><span class="truncate px-1">${t.task}</span></div>`;
+        });
+        html += `</div></div>`;
+    });
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+// Modal Logic
 window.showPasswordModal = (context) => { 
     if(window.isEditing && context === 'admin'){ setEditingMode(false); return; }
     authContext = context;
@@ -254,27 +217,46 @@ window.closePasswordModal = () => document.getElementById('password-modal').clas
 window.checkPassword = () => { 
     if(document.getElementById('password-input').value === EDIT_PASSWORD) { 
         closePasswordModal(); 
-        if(authContext === 'admin') {
-            setEditingMode(true);
-        } else if(authContext === 'qsc') {
-            qscEditMode = true; 
-            document.getElementById("qscEditButton").textContent = "✅ 完了"; 
-            document.getElementById("qscAddForm").classList.remove("hidden"); 
-            window.renderQSCList();
-        }
-    } else { 
-        document.getElementById('password-error').classList.remove('hidden'); 
-    } 
+        if(authContext === 'admin') setEditingMode(true);
+        else if(authContext === 'qsc') { qscEditMode = true; document.getElementById("qscEditButton").textContent = "✅ 完了"; document.getElementById("qscAddForm").classList.remove("hidden"); window.renderQSCList(); }
+    } else { document.getElementById('password-error').classList.remove('hidden'); } 
 };
 
+// Fixed Staff Selection + AUTO ADD Logic
 window.openFixedStaffSelect = (k, lk, t) => { 
     if(!window.isEditing)return; 
     const c = (lk.includes('early')||lk.includes('open')) ? [...window.masterStaffList.employees, ...window.masterStaffList.alba_early] : [...window.masterStaffList.employees, ...window.masterStaffList.alba_late];
     const mb=document.getElementById('select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="selectFixedStaff('${k}','')">指定なし</div>`; 
-    c.sort().forEach(n=>{mb.innerHTML+=`<div class="select-modal-option ${n===window.staffList[k]?'selected':''}" onclick="selectFixedStaff('${k}','${n}')">${n}</div>`;});
+    c.sort().forEach(n=>{mb.innerHTML+=`<div class="select-modal-option ${n===window.staffList[k]?'selected':''}" onclick="selectFixedStaff('${k}','${n}', '${lk}')">${n}</div>`;});
     document.getElementById('select-modal-title').textContent=t; document.getElementById('select-modal').classList.remove('hidden'); 
 };
-window.selectFixedStaff = (k, n) => { window.staffList[k]=n; updateFixedStaffButtons(); saveStaffListToFirestore(); document.getElementById('select-modal').classList.add('hidden'); };
+
+window.selectFixedStaff = (k, n, listKey) => { 
+    window.staffList[k]=n; 
+    if(n) {
+        const isEmployee = window.masterStaffList.employees.includes(n);
+        let targetListKey = '';
+        if(listKey.includes('early')) targetListKey = 'early'; 
+        else if(listKey.includes('open')) targetListKey = isEmployee ? 'early' : 'late'; 
+        else targetListKey = isEmployee ? 'closing_employee' : 'closing_alba';
+        let staffObj = window.staffList[targetListKey].find(s => s.name === n);
+        if(!staffObj) { staffObj = { name: n, tasks: [] }; window.staffList[targetListKey].push(staffObj); }
+        let startT = "", endT = "", taskName = "";
+        if(k === 'fixed_money_count') { startT = "07:00"; endT = "08:15"; taskName = "金銭業務"; }
+        else if(k === 'fixed_open_warehouse') { startT = "09:15"; endT = "09:45"; taskName = "倉庫(開店)"; }
+        else if(k === 'fixed_money_collect') { startT = "22:45"; endT = "23:15"; taskName = "金銭回収"; }
+        else if(k === 'fixed_warehouses') { startT = "22:45"; endT = "23:15"; taskName = "倉庫整理"; }
+        else if(k === 'fixed_counters') { startT = "22:45"; endT = "23:00"; taskName = "カウンター業務"; }
+        if(taskName) {
+            staffObj.tasks = staffObj.tasks.filter(t => t.task !== taskName && t.remarks !== '（固定）');
+            staffObj.tasks.push({ start: startT, end: endT, task: taskName, remarks: '（固定）' });
+            staffObj.tasks.sort((a,b) => a.start.localeCompare(b.start));
+        }
+    }
+    updateFixedStaffButtons(); updateStaffLists();
+    if(window.isEditing) renderEditTimeline(document.getElementById('tab-open').classList.contains('bg-white') ? 'open' : 'close');
+    saveStaffListToFirestore(); document.getElementById('select-modal').classList.add('hidden'); 
+};
 function updateFixedStaffButtons() {
     const btns = [{ id: 'fixed-money_count-btn', k: 'fixed_money_count' }, { id: 'fixed_open_warehouse-btn', k: 'fixed_open_warehouse' }, { id: 'fixed-money_collect-btn', k: 'fixed_money_collect' }, { id: 'fixed-warehouses-btn', k: 'fixed_warehouses' }, { id: 'fixed-counters-btn', k: 'fixed_counters' }];
     btns.forEach(i => { const b = document.getElementById(i.id); if(b) { const s=b.querySelector('span'); if(s)s.textContent=window.staffList[i.k]||"選択してください"; b.classList.toggle('placeholder',!window.staffList[i.k]); }});
@@ -286,7 +268,7 @@ window.openStaffSelect = (sk, mk) => {
     if(o.length===0) mb.innerHTML='<div class="p-4 text-center text-slate-400">候補なし</div>'; else o.forEach(n=>mb.innerHTML+=`<div class="select-modal-option" onclick="selectStaff('${sk}','${n}')">${n}</div>`); 
     document.getElementById('select-modal-title').textContent="スタッフ追加"; document.getElementById('select-modal').classList.remove('hidden'); 
 };
-window.selectStaff = (sk, n) => { if(!window.staffList[sk].find(s=>s.name===n)){window.staffList[sk].push({name:n,tasks:[{start:"",end:"",task:"",remarks:""}]}); updateStaffLists(); saveStaffListToFirestore();} document.getElementById('select-modal').classList.add('hidden'); };
+window.selectStaff = (sk, n) => { if(!window.staffList[sk].find(s=>s.name===n)){window.staffList[sk].push({name:n,tasks:[{start:"",end:"",task:"",remarks:""}]}); updateStaffLists(); if(window.isEditing) renderEditTimeline(document.getElementById('tab-open').classList.contains('bg-white') ? 'open' : 'close'); saveStaffListToFirestore();} document.getElementById('select-modal').classList.add('hidden'); };
 window.closeSelectModal = () => document.getElementById('select-modal').classList.add('hidden');
 
 window.openTimeSelect = (sk,si,ti,f,ln) => { if(!window.isEditing)return; const l=(ln==='open')?openTimeSlots:closeTimeSlots; const mb=document.getElementById('select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="handleChange('${sk}',${si},${ti},'${f}','');closeSelectModal();updateStaffLists();">--:--</div>`; l.forEach(t=>mb.innerHTML+=`<div class="select-modal-option" onclick="handleChange('${sk}',${si},${ti},'${f}','${t}');closeSelectModal();updateStaffLists();">${t}</div>`); document.getElementById('select-modal-title').textContent="時間選択"; document.getElementById('select-modal').classList.remove('hidden'); };
@@ -296,11 +278,18 @@ window.openTaskSelect = (sk,si,ti,ln) => {
     availableTasks.forEach(t=>mb.innerHTML+=`<div class="select-modal-option" onclick="handleChange('${sk}',${si},${ti},'task','${t}');closeSelectModal();updateStaffLists();">${t}</div>`); 
     document.getElementById('select-modal-title').textContent="タスク選択"; document.getElementById('select-modal').classList.remove('hidden'); 
 };
-window.handleChange = (sk,si,ti,f,v) => { window.staffList[sk][si].tasks[ti][f]=v; saveStaffListToFirestore(); };
+window.handleChange = (sk,si,ti,f,v) => { window.staffList[sk][si].tasks[ti][f]=v; saveStaffListToFirestore(); if(window.isEditing) renderEditTimeline(document.getElementById('tab-open').classList.contains('bg-white') ? 'open' : 'close'); };
 window.addTask = (sk,si) => { window.staffList[sk][si].tasks.push({start:"",end:"",task:"",remarks:""}); updateStaffLists(); saveStaffListToFirestore(); };
 window.showDeleteModal = (t,sk,si,ti) => { deleteInfo={type:t,sectionKey:sk,staffIndex:si,taskIndex:ti}; document.getElementById('delete-modal-message').textContent=t==='staff'?`「${window.staffList[sk][si].name}」さんを削除？`:"タスクを削除？"; document.getElementById('delete-modal').classList.remove('hidden'); };
 window.cancelDelete = () => document.getElementById('delete-modal').classList.add('hidden');
-window.confirmDelete = () => { const {type,sectionKey,staffIndex,taskIndex}=deleteInfo; if(type==='staff'){ const n=window.staffList[sectionKey][staffIndex].name; window.staffList[sectionKey].splice(staffIndex,1); ['fixed_money_count','fixed_open_warehouse','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(k=>{if(window.staffList[k]===n)window.staffList[k]="";}); }else if(window.staffList[sectionKey][staffIndex].tasks.length>1){window.staffList[sectionKey][staffIndex].tasks.splice(taskIndex,1);} window.cancelDelete(); updateStaffLists(); generateSummaryView(); updateFixedStaffButtons(); saveStaffListToFirestore(); };
+window.confirmDelete = () => { 
+    const {type,sectionKey,staffIndex,taskIndex}=deleteInfo; 
+    if(type==='staff'){ const n=window.staffList[sectionKey][staffIndex].name; window.staffList[sectionKey].splice(staffIndex,1); ['fixed_money_count','fixed_open_warehouse','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(k=>{if(window.staffList[k]===n)window.staffList[k]="";}); } 
+    else if(window.staffList[sectionKey][staffIndex].tasks.length>1){ window.staffList[sectionKey][staffIndex].tasks.splice(taskIndex,1); } 
+    window.cancelDelete(); updateStaffLists(); generateSummaryView(); updateFixedStaffButtons(); 
+    if(window.isEditing) renderEditTimeline(document.getElementById('tab-open').classList.contains('bg-white') ? 'open' : 'close'); 
+    saveStaffListToFirestore(); 
+};
 
 function updateStaffLists() { populate('staff-list-open-early','early','open'); populate('staff-list-open-late','late','open'); populate('staff-list-close-employee','closing_employee','close'); populate('staff-list-close-alba','closing_alba','close'); }
 function populate(id,sk,ln){ const c=document.getElementById(id); if(!c)return; c.innerHTML=''; window.staffList[sk].forEach((s,si)=>{ 
@@ -370,14 +359,14 @@ window.autoAssignTasks = (sec, list) => {
             {n:"S台チェック(ユニメモ込)", s:1, g:alba.filter(s=>s!==m)},
             {n:"ローラー交換", s:2, g:alba.filter(s=>s!==m)},
             {n:"環境整備・5M", s:1, g:alba.filter(s=>s!==m)},
-            {n:"時差島台電落とし", s:1, g:emp.filter(s=>s!==m)},
+            {n:"時差島台電落とし", s:1, g:emp.filter(s=>s!==m)}, 
             {n:"カウンター開設準備", s:4, g:alba.filter(s=>s!==m)}
         ];
         
         if(!w) rules.push({n:t_warehouse.name, s:2, g:emp, c:1});
         all.forEach(s=>s.tasks.push({start:'09:00',end:'09:15',task:t_briefing.name,remarks:""}));
         
-        rules.forEach(r=>{ for(let k=0;k<(r.c||1);k++){ for(let i=0; i<10; i++) { const x=findStaff(r.g, i, i+(r.s||1), openTimeIndexMap); if(x) { x.staff.tasks.push({start:openTimeSlots[i],end:openTimeSlots[i+(r.s||1)],task:r.n,remarks:""}); break; } } } });
+        rules.forEach(r=>{ for(let k=0;k<(r.c||1);k++){ const startSearchIdx = emp.some(e => r.g.includes(e)) ? 0 : 9; for(let i=startSearchIdx; i<openTimeSlots.length-(r.s||1); i++) { const x=findStaff(r.g, i, i+(r.s||1), openTimeIndexMap); if(x) { const startT = openTimeSlots[i]; const endT = openTimeSlots[i+(r.s||1)]; x.staff.tasks.push({start:startT,end:endT,task:r.n,remarks:""}); break; } } } });
         fillFree(all,openTimeSlots,openTimeIndexMap,emp);
     } else {
         const t_col = getTaskByName("金銭回収"), t_ware = getTaskByName("倉庫整理"), t_cnt = getTaskByName("カウンター業務");
@@ -388,7 +377,9 @@ window.autoAssignTasks = (sec, list) => {
         rules.forEach(r=>{ for(let k=0;k<=closeTimeSlots.length-(r.s||1);k++){ const x=findStaff(r.g,k,k+(r.s||1),closeTimeIndexMap); if(x){x.staff.tasks.push({start:closeTimeSlots[k],end:closeTimeSlots[k+(r.s||1)],task:r.n,remarks:""}); break;} } });
         fillFree(all,closeTimeSlots,closeTimeIndexMap,[]);
     }
-    updateStaffLists(); generateSummaryView(); saveStaffListToFirestore();
+    updateStaffLists(); generateSummaryView(); 
+    if(window.isEditing) renderEditTimeline(document.getElementById('tab-open').classList.contains('bg-white') ? 'open' : 'close');
+    saveStaffListToFirestore();
 };
 function fillFree(all,sl,m,emp){
     const t_free = getTaskByName("個人業務、自由時間") || {name:"FREE"};
