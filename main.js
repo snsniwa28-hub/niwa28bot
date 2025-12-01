@@ -23,7 +23,11 @@ window.specialTasks = [];
 window.isEditing = false;
 const EDIT_PASSWORD = "admin";
 window.currentDate = '';
-window.staffList = { early: [], late: [], closing_employee: [], closing_alba: [], fixed_money_count: "", fixed_open_warehouse: "", fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "" };
+window.staffList = { 
+    early: [], late: [], closing_employee: [], closing_alba: [], 
+    fixed_money_count: "", fixed_open_warehouse: "", fixed_money_collect: "", 
+    fixed_warehouses: "", fixed_counters: "", fixed_open_counters: "" // <-- New: 開店カウンター
+};
 let deleteInfo = { type: null, sectionKey: null, staffIndex: null, taskIndex: null };
 let authContext = '';
 
@@ -46,6 +50,12 @@ const closeTimeSlots = generateTimeSlots('22:45', '23:30', 15);
 const openTimeIndexMap = new Map(); openTimeSlots.forEach((t, i) => openTimeIndexMap.set(t, i));
 const openAlbaTimeIndexMap = new Map(); openAlbaTimeSlots.forEach((t, i) => openAlbaTimeIndexMap.set(t, i));
 const closeTimeIndexMap = new Map(); closeTimeSlots.forEach((t, i) => closeTimeIndexMap.set(t, i));
+
+// --- New Staff Grouping for Fixed Tasks ---
+// 社員+早番アルバイト
+window.masterStaffList.employees_alba_early = () => [...window.masterStaffList.employees, ...window.masterStaffList.alba_early];
+// 社員+遅番アルバイト
+window.masterStaffList.employees_alba_late = () => [...window.masterStaffList.employees, ...window.masterStaffList.alba_late];
 
 
 /* =========================================
@@ -189,8 +199,49 @@ const staffRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data'
 const taskDefRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'masters', 'task_data');
 
 window.fetchMasterData = async function() {
-    onSnapshot(staffRef, (s) => { if(s.exists()) { window.masterStaffList = s.data(); if(!document.getElementById("master-modal").classList.contains('hidden')) window.renderMasterStaffLists(); } });
-    onSnapshot(taskDefRef, (s) => { if(s.exists()) { window.specialTasks = s.data().list || []; if(!document.getElementById("master-modal").classList.contains('hidden')) window.renderMasterTaskList(); if(window.refreshCurrentView) window.refreshCurrentView(); } });
+    onSnapshot(staffRef, (s) => { 
+        if(s.exists()) { 
+            window.masterStaffList = s.data(); 
+            // Update the combined lists every time master data changes
+            window.masterStaffList.employees_alba_early = () => [...window.masterStaffList.employees, ...window.masterStaffList.alba_early];
+            window.masterStaffList.employees_alba_late = () => [...window.masterStaffList.employees, ...window.masterStaffList.alba_late];
+            if(!document.getElementById("master-modal").classList.contains('hidden')) window.renderMasterStaffLists(); 
+        } 
+    });
+    // Task data now includes the three new tasks as defaults for the auto-assign logic
+    onSnapshot(taskDefRef, (s) => { 
+        const defaultTasks = [
+            // New tasks for auto-assign logic (Parking & Open Counter)
+            { id: 'TASK_PARKING_EMP', name: '立体（社員）', slots: 2, class: 'task-bar parking-task', type: 'open' },
+            { id: 'TASK_PARKING_ALBA', name: '立駐（アルバイト）', slots: 2, class: 'task-bar parking-task', type: 'open' },
+            { id: 'TASK_OPEN_COUNTER', name: 'カウンター開設準備', slots: 4, class: 'task-bar toolbox-task', type: 'open' },
+            // Existing fixed tasks with updated names/classes
+            { id: 'TASK_MONEY_COUNT', name: '金銭業務', slots: 5, class: 'task-bar money-task', type: 'open' }, // 7:00-8:15 (75min = 5 slots)
+            { id: 'TASK_OPEN_WAREHOUSE', name: '倉庫(開店)', slots: 2, class: 'task-bar toolbox-task', type: 'open' }, // 9:15-9:45 (30min = 2 slots)
+            { id: 'TASK_BRIEFING', name: '朝礼', slots: 1, class: 'task-bar briefing-task', type: 'open' }, // 9:00-9:15 (15min = 1 slot)
+            { id: 'TASK_MONEY_COLLECT', name: '金銭回収', slots: 2, class: 'task-bar money-task', type: 'close' }, // 22:45-23:15 (30min = 2 slots)
+            { id: 'TASK_WAREHOUSE_CLOSE', name: '倉庫整理', slots: 2, class: 'task-bar toolbox-task', type: 'close' }, // 22:45-23:15 (30min = 2 slots)
+            { id: 'TASK_COUNTER_CLOSE', name: 'カウンター業務', slots: 1, class: 'task-bar toolbox-task', type: 'close' }, // 22:45-23:00 (15min = 1 slot)
+            { id: 'TASK_LOCK', name: '施錠・工具箱チェック', slots: 1, class: 'task-bar lock-task', type: 'close' },
+            { id: 'TASK_HANDOFF', name: '引継ぎ・事務所清掃', slots: 1, class: 'task-bar handoff-task', type: 'close' },
+            { id: 'TASK_ALBA_CLOSE', name: '飲み残し・フラッグ確認', slots: 1, class: 'task-bar alba-close-task', type: 'close' },
+            { id: 'TASK_STAFF_15MIN', name: '島上清掃・カード補充', slots: 1, class: 'task-bar staff-15min-task', type: 'close' },
+            { id: 'TASK_FREE', name: '個人業務、自由時間', slots: 1, class: 'task-bar free-task', type: 'both' },
+        ];
+
+        if(s.exists()) { 
+            const fetchedTasks = s.data().list || [];
+            // Merge fetched tasks with defaults, preferring fetched if IDs match
+            const mergedTasks = new Map();
+            [...defaultTasks, ...fetchedTasks].forEach(task => mergedTasks.set(task.id, task));
+            window.specialTasks = Array.from(mergedTasks.values());
+        } else {
+            window.specialTasks = defaultTasks;
+        }
+
+        if(!document.getElementById("master-modal").classList.contains('hidden')) window.renderMasterTaskList(); 
+        if(window.refreshCurrentView) window.refreshCurrentView();
+    });
 };
 
 window.handleDateChange = function(dateString) {
@@ -200,8 +251,10 @@ window.handleDateChange = function(dateString) {
     window.taskDocRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'task_assignments', dateString);
     if (unsubscribeFromTasks) unsubscribeFromTasks();
     unsubscribeFromTasks = onSnapshot(window.taskDocRef, (docSnap) => {
-        if (docSnap.exists()) { window.staffList = { ...window.staffList, ...docSnap.data() }; } 
-        else { window.staffList = { early: [], late: [], closing_employee: [], closing_alba: [], fixed_money_count: "", fixed_open_warehouse: "", fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "" }; }
+        // Updated initial state with new fixed counter key
+        const defaultState = { early: [], late: [], closing_employee: [], closing_alba: [], fixed_money_count: "", fixed_open_warehouse: "", fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "", fixed_open_counters: "" };
+        if (docSnap.exists()) { window.staffList = { ...defaultState, ...docSnap.data() }; } 
+        else { window.staffList = defaultState; }
         if(window.refreshCurrentView) window.refreshCurrentView();
     });
 };
@@ -220,7 +273,11 @@ window.setupInitialView = function() {
 
 window.saveStaffListToFirestore = async function() {
     if (!window.isEditing || !window.taskDocRef) return;
-    try { const cleanData = JSON.parse(JSON.stringify(window.staffList, (key, value) => (value === null || value === undefined) ? "" : value)); await setDoc(window.taskDocRef, cleanData); } catch (e) { console.error(e); }
+    try { 
+        // Remove helper functions before saving
+        const cleanData = JSON.parse(JSON.stringify(window.staffList, (key, value) => (value === null || value === undefined || typeof value === 'function') ? "" : value)); 
+        await setDoc(window.taskDocRef, cleanData); 
+    } catch (e) { console.error(e); }
 };
 
 window.showSubTab = function(tabName) {
@@ -269,14 +326,28 @@ window.checkPassword = () => {
 
 window.openFixedStaffSelect = (k, lk, t) => { 
     if(!window.isEditing)return; 
-    const c = (lk.includes('early')||lk.includes('open')) ? [...window.masterStaffList.employees, ...window.masterStaffList.alba_early] : [...window.masterStaffList.employees, ...window.masterStaffList.alba_late];
+    let candidates = [];
+    if (lk === 'employees') candidates = window.masterStaffList.employees;
+    else if (lk === 'alba_early') candidates = window.masterStaffList.alba_early;
+    else if (lk === 'alba_late') candidates = window.masterStaffList.alba_late;
+    else if (lk === 'employees_alba_early') candidates = window.masterStaffList.employees_alba_early();
+    else if (lk === 'employees_alba_late') candidates = window.masterStaffList.employees_alba_late();
+    
     const mb=document.getElementById('select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="selectFixedStaff('${k}','')">指定なし</div>`; 
-    c.sort().forEach(n=>{mb.innerHTML+=`<div class="select-modal-option ${n===window.staffList[k]?'selected':''}" onclick="selectFixedStaff('${k}','${n}')">${n}</div>`;});
+    candidates.sort().forEach(n=>{mb.innerHTML+=`<div class="select-modal-option ${n===window.staffList[k]?'selected':''}" onclick="selectFixedStaff('${k}','${n}')">${n}</div>`;});
     document.getElementById('select-modal-title').textContent=t; document.getElementById('select-modal').classList.remove('hidden'); 
 };
 window.selectFixedStaff = (k, n) => { window.staffList[k]=n; updateFixedStaffButtons(); saveStaffListToFirestore(); document.getElementById('select-modal').classList.add('hidden'); };
+
 function updateFixedStaffButtons() {
-    const btns = [{ id: 'fixed-money_count-btn', k: 'fixed_money_count' }, { id: 'fixed_open_warehouse-btn', k: 'fixed_open_warehouse' }, { id: 'fixed-money_collect-btn', k: 'fixed_money_collect' }, { id: 'fixed-warehouses-btn', k: 'fixed_warehouses' }, { id: 'fixed-counters-btn', k: 'fixed_counters' }];
+    const btns = [
+        { id: 'fixed-money_count-btn', k: 'fixed_money_count' }, 
+        { id: 'fixed_open_warehouse-btn', k: 'fixed_open_warehouse' }, 
+        { id: 'fixed-open_counters-btn', k: 'fixed_open_counters' }, // <-- New
+        { id: 'fixed-money_collect-btn', k: 'fixed_money_collect' }, 
+        { id: 'fixed-warehouses-btn', k: 'fixed_warehouses' }, 
+        { id: 'fixed-counters-btn', k: 'fixed_counters' }
+    ];
     btns.forEach(i => { const b = document.getElementById(i.id); if(b) { const s=b.querySelector('span'); if(s)s.textContent=window.staffList[i.k]||"選択してください"; b.classList.toggle('placeholder',!window.staffList[i.k]); }});
 }
 
@@ -300,9 +371,14 @@ window.handleChange = (sk,si,ti,f,v) => { window.staffList[sk][si].tasks[ti][f]=
 window.addTask = (sk,si) => { window.staffList[sk][si].tasks.push({start:"",end:"",task:"",remarks:""}); updateStaffLists(); saveStaffListToFirestore(); };
 window.showDeleteModal = (t,sk,si,ti) => { deleteInfo={type:t,sectionKey:sk,staffIndex:si,taskIndex:ti}; document.getElementById('delete-modal-message').textContent=t==='staff'?`「${window.staffList[sk][si].name}」さんを削除？`:"タスクを削除？"; document.getElementById('delete-modal').classList.remove('hidden'); };
 window.cancelDelete = () => document.getElementById('delete-modal').classList.add('hidden');
-window.confirmDelete = () => { const {type,sectionKey,staffIndex,taskIndex}=deleteInfo; if(type==='staff'){ const n=window.staffList[sectionKey][staffIndex].name; window.staffList[sectionKey].splice(staffIndex,1); ['fixed_money_count','fixed_open_warehouse','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(k=>{if(window.staffList[k]===n)window.staffList[k]="";}); }else if(window.staffList[sectionKey][staffIndex].tasks.length>1){window.staffList[sectionKey][staffIndex].tasks.splice(taskIndex,1);} window.cancelDelete(); updateStaffLists(); generateSummaryView(); updateFixedStaffButtons(); saveStaffListToFirestore(); };
+window.confirmDelete = () => { const {type,sectionKey,staffIndex,taskIndex}=deleteInfo; if(type==='staff'){ const n=window.staffList[sectionKey][staffIndex].name; window.staffList[sectionKey].splice(staffIndex,1); ['fixed_money_count','fixed_open_warehouse','fixed_money_collect','fixed_warehouses','fixed_counters','fixed_open_counters'].forEach(k=>{if(window.staffList[k]===n)window.staffList[k]="";}); }else if(window.staffList[sectionKey][staffIndex].tasks.length>1){window.staffList[sectionKey][staffIndex].tasks.splice(taskajima,1);} window.cancelDelete(); updateStaffLists(); generateSummaryView(); updateFixedStaffButtons(); saveStaffListToFirestore(); };
 
-function updateStaffLists() { populate('staff-list-open-early','early','open'); populate('staff-list-open-late','late','open'); populate('staff-list-close-employee','closing_employee','close'); populate('staff-list-close-alba','closing_alba','close'); }
+function updateStaffLists() { 
+    populate('staff-list-open-early','early','open'); 
+    populate('staff-list-open-late','late','open'); 
+    populate('staff-list-close-employee','closing_employee','close'); 
+    populate('staff-list-close-alba','closing_alba','close'); 
+}
 function populate(id,sk,ln){ const c=document.getElementById(id); if(!c)return; c.innerHTML=''; window.staffList[sk].forEach((s,si)=>{ 
     let h=''; const st=s.tasks.sort((a,b)=>(a.start||'99').localeCompare(b.start||'99')); if(st.length===0)st.push({start:"",end:"",task:"",remarks:""});
     st.forEach((t,ti)=>{
@@ -313,9 +389,29 @@ function populate(id,sk,ln){ const c=document.getElementById(id); if(!c)return; 
         h+=`<tr class="edit-row ${ti>0?'border-t-0':''}"><td data-label="スタッフ">${ti===0?`<div class="flex items-center gap-2"><span>${s.name}</span><button onclick="showDeleteModal('staff','${sk}',${si})" class="text-slate-300 hover:text-rose-500 ml-2">×</button></div>`:''}</td><td data-label="開始"><button class="${cls}" onclick="${!f?`openTimeSelect('${sk}',${si},${ti},'start','${ln}')`:''}" ${dis}><span>${t.start||'--'}</span></button></td><td data-label="終了"><button class="${cls}" onclick="${!f?`openTimeSelect('${sk}',${si},${ti},'end','${ln}')`:''}" ${dis}><span>${t.end||'--'}</span></button></td><td data-label="タスク"><button class="${cls}" onclick="${!f?`openTaskSelect('${sk}',${si},${ti},'${ln}')`:''}" ${dis}><span>${t.task||'未選択'}</span></button></td><td data-label="備考"><input type="text" class="w-full bg-slate-50 border border-slate-200 rounded p-1 text-sm" value="${t.remarks||''}" onchange="handleChange('${sk}',${si},${ti},'remarks',this.value)" ${f?'readonly':''}></td><td data-label="操作">${btn}</td></tr>`;
     }); c.innerHTML+=h;
 });}
+
 function generateSummaryView() {
-    const r=(id,l,sl)=>{ const t=[]; l.forEach(s=>s.tasks.forEach(x=>{if(x.task&&!x.task.includes("FREE"))t.push({...x,name:s.name});})); const n=[...new Set(l.map(s=>s.name))].sort(); document.getElementById(`${id}-desktop`).innerHTML=createTable(t,n,sl); document.getElementById(`${id}-mobile`).innerHTML=createList(t,n); };
-    r('summary-open-employee-container',window.staffList.early,openTimeSlots); r('summary-open-alba-container',window.staffList.late,openAlbaTimeSlots); r('summary-close-employee-container',window.staffList.closing_employee,closeTimeSlots); r('summary-close-alba-container',window.staffList.closing_alba,closeTimeSlots);
+    const r=(id,l,sl)=>{ 
+        const t=[]; 
+        l.forEach(s=>s.tasks.forEach(x=>{if(x.task&&!x.task.includes("FREE"))t.push({...x,name:s.name});})); 
+        const n=[...new Set(l.map(s=>s.name))].sort(); 
+        
+        // View Mode
+        document.getElementById(`${id}-desktop`).innerHTML=createTable(t,n,sl); 
+        document.getElementById(`${id}-mobile`).innerHTML=createList(t,n); 
+
+        // Edit Mode (Timeline Preview) - New
+        if(window.isEditing) {
+            const deskEdit = document.getElementById(`${id}-desktop-edit`);
+            const mobEdit = document.getElementById(`${id}-mobile-edit`);
+            if (deskEdit) deskEdit.innerHTML=createTable(t,n,sl); 
+            if (mobEdit) mobEdit.innerHTML=createList(t,n); 
+        }
+    };
+    r('summary-open-employee-container',window.staffList.early,openTimeSlots); 
+    r('summary-open-alba-container',window.staffList.late,openAlbaTimeSlots); 
+    r('summary-close-employee-container',window.staffList.closing_employee,closeTimeSlots); 
+    r('summary-close-alba-container',window.staffList.closing_alba,closeTimeSlots);
 }
 function createTable(t,n,s){
     if(n.length===0)return '<p class="p-8 text-center text-slate-400">スタッフなし</p>';
@@ -350,49 +446,175 @@ window.closeRemarksModal=()=>document.getElementById('remarks-modal').classList.
 function calcTime(t,m){let v=0; t.forEach(x=>{const s=m.get(x.start),e=m.get(x.end);if(s!==undefined&&e!==undefined&&e>s)v+=(e-s);}); return v;}
 function isOverlap(t,s,e,m){for(const x of t){const S=m.get(x.start),E=m.get(x.end);if(S!==undefined&&E!==undefined&&S<e&&E>s)return true;}return false;}
 function findStaff(g,s,e,m){let min=Infinity,tgt=null; const idx=g.map((_,i)=>i).sort(()=>Math.random()-0.5); for(const i of idx){if(isOverlap(g[i].tasks,s,e,m))continue; const v=calcTime(g[i].tasks,m); if(v<min){min=v;tgt={staff:g[i]};}} return tgt;}
-function getTaskByName(name) { return window.specialTasks.find(t => t.name === name) || {name:name, slots:1}; }
+function getTaskByName(name) { return window.specialTasks.find(t => t.name === name) || {name:name, slots:1, class:'task-bar free-task'}; }
+
+// NEW: Pair assignment logic
+function findStaffPair(empGroup, albaGroup, s, e, m) {
+    let minTime = Infinity;
+    let targetPair = null;
+
+    // Filter out already busy staff for the time slot
+    const availableEmpIndices = empGroup.map((e, i) => isOverlap(e.tasks, s, e, m) ? -1 : i).filter(i => i !== -1);
+    const availableAlbaIndices = albaGroup.map((a, i) => isOverlap(a.tasks, s, e, m) ? -1 : i).filter(i => i !== -1);
+
+    // Shuffle the available indices
+    const shuffledEmp = availableEmpIndices.sort(() => Math.random() - 0.5);
+    const shuffledAlba = availableAlbaIndices.sort(() => Math.random() - 0.5);
+
+    for (const empIndex of shuffledEmp) {
+        const emp = empGroup[empIndex];
+        
+        for (const albaIndex of shuffledAlba) {
+            const alba = albaGroup[albaIndex];
+
+            // Calculate current total load for the pair
+            const totalTime = calcTime(emp.tasks, m) + calcTime(alba.tasks, m);
+
+            if (totalTime < minTime) {
+                minTime = totalTime;
+                targetPair = { emp: emp, alba: alba };
+            }
+        }
+    }
+    return targetPair;
+}
 
 window.autoAssignTasks = (sec, list) => {
     const emp=window.staffList[sec==='early'?'early':'closing_employee'], alba=window.staffList[sec==='late'?'late':'closing_alba'], all=[...emp,...alba];
     all.forEach(s=>s.tasks=[]);
+    
+    // Set of fixed staff to exclude from general assignment
+    const fixedStaffs = new Set(); 
+
     if(list==='open'){
-        const t_money = getTaskByName("金銭業務"), t_warehouse = getTaskByName("倉庫(開店)"), t_briefing = getTaskByName("朝礼");
-        const m=emp.find(s=>s.name===window.staffList.fixed_money_count); if(m) m.tasks.push({start:'07:00',end:'08:15',task:t_money.name,remarks:'（固定）'});
-        const w=all.find(s=>s.name===window.staffList.fixed_open_warehouse); if(w) w.tasks.push({start:'09:15',end:'09:45',task:t_warehouse.name,remarks:'（固定）'});
+        const t_money = getTaskByName("金銭業務"), t_warehouse = getTaskByName("倉庫(開店)"), t_briefing = getTaskByName("朝礼"), t_open_counter = getTaskByName("カウンター開設準備");
+        const t_park_emp = getTaskByName("立体（社員）"), t_park_alba = getTaskByName("立駐（アルバイト）"); // NEW PARKING TASKS
+
+        // 1. FIXED ASSIGNMENTS
+        const m = emp.find(s=>s.name===window.staffList.fixed_money_count); 
+        if(m) { m.tasks.push({start:'07:00',end:'08:15',task:t_money.name,remarks:'（固定）'}); fixedStaffs.add(m); }
+
+        const w = all.find(s=>s.name===window.staffList.fixed_open_warehouse); 
+        if(w) { w.tasks.push({start:'09:15',end:'09:45',task:t_warehouse.name,remarks:'（固定）'}); fixedStaffs.add(w); }
+
+        // NEW: Fixed Open Counter (Alba)
+        const c = alba.find(s=>s.name===window.staffList.fixed_open_counters);
+        if(c) { c.tasks.push({start:'09:45',end:'10:00',task:t_open_counter.name,remarks:'（固定）'}); fixedStaffs.add(c); }
+
+        // 2. PAIR ASSIGNMENT (立体/立駐: 2コマ 07:00-07:30) - New Logic
+        // Note: Slot indices are based on openTimeSlots ('07:00' to '10:00')
+        const parkTimeStart = '07:00';
+        const parkTimeEnd = '07:30'; 
+        const parkingSlotStart = openTimeIndexMap.get(parkTimeStart);
+        const parkingSlotEnd = openTimeIndexMap.get(parkTimeEnd); // 07:30 (slot 2)
+        const availableEmp = emp.filter(s => !fixedStaffs.has(s));
+        const availableAlba = alba.filter(s => !fixedStaffs.has(s));
         
-        const rules = [
-            {n:"抽選（準備、片付け）", s:3, g:all, c:2},
-            {n:"外販出し、新聞、岡持", s:1, g:emp.filter(s=>s!==m)},
-            {n:"P台チェック", s:1, g:emp.filter(s=>s!==m)},
-            {n:"販促確認", s:1, g:emp.filter(s=>s!==m)},
-            {n:"全体確認", s:1, g:emp.filter(s=>s!==m)},
-            {n:"P台チェック", s:1, g:alba.filter(s=>s!==m)},
-            {n:"S台チェック(ユニメモ込)", s:1, g:alba.filter(s=>s!==m)},
-            {n:"ローラー交換", s:2, g:alba.filter(s=>s!==m)},
-            {n:"環境整備・5M", s:1, g:alba.filter(s=>s!==m)},
-            {n:"時差島台電落とし", s:1, g:emp.filter(s=>s!==m)},
-            {n:"カウンター開設準備", s:4, g:alba.filter(s=>s!==m)}
+        const pair = findStaffPair(availableEmp, availableAlba, parkingSlotStart, parkingSlotEnd, openTimeIndexMap);
+        if (pair) {
+            pair.emp.tasks.push({ start: parkTimeStart, end: parkTimeEnd, task: t_park_emp.name, remarks: "" });
+            pair.alba.tasks.push({ start: parkTimeStart, end: parkTimeEnd, task: t_park_alba.name, remarks: "" });
+            fixedStaffs.add(pair.emp);
+            fixedStaffs.add(pair.alba);
+        }
+
+        // 3. GENERAL ASSIGNMENTS
+        const availableGeneralEmp = emp.filter(s => !fixedStaffs.has(s));
+        const availableGeneralAlba = alba.filter(s => !fixedStaffs.has(s));
+        
+        // General Rules (Updated to exclude fixed staff)
+        let rules = [
+            {n:"抽選（準備、片付け）", s:3, g:all.filter(s => !fixedStaffs.has(s)), c:2},
+            {n:"外販出し、新聞、岡持", s:1, g:availableGeneralEmp},
+            {n:"P台チェック", s:1, g:availableGeneralEmp},
+            {n:"販促確認", s:1, g:availableGeneralEmp},
+            {n:"全体確認", s:1, g:availableGeneralEmp},
+            {n:"P台チェック", s:1, g:availableGeneralAlba},
+            {n:"S台チェック(ユニメモ込)", s:1, g:availableGeneralAlba},
+            {n:"ローラー交換", s:2, g:availableGeneralAlba},
+            {n:"環境整備・5M", s:1, g:availableGeneralAlba},
+            {n:"時差島台電落とし", s:1, g:availableGeneralEmp},
         ];
         
-        if(!w) rules.push({n:t_warehouse.name, s:2, g:emp, c:1});
-        all.forEach(s=>s.tasks.push({start:'09:00',end:'09:15',task:t_briefing.name,remarks:""}));
+        // Add unfixed tasks to rules
+        if(!w) rules.push({n:t_warehouse.name, s:t_warehouse.slots || 2, g:all.filter(s => !fixedStaffs.has(s)), c:1});
+        if(!c) rules.push({n:t_open_counter.name, s:t_open_counter.slots || 4, g:availableGeneralAlba});
+
+        // Briefing (All staff must attend, regardless of fixed status)
+        all.forEach(s=>s.tasks.push({start:'09:00',end:'09:15',task:t_briefing.name,remarks:s.name === w ? '（固定）' : ""}));
+
+        rules.forEach(r=>{ 
+            for(let k=0;k<(r.c||1);k++){ 
+                for(let i=0; i<openTimeSlots.length - (r.s||1); i++) { // Correct loop boundary
+                    const x=findStaff(r.g, i, i+(r.s||1), openTimeIndexMap); 
+                    if(x) { 
+                        x.staff.tasks.push({start:openTimeSlots[i],end:openTimeSlots[i+(r.s||1)],task:r.n,remarks:""}); 
+                        break; 
+                    } 
+                } 
+            } 
+        });
         
-        rules.forEach(r=>{ for(let k=0;k<(r.c||1);k++){ for(let i=0; i<10; i++) { const x=findStaff(r.g, i, i+(r.s||1), openTimeIndexMap); if(x) { x.staff.tasks.push({start:openTimeSlots[i],end:openTimeSlots[i+(r.s||1)],task:r.n,remarks:""}); break; } } } });
         fillFree(all,openTimeSlots,openTimeIndexMap,emp);
-    } else {
+
+    } else { // Close tasks
         const t_col = getTaskByName("金銭回収"), t_ware = getTaskByName("倉庫整理"), t_cnt = getTaskByName("カウンター業務");
-        const fix=[{k:'fixed_money_collect',t:t_col,s:'22:45',e:'23:15',g:emp},{k:'fixed_warehouses',t:t_ware,s:'22:45',e:'23:15',g:all},{k:'fixed_counters',t:t_cnt,s:'22:45',e:'23:00',g:all}];
-        const as=new Set(); fix.forEach(f=>{const s=f.g.find(p=>p.name===window.staffList[f.k]); if(s){s.tasks.push({start:f.s,end:f.e,task:f.t.name,remarks:'（固定）'}); as.add(s);}});
-        const rules = [{n:"施錠・工具箱チェック", s:1, g:emp.filter(s=>!as.has(s))}, {n:"引継ぎ・事務所清掃", s:1, g:emp.filter(s=>!as.has(s))}, {n:"飲み残し・フラッグ確認", s:1, g:alba.filter(s=>!as.has(s))}, {n:"島上清掃・カード補充", s:1, g:alba.filter(s=>!as.has(s))}];
-        fix.forEach(f=>{ if(!window.staffList[f.k]) rules.push({n:f.t.name, s:f.t.slots || 2, g:(f.t.name===t_col.name?emp:all.filter(s=>!as.has(s)))}); });
-        rules.forEach(r=>{ for(let k=0;k<=closeTimeSlots.length-(r.s||1);k++){ const x=findStaff(r.g,k,k+(r.s||1),closeTimeIndexMap); if(x){x.staff.tasks.push({start:closeTimeSlots[k],end:closeTimeSlots[k+(r.s||1)],task:r.n,remarks:""}); break;} } });
+        const fix=[
+            {k:'fixed_money_collect',t:t_col,s:'22:45',e:'23:15',g:emp},
+            {k:'fixed_warehouses',t:t_ware,s:'22:45',e:'23:15',g:all},
+            {k:'fixed_counters',t:t_cnt,s:'22:45',e:'23:00',g:all}
+        ];
+        
+        fix.forEach(f=>{
+            const s=all.find(p=>p.name===window.staffList[f.k]); 
+            if(s){
+                s.tasks.push({start:f.s,end:f.e,task:f.t.name,remarks:'（固定）'}); 
+                fixedStaffs.add(s);
+            }
+        });
+
+        const availableGeneralEmp = emp.filter(s => !fixedStaffs.has(s));
+        const availableGeneralAlba = alba.filter(s => !fixedStaffs.has(s));
+
+        let rules = [
+            {n:"施錠・工具箱チェック", s:1, g:availableGeneralEmp}, 
+            {n:"引継ぎ・事務所清掃", s:1, g:availableGeneralEmp}, 
+            {n:"飲み残し・フラッグ確認", s:1, g:availableGeneralAlba}, 
+            {n:"島上清掃・カード補充", s:1, g:availableGeneralAlba}
+        ];
+        
+        // Add unfixed tasks to rules
+        fix.forEach(f=>{ 
+            if(!window.staffList[f.k]) {
+                const group = f.k==='fixed_money_collect' ? availableGeneralEmp : all.filter(s=>!fixedStaffs.has(s));
+                rules.push({n:f.t.name, s:f.t.slots, g:group}); 
+            }
+        });
+        
+        rules.forEach(r=>{ 
+            for(let k=0;k<=closeTimeSlots.length-(r.s||1);k++){ 
+                const x=findStaff(r.g,k,k+(r.s||1),closeTimeIndexMap); 
+                if(x){
+                    x.staff.tasks.push({start:closeTimeSlots[k],end:closeTimeSlots[k+(r.s||1)],task:r.n,remarks:""}); 
+                    break;
+                } 
+            } 
+        });
         fillFree(all,closeTimeSlots,closeTimeIndexMap,[]);
     }
     updateStaffLists(); generateSummaryView(); saveStaffListToFirestore();
 };
+
 function fillFree(all,sl,m,emp){
-    const t_free = getTaskByName("個人業務、自由時間") || {name:"FREE"};
-    all.forEach(s=>{ const st=emp.includes(s)?'07:00':'09:00'; const si=m.get(st)||0; for(let i=si;i<sl.length-1;i++){if(!isOverlap(s.tasks,i,i+1,m))s.tasks.push({start:sl[i],end:sl[i+1],task:t_free.name,remarks:""});} s.tasks.sort((a,b)=>(a.start||"").localeCompare(b.start||"")); });
+    const t_free = getTaskByName("個人業務、自由時間");
+    all.forEach(s=>{ 
+        const st=emp.includes(s)?'07:00':'09:00'; 
+        const si=m.get(st)||0; 
+        for(let i=si;i<sl.length-1;i++){
+            if(!isOverlap(s.tasks,i,i+1,m))s.tasks.push({start:sl[i],end:sl[i+1],task:t_free.name,remarks:""});
+        } 
+        s.tasks.sort((a,b)=>(a.start||"").localeCompare(b.start||"")); 
+    });
 }
 
 window.openMasterModal = () => { document.getElementById('master-modal').classList.remove('hidden'); window.renderMasterStaffLists(); window.renderMasterTaskList(); };
@@ -421,10 +643,14 @@ window.addMasterTask = async () => {
     const name = document.getElementById('new-task-name').value.trim(); const slots = parseInt(document.getElementById('new-task-slots').value); const color = document.getElementById('new-task-color').value; const type = document.getElementById('new-task-type').value;
     if(!name) return alert("タスク名を入力");
     const newTask = { id: 'TASK_' + Date.now(), name, slots, class: `task-bar ${color}`, type };
-    await setDoc(taskDefRef, { list: [...window.specialTasks, newTask] });
+    await setDoc(taskDefRef, { list: [...window.specialTasks.filter(t => !t.id.startsWith('TASK_')), newTask] }); // Filter out defaults to only store custom tasks
     document.getElementById('new-task-name').value = '';
 };
-window.deleteMasterTask = async (id) => { if(!confirm("削除しますか？")) return; await setDoc(taskDefRef, { list: window.specialTasks.filter(t => t.id !== id) }); };
+window.deleteMasterTask = async (id) => { 
+    if(id.startsWith('TASK_')) return alert('このタスクは自動割り振りで使用されるため削除できません。');
+    if(!confirm("削除しますか？")) return; 
+    await setDoc(taskDefRef, { list: window.specialTasks.filter(t => t.id !== id && !t.id.startsWith('TASK_')) }); 
+};
 
 window.addEventListener("DOMContentLoaded", () => {
     window.fetchCustomerData(); window.subscribeQSC(); window.fetchMasterData();
