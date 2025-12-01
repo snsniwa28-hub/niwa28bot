@@ -124,7 +124,7 @@ window.openNewOpening = function() {
             const li = document.createElement("li"); 
             li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm cursor-pointer hover:bg-slate-50 transition";
             
-            // 安全なマッチング処理 (ここでマッチングを確定させる)
+            // 安全なマッチング処理
             const norm = (s) => (s||"").replace(/\s+/g, '').toLowerCase();
             const targetName = norm(item.name);
             const matched = allMachines.find(m => m && m.name && (norm(m.name).includes(targetName) || targetName.includes(norm(m.name))));
@@ -132,7 +132,7 @@ window.openNewOpening = function() {
 
             li.innerHTML = `<div class="flex flex-col overflow-hidden mr-2 pointer-events-none"><span class="font-bold text-slate-700 truncate text-sm sm:text-base">${item.name}</span>${hasDetail?`<span class="text-xs text-indigo-500 font-bold mt-1">✨ 詳細あり</span>`:`<span class="text-xs text-slate-400 font-medium mt-1">情報なし</span>`}</div><span class="text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0 pointer-events-none">${item.count}台</span>`;
             
-            // クリックリスナーを直接登録 (最も確実な方法)
+            // クリックリスナーを直接登録
             li.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if(hasDetail) {
