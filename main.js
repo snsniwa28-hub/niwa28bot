@@ -99,7 +99,7 @@ window.renderToday = function() {
     document.getElementById("currentDate").textContent = `${today.getFullYear()}.${m + 1}.${d}`;
 };
 
-// 【改修】新装開店リスト：カテゴリ分けロジック
+// 【新装開店リスト：区分けロジック実装】
 window.openNewOpening = function() {
     const container = document.getElementById("newOpeningInfo");
     container.innerHTML = "";
@@ -252,7 +252,6 @@ window.showSubTab = function(tabName) {
 // 【改修】編集モードでもタイムラインを常時表示
 window.setEditingMode = function(isEdit) {
     window.isEditing = isEdit;
-    // hidden切り替えを削除
     document.getElementById('edit-mode-container').classList.toggle('hidden', !isEdit);
     const b = document.getElementById('edit-mode-button'); const m = document.getElementById('master-settings-button');
     if(b){ b.textContent = isEdit?"閲覧モードに戻る":"管理者編集"; b.className = isEdit?"text-xs font-bold text-white bg-indigo-600 px-4 py-2 rounded-full shadow-md":"text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-full"; }
@@ -423,7 +422,7 @@ function findPairStaff(empList, albaList, startIdx, endIdx, map) {
     return null;
 }
 
-// 【改修】自動割り振りロジックの厳格化
+// 【修正】自動割り振りロジック (タスク名をFirebaseのマスタから読み込むように変更)
 window.autoAssignTasks = (mode, timeZone) => {
     // timeZone: 'open' | 'close'
     const empList = window.staffList[timeZone === 'open' ? 'early' : 'closing_employee'];
@@ -447,21 +446,32 @@ window.autoAssignTasks = (mode, timeZone) => {
             if (s) s.tasks.push({ start: "09:15", end: "10:00", task: "抽選（準備、片付け）", remarks: "" });
         }
 
-        // Loop Tasks: 1回ずつ埋める
-        const TASKS_EMP = ["外販出し", "新聞・岡持", "P台チェック", "販促確認", "全体確認", "時差島台電落とし"];
-        const TASKS_ALBA = ["P台チェック", "S台チェック(ユニメモ込)", "ローラー交換", "環境整備・5M", "カウンター開設準備"];
-
-        TASKS_EMP.forEach(name => {
-            for (let t=0; t < timeSlots.length-1; t++) {
-                const s = findAvailableStaff(empList, t, t+1, timeMap);
-                if (s) { s.tasks.push({ start: timeSlots[t], end: timeSlots[t+1], task: name, remarks: "" }); break; }
-            }
-        });
-        TASKS_ALBA.forEach(name => {
-            const startLimit = timeMap.get("09:15");
-            for (let t=startLimit; t < timeSlots.length-1; t++) {
-                const s = findAvailableStaff(albaList, t, t+1, timeMap);
-                if (s) { s.tasks.push({ start: timeSlots[t], end: timeSlots[t+1], task: name, remarks: "" }); break; }
+        // 既存タスクリスト(window.specialTasks)を使って埋める
+        // Firebaseにあるタスクを順番に1回ずつ割り当てる (typeがbothまたはopenのもの)
+        const availableTasks = window.specialTasks.filter(t => t.type === 'both' || t.type === 'open');
+        
+        availableTasks.forEach(taskDef => {
+            // 時間コマ数
+            const slots = taskDef.slots || 1;
+            
+            // 全時間枠を走査して空いているスタッフに入れる
+            // 早番の場合、バイトは9:15以降に制限する
+            const startLimit = timeMap.get("07:00");
+            
+            for (let t = startLimit; t < timeSlots.length - slots; t++) {
+                // その時間に空いているスタッフを探す
+                // まずはリスト全体から
+                let candidates = allStaff;
+                // 時間が9:00前の場合は社員のみ
+                if (t < timeMap.get("09:00")) {
+                    candidates = empList;
+                }
+                
+                const s = findAvailableStaff(candidates, t, t + slots, timeMap);
+                if (s) {
+                    s.tasks.push({ start: timeSlots[t], end: timeSlots[t+slots], task: taskDef.name, remarks: "" });
+                    break; // このタスクは1回割り振ったら終了
+                }
             }
         });
 
@@ -476,20 +486,22 @@ window.autoAssignTasks = (mode, timeZone) => {
             }
         }
         
-        // Loop Tasks
-        const REQ = [
-            {n:"施錠・工具箱チェック", g:empList}, {n:"引継ぎ・事務所清掃", g:empList},
-            {n:"飲み残し・フラッグ確認", g:albaList}, {n:"島上清掃・カード補充", g:albaList}
-        ];
-        REQ.forEach(r => {
-            for (let t=0; t < timeSlots.length-1; t++) {
-                const s = findAvailableStaff(r.g, t, t+1, timeMap);
-                if (s) { s.tasks.push({ start: timeSlots[t], end: timeSlots[t+1], task: r.n, remarks: "" }); break; }
+        // Firebaseにあるタスクを使って埋める (typeがbothまたはcloseのもの)
+        const availableTasks = window.specialTasks.filter(t => t.type === 'both' || t.type === 'close');
+        
+        availableTasks.forEach(taskDef => {
+            const slots = taskDef.slots || 1;
+            for (let t = 0; t < timeSlots.length - slots; t++) {
+                const s = findAvailableStaff(allStaff, t, t + slots, timeMap);
+                if (s) {
+                    s.tasks.push({ start: timeSlots[t], end: timeSlots[t+slots], task: taskDef.name, remarks: "" });
+                    break;
+                }
             }
         });
     }
 
-    // Fill Free
+    // Fill Free (ホール巡回)
     allStaff.forEach(s => {
         s.tasks.sort((a,b)=>(a.start||"").localeCompare(b.start||""));
         const startTime = (timeZone==='open' && albaList.includes(s)) ? timeMap.get("09:15") : 0;
