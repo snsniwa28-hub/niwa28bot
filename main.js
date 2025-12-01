@@ -23,12 +23,7 @@ window.specialTasks = [];
 window.isEditing = false;
 const EDIT_PASSWORD = "admin";
 window.currentDate = '';
-window.staffList = { 
-    early: [], late: [], closing_employee: [], closing_alba: [], 
-    fixed_money_count: "", fixed_open_warehouse: "", 
-    fixed_open_counter: "", // ★ 修正: 早番カウンター固定担当者キーを追加
-    fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "" 
-};
+window.staffList = { early: [], late: [], closing_employee: [], closing_alba: [], fixed_money_count: "", fixed_open_warehouse: "", fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "" };
 let deleteInfo = { type: null, sectionKey: null, staffIndex: null, taskIndex: null };
 let authContext = '';
 
@@ -206,15 +201,7 @@ window.handleDateChange = function(dateString) {
     if (unsubscribeFromTasks) unsubscribeFromTasks();
     unsubscribeFromTasks = onSnapshot(window.taskDocRef, (docSnap) => {
         if (docSnap.exists()) { window.staffList = { ...window.staffList, ...docSnap.data() }; } 
-        else { 
-            // ★ 修正: fixed_open_counter を初期値に追加
-            window.staffList = { 
-                early: [], late: [], closing_employee: [], closing_alba: [], 
-                fixed_money_count: "", fixed_open_warehouse: "", 
-                fixed_open_counter: "", // ★ 追加
-                fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "" 
-            }; 
-        }
+        else { window.staffList = { early: [], late: [], closing_employee: [], closing_alba: [], fixed_money_count: "", fixed_open_warehouse: "", fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "" }; }
         if(window.refreshCurrentView) window.refreshCurrentView();
     });
 };
@@ -242,8 +229,8 @@ window.showSubTab = function(tabName) {
     document.getElementById('edit-content-close').classList.toggle('hidden', isOpen);
     document.getElementById('view-content-open').classList.toggle('hidden', !isOpen);
     document.getElementById('view-content-close').classList.toggle('hidden', isOpen);
-    document.getElementById('tab-open').className = isOpen ? "px-6 py-2.5 rounded-lg text-sm font-bold transition-all bg-white text-indigo-600 shadow-sm" : "px-6 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700";
-    document.getElementById('tab-close').className = !isOpen ? "px-6 py-2.5 rounded-lg text-sm font-bold transition-all bg-white text-indigo-600 shadow-sm" : "px-6 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700";
+    document.getElementById('tab-open').className = isOpen ? "px-6 py-2.5 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm" : "px-6 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700";
+    document.getElementById('tab-close').className = !isOpen ? "px-6 py-2.5 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm" : "px-6 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700";
 };
 
 window.setEditingMode = function(isEdit) {
@@ -289,14 +276,7 @@ window.openFixedStaffSelect = (k, lk, t) => {
 };
 window.selectFixedStaff = (k, n) => { window.staffList[k]=n; updateFixedStaffButtons(); saveStaffListToFirestore(); document.getElementById('select-modal').classList.add('hidden'); };
 function updateFixedStaffButtons() {
-    const btns = [
-        { id: 'fixed-money_count-btn', k: 'fixed_money_count' }, 
-        { id: 'fixed_open_warehouse-btn', k: 'fixed_open_warehouse' }, 
-        { id: 'fixed-open_counter-btn', k: 'fixed_open_counter' }, // ★ 修正: 追加
-        { id: 'fixed-money_collect-btn', k: 'fixed_money_collect' }, 
-        { id: 'fixed-warehouses-btn', k: 'fixed_warehouses' }, 
-        { id: 'fixed-counters-btn', k: 'fixed_counters' }
-    ];
+    const btns = [{ id: 'fixed-money_count-btn', k: 'fixed_money_count' }, { id: 'fixed_open_warehouse-btn', k: 'fixed_open_warehouse' }, { id: 'fixed-money_collect-btn', k: 'fixed_money_collect' }, { id: 'fixed-warehouses-btn', k: 'fixed_warehouses' }, { id: 'fixed-counters-btn', k: 'fixed_counters' }];
     btns.forEach(i => { const b = document.getElementById(i.id); if(b) { const s=b.querySelector('span'); if(s)s.textContent=window.staffList[i.k]||"選択してください"; b.classList.toggle('placeholder',!window.staffList[i.k]); }});
 }
 
@@ -320,7 +300,7 @@ window.handleChange = (sk,si,ti,f,v) => { window.staffList[sk][si].tasks[ti][f]=
 window.addTask = (sk,si) => { window.staffList[sk][si].tasks.push({start:"",end:"",task:"",remarks:""}); updateStaffLists(); saveStaffListToFirestore(); };
 window.showDeleteModal = (t,sk,si,ti) => { deleteInfo={type:t,sectionKey:sk,staffIndex:si,taskIndex:ti}; document.getElementById('delete-modal-message').textContent=t==='staff'?`「${window.staffList[sk][si].name}」さんを削除？`:"タスクを削除？"; document.getElementById('delete-modal').classList.remove('hidden'); };
 window.cancelDelete = () => document.getElementById('delete-modal').classList.add('hidden');
-window.confirmDelete = () => { const {type,sectionKey,staffIndex,taskIndex}=deleteInfo; if(type==='staff'){ const n=window.staffList[sectionKey][staffIndex].name; window.staffList[sectionKey].splice(staffIndex,1); ['fixed_money_count','fixed_open_warehouse','fixed_open_counter','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(k=>{if(window.staffList[k]===n)window.staffList[k]="";}); }else if(window.staffList[sectionKey][staffIndex].tasks.length>1){window.staffList[sectionKey][staffIndex].tasks.splice(taskIndex,1);} window.cancelDelete(); updateStaffLists(); generateSummaryView(); updateFixedStaffButtons(); saveStaffListToFirestore(); };
+window.confirmDelete = () => { const {type,sectionKey,staffIndex,taskIndex}=deleteInfo; if(type==='staff'){ const n=window.staffList[sectionKey][staffIndex].name; window.staffList[sectionKey].splice(staffIndex,1); ['fixed_money_count','fixed_open_warehouse','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(k=>{if(window.staffList[k]===n)window.staffList[k]="";}); }else if(window.staffList[sectionKey][staffIndex].tasks.length>1){window.staffList[sectionKey][staffIndex].tasks.splice(taskIndex,1);} window.cancelDelete(); updateStaffLists(); generateSummaryView(); updateFixedStaffButtons(); saveStaffListToFirestore(); };
 
 function updateStaffLists() { populate('staff-list-open-early','early','open'); populate('staff-list-open-late','late','open'); populate('staff-list-close-employee','closing_employee','close'); populate('staff-list-close-alba','closing_alba','close'); }
 function populate(id,sk,ln){ const c=document.getElementById(id); if(!c)return; c.innerHTML=''; window.staffList[sk].forEach((s,si)=>{ 
@@ -334,26 +314,8 @@ function populate(id,sk,ln){ const c=document.getElementById(id); if(!c)return; 
     }); c.innerHTML+=h;
 });}
 function generateSummaryView() {
-    const r=(id,l,sl)=>{ 
-        const t=[]; 
-        l.forEach(s=>s.tasks.forEach(x=>{if(x.task&&!x.task.includes("FREE"))t.push({...x,name:s.name});})); 
-        const n=[...new Set(l.map(s=>s.name))].sort(); 
-        
-        // 閲覧モードのコンテナに表示
-        document.getElementById(`${id}-desktop`).innerHTML=createTable(t,n,sl); 
-        document.getElementById(`${id}-mobile`).innerHTML=createList(t,n); 
-        
-        // ★ 修正: 編集モード (Edit Mode) のコンテナにも表示を追加
-        const editDesktop = document.getElementById(`edit-${id}-desktop`);
-        const editMobile = document.getElementById(`edit-${id}-mobile`);
-        if (editDesktop) editDesktop.innerHTML = createTable(t,n,sl);
-        if (editMobile) editMobile.innerHTML = createList(t,n);
-    };
-    
-    r('summary-open-employee-container',window.staffList.early,openTimeSlots); 
-    r('summary-open-alba-container',window.staffList.late,openAlbaTimeSlots); 
-    r('summary-close-employee-container',window.staffList.closing_employee,closeTimeSlots); 
-    r('summary-close-alba-container',window.staffList.closing_alba,closeTimeSlots);
+    const r=(id,l,sl)=>{ const t=[]; l.forEach(s=>s.tasks.forEach(x=>{if(x.task&&!x.task.includes("FREE"))t.push({...x,name:s.name});})); const n=[...new Set(l.map(s=>s.name))].sort(); document.getElementById(`${id}-desktop`).innerHTML=createTable(t,n,sl); document.getElementById(`${id}-mobile`).innerHTML=createList(t,n); };
+    r('summary-open-employee-container',window.staffList.early,openTimeSlots); r('summary-open-alba-container',window.staffList.late,openAlbaTimeSlots); r('summary-close-employee-container',window.staffList.closing_employee,closeTimeSlots); r('summary-close-alba-container',window.staffList.closing_alba,closeTimeSlots);
 }
 function createTable(t,n,s){
     if(n.length===0)return '<p class="p-8 text-center text-slate-400">スタッフなし</p>';
@@ -376,7 +338,7 @@ function createList(t,n){
     if(n.length===0)return'<p class="text-center text-slate-400">なし</p>';
     let h='<div class="space-y-4">'; n.forEach(name=>{
         const st=t.filter(x=>x.name===name).sort((a,b)=>a.start.localeCompare(b.start));
-        h+=`<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="bg-slate-50 px-4 py-2 font-bold text-slate-700 border-b border-slate-100 flex justify-between"><span>${name}</span><span class="text-xs bg-white px-2 py-1 rounded border">${st.length}</div><div class="p-2 space-y-2">`;
+        h+=`<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="bg-slate-50 px-4 py-2 font-bold text-slate-700 border-b border-slate-100 flex justify-between"><span>${name}</span><span class="text-xs bg-white px-2 py-1 rounded border">${st.length}</span></div><div class="p-2 space-y-2">`;
         if(st.length===0)h+='<div class="text-center text-xs text-slate-400">タスクなし</div>';
         st.forEach(x=>{ const taskConfig = window.specialTasks.find(v=>v.name===x.task) || {class:'free-task'}; h+=`<div class="task-bar relative top-0 left-0 w-full h-auto block p-2 ${taskConfig.class}"><div class="flex justify-between"><span>${x.task}</span><span class="opacity-70 text-xs">${x.start}-${x.end}</span></div>${x.remarks?`<div class="text-xs mt-1 border-t border-black/10 pt-1">${x.remarks}</div>`:''}</div>`; });
         h+='</div></div>';
@@ -393,141 +355,45 @@ function getTaskByName(name) { return window.specialTasks.find(t => t.name === n
 window.autoAssignTasks = (sec, list) => {
     const emp=window.staffList[sec==='early'?'early':'closing_employee'], alba=window.staffList[sec==='late'?'late':'closing_alba'], all=[...emp,...alba];
     all.forEach(s=>s.tasks=[]);
-    
-    // =========================================================================================
-    // ★ 開店作業 (OPEN) のロジック修正 (固定タスク反映、カウンター優先、清掃空き時間割り当て) ★
-    // =========================================================================================
     if(list==='open'){
         const t_money = getTaskByName("金銭業務"), t_warehouse = getTaskByName("倉庫(開店)"), t_briefing = getTaskByName("朝礼");
-        const t_counter = getTaskByName("カウンター開設準備");
+        const m=emp.find(s=>s.name===window.staffList.fixed_money_count); if(m) m.tasks.push({start:'07:00',end:'08:15',task:t_money.name,remarks:'（固定）'});
+        const w=all.find(s=>s.name===window.staffList.fixed_open_warehouse); if(w) w.tasks.push({start:'09:15',end:'09:45',task:t_warehouse.name,remarks:'（固定）'});
         
-        // 1. 固定タスクの割り当て (スタッフ検索ロジックを修正)
-        const fixedStaffs = new Set();
-        
-        const m_staff=all.find(s=>s.name===window.staffList.fixed_money_count); 
-        if(m_staff) {m_staff.tasks.push({start:'07:00',end:'08:15',task:t_money.name,remarks:'（固定）'}); fixedStaffs.add(m_staff.name);}
-        
-        const w_staff=all.find(s=>s.name===window.staffList.fixed_open_warehouse); 
-        if(w_staff) {w_staff.tasks.push({start:'09:15',end:'09:45',task:t_warehouse.name,remarks:'（固定）'}); fixedStaffs.add(w_staff.name);}
-        
-        const c_staff=all.find(s=>s.name===window.staffList.fixed_open_counter); 
-        // ★ カウンター開設準備の固定割り当て (4コマ)
-        if(c_staff) {c_staff.tasks.push({start:'09:00',end:'10:00',task:t_counter.name,remarks:'（固定）'}); fixedStaffs.add(c_staff.name);}
-        
-        // 2. 通常タスクのルール定義
         const rules = [
-            // ★ カウンター開設準備を最優先で割り当て（固定担当者なしの場合）- 確実に4コマ確保
-            {n:t_counter.name, s:t_counter.slots, g:alba.filter(s=>!fixedStaffs.has(s.name)), c:1}, 
-            
-            {n:"抽選（準備、片付け）", s:3, g:all.filter(s => !fixedStaffs.has(s.name)), c:2}, 
-
-            {n:"外販出し、新聞、岡持", s:1, g:emp.filter(s=>!fixedStaffs.has(s.name))},
-            {n:"販促確認", s:1, g:emp.filter(s=>!fixedStaffs.has(s.name))},
-            {n:"全体確認", s:1, g:emp.filter(s=>!fixedStaffs.has(s.name))},
-            {n:"P台チェック", s:1, g:alba.filter(s=>!fixedStaffs.has(s.name))},
-            {n:"S台チェック(ユニメモ込)", s:1, g:alba.filter(s=>!fixedStaffs.has(s.name))},
-            {n:"ローラー交換", s:2, g:alba.filter(s=>!fixedStaffs.has(s.name))},
-            {n:"環境整備・5M", s:1, g:alba.filter(s=>!fixedStaffs.has(s.name))},
-            {n:"時差島台電落とし", s:1, g:emp.filter(s=>!fixedStaffs.has(s.name))},
+            {n:"抽選（準備、片付け）", s:3, g:all, c:2},
+            {n:"外販出し、新聞、岡持", s:1, g:emp.filter(s=>s!==m)},
+            {n:"P台チェック", s:1, g:emp.filter(s=>s!==m)},
+            {n:"販促確認", s:1, g:emp.filter(s=>s!==m)},
+            {n:"全体確認", s:1, g:emp.filter(s=>s!==m)},
+            {n:"P台チェック", s:1, g:alba.filter(s=>s!==m)},
+            {n:"S台チェック(ユニメモ込)", s:1, g:alba.filter(s=>s!==m)},
+            {n:"ローラー交換", s:2, g:alba.filter(s=>s!==m)},
+            {n:"環境整備・5M", s:1, g:alba.filter(s=>s!==m)},
+            {n:"時差島台電落とし", s:1, g:emp.filter(s=>s!==m)},
+            {n:"カウンター開設準備", s:4, g:alba.filter(s=>s!==m)}
         ];
         
-        // 朝礼の割り当て
+        if(!w) rules.push({n:t_warehouse.name, s:2, g:emp, c:1});
         all.forEach(s=>s.tasks.push({start:'09:00',end:'09:15',task:t_briefing.name,remarks:""}));
         
-        // 3. 通常タスクの割り当て実行
-        rules.forEach(r=>{ for(let k=0;k<(r.c||1);k++){ for(let i=0; i<openTimeSlots.length-r.s; i++) { const x=findStaff(r.g, i, i+(r.s||1), openTimeIndexMap); if(x) { x.staff.tasks.push({start:openTimeSlots[i],end:openTimeSlots[i+(r.s||1)],task:r.n,remarks:""}); break; } } } });
-
-        // 4. ★ 島上・イーゼル清掃の空き時間割り当て（余裕がある場合のみ）★
-        const t_clean = getTaskByName("島上・イーゼル清掃");
-        const albaCandidatesClean = alba.filter(s=>!fixedStaffs.has(s.name));
-        
-        // 09:00-10:00 のスロットを対象に、空いているアルバイト全員に1コマずつ清掃を入れる
-        for(let i = 0; i < openAlbaTimeSlots.length - 1; i++) {
-            const startSlotIndex = openTimeIndexMap.get(openAlbaTimeSlots[i]); 
-            const endSlotIndex = startSlotIndex + 1; // 1コマ
-            
-            // i番目のスロットが空いていて、かつタスク負荷が最も低いアルバイトに割り当てる
-            const staffToAssign = findStaff(albaCandidatesClean, startSlotIndex, endSlotIndex, openTimeIndexMap);
-            
-            if (staffToAssign) {
-                 staffToAssign.staff.tasks.push({
-                    start: openAlbaTimeSlots[i],
-                    end: openAlbaTimeSlots[i + 1],
-                    task: t_clean.name,
-                    remarks: "余裕時間清掃"
-                });
-            }
-        }
-
-        // 5. 完全に残った空き時間に FREE を割り当て
+        rules.forEach(r=>{ for(let k=0;k<(r.c||1);k++){ for(let i=0; i<10; i++) { const x=findStaff(r.g, i, i+(r.s||1), openTimeIndexMap); if(x) { x.staff.tasks.push({start:openTimeSlots[i],end:openTimeSlots[i+(r.s||1)],task:r.n,remarks:""}); break; } } } });
         fillFree(all,openTimeSlots,openTimeIndexMap,emp);
-    } 
-    
-    // =========================================================================================
-    // ★ 閉店作業 (CLOSE) のロジック修正 (固定タスク反映、立駐ペアリング) ★
-    // =========================================================================================
-    else {
+    } else {
         const t_col = getTaskByName("金銭回収"), t_ware = getTaskByName("倉庫整理"), t_cnt = getTaskByName("カウンター業務");
-        const fix=[{k:'fixed_money_collect',t:t_col,s:'22:45',e:'23:15',g:emp},{k:'fixed_warehouses',t:t_ware,s:'22:45',e:'23:15',g:all},{k:'fixed-counters',t:t_cnt,s:'22:45',e:'23:00',g:all}];
-        
-        // 1. 固定タスクの割り当て (スタッフ検索ロジックを修正)
-        const fixedStaffs = new Set();
-        fix.forEach(f=>{
-            const s_staff = all.find(p=>p.name===window.staffList[f.k]);
-            if(s_staff) {
-                s_staff.tasks.push({start:f.s,end:f.e,task:f.t.name,remarks:'（固定）'});
-                fixedStaffs.add(s_staff.name);
-            }
-        });
-        
-        // 2. ★ 立駐ペア割り当てロジック ★
-        const employeeCandidates = emp.filter(s=>!fixedStaffs.has(s.name));
-        const albaCandidates = alba.filter(s=>!fixedStaffs.has(s.name));
-        const t_park_emp = getTaskByName("立駐（社員）");
-        const t_park_alba = getTaskByName("立駐（アルバイト）");
-        
-        for(let i = 0; i < closeTimeSlots.length - 1; i++) {
-            const startSlot = i; const endSlot = i + 1; // 1コマタスク
-            
-            // 1. そのスロットが空いている社員候補を探す
-            const availableEmp = findStaff(employeeCandidates, startSlot, endSlot, closeTimeIndexMap);
-            
-            if (availableEmp) {
-                // 2. そのスロットが空いているアルバイト候補を探す
-                const availableAlba = findStaff(albaCandidates, startSlot, endSlot, closeTimeIndexMap);
-                
-                if (availableAlba) {
-                    // 3. ペアが見つかったので両方に割り当て
-                    const startTime = closeTimeSlots[startSlot];
-                    const endTime = closeTimeSlots[endSlot];
-
-                    availableEmp.staff.tasks.push({start:startTime, end:endTime, task:t_park_emp.name, remarks:"ペア立駐"});
-                    availableAlba.staff.tasks.push({start:startTime, end:endTime, task:t_park_alba.name, remarks:"ペア立駐"});
-                    
-                    break; // 最も早いスロットで見つかったら終了
-                }
-            }
-        }
-        
-        // 3. 通常タスクのルール定義 (立駐は除外)
-        const rules = [
-            {n:"施錠・工具箱チェック", s:1, g:emp.filter(s=>!fixedStaffs.has(s.name))}, 
-            {n:"引継ぎ・事務所清掃", s:1, g:emp.filter(s=>!fixedStaffs.has(s.name))}, 
-            {n:"飲み残し・フラッグ確認", s:1, g:alba.filter(s=>!fixedStaffs.has(s.name))}, 
-            {n:"島上清掃・カード補充", s:1, g:alba.filter(s=>!fixedStaffs.has(s.name))},
-            // 固定担当者がいない場合のフォールバックルール (既存)
-            {n:t_col.name, s:t_col.slots || 2, g:emp.filter(s=>!fixedStaffs.has(s.name))},
-            {n:t_ware.name, s:t_ware.slots || 2, g:all.filter(s=>!fixedStaffs.has(s.name))},
-            {n:t_cnt.name, s:t_cnt.slots || 1, g:all.filter(s=>!fixedStaffs.has(s.name))}
-        ];
-        
-        rules.forEach(r=>{ for(let k=0;k<(r.c||1);k++){ for(let i=0; i<=closeTimeSlots.length-r.s; i++) { const x=findStaff(r.g, i, i+(r.s||1), closeTimeIndexMap); if(x) { x.staff.tasks.push({start:closeTimeSlots[i],end:closeTimeSlots[i+(r.s||1)],task:r.n,remarks:""}); break; } } } });
+        const fix=[{k:'fixed_money_collect',t:t_col,s:'22:45',e:'23:15',g:emp},{k:'fixed_warehouses',t:t_ware,s:'22:45',e:'23:15',g:all},{k:'fixed_counters',t:t_cnt,s:'22:45',e:'23:00',g:all}];
+        const as=new Set(); fix.forEach(f=>{const s=f.g.find(p=>p.name===window.staffList[f.k]); if(s){s.tasks.push({start:f.s,end:f.e,task:f.t.name,remarks:'（固定）'}); as.add(s);}});
+        const rules = [{n:"施錠・工具箱チェック", s:1, g:emp.filter(s=>!as.has(s))}, {n:"引継ぎ・事務所清掃", s:1, g:emp.filter(s=>!as.has(s))}, {n:"飲み残し・フラッグ確認", s:1, g:alba.filter(s=>!as.has(s))}, {n:"島上清掃・カード補充", s:1, g:alba.filter(s=>!as.has(s))}];
+        fix.forEach(f=>{ if(!window.staffList[f.k]) rules.push({n:f.t.name, s:f.t.slots || 2, g:(f.t.name===t_col.name?emp:all.filter(s=>!as.has(s)))}); });
+        rules.forEach(r=>{ for(let k=0;k<=closeTimeSlots.length-(r.s||1);k++){ const x=findStaff(r.g,k,k+(r.s||1),closeTimeIndexMap); if(x){x.staff.tasks.push({start:closeTimeSlots[k],end:closeTimeSlots[k+(r.s||1)],task:r.n,remarks:""}); break;} } });
         fillFree(all,closeTimeSlots,closeTimeIndexMap,[]);
     }
     updateStaffLists(); generateSummaryView(); saveStaffListToFirestore();
 };
-
-// ... (以下、その他の関数は変更なし) ...
+function fillFree(all,sl,m,emp){
+    const t_free = getTaskByName("個人業務、自由時間") || {name:"FREE"};
+    all.forEach(s=>{ const st=emp.includes(s)?'07:00':'09:00'; const si=m.get(st)||0; for(let i=si;i<sl.length-1;i++){if(!isOverlap(s.tasks,i,i+1,m))s.tasks.push({start:sl[i],end:sl[i+1],task:t_free.name,remarks:""});} s.tasks.sort((a,b)=>(a.start||"").localeCompare(b.start||"")); });
+}
 
 window.openMasterModal = () => { document.getElementById('master-modal').classList.remove('hidden'); window.renderMasterStaffLists(); window.renderMasterTaskList(); };
 window.closeMasterModal = () => document.getElementById('master-modal').classList.add('hidden');

@@ -310,12 +310,9 @@
                 <div id="edit-content-open" class="space-y-10">
                     <section class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
                         <h2 class="text-lg font-bold text-slate-800 mb-1">指定タスク担当者 (開店)</h2>
-                        <div class="grid md:grid-cols-3 gap-6">
+                        <div class="grid md:grid-cols-2 gap-6">
                             <div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase">金銭業務 (7:00-8:15)</label><button id="fixed-money_count-btn" class="custom-select-button bg-slate-50" onclick="openFixedStaffSelect('fixed_money_count', 'early_staff_candidates', '金銭業務 担当者')"><span class="text-slate-400">選択してください</span></button></div>
                             <div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase">倉庫 (9:15-9:45)</label><button id="fixed_open_warehouse-btn" class="custom-select-button bg-slate-50" onclick="openFixedStaffSelect('fixed_open_warehouse', 'open_staff_candidates', '倉庫(開店) 担当者')"><span class="text-slate-400">選択してください</span></button></div>
-                            <!-- ★ カウンター開設準備の固定ボタンを追加 ★ -->
-                            <div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase">カウンター開設準備 (9:00-10:00)</label><button id="fixed-open_counter-btn" class="custom-select-button bg-slate-50" onclick="openFixedStaffSelect('fixed_open_counter', 'open_staff_candidates', 'カウンター開設準備 担当者')"><span class="text-slate-400">選択してください</span></button></div>
-                            <!-- ★ ---------------------------------- ★ -->
                         </div>
                     </section>
                     <section class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
@@ -323,15 +320,6 @@
                             <h2 class="text-lg font-bold text-slate-800">早番 社員リスト</h2>
                             <button onclick="autoAssignTasks('early', 'open')" class="text-xs font-bold bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full hover:bg-indigo-100 transition">⚡ 自動割振り</button>
                         </div>
-                        
-                        <!-- ★ タイムライン表示エリア (社員) の追加 ★ -->
-                        <div class="mb-6 pt-4 border-t border-slate-200">
-                            <h3 class="text-sm font-bold text-slate-500 mb-3">タイムラインプレビュー</h3>
-                            <div id="edit-summary-open-employee-container-desktop" class="hidden md:block"></div>
-                            <div id="edit-summary-open-employee-container-mobile" class="md:hidden"></div>
-                        </div>
-                        <!-- ★ ---------------------------------- ★ -->
-
                         <div class="mb-6 flex gap-3">
                             <button id="add-staff-button-early" class="custom-select-button flex-grow" onclick="openStaffSelect('early', 'employees')"><span class="text-slate-400">スタッフを追加...</span></button>
                             <button onclick="addStaff('early')" class="bg-indigo-600 text-white font-bold px-6 rounded-lg hover:bg-indigo-700 transition">追加</button>
@@ -343,15 +331,6 @@
                             <h2 class="text-lg font-bold text-slate-800">早番 アルバイトリスト</h2>
                             <button onclick="autoAssignTasks('late', 'open')" class="text-xs font-bold bg-emerald-50 text-emerald-600 px-4 py-2 rounded-full hover:bg-emerald-100 transition">⚡ 自動割振り</button>
                         </div>
-                        
-                        <!-- ★ タイムライン表示エリア (アルバイト) の追加 ★ -->
-                        <div class="mb-6 pt-4 border-t border-slate-200">
-                            <h3 class="text-sm font-bold text-slate-500 mb-3">タイムラインプレビュー</h3>
-                            <div id="edit-summary-open-alba-container-desktop" class="hidden md:block"></div>
-                            <div id="edit-summary-open-alba-container-mobile" class="md:hidden"></div>
-                        </div>
-                        <!-- ★ ---------------------------------- ★ -->
-                        
                         <div class="mb-6 flex gap-3">
                             <button id="add-staff-button-late" class="custom-select-button flex-grow" onclick="openStaffSelect('late', 'alba_early')"><span class="text-slate-400">スタッフを追加...</span></button>
                             <button onclick="addStaff('late')" class="bg-emerald-600 text-white font-bold px-6 rounded-lg hover:bg-emerald-700 transition">追加</button>
@@ -374,15 +353,6 @@
                             <h2 class="text-lg font-bold text-slate-800">遅番 社員リスト</h2>
                             <button onclick="autoAssignTasks('closing_employee', 'close')" class="text-xs font-bold bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full hover:bg-indigo-100 transition">⚡ 自動割振り</button>
                         </div>
-                        
-                        <!-- ★ タイムライン表示エリア (社員) の追加 ★ -->
-                        <div class="mb-6 pt-4 border-t border-slate-200">
-                            <h3 class="text-sm font-bold text-slate-500 mb-3">タイムラインプレビュー</h3>
-                            <div id="edit-summary-close-employee-container-desktop" class="hidden md:block"></div>
-                            <div id="edit-summary-close-employee-container-mobile" class="md:hidden"></div>
-                        </div>
-                        <!-- ★ ---------------------------------- ★ -->
-
                         <div class="mb-6 flex gap-3">
                             <button id="add-staff-button-closing_employee" class="custom-select-button flex-grow" onclick="openStaffSelect('closing_employee', 'employees')"><span class="text-slate-400">スタッフを追加...</span></button>
                             <button onclick="addStaff('closing_employee')" class="bg-indigo-600 text-white font-bold px-6 rounded-lg hover:bg-indigo-700 transition">追加</button>
@@ -394,15 +364,6 @@
                             <h2 class="text-lg font-bold text-slate-800">遅番 アルバイトリスト</h2>
                             <button onclick="autoAssignTasks('closing_alba', 'close')" class="text-xs font-bold bg-emerald-50 text-emerald-600 px-4 py-2 rounded-full hover:bg-emerald-100 transition">⚡ 自動割振り</button>
                         </div>
-
-                        <!-- ★ タイムライン表示エリア (アルバイト) の追加 ★ -->
-                        <div class="mb-6 pt-4 border-t border-slate-200">
-                            <h3 class="text-sm font-bold text-slate-500 mb-3">タイムラインプレビュー</h3>
-                            <div id="edit-summary-close-alba-container-desktop" class="hidden md:block"></div>
-                            <div id="edit-summary-close-alba-container-mobile" class="md:hidden"></div>
-                        </div>
-                        <!-- ★ ---------------------------------- ★ -->
-                        
                         <div class="mb-6 flex gap-3">
                             <button id="add-staff-button-closing_alba" class="custom-select-button flex-grow" onclick="openStaffSelect('closing_alba', 'alba_late')"><span class="text-slate-400">スタッフを追加...</span></button>
                             <button onclick="addStaff('closing_alba')" class="bg-emerald-600 text-white font-bold px-6 rounded-lg hover:bg-emerald-700 transition">追加</button>
