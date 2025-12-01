@@ -104,7 +104,7 @@ window.renderToday = function() {
     $('#todayEventContainer').innerHTML = html; $('#currentDate').textContent = `${today.getFullYear()}.${m + 1}.${d}`;
 };
 
-// ★修正: 新台情報の安全対策
+// ★修正: 新台情報の安全対策 (データ形式不整合ガード)
 window.openNewOpening = function() {
     const c = $('#newOpeningInfo'); c.innerHTML = "";
     if (!newOpeningData || !newOpeningData.length) { c.innerHTML = "<p class='text-center text-slate-400 py-10'>データなし</p>"; $('#newOpeningModal').classList.remove("hidden"); return; }
@@ -131,15 +131,28 @@ window.openNewOpening = function() {
             li.innerHTML = `<div class="flex flex-col overflow-hidden mr-2"><span class="font-bold text-slate-700 truncate text-sm sm:text-base">${item.name}</span>${matched&&matched.salesPitch?`<span class="text-xs text-indigo-500 font-bold mt-1">✨ 詳細あり</span>`:`<span class="text-xs text-slate-400 font-medium mt-1">情報なし</span>`}</div><span class="text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0">${item.count}台</span>`;
             
             li.onclick = () => {
-                if(matched && matched.salesPitch) {
-                    $('#detailName').textContent = matched.name; 
-                    $('#detailPitch').textContent = matched.salesPitch || "情報なし"; 
-                    const f=(i,l)=>{$(i).innerHTML="";(l||["情報なし"]).forEach(t=>$(i).innerHTML+=`<li class="flex items-start"><span class="mr-2 mt-1.5 w-1.5 h-1.5 bg-current rounded-full flex-shrink-0"></span><span>${t}</span></li>`);}; 
-                    f("#detailPros", matched.pros); 
-                    f("#detailCons", matched.cons); 
-                    $('#machineDetailModal').classList.remove("hidden");
-                } else {
-                    alert(`「${item.name}」の詳細データは見つかりませんでした。\n管理者に機種データの登録を確認してください。`);
+                try {
+                    if(matched && matched.salesPitch) {
+                        $('#detailName').textContent = matched.name; 
+                        $('#detailPitch').textContent = matched.salesPitch || "情報なし"; 
+                        
+                        // ★ここが修正ポイント: データが配列でも文字列でもnullでも止まらないようにする
+                        const f=(i,l)=>{
+                            $(i).innerHTML="";
+                            // データが配列ならそのまま、そうでないなら配列に入れる
+                            const list = Array.isArray(l) ? l : [l || "情報なし"];
+                            list.forEach(t=>$(i).innerHTML+=`<li class="flex items-start"><span class="mr-2 mt-1.5 w-1.5 h-1.5 bg-current rounded-full flex-shrink-0"></span><span>${t}</span></li>`);
+                        }; 
+                        
+                        f("#detailPros", matched.pros); 
+                        f("#detailCons", matched.cons); 
+                        $('#machineDetailModal').classList.remove("hidden");
+                    } else {
+                        alert(`「${item.name}」の詳細データは見つかりませんでした。\n管理者に機種データの登録を確認してください。`);
+                    }
+                } catch(e) {
+                    console.error("Click Error:", e);
+                    alert("詳細データの表示中にエラーが発生しました。\nデータの形式が正しくない可能性があります。");
                 }
             };
             ul.appendChild(li);
@@ -438,7 +451,7 @@ const assign = (staff, task, start, end, remarks = "") => {
     return false;
 };
 
-// ★修正: 自動割り振りの安全性を強化 (エラーガード追加)
+// ★修正: 自動割り振り。エラー防止ガードを完備
 window.autoAssignTasks = async (sec, listType) => {
     try {
         const isOpen = listType === 'open';
