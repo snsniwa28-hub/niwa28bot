@@ -104,42 +104,44 @@ window.renderToday = function() {
     $('#todayEventContainer').innerHTML = html; $('#currentDate').textContent = `${today.getFullYear()}.${m + 1}.${d}`;
 };
 
-// ★修正: 新台情報の安全対策 (データ形式不整合ガード)
+// ★修正: 新台情報のロジックを完全書き換え。データが見つかれば即座にリスナー登録。
 window.openNewOpening = function() {
     const c = $('#newOpeningInfo'); c.innerHTML = "";
     if (!newOpeningData || !newOpeningData.length) { c.innerHTML = "<p class='text-center text-slate-400 py-10'>データなし</p>"; $('#newOpeningModal').classList.remove("hidden"); return; }
     
     const lat=[], oth=[]; 
-    // データの中にnameがない場合のエラー防止
     const validData = newOpeningData.filter(d => d && d.name);
     validData.forEach(m => (latestKeywords.some(k=>m.name.includes(k))?lat:oth).push(m));
     
     const createList = (list, title) => {
         if(!list.length) return;
-        c.innerHTML += `<h3 class="font-bold text-lg mb-2 border-b pb-1">${title}</h3>`;
-        const ul = document.createElement("ul"); ul.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8";
+        const section = document.createElement("div");
+        section.innerHTML = `<h3 class="font-bold text-lg mb-2 border-b pb-1">${title}</h3>`;
+        const ul = document.createElement("ul"); 
+        ul.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8";
         
         list.sort((a,b)=>b.count-a.count).forEach(item => {
             const li = document.createElement("li"); 
             li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm cursor-pointer hover:bg-slate-50 transition";
             
-            // 安全なマッチング処理
+            // 安全なマッチング処理 (ここでマッチングを確定させる)
             const norm = (s) => (s||"").replace(/\s+/g, '').toLowerCase();
             const targetName = norm(item.name);
             const matched = allMachines.find(m => m && m.name && (norm(m.name).includes(targetName) || targetName.includes(norm(m.name))));
+            const hasDetail = matched && matched.salesPitch;
+
+            li.innerHTML = `<div class="flex flex-col overflow-hidden mr-2 pointer-events-none"><span class="font-bold text-slate-700 truncate text-sm sm:text-base">${item.name}</span>${hasDetail?`<span class="text-xs text-indigo-500 font-bold mt-1">✨ 詳細あり</span>`:`<span class="text-xs text-slate-400 font-medium mt-1">情報なし</span>`}</div><span class="text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0 pointer-events-none">${item.count}台</span>`;
             
-            li.innerHTML = `<div class="flex flex-col overflow-hidden mr-2"><span class="font-bold text-slate-700 truncate text-sm sm:text-base">${item.name}</span>${matched&&matched.salesPitch?`<span class="text-xs text-indigo-500 font-bold mt-1">✨ 詳細あり</span>`:`<span class="text-xs text-slate-400 font-medium mt-1">情報なし</span>`}</div><span class="text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0">${item.count}台</span>`;
-            
-            li.onclick = () => {
-                try {
-                    if(matched && matched.salesPitch) {
+            // クリックリスナーを直接登録 (最も確実な方法)
+            li.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if(hasDetail) {
+                    try {
                         $('#detailName').textContent = matched.name; 
                         $('#detailPitch').textContent = matched.salesPitch || "情報なし"; 
                         
-                        // ★ここが修正ポイント: データが配列でも文字列でもnullでも止まらないようにする
                         const f=(i,l)=>{
                             $(i).innerHTML="";
-                            // データが配列ならそのまま、そうでないなら配列に入れる
                             const list = Array.isArray(l) ? l : [l || "情報なし"];
                             list.forEach(t=>$(i).innerHTML+=`<li class="flex items-start"><span class="mr-2 mt-1.5 w-1.5 h-1.5 bg-current rounded-full flex-shrink-0"></span><span>${t}</span></li>`);
                         }; 
@@ -147,17 +149,18 @@ window.openNewOpening = function() {
                         f("#detailPros", matched.pros); 
                         f("#detailCons", matched.cons); 
                         $('#machineDetailModal').classList.remove("hidden");
-                    } else {
-                        alert(`「${item.name}」の詳細データは見つかりませんでした。\n管理者に機種データの登録を確認してください。`);
+                    } catch(err) {
+                        alert("データ表示中にエラーが発生しました。");
                     }
-                } catch(e) {
-                    console.error("Click Error:", e);
-                    alert("詳細データの表示中にエラーが発生しました。\nデータの形式が正しくない可能性があります。");
+                } else {
+                    alert(`「${item.name}」の詳細データは見つかりませんでした。\n管理者に機種データの登録を確認してください。`);
                 }
-            };
+            });
+
             ul.appendChild(li);
         });
-        c.appendChild(ul);
+        section.appendChild(ul);
+        c.appendChild(section);
     };
     createList(lat, "✨ 最新導入"); createList(oth, "🔄 その他");
     $('#newOpeningModal').classList.remove("hidden");
