@@ -26,6 +26,7 @@
         </header>
 
         <main>
+            <!-- Hero -->
             <section class="relative pt-8 pb-8 sm:pt-12 sm:pb-12 bg-white rounded-b-[2.5rem] shadow-sm overflow-hidden">
                 <div class="container mx-auto px-4 sm:px-6 text-center">
                     <div class="relative w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl shadow-indigo-900/10 border border-slate-100">
@@ -41,6 +42,7 @@
                 </div>
             </section>
 
+            <!-- Buttons -->
             <div class="container mx-auto px-4 mt-2 relative z-10 fade-in-up" style="animation-delay: 0.2s;">
                 <div onclick="switchView('staff')" class="group cursor-pointer bg-slate-800 rounded-2xl shadow-xl shadow-slate-900/10 border border-slate-700 p-5 sm:p-6 max-w-xl mx-auto hover:translate-y-[-4px] hover:shadow-2xl transition-all duration-300">
                     <div class="flex items-center justify-between">
@@ -78,93 +80,127 @@
                 </div>
             </div>
 
-            <!-- Pachinko & Slot Sections -->
+            <!-- Pachinko Strategy -->
             <section class="container mx-auto px-4 mt-16 fade-in-up" style="animation-delay: 0.35s;">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-sm max-w-4xl mx-auto overflow-hidden">
-                    <div class="bg-sky-50/80 px-6 py-4 border-b border-sky-100 flex items-center gap-3">
-                        <span class="flex h-2.5 w-2.5 rounded-full bg-sky-500"></span>
-                        <h2 class="font-bold text-sky-900 text-lg">パチンコチームのご案内</h2>
+                    <div class="bg-sky-50/80 px-6 py-4 border-b border-sky-100 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-2.5 w-2.5 rounded-full bg-sky-500"></span>
+                            <h2 class="font-bold text-sky-900 text-lg">12月 パチンコチーム</h2>
+                        </div>
+                        <div class="text-xs font-bold text-sky-600 bg-white px-2 py-1 rounded border border-sky-200">田村・西田・大輔・生沼</div>
                     </div>
                     <div class="p-6 sm:p-10">
-                        <div class="mb-8 text-center sm:text-left">
-                            <h3 class="text-2xl font-black text-slate-800 leading-tight text-pretty">今週の<span class="text-sky-600 word-keep">パチンコ戦略</span></h3>
-                            <p class="text-slate-500 mt-2 font-medium">時差島平日19時・週末12時開放 & エヴァシリーズ徹底強化！</p>
+                        <div class="mb-6 text-center sm:text-left">
+                             <div class="inline-block bg-sky-100 text-sky-700 text-xs font-bold px-3 py-1 rounded-full mb-2">今月の目標</div>
+                            <h3 class="text-xl font-black text-slate-800 leading-tight">週末15時客数：4円110名 / 1円55名</h3>
+                            <p class="text-slate-500 mt-2 text-sm font-medium">市場内最新台・人気機種・週末時差島15時満台計画</p>
                         </div>
-                        <div class="mb-6 bg-gradient-to-br from-purple-50 to-white p-6 rounded-2xl border border-purple-100 relative overflow-hidden shadow-sm">
-                            <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center relative z-10">
-                                <div class="bg-purple-100 text-purple-600 p-3 rounded-xl shrink-0">
-                                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+
+                        <div class="space-y-4">
+                            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">4円</span>
+                                    <span class="font-bold text-slate-700">エヴァシリーズ強化</span>
                                 </div>
-                                <div>
-                                    <div class="text-xs font-bold text-purple-600 mb-1 flex items-center gap-2"><span class="bg-purple-600 text-white px-2 py-0.5 rounded-full text-[10px]">推奨</span>11/26 (水) ～ 12/2 (火)</div>
-                                    <div class="font-bold text-slate-800 text-lg sm:text-xl mb-1">3週連続 エヴァシリーズ推奨</div>
-                                    <p class="text-sm text-slate-600">期間中はエヴァシリーズが徹底的におすすめです！</p>
+                                <p class="text-sm text-slate-600 leading-relaxed">
+                                    <span class="font-bold text-blue-600">エヴァ15は毎日オススメ！</span><br>
+                                    eエヴァ17導入まで徹底的に盛り上げます。遊びやすさをアピールして稼働UP中！
+                                </p>
+                            </div>
+                            <div class="bg-gradient-to-r from-purple-50 to-white p-5 rounded-xl border border-purple-100 shadow-sm">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">時差開放</span>
+                                    <span class="font-bold text-purple-900">金曜日固定 & 炎炎ノ消防隊</span>
                                 </div>
+                                <p class="text-sm text-slate-700 leading-relaxed">
+                                    時差開放は<span class="font-bold text-purple-700">「金曜日」</span>に固定して集中集客！<br>
+                                    12/5導入の「かっこいい炎炎」は時差島筆頭オススメ機種になります。
+                                </p>
                             </div>
-                        </div>
-                        <div class="grid gap-4 sm:grid-cols-2">
-                            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group hover:border-orange-300 transition-colors">
-                                <div class="text-xs font-bold text-orange-500 mb-1">時差島 (平日19時/週末12時)</div>
-                                <div class="font-bold text-slate-800 mb-2 text-lg">炎炎ノ消防隊2</div>
-                                <p class="text-sm text-slate-600 leading-relaxed">平日も週末も引き続きおすすめ！<br><span class="text-xs text-rose-500 font-bold">※28日は年一のため時差なし</span></p>
+                            <div class="bg-yellow-50/50 p-5 rounded-xl border border-yellow-100 shadow-sm">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="bg-yellow-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">1円</span>
+                                    <span class="font-bold text-yellow-800">ラインナップ超強化</span>
+                                </div>
+                                <ul class="list-disc list-inside text-sm text-slate-600 space-y-1">
+                                    <li>スマパチ増台（リベンジャーズ・超電磁砲・一方通行）</li>
+                                    <li><span class="font-bold text-yellow-700">海物語【極ジャパン】</span> 12/9〜稼働開始</li>
+                                    <li>ライト機種充実（頭文字D、化物語、コマコマなど）</li>
+                                    <li>12月は「eエヴァ17」導入＆スマパチ増設で埼玉トップクラスへ！</li>
+                                </ul>
                             </div>
-                            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group hover:border-indigo-300 transition-colors">
-                                <div class="text-xs font-bold text-slate-500 mb-1">時差がない日は…</div>
-                                <div class="font-bold text-slate-800 mb-2 text-lg">からくりサーカス2</div>
-                                <p class="text-sm text-slate-600 leading-relaxed">時差をやらない日は是非「からくり2」がオススメ！</p>
-                            </div>
-                        </div>
-                        <div class="mt-4 bg-yellow-50 p-4 rounded-xl border border-yellow-100 flex items-start gap-3">
-                             <div class="text-2xl">📢</div>
-                             <div>
-                                 <div class="font-bold text-yellow-800 text-sm sm:text-base">1円パチンコ増台計画</div>
-                                 <p class="text-xs sm:text-sm text-yellow-700 leading-snug">次回入替で「アイマリン」＆「スマパチ人気機種」増台予定！ご期待ください。</p>
-                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
+            <!-- Slot Strategy -->
             <section class="container mx-auto px-4 mt-16 fade-in-up" style="animation-delay: 0.4s;">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-sm max-w-4xl mx-auto overflow-hidden">
                     <div class="bg-slate-50/80 px-6 py-4 border-b border-slate-100 flex items-center gap-3">
                         <span class="flex h-2.5 w-2.5 rounded-full bg-indigo-500"></span>
-                        <h2 class="font-bold text-slate-700 text-lg">スロットチームのご案内</h2>
+                        <h2 class="font-bold text-slate-700 text-lg">スロットチーム 12月1週</h2>
                     </div>
                     <div class="p-6 sm:p-10">
-                        <div class="mb-8 text-center sm:text-left">
-                            <h3 class="text-2xl font-black text-slate-800 leading-tight text-pretty"><span class="word-keep">年一の祭典</span><span class="text-rose-600 word-keep">「28日」</span>に向けた<br class="sm:hidden">集大成ウィーク</h3>
-                            <p class="text-slate-500 mt-2 font-medium">11月ラスト、定休日なしで駆け抜けます！</p>
+                        <div class="grid gap-4 sm:grid-cols-2 mb-6">
+                            <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-center">
+                                <div class="text-xs text-indigo-500 font-bold mb-1">休日15時客数</div>
+                                <div class="text-2xl font-black text-indigo-900">356名 <span class="text-sm font-normal opacity-70">(シェア25%)</span></div>
+                            </div>
+                            <div class="bg-pink-50 p-4 rounded-xl border border-pink-100 text-center">
+                                <div class="text-xs text-pink-500 font-bold mb-1">平日19時ジャグラー</div>
+                                <div class="text-2xl font-black text-pink-900">50名 <span class="text-sm font-normal opacity-70">達成目標</span></div>
+                            </div>
                         </div>
-                        <div class="grid gap-4 sm:grid-cols-2">
-                            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                                <div class="text-xs font-bold text-indigo-500 mb-1">11/24 (月)</div>
-                                <div class="font-bold text-slate-800 mb-2">極上マッティー × みーまる</div>
-                                <p class="text-sm text-slate-600 leading-relaxed text-pretty">スロット全般＆物販開催。朝からの盛り上がり必至！W来店で徹底アピール。</p>
-                            </div>
-                            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                                <div class="text-xs font-bold text-slate-500 mb-1">11/25 (火) ～ 27 (木)</div>
-                                <div class="font-bold text-slate-800 mb-2">夕方時差狙い & 月周年</div>
-                                <p class="text-sm text-slate-600 leading-relaxed text-pretty">27日は月周年日2nd！ポンコツ珍道中収録。夕方からの時差開放も見逃せない。</p>
-                            </div>
-                            <div class="sm:col-span-2 bg-rose-50/50 p-6 rounded-xl border border-rose-100 relative overflow-hidden">
-                                <div class="relative z-10">
-                                    <div class="text-xs font-bold text-rose-600 mb-1 flex items-center gap-2"><span class="bg-rose-600 text-white px-2 py-0.5 rounded-full text-[10px]">最重要</span>11/28 (金)</div>
-                                    <div class="font-bold text-rose-900 text-lg mb-2">年一「1128」× 8の日</div>
-                                    <p class="text-sm text-rose-800 leading-relaxed text-pretty"><span class="font-bold">【八潮上空 / 真骨超 / くずパチ収録】</span><br>年に一度のお祭り日。スロット「真骨超」、パチンコ「くずパチ」のWインパクト。</p>
+
+                        <div class="space-y-3">
+                            <div class="flex items-start gap-3 p-3 border-b border-slate-100">
+                                <div class="bg-slate-100 text-slate-600 font-bold px-2 py-1 rounded text-xs shrink-0">2日 (月)</div>
+                                <div>
+                                    <div class="font-bold text-slate-800 text-sm">八潮上空 × おにくさん夜来店</div>
+                                    <p class="text-xs text-slate-500 mt-1">12月初の上空。喰種、モンハン、サミーシリーズ筆頭に稼働を残す！</p>
                                 </div>
                             </div>
-                            <div class="sm:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                                <div class="text-xs font-bold text-green-600 mb-1">11/29 (土) ～ 30 (日)</div>
-                                <div class="font-bold text-slate-800 mb-2">週末豪華リレー</div>
-                                <p class="text-sm text-slate-600 leading-relaxed text-pretty">29日：天草さん+くろむさん（塊狙い） / 30日：スロパチfor埼玉（AT機＆ジャグラー）</p>
+                             <div class="flex items-start gap-3 p-3 border-b border-slate-100 bg-rose-50/30 rounded-lg">
+                                <div class="bg-rose-100 text-rose-600 font-bold px-2 py-1 rounded text-xs shrink-0">5日 (木)</div>
+                                <div>
+                                    <div class="font-bold text-rose-700 text-sm">新装開店 × 七咲ななさん夜来店</div>
+                                    <p class="text-xs text-rose-600 mt-1 font-bold">【注意】暴凶星、アズレン、化物語は動きません！</p>
+                                    <p class="text-xs text-slate-500">動く台を把握し、告知ミスがないように。週末のご案内も徹底。</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3 p-3 border-b border-slate-100">
+                                <div class="bg-slate-100 text-slate-600 font-bold px-2 py-1 rounded text-xs shrink-0">6日 (金)</div>
+                                <div>
+                                    <div class="font-bold text-slate-800 text-sm">ナナメさん来店</div>
+                                    <p class="text-xs text-slate-500 mt-1">メイン機を中心に稼働を食い止める。1名でも多く！</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3 p-3">
+                                <div class="bg-slate-100 text-slate-600 font-bold px-2 py-1 rounded text-xs shrink-0">7日 (土)</div>
+                                <div>
+                                    <div class="font-bold text-slate-800 text-sm">マッティさん & MAXBETトモさん</div>
+                                    <p class="text-xs text-slate-500 mt-1">週末しか来れないお客様へ「8の日」告知を徹底！</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 bg-slate-800 text-white p-4 rounded-xl text-center relative overflow-hidden">
+                            <div class="relative z-10">
+                                <div class="text-xs font-bold opacity-70 mb-1">12月は W周年月間</div>
+                                <div class="text-sm font-bold">
+                                    12/22 メガガーデン八潮 誕生<br>
+                                    12/27 新ガーデン八潮 誕生
+                                </div>
+                                <div class="text-[10px] mt-2 opacity-70">伝え漏れのないようお願いします！</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Calendar Section -->
+            <!-- Calendar & QSC & Map -->
             <section class="container mx-auto px-4 mt-12 max-w-4xl fade-in-up" style="animation-delay: 0.4s;">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-lg mb-8 overflow-hidden">
                     <div class="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-50">
@@ -189,7 +225,6 @@
                 </div>
             </section>
 
-             <!-- QSC Section -->
             <section class="container mx-auto px-4 mt-8 max-w-4xl fade-in-up" style="animation-delay: 0.5s;">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-lg overflow-hidden">
                     <div class="bg-rose-50 border-b border-rose-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -207,7 +242,6 @@
                 </div>
             </section>
 
-            <!-- Floor Map -->
             <section class="container mx-auto px-4 mt-8 max-w-4xl fade-in-up" style="animation-delay: 0.6s;">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-lg overflow-hidden">
                     <div class="p-6 sm:p-8 border-b border-slate-50">
@@ -244,7 +278,7 @@
                     </span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <!-- マスタ設定ボタン（編集中のみ表示） -->
+                    <!-- マスタ設定ボタン -->
                     <button id="master-settings-button" onclick="openMasterModal()" class="hidden text-xs font-bold text-white bg-slate-700 hover:bg-slate-800 px-3 py-2 rounded-full transition-colors shadow-md flex items-center gap-1">
                          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                         マスタ設定
@@ -257,7 +291,6 @@
         </header>
 
         <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-            <!-- Title & Date -->
             <div class="text-center mb-10">
                 <h1 class="text-3xl sm:text-4xl font-black text-slate-800 tracking-tight mb-6 text-balance">
                     開閉店タスク<span class="text-indigo-600">割り振り</span>
@@ -276,7 +309,7 @@
                 </div>
             </div>
 
-            <!-- VIEW MODE (Timeline) -->
+            <!-- VIEW MODE -->
             <div id="view-mode-container" class="space-y-12">
                 <div id="view-content-open" class="animate-fade-in space-y-12">
                     <section>
@@ -306,6 +339,12 @@
 
             <!-- EDIT MODE -->
             <div id="edit-mode-container" class="hidden space-y-10">
+                <!-- Read-only Timeline (Visual Guide) -->
+                <div id="editor-timeline-container" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 hidden md:block overflow-x-auto">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">👀 全体状況 (閲覧のみ)</h3>
+                    <div id="editor-timeline-content"></div>
+                </div>
+
                 <!-- OPEN EDIT -->
                 <div id="edit-content-open" class="space-y-10">
                     <section class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
@@ -375,232 +414,16 @@
         </main>
     </div>
 
-    <!-- ================= MODALS (Global) ================= -->
-    
-    <!-- MASTER SETTINGS MODAL -->
-    <div id="master-modal" class="modal-overlay hidden">
-        <div class="modal-content w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-                <h3 class="font-bold text-xl text-slate-800 flex items-center gap-2">
-                    <span class="bg-slate-800 text-white p-1 rounded">⚙️</span> マスタ設定 (管理者用)
-                </h3>
-                <button onclick="closeMasterModal()" class="p-2 bg-white rounded-full text-slate-400 hover:text-slate-600 border border-slate-200 transition">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-            </div>
-            <div class="flex border-b border-slate-200">
-                <button onclick="switchMasterTab('staff')" id="master-tab-staff" class="flex-1 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50">👥 スタッフ名簿</button>
-                <button onclick="switchMasterTab('task')" id="master-tab-task" class="flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:bg-slate-50">📋 タスク定義</button>
-            </div>
-            <div class="flex-1 overflow-y-auto bg-slate-50 p-6">
-                <!-- STAFF TAB -->
-                <div id="master-content-staff" class="space-y-8">
-                    <div class="grid md:grid-cols-3 gap-6">
-                        <!-- Employees -->
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                            <h4 class="font-bold text-slate-700 mb-3 flex items-center justify-between">社員 <span class="text-xs bg-slate-100 px-2 py-1 rounded-full text-slate-500 count-employees">0</span></h4>
-                            <div class="flex gap-2 mb-3">
-                                <input type="text" id="new-employee-name" placeholder="氏名を入力" class="w-full text-sm border border-slate-300 rounded p-2">
-                                <button onclick="addMasterStaff('employees')" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm font-bold hover:bg-indigo-700">追加</button>
-                            </div>
-                            <ul id="master-list-employees" class="space-y-1 text-sm max-h-[300px] overflow-y-auto"></ul>
-                        </div>
-                        <!-- Alba Early -->
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                            <h4 class="font-bold text-slate-700 mb-3 flex items-center justify-between">早番アルバイト <span class="text-xs bg-slate-100 px-2 py-1 rounded-full text-slate-500 count-alba_early">0</span></h4>
-                            <div class="flex gap-2 mb-3">
-                                <input type="text" id="new-alba_early-name" placeholder="氏名を入力" class="w-full text-sm border border-slate-300 rounded p-2">
-                                <button onclick="addMasterStaff('alba_early')" class="bg-emerald-600 text-white px-3 py-1 rounded text-sm font-bold hover:bg-emerald-700">追加</button>
-                            </div>
-                            <ul id="master-list-alba_early" class="space-y-1 text-sm max-h-[300px] overflow-y-auto"></ul>
-                        </div>
-                        <!-- Alba Late -->
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                            <h4 class="font-bold text-slate-700 mb-3 flex items-center justify-between">遅番アルバイト <span class="text-xs bg-slate-100 px-2 py-1 rounded-full text-slate-500 count-alba_late">0</span></h4>
-                            <div class="flex gap-2 mb-3">
-                                <input type="text" id="new-alba_late-name" placeholder="氏名を入力" class="w-full text-sm border border-slate-300 rounded p-2">
-                                <button onclick="addMasterStaff('alba_late')" class="bg-emerald-600 text-white px-3 py-1 rounded text-sm font-bold hover:bg-emerald-700">追加</button>
-                            </div>
-                            <ul id="master-list-alba_late" class="space-y-1 text-sm max-h-[300px] overflow-y-auto"></ul>
-                        </div>
-                    </div>
-                </div>
-                <!-- TASK TAB -->
-                <div id="master-content-task" class="hidden space-y-6">
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                         <h4 class="font-bold text-slate-800 mb-4 text-sm uppercase tracking-wider">新規タスク追加</h4>
-                         <div class="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
-                             <div class="col-span-2">
-                                 <label class="text-xs font-bold text-slate-500 mb-1 block">タスク名</label>
-                                 <input type="text" id="new-task-name" placeholder="例: ホール巡回" class="w-full border border-slate-300 rounded p-2 text-sm">
-                             </div>
-                             <div>
-                                 <label class="text-xs font-bold text-slate-500 mb-1 block">時間 (コマ)</label>
-                                 <input type="number" id="new-task-slots" value="1" min="0" class="w-full border border-slate-300 rounded p-2 text-sm">
-                                 <div class="text-[10px] text-slate-400 text-right mt-0.5">1コマ=15分</div>
-                             </div>
-                             <div>
-                                 <label class="text-xs font-bold text-slate-500 mb-1 block">色タイプ</label>
-                                 <select id="new-task-color" class="w-full border border-slate-300 rounded p-2 text-sm bg-white">
-                                     <option value="color-gray">グレー (標準)</option>
-                                     <option value="color-red">赤 (重要)</option>
-                                     <option value="color-green">緑 (作業)</option>
-                                     <option value="color-yellow">黄 (金銭)</option>
-                                     <option value="color-blue">青 (場所)</option>
-                                     <option value="color-purple">紫 (管理)</option>
-                                 </select>
-                             </div>
-                             <div>
-                                 <label class="text-xs font-bold text-slate-500 mb-1 block">利用シーン</label>
-                                 <select id="new-task-type" class="w-full border border-slate-300 rounded p-2 text-sm bg-white">
-                                     <option value="both">両方</option>
-                                     <option value="open">開店のみ</option>
-                                     <option value="close">閉店のみ</option>
-                                 </select>
-                             </div>
-                         </div>
-                         <button onclick="addMasterTask()" class="mt-4 w-full md:w-auto bg-slate-800 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-700 transition">タスクを追加保存</button>
-                    </div>
-                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div class="bg-slate-100 px-5 py-3 border-b border-slate-200 font-bold text-slate-600 text-sm">登録済みタスク一覧</div>
-                        <div class="max-h-[400px] overflow-y-auto p-2">
-                            <table class="w-full text-sm text-left">
-                                <thead class="text-xs text-slate-500 bg-slate-50 uppercase sticky top-0">
-                                    <tr>
-                                        <th class="px-3 py-2">色</th>
-                                        <th class="px-3 py-2">タスク名</th>
-                                        <th class="px-3 py-2">時間</th>
-                                        <th class="px-3 py-2">区分</th>
-                                        <th class="px-3 py-2 text-right">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="master-task-list-body" class="divide-y divide-slate-100"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="p-4 bg-slate-100 border-t border-slate-200 text-right">
-                <p class="text-xs text-slate-400 font-bold inline-block mr-4">※変更は即座にデータベースに保存されます</p>
-                <button onclick="closeMasterModal()" class="px-6 py-2 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-700 transition">閉じる</button>
-            </div>
-        </div>
-    </div>
+    <!-- Modals (Same as before) -->
+    <div id="master-modal" class="modal-overlay hidden"><div class="modal-content w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"><div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0"><h3 class="font-bold text-xl text-slate-800 flex items-center gap-2"><span class="bg-slate-800 text-white p-1 rounded">⚙️</span> マスタ設定 (管理者用)</h3><button onclick="closeMasterModal()" class="p-2 bg-white rounded-full text-slate-400 hover:text-slate-600 border border-slate-200 transition"><svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div><div class="flex border-b border-slate-200"><button onclick="switchMasterTab('staff')" id="master-tab-staff" class="flex-1 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50">👥 スタッフ名簿</button><button onclick="switchMasterTab('task')" id="master-tab-task" class="flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:bg-slate-50">📋 タスク定義</button></div><div class="flex-1 overflow-y-auto bg-slate-50 p-6"><div id="master-content-staff" class="space-y-8"><div class="grid md:grid-cols-3 gap-6"><div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><h4 class="font-bold text-slate-700 mb-3 flex items-center justify-between">社員 <span class="text-xs bg-slate-100 px-2 py-1 rounded-full text-slate-500 count-employees">0</span></h4><div class="flex gap-2 mb-3"><input type="text" id="new-employee-name" placeholder="氏名" class="w-full text-sm border border-slate-300 rounded p-2"><button onclick="addMasterStaff('employees')" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm font-bold">追加</button></div><ul id="master-list-employees" class="space-y-1 text-sm max-h-[300px] overflow-y-auto"></ul></div><div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><h4 class="font-bold text-slate-700 mb-3 flex items-center justify-between">早番 <span class="text-xs bg-slate-100 px-2 py-1 rounded-full text-slate-500 count-alba_early">0</span></h4><div class="flex gap-2 mb-3"><input type="text" id="new-alba_early-name" placeholder="氏名" class="w-full text-sm border border-slate-300 rounded p-2"><button onclick="addMasterStaff('alba_early')" class="bg-emerald-600 text-white px-3 py-1 rounded text-sm font-bold">追加</button></div><ul id="master-list-alba_early" class="space-y-1 text-sm max-h-[300px] overflow-y-auto"></ul></div><div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><h4 class="font-bold text-slate-700 mb-3 flex items-center justify-between">遅番 <span class="text-xs bg-slate-100 px-2 py-1 rounded-full text-slate-500 count-alba_late">0</span></h4><div class="flex gap-2 mb-3"><input type="text" id="new-alba_late-name" placeholder="氏名" class="w-full text-sm border border-slate-300 rounded p-2"><button onclick="addMasterStaff('alba_late')" class="bg-emerald-600 text-white px-3 py-1 rounded text-sm font-bold">追加</button></div><ul id="master-list-alba_late" class="space-y-1 text-sm max-h-[300px] overflow-y-auto"></ul></div></div></div><div id="master-content-task" class="hidden space-y-6"><div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h4 class="font-bold text-slate-800 mb-4 text-sm uppercase tracking-wider">新規タスク追加</h4><div class="grid grid-cols-2 md:grid-cols-5 gap-3 items-end"><div class="col-span-2"><label class="text-xs font-bold text-slate-500 mb-1 block">タスク名</label><input type="text" id="new-task-name" placeholder="例: ホール巡回" class="w-full border border-slate-300 rounded p-2 text-sm"></div><div><label class="text-xs font-bold text-slate-500 mb-1 block">時間 (コマ)</label><input type="number" id="new-task-slots" value="1" min="0" class="w-full border border-slate-300 rounded p-2 text-sm"></div><div><label class="text-xs font-bold text-slate-500 mb-1 block">色タイプ</label><select id="new-task-color" class="w-full border border-slate-300 rounded p-2 text-sm bg-white"><option value="color-gray">グレー</option><option value="color-red">赤</option><option value="color-green">緑</option><option value="color-yellow">黄</option><option value="color-blue">青</option><option value="color-purple">紫</option></select></div><div><label class="text-xs font-bold text-slate-500 mb-1 block">利用シーン</label><select id="new-task-type" class="w-full border border-slate-300 rounded p-2 text-sm bg-white"><option value="both">両方</option><option value="open">開店のみ</option><option value="close">閉店のみ</option></select></div></div><button onclick="addMasterTask()" class="mt-4 w-full md:w-auto bg-slate-800 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-700 transition">追加</button></div><div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="bg-slate-100 px-5 py-3 border-b border-slate-200 font-bold text-slate-600 text-sm">登録済みタスク</div><div class="max-h-[400px] overflow-y-auto p-2"><table class="w-full text-sm text-left"><thead class="text-xs text-slate-500 bg-slate-50 uppercase sticky top-0"><tr><th class="px-3 py-2">色</th><th class="px-3 py-2">タスク名</th><th class="px-3 py-2">時間</th><th class="px-3 py-2">区分</th><th class="px-3 py-2 text-right">操作</th></tr></thead><tbody id="master-task-list-body" class="divide-y divide-slate-100"></tbody></table></div></div></div></div><div class="p-4 bg-slate-100 border-t border-slate-200 text-right"><button onclick="closeMasterModal()" class="px-6 py-2 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-700 transition">閉じる</button></div></div></div>
+    <div id="qscModal" class="modal-overlay hidden"><div class="modal-content w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"><div class="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0"><div class="flex items-center gap-2"><h3 class="font-bold text-xl text-slate-800">QSC チェックリスト</h3><div class="flex bg-slate-100 p-1 rounded-lg"><button id="qscTabUnfinished" class="px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm">未実施</button><button id="qscTabFinished" class="px-3 py-1 text-xs font-bold rounded-md text-slate-400">完了済</button></div></div><div class="flex items-center gap-2"><button id="qscEditButton" class="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition">⚙️ 管理</button><button id="closeQscModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div></div><div class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6"><div id="qscAddForm" class="hidden mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100"><h4 class="text-xs font-bold text-indigo-600 mb-2 uppercase tracking-widest">新規項目</h4><div class="flex flex-col gap-2"><div class="grid grid-cols-3 gap-2"><input type="number" id="newQscNo" placeholder="No." class="border border-slate-200 rounded p-2 text-sm" min="1"><input type="text" id="newQscArea" placeholder="エリア" class="col-span-2 border border-slate-200 rounded p-2 text-sm"></div><input type="text" id="newQscContent" placeholder="内容" class="border border-slate-200 rounded p-2 text-sm"><button onclick="addQscItem()" class="bg-indigo-600 text-white font-bold text-sm py-2 rounded-lg">追加</button></div></div><div id="qscListContainer" class="space-y-3"></div></div><div class="p-3 bg-white border-t border-slate-100 text-center"><p class="text-xs text-slate-400 font-bold">チェックを入れると全員に反映されます</p></div></div></div>
+    <div id="newOpeningModal" class="modal-overlay hidden"><div class="modal-content w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"><div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0"><h3 class="font-bold text-xl text-slate-800">導入機種リスト</h3><button id="closeNewOpeningModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div><div id="newOpeningInfo" class="p-5 overflow-y-auto bg-slate-50/50"></div></div></div>
+    <div id="machineDetailModal" class="modal-overlay hidden"><div class="modal-content w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"><div class="bg-slate-800 p-6 sm:p-8 flex justify-between items-start shrink-0"><h3 id="detailName" class="text-xl sm:text-2xl font-bold text-white leading-tight pr-4"></h3><button id="closeDetailModal" class="text-slate-400 hover:text-white"><svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div><div class="p-6 sm:p-8 overflow-y-auto"><div class="mb-8 bg-slate-50 rounded-2xl p-6 border border-slate-200 relative overflow-hidden"><div class="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div><h4 class="flex items-center gap-2 text-xs font-black text-indigo-600 uppercase tracking-widest mb-4">SALES POINT</h4><p id="detailPitch" class="text-slate-700 text-base sm:text-lg font-medium leading-loose whitespace-pre-line"></p></div><div class="grid sm:grid-cols-2 gap-6"><div class="bg-emerald-50 p-5 rounded-2xl border border-emerald-100"><div class="flex items-center gap-2 mb-3 text-emerald-700 font-bold">GOOD</div><ul id="detailPros" class="space-y-2 text-sm font-bold text-emerald-800"></ul></div><div class="bg-rose-50 p-5 rounded-2xl border border-rose-100"><div class="flex items-center gap-2 mb-3 text-rose-700 font-bold">BAD</div><ul id="detailCons" class="space-y-2 text-sm font-bold text-rose-800"></ul></div></div></div></div></div>
+    <div id="password-modal" class="modal-overlay hidden"><div class="modal-content p-8 text-center"><h3 class="text-xl font-bold text-slate-800 mb-2">管理者認証</h3><p class="text-sm text-slate-500 mb-6">パスワードを入力してください。</p><input id="password-input" type="password" class="w-full p-3 border border-slate-200 rounded-lg mb-4 bg-slate-50 text-center font-bold focus:border-indigo-500 focus:outline-none" placeholder="Password"><p id="password-error" class="text-rose-500 text-xs font-bold mb-4 hidden">パスワードが違います</p><div class="flex gap-3 justify-center"><button onclick="closePasswordModal()" class="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100">キャンセル</button><button onclick="checkPassword()" class="px-6 py-3 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200">認証</button></div></div></div>
+    <div id="select-modal" class="select-modal-overlay hidden"><div class="select-modal-content"><div class="p-4 border-b border-slate-100 font-bold text-slate-700" id="select-modal-title">選択</div><div id="select-modal-body" class="select-modal-body"></div><div class="p-4 border-t border-slate-100 text-right"><button onclick="closeSelectModal()" class="text-sm font-bold text-slate-500 hover:text-slate-700">閉じる</button></div></div></div>
+    <div id="remarks-modal" class="modal-overlay hidden"><div class="modal-content p-6"><h3 class="text-lg font-bold text-slate-800 mb-1" id="remarks-modal-task"></h3><p class="text-xs font-bold text-slate-400 mb-4" id="remarks-modal-time"></p><div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-slate-700 text-sm font-medium leading-relaxed mb-6" id="remarks-modal-text"></div><button onclick="closeRemarksModal()" class="w-full py-3 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">閉じる</button></div></div>
+    <div id="delete-modal" class="modal-overlay hidden"><div class="modal-content p-8 text-center"><div class="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4"><svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></div><h3 class="text-xl font-bold text-slate-800 mb-2">削除確認</h3><p id="delete-modal-message" class="text-sm text-slate-500 mb-6"></p><div class="flex gap-3 justify-center"><button onclick="cancelDelete()" class="px-6 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100">キャンセル</button><button onclick="confirmDelete()" class="px-6 py-2.5 rounded-xl font-bold bg-rose-600 text-white hover:bg-rose-700 shadow-lg shadow-rose-200">削除する</button></div></div></div>
 
-    <!-- QSC Modal (Customer) -->
-    <div id="qscModal" class="modal-overlay hidden">
-        <div class="modal-content w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
-            <div class="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                <div class="flex items-center gap-2">
-                    <h3 class="font-bold text-xl text-slate-800">QSC チェックリスト</h3>
-                    <div class="flex bg-slate-100 p-1 rounded-lg">
-                        <button id="qscTabUnfinished" class="px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm transition-all">未実施</button>
-                        <button id="qscTabFinished" class="px-3 py-1 text-xs font-bold rounded-md text-slate-400 hover:text-slate-600 transition-all">完了済</button>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button id="qscEditButton" class="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition">⚙️ 管理</button>
-                    <button id="closeQscModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                    </button>
-                </div>
-            </div>
-            <div class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6">
-                <div id="qscAddForm" class="hidden mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                    <h4 class="text-xs font-bold text-indigo-600 mb-2 uppercase tracking-widest">新規項目の追加</h4>
-                    <div class="flex flex-col gap-2">
-                        <div class="grid grid-cols-3 gap-2">
-                            <input type="number" id="newQscNo" placeholder="No." class="border border-slate-200 rounded p-2 text-sm" min="1">
-                            <input type="text" id="newQscArea" placeholder="エリア (例: トイレ)" class="col-span-2 border border-slate-200 rounded p-2 text-sm">
-                        </div>
-                        <input type="text" id="newQscContent" placeholder="チェック内容を入力..." class="border border-slate-200 rounded p-2 text-sm">
-                        <button onclick="addQscItem()" class="bg-indigo-600 text-white font-bold text-sm py-2 rounded-lg hover:bg-indigo-700 transition">追加する</button>
-                    </div>
-                </div>
-                <div id="qscListContainer" class="space-y-3"></div>
-            </div>
-            <div class="p-3 bg-white border-t border-slate-100 text-center"><p class="text-xs text-slate-400 font-bold">チェックを入れると全員に即時反映されます</p></div>
-        </div>
-    </div>
-
-    <!-- Machine Modals (Customer) -->
-    <div id="newOpeningModal" class="modal-overlay hidden">
-        <div class="modal-content w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
-            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                <h3 class="font-bold text-xl text-slate-800">導入機種リスト</h3>
-                <button id="closeNewOpeningModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-            </div>
-            <div id="newOpeningInfo" class="p-5 overflow-y-auto bg-slate-50/50"></div>
-        </div>
-    </div>
-    
-    <div id="machineDetailModal" class="modal-overlay hidden">
-        <div class="modal-content w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="bg-slate-800 p-6 sm:p-8 flex justify-between items-start shrink-0">
-                <h3 id="detailName" class="text-xl sm:text-2xl font-bold text-white leading-tight pr-4"></h3>
-                <button id="closeDetailModal" class="text-slate-400 hover:text-white transition">
-                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-            </div>
-            <div class="p-6 sm:p-8 overflow-y-auto">
-                <div class="mb-8 bg-slate-50 rounded-2xl p-6 border border-slate-200 relative overflow-hidden">
-                    <div class="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
-                    <h4 class="flex items-center gap-2 text-xs font-black text-indigo-600 uppercase tracking-widest mb-4">SALES POINT / 担当者コメント</h4>
-                    <p id="detailPitch" class="text-slate-700 text-base sm:text-lg font-medium leading-loose whitespace-pre-line"></p>
-                </div>
-                <div class="grid sm:grid-cols-2 gap-6">
-                    <div class="bg-emerald-50 p-5 rounded-2xl border border-emerald-100"><div class="flex items-center gap-2 mb-3 text-emerald-700 font-bold">GOOD POINT</div><ul id="detailPros" class="space-y-2 text-sm font-bold text-emerald-800"></ul></div>
-                    <div class="bg-rose-50 p-5 rounded-2xl border border-rose-100"><div class="flex items-center gap-2 mb-3 text-rose-700 font-bold">BAD POINT</div><ul id="detailCons" class="space-y-2 text-sm font-bold text-rose-800"></ul></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Shared Modals -->
-    <div id="password-modal" class="modal-overlay hidden">
-        <div class="modal-content p-8 text-center">
-            <h3 class="text-xl font-bold text-slate-800 mb-2">管理者認証</h3>
-            <p class="text-sm text-slate-500 mb-6">パスワードを入力してください。</p>
-            <input id="password-input" type="password" class="w-full p-3 border border-slate-200 rounded-lg mb-4 bg-slate-50 text-center font-bold focus:border-indigo-500 focus:outline-none" placeholder="Password">
-            <p id="password-error" class="text-rose-500 text-xs font-bold mb-4 hidden">パスワードが違います</p>
-            <div class="flex gap-3 justify-center">
-                <button onclick="closePasswordModal()" class="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition">キャンセル</button>
-                <button onclick="checkPassword()" class="px-6 py-3 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">認証</button>
-            </div>
-        </div>
-    </div>
-    <div id="select-modal" class="select-modal-overlay hidden">
-        <div class="select-modal-content">
-            <div class="p-4 border-b border-slate-100 font-bold text-slate-700" id="select-modal-title">選択</div>
-            <div id="select-modal-body" class="select-modal-body"></div>
-            <div class="p-4 border-t border-slate-100 text-right"><button onclick="closeSelectModal()" class="text-sm font-bold text-slate-500 hover:text-slate-700">閉じる</button></div>
-        </div>
-    </div>
-    <div id="remarks-modal" class="modal-overlay hidden">
-        <div class="modal-content p-6">
-            <h3 class="text-lg font-bold text-slate-800 mb-1" id="remarks-modal-task"></h3>
-            <p class="text-xs font-bold text-slate-400 mb-4" id="remarks-modal-time"></p>
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-slate-700 text-sm font-medium leading-relaxed mb-6" id="remarks-modal-text"></div>
-            <button onclick="closeRemarksModal()" class="w-full py-3 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">閉じる</button>
-        </div>
-    </div>
-    <div id="delete-modal" class="modal-overlay hidden">
-        <div class="modal-content p-8 text-center">
-            <div class="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-            </div>
-            <h3 class="text-xl font-bold text-slate-800 mb-2">削除確認</h3>
-            <p id="delete-modal-message" class="text-sm text-slate-500 mb-6"></p>
-            <div class="flex gap-3 justify-center">
-                <button onclick="cancelDelete()" class="px-6 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition">キャンセル</button>
-                <button onclick="confirmDelete()" class="px-6 py-2.5 rounded-xl font-bold bg-rose-600 text-white hover:bg-rose-700 transition shadow-lg shadow-rose-200">削除する</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- JS Module -->
     <script type="module" src="main.js"></script>
 </body>
 </html>
