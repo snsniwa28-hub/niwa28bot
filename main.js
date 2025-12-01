@@ -395,20 +395,24 @@ window.autoAssignTasks = (sec, list) => {
     all.forEach(s=>s.tasks=[]);
     
     // =========================================================================================
-    // ★ 開店作業 (OPEN) のロジック修正 (カウンター優先、清掃空き時間割り当て) ★
+    // ★ 開店作業 (OPEN) のロジック修正 (固定タスク反映、カウンター優先、清掃空き時間割り当て) ★
     // =========================================================================================
     if(list==='open'){
         const t_money = getTaskByName("金銭業務"), t_warehouse = getTaskByName("倉庫(開店)"), t_briefing = getTaskByName("朝礼");
         const t_counter = getTaskByName("カウンター開設準備");
         
-        // 1. 固定タスクの割り当て
-        const m=emp.find(s=>s.name===window.staffList.fixed_money_count); if(m) m.tasks.push({start:'07:00',end:'08:15',task:t_money.name,remarks:'（固定）'});
-        const w=all.find(s=>s.name===window.staffList.fixed_open_warehouse); if(w) w.tasks.push({start:'09:15',end:'09:45',task:t_warehouse.name,remarks:'（固定）'});
-        const c=all.find(s=>s.name===window.staffList.fixed_open_counter); 
-        // ★ カウンター開設準備の固定割り当て (4コマ)
-        if(c) c.tasks.push({start:'09:00',end:'10:00',task:t_counter.name,remarks:'（固定）'}); 
+        // 1. 固定タスクの割り当て (スタッフ検索ロジックを修正)
+        const fixedStaffs = new Set();
         
-        const fixedStaffs = new Set([m, w, c].filter(Boolean).map(s => s.name));
+        const m_staff=all.find(s=>s.name===window.staffList.fixed_money_count); 
+        if(m_staff) {m_staff.tasks.push({start:'07:00',end:'08:15',task:t_money.name,remarks:'（固定）'}); fixedStaffs.add(m_staff.name);}
+        
+        const w_staff=all.find(s=>s.name===window.staffList.fixed_open_warehouse); 
+        if(w_staff) {w_staff.tasks.push({start:'09:15',end:'09:45',task:t_warehouse.name,remarks:'（固定）'}); fixedStaffs.add(w_staff.name);}
+        
+        const c_staff=all.find(s=>s.name===window.staffList.fixed_open_counter); 
+        // ★ カウンター開設準備の固定割り当て (4コマ)
+        if(c_staff) {c_staff.tasks.push({start:'09:00',end:'10:00',task:t_counter.name,remarks:'（固定）'}); fixedStaffs.add(c_staff.name);}
         
         // 2. 通常タスクのルール定義
         const rules = [
@@ -439,7 +443,7 @@ window.autoAssignTasks = (sec, list) => {
         
         // 09:00-10:00 のスロットを対象に、空いているアルバイト全員に1コマずつ清掃を入れる
         for(let i = 0; i < openAlbaTimeSlots.length - 1; i++) {
-            const startSlotIndex = openTimeIndexMap.get(openAlbaTimeSlots[i]); // 全体のインデックスを取得
+            const startSlotIndex = openTimeIndexMap.get(openAlbaTimeSlots[i]); 
             const endSlotIndex = startSlotIndex + 1; // 1コマ
             
             // i番目のスロットが空いていて、かつタスク負荷が最も低いアルバイトに割り当てる
@@ -460,16 +464,25 @@ window.autoAssignTasks = (sec, list) => {
     } 
     
     // =========================================================================================
-    // ★ 閉店作業 (CLOSE) のロジック修正 (立駐ペアリング) ★
+    // ★ 閉店作業 (CLOSE) のロジック修正 (固定タスク反映、立駐ペアリング) ★
     // =========================================================================================
     else {
         const t_col = getTaskByName("金銭回収"), t_ware = getTaskByName("倉庫整理"), t_cnt = getTaskByName("カウンター業務");
         const fix=[{k:'fixed_money_collect',t:t_col,s:'22:45',e:'23:15',g:emp},{k:'fixed_warehouses',t:t_ware,s:'22:45',e:'23:15',g:all},{k:'fixed-counters',t:t_cnt,s:'22:45',e:'23:00',g:all}];
-        const as=new Set(); fix.forEach(f=>{const s=f.g.find(p=>p.name===window.staffList[f.k]); if(s){s.tasks.push({start:f.s,end:f.e,task:f.t.name,remarks:'（固定）'}); as.add(s);}});
         
-        // 1. ★ 立駐ペア割り当てロジック ★
-        const employeeCandidates = emp.filter(s=>!as.has(s));
-        const albaCandidates = alba.filter(s=>!as.has(s));
+        // 1. 固定タスクの割り当て (スタッフ検索ロジックを修正)
+        const fixedStaffs = new Set();
+        fix.forEach(f=>{
+            const s_staff = all.find(p=>p.name===window.staffList[f.k]);
+            if(s_staff) {
+                s_staff.tasks.push({start:f.s,end:f.e,task:f.t.name,remarks:'（固定）'});
+                fixedStaffs.add(s_staff.name);
+            }
+        });
+        
+        // 2. ★ 立駐ペア割り当てロジック ★
+        const employeeCandidates = emp.filter(s=>!fixedStaffs.has(s.name));
+        const albaCandidates = alba.filter(s=>!fixedStaffs.has(s.name));
         const t_park_emp = getTaskByName("立駐（社員）");
         const t_park_alba = getTaskByName("立駐（アルバイト）");
         
@@ -496,16 +509,16 @@ window.autoAssignTasks = (sec, list) => {
             }
         }
         
-        // 2. 通常タスクのルール定義 (立駐は除外)
+        // 3. 通常タスクのルール定義 (立駐は除外)
         const rules = [
-            {n:"施錠・工具箱チェック", s:1, g:emp.filter(s=>!as.has(s))}, 
-            {n:"引継ぎ・事務所清掃", s:1, g:emp.filter(s=>!as.has(s))}, 
-            {n:"飲み残し・フラッグ確認", s:1, g:alba.filter(s=>!as.has(s))}, 
-            {n:"島上清掃・カード補充", s:1, g:alba.filter(s=>!as.has(s))},
+            {n:"施錠・工具箱チェック", s:1, g:emp.filter(s=>!fixedStaffs.has(s.name))}, 
+            {n:"引継ぎ・事務所清掃", s:1, g:emp.filter(s=>!fixedStaffs.has(s.name))}, 
+            {n:"飲み残し・フラッグ確認", s:1, g:alba.filter(s=>!fixedStaffs.has(s.name))}, 
+            {n:"島上清掃・カード補充", s:1, g:alba.filter(s=>!fixedStaffs.has(s.name))},
             // 固定担当者がいない場合のフォールバックルール (既存)
-            {n:t_col.name, s:t_col.slots || 2, g:emp.filter(s=>!as.has(s))},
-            {n:t_ware.name, s:t_ware.slots || 2, g:all.filter(s=>!as.has(s))},
-            {n:t_cnt.name, s:t_cnt.slots || 1, g:all.filter(s=>!as.has(s))}
+            {n:t_col.name, s:t_col.slots || 2, g:emp.filter(s=>!fixedStaffs.has(s.name))},
+            {n:t_ware.name, s:t_ware.slots || 2, g:all.filter(s=>!fixedStaffs.has(s.name))},
+            {n:t_cnt.name, s:t_cnt.slots || 1, g:all.filter(s=>!fixedStaffs.has(s.name))}
         ];
         
         rules.forEach(r=>{ for(let k=0;k<(r.c||1);k++){ for(let i=0; i<=closeTimeSlots.length-r.s; i++) { const x=findStaff(r.g, i, i+(r.s||1), closeTimeIndexMap); if(x) { x.staff.tasks.push({start:closeTimeSlots[i],end:closeTimeSlots[i+(r.s||1)],task:r.n,remarks:""}); break; } } } });
@@ -513,6 +526,8 @@ window.autoAssignTasks = (sec, list) => {
     }
     updateStaffLists(); generateSummaryView(); saveStaffListToFirestore();
 };
+
+// ... (以下、その他の関数は変更なし) ...
 
 window.openMasterModal = () => { document.getElementById('master-modal').classList.remove('hidden'); window.renderMasterStaffLists(); window.renderMasterTaskList(); };
 window.closeMasterModal = () => document.getElementById('master-modal').classList.add('hidden');
