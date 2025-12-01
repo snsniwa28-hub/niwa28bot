@@ -104,13 +104,15 @@ window.renderToday = function() {
     $('#todayEventContainer').innerHTML = html; $('#currentDate').textContent = `${today.getFullYear()}.${m + 1}.${d}`;
 };
 
-// ★修正: 新台情報のマッチングを賢くして、データがなくてもクリック反応するように変更
+// ★修正: 新台情報の安全対策
 window.openNewOpening = function() {
     const c = $('#newOpeningInfo'); c.innerHTML = "";
-    if (!newOpeningData.length) { c.innerHTML = "<p class='text-center text-slate-400 py-10'>データなし</p>"; $('#newOpeningModal').classList.remove("hidden"); return; }
+    if (!newOpeningData || !newOpeningData.length) { c.innerHTML = "<p class='text-center text-slate-400 py-10'>データなし</p>"; $('#newOpeningModal').classList.remove("hidden"); return; }
     
     const lat=[], oth=[]; 
-    newOpeningData.forEach(m => (latestKeywords.some(k=>m.name.includes(k))?lat:oth).push(m));
+    // データの中にnameがない場合のエラー防止
+    const validData = newOpeningData.filter(d => d && d.name);
+    validData.forEach(m => (latestKeywords.some(k=>m.name.includes(k))?lat:oth).push(m));
     
     const createList = (list, title) => {
         if(!list.length) return;
@@ -121,10 +123,10 @@ window.openNewOpening = function() {
             const li = document.createElement("li"); 
             li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm cursor-pointer hover:bg-slate-50 transition";
             
-            // 賢いマッチング: 空白削除、小文字化して比較
-            const norm = (s) => s.replace(/\s+/g, '').toLowerCase();
+            // 安全なマッチング処理
+            const norm = (s) => (s||"").replace(/\s+/g, '').toLowerCase();
             const targetName = norm(item.name);
-            const matched = allMachines.find(m => norm(m.name).includes(targetName) || targetName.includes(norm(m.name)));
+            const matched = allMachines.find(m => m && m.name && (norm(m.name).includes(targetName) || targetName.includes(norm(m.name))));
             
             li.innerHTML = `<div class="flex flex-col overflow-hidden mr-2"><span class="font-bold text-slate-700 truncate text-sm sm:text-base">${item.name}</span>${matched&&matched.salesPitch?`<span class="text-xs text-indigo-500 font-bold mt-1">✨ 詳細あり</span>`:`<span class="text-xs text-slate-400 font-medium mt-1">情報なし</span>`}</div><span class="text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0">${item.count}台</span>`;
             
@@ -179,7 +181,6 @@ window.fetchMasterData = function() {
     onSnapshot(staffRef, (s) => { 
         if(s.exists()) { 
             window.masterStaffList = s.data(); 
-            // マスタ設定画面の描画関数呼び出しは削除
         } 
     });
     onSnapshot(taskDefRef, (s) => { 
@@ -250,7 +251,6 @@ window.setEditingMode = function(isEdit) {
     
     const b = $('#edit-mode-button');
     if(b){ b.textContent = isEdit?"閲覧モードに戻る":"管理者編集"; b.className = isEdit?"text-xs font-bold text-white bg-indigo-600 px-4 py-2 rounded-full shadow-md":"text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-full"; }
-    // マスタ設定ボタンの制御も削除
 
     if(isEdit) {
         const isOpen = $('#tab-open').classList.contains('bg-white');
@@ -357,7 +357,7 @@ function createList(t,n){
 // --- Modals & Input ---
 window.showRemarksModal=(t,m,r)=>{$('#remarks-modal-task').textContent=t;$('#remarks-modal-time').textContent=m;$('#remarks-modal-text').textContent=r||"備考なし";$('#remarks-modal').classList.remove('hidden');};
 window.closeRemarksModal=()=>$('#remarks-modal').classList.add('hidden');
-// ★追加: 閉じるボタンの関数
+// ★修正: 閉じるボタンの関数を確実に追加
 window.closeSelectModal = () => $('#select-modal').classList.add('hidden');
 
 window.showPasswordModal = (ctx) => { if(window.isEditing && ctx==='admin'){ window.setEditingMode(false); return; } authContext=ctx; $('#password-modal').classList.remove('hidden'); $('#password-input').value=""; $('#password-error').classList.add('hidden'); $('#password-input').focus(); };
@@ -376,11 +376,10 @@ window.setFixed = (k, n, type) => {
         let p = window.staffList[lKey].find(s=>s.name===n);
         if(!p){ p={name:n, tasks:[]}; window.staffList[lKey].push(p); }
         
-        // ★変更: カウンター開設時間を 09:15-10:00 (朝礼後) に設定
         const defs={
             'fixed_money_count':{t:'金銭業務',s:'07:00',e:'08:15'},
             'fixed_open_warehouse':{t:'倉庫番(特景)',s:'09:15',e:'09:45'},
-            'fixed_open_counter':{t:'カウンター開設準備',s:'09:15',e:'10:00'}, // ここ重要！9:15開始
+            'fixed_open_counter':{t:'カウンター開設準備',s:'09:15',e:'10:00'}, 
             'fixed_money_collect':{t:'金銭回収',s:'22:45',e:'23:15'},
             'fixed_warehouses':{t:'倉庫整理',s:'22:45',e:'23:15'},
             'fixed_counters':{t:'カウンター業務',s:'22:45',e:'23:00'}
@@ -422,14 +421,16 @@ window.delTask=(k,s,t)=>{ if(confirm("削除？")){ window.staffList[k][s].tasks
 window.delStaff=(k,s)=>{ if(confirm("スタッフ削除？")){ const n=window.staffList[k][s].name; window.staffList[k].splice(s,1); ['fixed_money_count','fixed_open_warehouse','fixed_open_counter','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(fk=>{if(window.staffList[fk]===n)window.staffList[fk]="";}); window.saveStaffListToFirestore(); window.refreshCurrentView(); } };
 window.addS=(k,n)=>{ window.staffList[k].push({name:n,tasks:[{start:'',end:'',task:'',remarks:''}]}); window.saveStaffListToFirestore(); window.refreshCurrentView(); $('#select-modal').classList.add('hidden'); };
 
-// --- Auto Assign Logic (Updated with 9:15 Counter Open) ---
+// --- Auto Assign Logic (Updated & Fixed) ---
 const timeToMin = (t) => { if(!t) return 0; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 const checkOverlap = (tasks, sTime, eTime) => {
+    if(!tasks) return false;
     const s = timeToMin(sTime), e = timeToMin(eTime);
     return tasks.some(t => { const ts = timeToMin(t.start), te = timeToMin(t.end); return (ts < e && te > s); });
 };
 const assign = (staff, task, start, end, remarks = "") => {
-    if (!checkOverlap(staff.tasks, start, end)) {
+    if (!staff || !checkOverlap(staff.tasks, start, end)) {
+        if(!staff.tasks) staff.tasks = [];
         staff.tasks.push({ start, end, task, remarks });
         staff.tasks.sort((a, b) => a.start.localeCompare(b.start));
         return true;
@@ -437,135 +438,146 @@ const assign = (staff, task, start, end, remarks = "") => {
     return false;
 };
 
+// ★修正: 自動割り振りの安全性を強化 (エラーガード追加)
 window.autoAssignTasks = async (sec, listType) => {
-    const isOpen = listType === 'open';
-    const empKey = isOpen ? 'early' : 'closing_employee';
-    const albaKey = isOpen ? 'late' : 'closing_alba';
-    
-    const employees = window.staffList[empKey];
-    const albas = window.staffList[albaKey];
-    const allStaff = [...employees, ...albas];
+    try {
+        const isOpen = listType === 'open';
+        const empKey = isOpen ? 'early' : 'closing_employee';
+        const albaKey = isOpen ? 'late' : 'closing_alba';
+        
+        const employees = window.staffList[empKey] || [];
+        const albas = window.staffList[albaKey] || [];
+        const allStaff = [...employees, ...albas];
 
-    allStaff.forEach(s => { s.tasks = s.tasks.filter(t => t.remarks === '（固定）'); });
-
-    const fixedMap = {
-        money: window.staffList.fixed_money_count,
-        warehouse: window.staffList.fixed_open_warehouse,
-        counterOpen: window.staffList.fixed_open_counter,
-        collect: window.staffList.fixed_money_collect,
-        warehouseClose: window.staffList.fixed_warehouses,
-        counterClose: window.staffList.fixed_counters
-    };
-    const fixedNames = Object.values(fixedMap).filter(Boolean);
-
-    if (isOpen) {
-        // --- ① カウンター開設準備 (フォールバック 9:15-10:00) ---
-        if (!fixedMap.counterOpen) {
-            // 朝礼後(9:15)から開始
-            const candidate = albas.find(s => !fixedNames.includes(s.name) && !checkOverlap(s.tasks, '09:15', '10:00'));
-            if (candidate) {
-                assign(candidate, 'カウンター開設準備', '09:15', '10:00');
-            }
-        }
-        // --- ② 抽選 (09:15-10:00) ---
-        let lotteryCount = 0;
-        for (const s of allStaff) {
-            if (lotteryCount >= 2) break;
-            if (fixedNames.includes(s.name)) continue;
-            if (assign(s, "抽選（準備、片付け）", '09:15', '10:00')) lotteryCount++;
-        }
-        // --- ③ 朝礼 (09:00-09:15) ---
-        allStaff.forEach(s => {
-            if (!checkOverlap(s.tasks, '09:00', '09:15')) assign(s, '朝礼', '09:00', '09:15');
+        // 既存タスククリア
+        allStaff.forEach(s => { 
+            if(s.tasks) s.tasks = s.tasks.filter(t => t.remarks === '（固定）'); 
+            else s.tasks = [];
         });
-        // --- ④ 早番社員タスク ---
-        const empTasks = ["外販出し、新聞、岡持", "販促確認、全体確認、時差島台電落とし", "P台チェック(社員)"];
-        empTasks.forEach(taskName => {
-            for (const s of employees) {
-                if (fixedNames.includes(s.name)) continue;
-                if (assign(s, taskName, '09:15', '09:30')) break;
-                if (assign(s, taskName, '09:30', '09:45')) break;
-                if (assign(s, taskName, '09:45', '10:00')) break;
+
+        const fixedMap = {
+            money: window.staffList.fixed_money_count,
+            warehouse: window.staffList.fixed_open_warehouse,
+            counterOpen: window.staffList.fixed_open_counter,
+            collect: window.staffList.fixed_money_collect,
+            warehouseClose: window.staffList.fixed_warehouses,
+            counterClose: window.staffList.fixed_counters
+        };
+        const fixedNames = Object.values(fixedMap).filter(Boolean);
+
+        if (isOpen) {
+            // ① カウンター開設準備 (フォールバック)
+            if (!fixedMap.counterOpen) {
+                const candidate = albas.find(s => !fixedNames.includes(s.name) && !checkOverlap(s.tasks, '09:15', '10:00'));
+                if (candidate) assign(candidate, 'カウンター開設準備', '09:15', '10:00');
             }
-        });
-        // --- ⑤ 早番アルバイトタスク ---
-        const albaTasks = ["P台チェック(アルバイト)", "S台チェック", "ローラー交換", "環境整備・5M"];
-        for (const taskName of albaTasks) {
-            for (const s of albas) {
+            // ② 抽選
+            let lotteryCount = 0;
+            for (const s of allStaff) {
+                if (lotteryCount >= 2) break;
                 if (fixedNames.includes(s.name)) continue;
-                if (assign(s, taskName, '09:15', '09:30')) break;
-                if (assign(s, taskName, '09:30', '09:45')) break;
-                if (assign(s, taskName, '09:45', '10:00')) break;
+                if (assign(s, "抽選（準備、片付け）", '09:15', '10:00')) lotteryCount++;
             }
-        }
-        // --- ⑥ 島上・イーゼル清掃 (空き埋め) ---
-        albas.forEach(s => {
-            if (fixedNames.includes(s.name)) return;
-            [['09:15','09:30'], ['09:30','09:45'], ['09:45','10:00']].forEach(([st, et]) => {
-                if (!checkOverlap(s.tasks, st, et)) assign(s, '島上・イーゼル清掃', st, et);
+            // ③ 朝礼
+            allStaff.forEach(s => {
+                if (!checkOverlap(s.tasks, '09:00', '09:15')) assign(s, '朝礼', '09:00', '09:15');
             });
-        });
-    } else {
-        // CLOSE Logic (Same as before)
-        let pEmp = null, pAlba = null;
-        for (const e of employees) {
-            if (fixedNames.includes(e.name)) continue;
-            if (!checkOverlap(e.tasks, '22:45', '23:00')) { pEmp = e; break; }
-        }
-        for (const a of albas) {
-            if (fixedNames.includes(a.name)) continue;
-            if (!checkOverlap(a.tasks, '22:45', '23:00')) { pAlba = a; break; }
-        }
-        if (pEmp && pAlba) {
-            assign(pEmp, '立駐（社員）', '22:45', '23:00');
-            assign(pAlba, '立駐（アルバイト）', '22:45', '23:00');
-            fixedNames.push(pEmp.name, pAlba.name);
-        }
-        const closeEmpTasks = ['施錠・工具箱チェック', '引継ぎ・事務所清掃'];
-        closeEmpTasks.forEach(taskName => {
-            for (const s of employees) {
-                if (fixedNames.includes(s.name)) continue;
-                if (assign(s, taskName, '22:45', '23:00')) break;
+            // ④ 早番社員
+            const empTasks = ["外販出し、新聞、岡持", "販促確認、全体確認、時差島台電落とし", "P台チェック(社員)"];
+            empTasks.forEach(taskName => {
+                for (const s of employees) {
+                    if (fixedNames.includes(s.name)) continue;
+                    if (assign(s, taskName, '09:15', '09:30')) break;
+                    if (assign(s, taskName, '09:30', '09:45')) break;
+                    if (assign(s, taskName, '09:45', '10:00')) break;
+                }
+            });
+            // ⑤ 早番アルバイト
+            const albaTasks = ["P台チェック(アルバイト)", "S台チェック", "ローラー交換", "環境整備・5M"];
+            for (const taskName of albaTasks) {
+                for (const s of albas) {
+                    if (fixedNames.includes(s.name)) continue;
+                    if (assign(s, taskName, '09:15', '09:30')) break;
+                    if (assign(s, taskName, '09:30', '09:45')) break;
+                    if (assign(s, taskName, '09:45', '10:00')) break;
+                }
             }
-        });
-        const closeAlbaTasks = ['飲み残し・フラッグ確認', '島上清掃・カード補充'];
-        closeAlbaTasks.forEach(taskName => {
-            for (const s of albas) {
-                if (fixedNames.includes(s.name)) continue;
-                if (assign(s, taskName, '22:45', '23:00')) break;
+            // ⑥ 清掃 (空き埋め)
+            albas.forEach(s => {
+                if (fixedNames.includes(s.name)) return;
+                [['09:15','09:30'], ['09:30','09:45'], ['09:45','10:00']].forEach(([st, et]) => {
+                    if (!checkOverlap(s.tasks, st, et)) assign(s, '島上・イーゼル清掃', st, et);
+                });
+            });
+
+        } else {
+            // CLOSE Logic
+            let pEmp = null, pAlba = null;
+            for (const e of employees) {
+                if (!fixedNames.includes(e.name) && !checkOverlap(e.tasks, '22:45', '23:00')) { pEmp = e; break; }
             }
+            for (const a of albas) {
+                if (!fixedNames.includes(a.name) && !checkOverlap(a.tasks, '22:45', '23:00')) { pAlba = a; break; }
+            }
+            if (pEmp && pAlba) {
+                assign(pEmp, '立駐（社員）', '22:45', '23:00');
+                assign(pAlba, '立駐（アルバイト）', '22:45', '23:00');
+                fixedNames.push(pEmp.name, pAlba.name);
+            }
+            
+            const closeEmpTasks = ['施錠・工具箱チェック', '引継ぎ・事務所清掃'];
+            closeEmpTasks.forEach(taskName => {
+                for (const s of employees) {
+                    if (fixedNames.includes(s.name)) continue;
+                    if (assign(s, taskName, '22:45', '23:00')) break;
+                }
+            });
+            const closeAlbaTasks = ['飲み残し・フラッグ確認', '島上清掃・カード補充'];
+            closeAlbaTasks.forEach(taskName => {
+                for (const s of albas) {
+                    if (fixedNames.includes(s.name)) continue;
+                    if (assign(s, taskName, '22:45', '23:00')) break;
+                }
+            });
+            
+            // フォールバック
+            if (!fixedMap.collect) {
+                const c = employees.find(s => !checkOverlap(s.tasks, '22:45', '23:15'));
+                if(c) assign(c, '金銭回収', '22:45', '23:15');
+            }
+            if (!fixedMap.warehouseClose) {
+                const c = allStaff.find(s => !checkOverlap(s.tasks, '22:45', '23:15'));
+                if(c) assign(c, '倉庫整理', '22:45', '23:15');
+            }
+        }
+
+        // 共通: 自由時間埋め
+        const slots = isOpen ? openTimeSlots : closeTimeSlots;
+        allStaff.forEach(s => {
+            for (let i = 0; i < slots.length - 1; i++) {
+                const st = slots[i]; const et = slots[i+1];
+                if (isOpen && st < '09:00' && !fixedNames.includes(s.name)) continue;
+                if (!checkOverlap(s.tasks, st, et)) assign(s, '個人業務、自由時間', st, et);
+            }
+            s.tasks.sort((a, b) => a.start.localeCompare(b.start));
+            const merged = [];
+            s.tasks.forEach(t => {
+                if (merged.length === 0) { merged.push(t); return; }
+                const last = merged[merged.length - 1];
+                if (last.task === t.task && last.task === '個人業務、自由時間' && last.end === t.start) {
+                    last.end = t.end;
+                } else { merged.push(t); }
+            });
+            s.tasks = merged;
         });
-        if (!fixedMap.collect) {
-             const c = employees.find(s => !checkOverlap(s.tasks, '22:45', '23:15'));
-             if(c) assign(c, '金銭回収', '22:45', '23:15');
-        }
-        if (!fixedMap.warehouseClose) {
-             const c = allStaff.find(s => !checkOverlap(s.tasks, '22:45', '23:15'));
-             if(c) assign(c, '倉庫整理', '22:45', '23:15');
-        }
+
+        window.saveStaffListToFirestore();
+        window.refreshCurrentView();
+        
+    } catch(e) {
+        console.error(e);
+        alert("割り振り処理中にエラーが発生しました: " + e.message);
     }
-
-    const slots = isOpen ? openTimeSlots : closeTimeSlots;
-    allStaff.forEach(s => {
-        for (let i = 0; i < slots.length - 1; i++) {
-            const st = slots[i]; const et = slots[i+1];
-            if (isOpen && st < '09:00' && !fixedNames.includes(s.name)) continue;
-            if (!checkOverlap(s.tasks, st, et)) assign(s, '個人業務、自由時間', st, et);
-        }
-        s.tasks.sort((a, b) => a.start.localeCompare(b.start));
-        const merged = [];
-        s.tasks.forEach(t => {
-            if (merged.length === 0) { merged.push(t); return; }
-            const last = merged[merged.length - 1];
-            if (last.task === t.task && last.task === '個人業務、自由時間' && last.end === t.start) {
-                last.end = t.end;
-            } else { merged.push(t); }
-        });
-        s.tasks = merged;
-    });
-
-    window.saveStaffListToFirestore();
-    window.refreshCurrentView();
 };
 
 window.addEventListener("DOMContentLoaded", () => {
