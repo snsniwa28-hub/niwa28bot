@@ -5,6 +5,7 @@ body {
     color: #334155;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+    user-select: none;
 }
 
 /* === Animations === */
@@ -37,7 +38,7 @@ body {
 .word-keep { display: inline-block; }
 
 /* =========================================
-   Task Manager Styles (Timeline & Edit)
+   Task Manager Styles
    ========================================= */
 .timeline-container {
     width: 100%; overflow-x: auto; background-color: #ffffff; border: 1px solid #e2e8f0;
@@ -66,7 +67,28 @@ body {
 }
 .task-bar:hover { z-index: 30; transform: scaleY(1.1) scaleX(1.01); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
 
-/* Task Colors - Modified to apply without .task-bar wrapper for previews */
+/* CLICK & MOVE UI (Improved Visibility) */
+.task-bar.clickable { cursor: pointer; }
+.task-bar.is-selected {
+    /* 白い縁取り＋オレンジの太い枠線 */
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 5px #f59e0b, 0 10px 20px rgba(0,0,0,0.3);
+    z-index: 100 !important; 
+    transform: scale(1.05);
+    opacity: 1 !important;
+    animation: pulse 1.5s infinite;
+}
+@keyframes pulse { 0% { transform: scale(1.05); } 50% { transform: scale(1.07); } 100% { transform: scale(1.05); } }
+
+.timeline-slot {
+    cursor: pointer; transition: background 0.1s;
+}
+.timeline-slot:hover { background-color: #f1f5f9; }
+.timeline-slot.target-active { 
+    background-color: #fff7ed; /* 薄いオレンジ */
+    border-left: 2px dashed #fbbf24;
+}
+
+/* Task Colors */
 .task-bar.pair-task, .pair-task { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
 .task-bar.briefing-task, .briefing-task { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
 .task-bar.money-task, .money-task { background: #fef9c3; color: #854d0e; border-left: 4px solid #eab308; }
@@ -75,8 +97,6 @@ body {
 .task-bar.lock-task, .lock-task, .task-bar.toolbox-task, .toolbox-task, .task-bar.handoff-task, .handoff-task { background: #f3e8ff; color: #6b21a8; border-left: 4px solid #a855f7; }
 .task-bar.alba-close-task, .alba-close-task { background: #ffe4e6; color: #be123c; border-left: 4px solid #f43f5e; }
 .task-bar.staff-15min-task, .staff-15min-task, .task-bar.special-opening-task, .special-opening-task { background: #cffafe; color: #155e75; border-left: 4px solid #06b6d4; }
-
-/* Generic Colors */
 .task-bar.color-red, .color-red { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
 .task-bar.color-green, .color-green { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
 .task-bar.color-yellow, .color-yellow { background: #fef9c3; color: #854d0e; border-left: 4px solid #eab308; }
