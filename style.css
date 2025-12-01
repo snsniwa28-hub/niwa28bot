@@ -5,7 +5,6 @@ body {
     color: #334155;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
-    user-select: none;
 }
 
 /* === Animations === */
@@ -63,12 +62,11 @@ body {
 .task-bar {
     position: absolute; top: 6px; left: 1px; right: 1px; bottom: 6px; border-radius: 6px;
     padding: 0 0.5rem; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: space-between;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; white-space: nowrap; z-index: 5; transition: transform 0.1s; cursor: default;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; white-space: nowrap; z-index: 5; transition: transform 0.1s; cursor: pointer;
 }
-/* Just simple hover for readability */
 .task-bar:hover { z-index: 30; transform: scaleY(1.1) scaleX(1.01); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
 
-/* Task Colors */
+/* Task Colors - Modified to apply without .task-bar wrapper for previews */
 .task-bar.pair-task, .pair-task { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
 .task-bar.briefing-task, .briefing-task { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
 .task-bar.money-task, .money-task { background: #fef9c3; color: #854d0e; border-left: 4px solid #eab308; }
@@ -77,6 +75,8 @@ body {
 .task-bar.lock-task, .lock-task, .task-bar.toolbox-task, .toolbox-task, .task-bar.handoff-task, .handoff-task { background: #f3e8ff; color: #6b21a8; border-left: 4px solid #a855f7; }
 .task-bar.alba-close-task, .alba-close-task { background: #ffe4e6; color: #be123c; border-left: 4px solid #f43f5e; }
 .task-bar.staff-15min-task, .staff-15min-task, .task-bar.special-opening-task, .special-opening-task { background: #cffafe; color: #155e75; border-left: 4px solid #06b6d4; }
+
+/* Generic Colors */
 .task-bar.color-red, .color-red { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
 .task-bar.color-green, .color-green { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
 .task-bar.color-yellow, .color-yellow { background: #fef9c3; color: #854d0e; border-left: 4px solid #eab308; }
