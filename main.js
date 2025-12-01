@@ -604,6 +604,19 @@ window.addEventListener("DOMContentLoaded", () => {
     $('#closeDetailModal').onclick=()=>$('#machineDetailModal').classList.add('hidden');
     $('#openQSCButton').onclick=()=>{ $('#qscModal').classList.remove('hidden'); window.renderQSCList(); };
     $('#closeQscModal').onclick=()=>$('#qscModal').classList.add('hidden');
+    // ★追加: QSCタブ切り替えリスナー
+    $('#qscTabUnfinished').onclick = () => {
+        currentQscTab = '未実施';
+        $('#qscTabUnfinished').className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm";
+        $('#qscTabFinished').className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400";
+        window.renderQSCList();
+    };
+    $('#qscTabFinished').onclick = () => {
+        currentQscTab = '完了';
+        $('#qscTabFinished').className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm";
+        $('#qscTabUnfinished').className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400";
+        window.renderQSCList();
+    };
     $('#calendarToggleButton').onclick=()=>{
         const f=$('#fullCalendarContainer'), t=$('#todayEventContainer'), b=$('#calendarToggleButton');
         f.classList.toggle('hidden'); t.classList.toggle('hidden'); b.textContent=f.classList.contains('hidden')?"全体を見る":"戻る";
