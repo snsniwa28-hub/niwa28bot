@@ -104,7 +104,6 @@ window.renderToday = function() {
     $('#todayEventContainer').innerHTML = html; $('#currentDate').textContent = `${today.getFullYear()}.${m + 1}.${d}`;
 };
 
-// ★修正: 新台情報のロジックを完全書き換え。データが見つかれば即座にリスナー登録。
 window.openNewOpening = function() {
     const c = $('#newOpeningInfo'); c.innerHTML = "";
     if (!newOpeningData || !newOpeningData.length) { c.innerHTML = "<p class='text-center text-slate-400 py-10'>データなし</p>"; $('#newOpeningModal').classList.remove("hidden"); return; }
@@ -124,7 +123,6 @@ window.openNewOpening = function() {
             const li = document.createElement("li"); 
             li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm cursor-pointer hover:bg-slate-50 transition";
             
-            // 安全なマッチング処理
             const norm = (s) => (s||"").replace(/\s+/g, '').toLowerCase();
             const targetName = norm(item.name);
             const matched = allMachines.find(m => m && m.name && (norm(m.name).includes(targetName) || targetName.includes(norm(m.name))));
@@ -132,7 +130,6 @@ window.openNewOpening = function() {
 
             li.innerHTML = `<div class="flex flex-col overflow-hidden mr-2 pointer-events-none"><span class="font-bold text-slate-700 truncate text-sm sm:text-base">${item.name}</span>${hasDetail?`<span class="text-xs text-indigo-500 font-bold mt-1">✨ 詳細あり</span>`:`<span class="text-xs text-slate-400 font-medium mt-1">情報なし</span>`}</div><span class="text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0 pointer-events-none">${item.count}台</span>`;
             
-            // クリックリスナーを直接登録
             li.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if(hasDetail) {
@@ -373,16 +370,44 @@ function createList(t,n){
 // --- Modals & Input ---
 window.showRemarksModal=(t,m,r)=>{$('#remarks-modal-task').textContent=t;$('#remarks-modal-time').textContent=m;$('#remarks-modal-text').textContent=r||"備考なし";$('#remarks-modal').classList.remove('hidden');};
 window.closeRemarksModal=()=>$('#remarks-modal').classList.add('hidden');
-// ★修正: 閉じるボタンの関数を確実に追加
 window.closeSelectModal = () => $('#select-modal').classList.add('hidden');
 
-window.showPasswordModal = (ctx) => { if(window.isEditing && ctx==='admin'){ window.setEditingMode(false); return; } authContext=ctx; $('#password-modal').classList.remove('hidden'); $('#password-input').value=""; $('#password-error').classList.add('hidden'); $('#password-input').focus(); };
+window.showPasswordModal = (ctx) => { 
+    if(window.isEditing && ctx==='admin'){ 
+        window.setEditingMode(false); 
+        return; 
+    } 
+    authContext=ctx; 
+    $('#password-modal').classList.remove('hidden'); 
+    $('#password-input').value=""; 
+    $('#password-error').classList.add('hidden'); 
+    $('#password-input').focus(); 
+    
+    // Enterキー対応
+    const input = $('#password-input');
+    input.onkeydown = (e) => {
+        if(e.key === 'Enter') {
+            e.preventDefault();
+            window.checkPassword();
+        }
+    };
+};
 window.closePasswordModal = () => $('#password-modal').classList.add('hidden');
-window.checkPassword = () => { if($('#password-input').value===EDIT_PASSWORD){ window.closePasswordModal(); if(authContext==='admin') window.setEditingMode(true); else { qscEditMode=true; $('#qscEditButton').textContent="✅ 完了"; $('#qscAddForm').classList.remove('hidden'); window.renderQSCList(); } } else { $('#password-error').classList.remove('hidden'); } };
 
-// --- Select Modals ---
+// ★修正: パスワードチェックの空白削除&小文字化対応 (スマホ対策)
+window.checkPassword = () => { 
+    const input = $('#password-input');
+    // .trim()で空白削除、.toLowerCase()で小文字化して比較
+    if(input.value.trim().toLowerCase() === EDIT_PASSWORD){ 
+        window.closePasswordModal(); 
+        if(authContext==='admin') window.setEditingMode(true); 
+        else { qscEditMode=true; $('#qscEditButton').textContent="✅ 完了"; $('#qscAddForm').classList.remove('hidden'); window.renderQSCList(); } 
+    } else { 
+        $('#password-error').classList.remove('hidden'); 
+    } 
+};
+
 window.openFixedStaffSelect = (k, type) => { if(!window.isEditing)return; const c=(type.includes('early')||type.includes('open'))?[...window.masterStaffList.employees,...window.masterStaffList.alba_early]:[...window.masterStaffList.employees,...window.masterStaffList.alba_late]; const mb=$('#select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="setFixed('${k}','','${type}')">指定なし</div>`; c.sort().forEach(n=>mb.innerHTML+=`<div class="select-modal-option" onclick="setFixed('${k}','${n}','${type}')">${n}</div>`); $('#select-modal-title').textContent="担当者選択"; $('#select-modal').classList.remove('hidden'); };
-
 window.setFixed = (k, n, type) => {
     window.staffList[k]=n;
     if(n){
@@ -391,7 +416,6 @@ window.setFixed = (k, n, type) => {
         if(type.includes('early')) lKey='early'; else if(type.includes('open')) lKey=isEmp?'early':'late'; else lKey=isEmp?'closing_employee':'closing_alba';
         let p = window.staffList[lKey].find(s=>s.name===n);
         if(!p){ p={name:n, tasks:[]}; window.staffList[lKey].push(p); }
-        
         const defs={
             'fixed_money_count':{t:'金銭業務',s:'07:00',e:'08:15'},
             'fixed_open_warehouse':{t:'倉庫番(特景)',s:'09:15',e:'09:45'},
@@ -409,7 +433,6 @@ window.setFixed = (k, n, type) => {
     }
     updateFixedStaffButtons(); window.saveStaffListToFirestore(); window.refreshCurrentView(); $('#select-modal').classList.add('hidden');
 };
-
 function updateFixedStaffButtons() { 
     const map = {
         'fixed_money_count': 'fixed-money_count-btn',
@@ -437,7 +460,7 @@ window.delTask=(k,s,t)=>{ if(confirm("削除？")){ window.staffList[k][s].tasks
 window.delStaff=(k,s)=>{ if(confirm("スタッフ削除？")){ const n=window.staffList[k][s].name; window.staffList[k].splice(s,1); ['fixed_money_count','fixed_open_warehouse','fixed_open_counter','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(fk=>{if(window.staffList[fk]===n)window.staffList[fk]="";}); window.saveStaffListToFirestore(); window.refreshCurrentView(); } };
 window.addS=(k,n)=>{ window.staffList[k].push({name:n,tasks:[{start:'',end:'',task:'',remarks:''}]}); window.saveStaffListToFirestore(); window.refreshCurrentView(); $('#select-modal').classList.add('hidden'); };
 
-// --- Auto Assign Logic (Updated & Fixed) ---
+// Auto Assign Logic
 const timeToMin = (t) => { if(!t) return 0; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 const checkOverlap = (tasks, sTime, eTime) => {
     if(!tasks) return false;
@@ -454,7 +477,6 @@ const assign = (staff, task, start, end, remarks = "") => {
     return false;
 };
 
-// ★修正: 自動割り振り。エラー防止ガードを完備
 window.autoAssignTasks = async (sec, listType) => {
     try {
         const isOpen = listType === 'open';
@@ -465,7 +487,6 @@ window.autoAssignTasks = async (sec, listType) => {
         const albas = window.staffList[albaKey] || [];
         const allStaff = [...employees, ...albas];
 
-        // 既存タスククリア
         allStaff.forEach(s => { 
             if(s.tasks) s.tasks = s.tasks.filter(t => t.remarks === '（固定）'); 
             else s.tasks = [];
@@ -482,23 +503,19 @@ window.autoAssignTasks = async (sec, listType) => {
         const fixedNames = Object.values(fixedMap).filter(Boolean);
 
         if (isOpen) {
-            // ① カウンター開設準備 (フォールバック)
             if (!fixedMap.counterOpen) {
                 const candidate = albas.find(s => !fixedNames.includes(s.name) && !checkOverlap(s.tasks, '09:15', '10:00'));
                 if (candidate) assign(candidate, 'カウンター開設準備', '09:15', '10:00');
             }
-            // ② 抽選
             let lotteryCount = 0;
             for (const s of allStaff) {
                 if (lotteryCount >= 2) break;
                 if (fixedNames.includes(s.name)) continue;
                 if (assign(s, "抽選（準備、片付け）", '09:15', '10:00')) lotteryCount++;
             }
-            // ③ 朝礼
             allStaff.forEach(s => {
                 if (!checkOverlap(s.tasks, '09:00', '09:15')) assign(s, '朝礼', '09:00', '09:15');
             });
-            // ④ 早番社員
             const empTasks = ["外販出し、新聞、岡持", "販促確認、全体確認、時差島台電落とし", "P台チェック(社員)"];
             empTasks.forEach(taskName => {
                 for (const s of employees) {
@@ -508,7 +525,6 @@ window.autoAssignTasks = async (sec, listType) => {
                     if (assign(s, taskName, '09:45', '10:00')) break;
                 }
             });
-            // ⑤ 早番アルバイト
             const albaTasks = ["P台チェック(アルバイト)", "S台チェック", "ローラー交換", "環境整備・5M"];
             for (const taskName of albaTasks) {
                 for (const s of albas) {
@@ -518,16 +534,13 @@ window.autoAssignTasks = async (sec, listType) => {
                     if (assign(s, taskName, '09:45', '10:00')) break;
                 }
             }
-            // ⑥ 清掃 (空き埋め)
             albas.forEach(s => {
                 if (fixedNames.includes(s.name)) return;
                 [['09:15','09:30'], ['09:30','09:45'], ['09:45','10:00']].forEach(([st, et]) => {
                     if (!checkOverlap(s.tasks, st, et)) assign(s, '島上・イーゼル清掃', st, et);
                 });
             });
-
         } else {
-            // CLOSE Logic
             let pEmp = null, pAlba = null;
             for (const e of employees) {
                 if (!fixedNames.includes(e.name) && !checkOverlap(e.tasks, '22:45', '23:00')) { pEmp = e; break; }
@@ -556,7 +569,6 @@ window.autoAssignTasks = async (sec, listType) => {
                 }
             });
             
-            // フォールバック
             if (!fixedMap.collect) {
                 const c = employees.find(s => !checkOverlap(s.tasks, '22:45', '23:15'));
                 if(c) assign(c, '金銭回収', '22:45', '23:15');
@@ -567,7 +579,6 @@ window.autoAssignTasks = async (sec, listType) => {
             }
         }
 
-        // 共通: 自由時間埋め
         const slots = isOpen ? openTimeSlots : closeTimeSlots;
         allStaff.forEach(s => {
             for (let i = 0; i < slots.length - 1; i++) {
@@ -604,7 +615,6 @@ window.addEventListener("DOMContentLoaded", () => {
     $('#closeDetailModal').onclick=()=>$('#machineDetailModal').classList.add('hidden');
     $('#openQSCButton').onclick=()=>{ $('#qscModal').classList.remove('hidden'); window.renderQSCList(); };
     $('#closeQscModal').onclick=()=>$('#qscModal').classList.add('hidden');
-    // ★追加: QSCタブ切り替えリスナー
     $('#qscTabUnfinished').onclick = () => {
         currentQscTab = '未実施';
         $('#qscTabUnfinished').className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm";
@@ -617,20 +627,7 @@ window.addEventListener("DOMContentLoaded", () => {
         $('#qscTabUnfinished').className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400";
         window.renderQSCList();
     };
-    $('#calendarToggleButton').onclick=()=>{
-        const f=$('#fullCalendarContainer'), t=$('#todayEventContainer'), b=$('#calendarToggleButton');
-        f.classList.toggle('hidden'); t.classList.toggle('hidden'); b.textContent=f.classList.contains('hidden')?"全体を見る":"戻る";
-        if(!f.classList.contains('hidden')) {
-            const g=$('#calendarGrid'); g.innerHTML=["日","月","火","水","木","金","土"].map(d=>`<div class="text-xs text-slate-300 text-center py-2">${d}</div>`).join("") + "<div></div>".repeat(6);
-            const days = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate();
-            for(let i=1; i<=days; i++) {
-                const ev = eventMap.get(i); const btn = document.createElement("button"); btn.className = `calendar-day ${ev&&(ev.p_event||ev.s_event)?'has-event':''}`; btn.textContent = i;
-                if (i === new Date().getDate()) btn.classList.add('is-today');
-                btn.onclick = () => { $$(".calendar-day").forEach(x=>x.classList.remove("is-selected")); btn.classList.add("is-selected"); $('#selectedEventDetails').innerHTML = ev ? `<div class="w-full text-left"><div class="text-indigo-600 font-black mb-1">${i}日</div><ul class="space-y-1 text-sm">${ev.p_event?`<li>${ev.p_event}</li>`:''}${ev.s_event?`<li>${ev.s_event}</li>`:''}</ul></div>` : "情報なし"; };
-                g.appendChild(btn);
-            }
-        }
-    };
-    $('#edit-mode-button').onclick=()=>window.showPasswordModal('admin');
+    // ★HTML側のonclick競合を防ぐため念のためJSからもセット (ただし今回はHTML修正がメイン)
+    // $('#edit-mode-button').onclick=()=>window.showPasswordModal('admin');
     if(window.location.hash === '#staff') window.switchView('staff');
 });
