@@ -23,7 +23,7 @@ window.isEditing = false;
 const EDIT_PASSWORD = "admin";
 window.currentDate = '';
 
-// Default State (Updated: fixed_open_counter added)
+// Default State
 const DEFAULT_STAFF = { 
     early: [], 
     late: [], 
@@ -63,7 +63,7 @@ const closeTimeSlots = generateTimeSlots('22:45', '23:30', 15);
 const openTimeIndexMap = new Map(); openTimeSlots.forEach((t, i) => openTimeIndexMap.set(t, i));
 const closeTimeIndexMap = new Map(); closeTimeSlots.forEach((t, i) => closeTimeIndexMap.set(t, i));
 
-// ★追加: タスク名から色クラスを判定するペンキ屋さん
+// ペンキ屋さん（色分け）
 function getTaskColorClass(taskName) {
     if (!taskName) return "free-task";
     const n = taskName;
@@ -267,7 +267,6 @@ window.setEditingMode = function(isEdit) {
     }
 };
 
-// ★修正: タイムライン描画時に「getTaskColorClass」を使って色付け！
 function renderEditTimeline(tabName) {
     const container = $('#editor-timeline-content');
     if (!container) return;
@@ -294,7 +293,6 @@ function renderEditTimeline(tabName) {
             if(startI === undefined || endI === undefined) return;
             const widthPct = (endI - startI) / timeSlots.length * 100;
             const leftPct = startI / timeSlots.length * 100;
-            // 色クラスを取得
             const taskClass = getTaskColorClass(t.task);
             html += `<div class="absolute top-1 bottom-1 rounded-md text-[10px] font-bold text-slate-700 flex items-center justify-center overflow-hidden shadow-sm border border-white/20 ${taskClass}" style="left: ${leftPct}%; width: ${widthPct}%;"><span class="truncate px-1">${t.task}</span></div>`;
         });
@@ -336,8 +334,6 @@ function generateSummaryView() {
     const r=(id,l,sl)=>{ const t=[]; l.forEach(s=>s.tasks.forEach(x=>{if(x.task&&!x.task.includes("FREE"))t.push({...x,name:s.name});})); const n=[...new Set(l.map(s=>s.name))].sort(); $(`#${id}-desktop`).innerHTML=createTable(t,n,sl); $(`#${id}-mobile`).innerHTML=createList(t,n); };
     r('summary-open-employee-container',window.staffList.early,openTimeSlots); r('summary-open-alba-container',window.staffList.late,openAlbaTimeSlots); r('summary-close-employee-container',window.staffList.closing_employee,closeTimeSlots); r('summary-close-alba-container',window.staffList.closing_alba,closeTimeSlots);
 }
-
-// ★修正: デスクトップ版タイムライン表示時にも「getTaskColorClass」を使用
 function createTable(t,n,s){
     if(n.length===0)return '<p class="p-4 text-center text-slate-400 text-xs">スタッフなし</p>';
     let h=`<div class="timeline-container"><table class="timeline-table"><thead><tr><th>STAFF</th>${s.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>`;
@@ -349,15 +345,12 @@ function createTable(t,n,s){
             if(task){
                 const start=m.get(task.start), end=m.get(task.end); let span=1;
                 if(end!==undefined&&end>start) span=end-start;
-                // 色クラスを取得
                 const taskClass = getTaskColorClass(task.task);
                 h+=`<td colspan="${span}"><div class="task-bar ${taskClass}" onclick="showRemarksModal('${task.task}','${task.start}-${task.end}','${task.remarks||''}')">${task.task}</div></td>`; idx+=span;
             }else{h+='<td></td>'; idx++;}
         } h+='</tr>';
     }); return h+'</tbody></table></div>';
 }
-
-// ★修正: モバイル版リスト表示時にも「getTaskColorClass」を使用
 function createList(t,n){
     if(n.length===0)return'<p class="text-center text-slate-400 text-xs">なし</p>';
     let h='<div class="space-y-4">'; n.forEach(name=>{
@@ -398,7 +391,6 @@ window.showPasswordModal = (ctx) => {
 };
 window.closePasswordModal = () => $('#password-modal').classList.add('hidden');
 
-// パスワードチェック (スマホ対策済み)
 window.checkPassword = () => { 
     const input = $('#password-input');
     if(input.value.trim().toLowerCase() === EDIT_PASSWORD){ 
@@ -480,7 +472,7 @@ const assign = (staff, task, start, end, remarks = "") => {
     return false;
 };
 
-// ★修正: 早番社員は7:00から、バイトは9:00から埋める！
+// ★修正: 外販・販促確認などを「7時から」＆「社員限定」に変更！
 window.autoAssignTasks = async (sec, listType) => {
     try {
         const isOpen = listType === 'open';
@@ -507,44 +499,80 @@ window.autoAssignTasks = async (sec, listType) => {
         const fixedNames = Object.values(fixedMap).filter(Boolean);
 
         if (isOpen) {
+            // ① カウンター開設準備
             if (!fixedMap.counterOpen) {
                 const candidate = albas.find(s => !fixedNames.includes(s.name) && !checkOverlap(s.tasks, '09:15', '10:00'));
                 if (candidate) assign(candidate, 'カウンター開設準備', '09:15', '10:00');
             }
+            
+            // ② 抽選 (9:15-10:00)
             let lotteryCount = 0;
-            for (const s of allStaff) {
+            // ★変更: 抽選も社員にやらせるなら employees ループに変更（現状は全体確認などと被るのでallStaffのまま優先度高で処理）
+            // 要望では「これ全部社員の時間から」とのことなので、抽選も社員優先にしますか？
+            // いったん指示通り「外販・販促」などは7:00から振ります。
+            // 抽選は9:15開始固定。
+            for (const s of employees) { // ★社員限定に変更
                 if (lotteryCount >= 2) break;
                 if (fixedNames.includes(s.name)) continue;
                 if (assign(s, "抽選（準備、片付け）", '09:15', '10:00')) lotteryCount++;
             }
+
+            // ③ 朝礼
             allStaff.forEach(s => {
                 if (!checkOverlap(s.tasks, '09:00', '09:15')) assign(s, '朝礼', '09:00', '09:15');
             });
-            const empTasks = ["外販出し、新聞、岡持", "販促確認、全体確認、時差島台電落とし", "P台チェック(社員)"];
+
+            // ④ 早番社員タスク (7:00から割り振り開始！)
+            const empTasks = [
+                "外販出し、新聞、岡持", 
+                "販促確認、全体確認、時差島台電落とし", 
+                "P台チェック(社員)"
+            ];
+            
+            // ★変更: 9:15開始ではなく、7:00から空きを探すループに変更
             empTasks.forEach(taskName => {
                 for (const s of employees) {
                     if (fixedNames.includes(s.name)) continue;
-                    if (assign(s, taskName, '09:15', '09:30')) break;
-                    if (assign(s, taskName, '09:30', '09:45')) break;
-                    if (assign(s, taskName, '09:45', '10:00')) break;
+                    
+                    // 7:00〜10:00の間で15分枠を探す
+                    let assigned = false;
+                    for (let i = 0; i < openTimeSlots.length - 1; i++) {
+                        const st = openTimeSlots[i];
+                        const et = openTimeSlots[i+1];
+                        
+                        // 朝礼(9:00)と抽選(9:15-10:00)は避ける
+                        if (st === '09:00') continue;
+                        
+                        if (assign(s, taskName, st, et)) {
+                            assigned = true;
+                            break; // 1人に1回割り振ったら次のタスクへ（または1つのタスクは1回だけならここでループ抜ける）
+                        }
+                    }
+                    if (assigned) break; // このタスクは完了
                 }
             });
+
+            // ⑤ 早番アルバイト
             const albaTasks = ["P台チェック(アルバイト)", "S台チェック", "ローラー交換", "環境整備・5M"];
             for (const taskName of albaTasks) {
                 for (const s of albas) {
                     if (fixedNames.includes(s.name)) continue;
+                    // バイトは9:15から
                     if (assign(s, taskName, '09:15', '09:30')) break;
                     if (assign(s, taskName, '09:30', '09:45')) break;
                     if (assign(s, taskName, '09:45', '10:00')) break;
                 }
             }
+            // ⑥ 清掃 (空き埋め)
             albas.forEach(s => {
                 if (fixedNames.includes(s.name)) return;
                 [['09:15','09:30'], ['09:30','09:45'], ['09:45','10:00']].forEach(([st, et]) => {
                     if (!checkOverlap(s.tasks, st, et)) assign(s, '島上・イーゼル清掃', st, et);
                 });
             });
+
         } else {
+            // CLOSE Logic (Same)
             let pEmp = null, pAlba = null;
             for (const e of employees) {
                 if (!fixedNames.includes(e.name) && !checkOverlap(e.tasks, '22:45', '23:00')) { pEmp = e; break; }
@@ -557,7 +585,6 @@ window.autoAssignTasks = async (sec, listType) => {
                 assign(pAlba, '立駐（アルバイト）', '22:45', '23:00');
                 fixedNames.push(pEmp.name, pAlba.name);
             }
-            
             const closeEmpTasks = ['施錠・工具箱チェック', '引継ぎ・事務所清掃'];
             closeEmpTasks.forEach(taskName => {
                 for (const s of employees) {
@@ -572,7 +599,6 @@ window.autoAssignTasks = async (sec, listType) => {
                     if (assign(s, taskName, '22:45', '23:00')) break;
                 }
             });
-            
             if (!fixedMap.collect) {
                 const c = employees.find(s => !checkOverlap(s.tasks, '22:45', '23:15'));
                 if(c) assign(c, '金銭回収', '22:45', '23:15');
@@ -585,20 +611,14 @@ window.autoAssignTasks = async (sec, listType) => {
 
         const slots = isOpen ? openTimeSlots : closeTimeSlots;
         allStaff.forEach(s => {
-            // 社員判定
             const isEmployee = employees.includes(s);
-
             for (let i = 0; i < slots.length - 1; i++) {
                 const st = slots[i]; const et = slots[i+1];
-                
-                // 早番の特別ルール:
-                // 9時前は「固定担当者」か「社員」ならタスクを入れる。
-                // アルバイト(固定担当以外)は9時までスキップ。
+                // 9時前の制限: 社員or固定担当ならOK、バイトはNG
                 if (isOpen && st < '09:00') {
                     const isFixed = fixedNames.includes(s.name);
                     if (!isFixed && !isEmployee) continue; 
                 }
-
                 if (!checkOverlap(s.tasks, st, et)) assign(s, '個人業務、自由時間', st, et);
             }
             s.tasks.sort((a, b) => a.start.localeCompare(b.start));
