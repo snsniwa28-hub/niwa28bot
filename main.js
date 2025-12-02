@@ -18,12 +18,12 @@ const db = getFirestore(app);
 
 // --- Global State ---
 window.masterStaffList = { employees: [], alba_early: [], alba_late: [] };
-window.specialTasks = []; // 色分けはJS内の関数で行うため、ここは空でもOK
+window.specialTasks = [];
 window.isEditing = false;
 const EDIT_PASSWORD = "admin";
 window.currentDate = '';
 
-// Default State
+// Default State (Updated: fixed_open_counter added)
 const DEFAULT_STAFF = { 
     early: [], 
     late: [], 
@@ -63,36 +63,19 @@ const closeTimeSlots = generateTimeSlots('22:45', '23:30', 15);
 const openTimeIndexMap = new Map(); openTimeSlots.forEach((t, i) => openTimeIndexMap.set(t, i));
 const closeTimeIndexMap = new Map(); closeTimeSlots.forEach((t, i) => closeTimeIndexMap.set(t, i));
 
-// ★追加: タスク名から色クラスを判定する「ペンキ屋さん関数」
+// ★追加: タスク名から色クラスを判定するペンキ屋さん
 function getTaskColorClass(taskName) {
     if (!taskName) return "free-task";
     const n = taskName;
-    
-    // 🟡 黄色: 金銭系
     if (n.includes("金銭")) return "money-task";
-    
-    // 🔴 赤色: イベント、抽選、新台
-    if (n.includes("抽選") || n.includes("新台") || n.includes("新装")) return "pair-task"; // CSSの赤色クラスを流用
-    
-    // 🔵 青色: カウンター、事務
+    if (n.includes("抽選") || n.includes("新台") || n.includes("新装")) return "pair-task"; 
     if (n.includes("カウンター") || n.includes("事務") || n.includes("日報")) return "parking-task";
-    
-    // 🟢 緑色: 朝礼、清掃、環境、外販
     if (n.includes("朝礼") || n.includes("清掃") || n.includes("環境") || n.includes("外販") || n.includes("新聞") || n.includes("岡持")) return "briefing-task";
-    
-    // 🟣 紫色: 倉庫、納品
     if (n.includes("倉庫") || n.includes("納品")) return "lock-task";
-    
-    // 💧 水色: チェック、巡回、立駐、交換
     if (n.includes("チェック") || n.includes("立駐") || n.includes("施錠") || n.includes("確認") || n.includes("巡回") || n.includes("交換")) return "staff-15min-task";
-    
-    // ⚪ グレー: 自由時間、その他
     if (n.includes("個人") || n.includes("自由")) return "free-task";
-    
-    // デフォルト: 薄いグレー
     return "color-gray";
 }
-
 
 /* =========================================
    CORE FUNCTIONS
@@ -497,6 +480,7 @@ const assign = (staff, task, start, end, remarks = "") => {
     return false;
 };
 
+// ★修正: 早番社員は7:00から、バイトは9:00から埋める！
 window.autoAssignTasks = async (sec, listType) => {
     try {
         const isOpen = listType === 'open';
@@ -601,9 +585,20 @@ window.autoAssignTasks = async (sec, listType) => {
 
         const slots = isOpen ? openTimeSlots : closeTimeSlots;
         allStaff.forEach(s => {
+            // 社員判定
+            const isEmployee = employees.includes(s);
+
             for (let i = 0; i < slots.length - 1; i++) {
                 const st = slots[i]; const et = slots[i+1];
-                if (isOpen && st < '09:00' && !fixedNames.includes(s.name)) continue;
+                
+                // 早番の特別ルール:
+                // 9時前は「固定担当者」か「社員」ならタスクを入れる。
+                // アルバイト(固定担当以外)は9時までスキップ。
+                if (isOpen && st < '09:00') {
+                    const isFixed = fixedNames.includes(s.name);
+                    if (!isFixed && !isEmployee) continue; 
+                }
+
                 if (!checkOverlap(s.tasks, st, et)) assign(s, '個人業務、自由時間', st, et);
             }
             s.tasks.sort((a, b) => a.start.localeCompare(b.start));
@@ -661,7 +656,6 @@ window.addEventListener("DOMContentLoaded", () => {
             }
         }
     };
-    // JS側からもイベント登録（念のため）
     $('#edit-mode-button').onclick=()=>window.showPasswordModal('admin');
     if(window.location.hash === '#staff') window.switchView('staff');
 });
