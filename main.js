@@ -23,7 +23,7 @@ window.isEditing = false;
 const EDIT_PASSWORD = "admin";
 window.currentDate = '';
 
-// ★追加: 手動選択用のタスクリスト（これがないと手動追加で候補が出ない）
+// 手動選択用のタスクリスト
 const MANUAL_TASK_LIST = [
     "金銭業務", "倉庫番(特景)", "カウンター開設準備", "朝礼", "抽選（準備、片付け）",
     "外販出し、新聞、岡持", "販促確認、全体確認、時差島台電落とし", "P台チェック(社員)",
@@ -277,6 +277,7 @@ window.setEditingMode = function(isEdit) {
     }
 };
 
+// ★修正: タイムライン描画時の安全ガード追加 (tasksがない場合に備える)
 function renderEditTimeline(tabName) {
     const container = $('#editor-timeline-content');
     if (!container) return;
@@ -297,7 +298,8 @@ function renderEditTimeline(tabName) {
     allStaff.forEach(s => {
         html += `<div class="flex border-b border-slate-100 h-12"><div class="w-24 shrink-0 p-2 border-r border-slate-200 text-xs font-bold text-slate-700 flex items-center bg-white sticky left-0 z-10 truncate">${s.name}</div><div class="flex-1 flex relative">`;
         timeSlots.forEach(() => html += `<div class="flex-1 border-r border-slate-50"></div>`); 
-        s.tasks.forEach(t => {
+        // ★修正: (s.tasks || []) で空チェック
+        (s.tasks || []).forEach(t => {
             if(!t.start || !t.end) return;
             const startI = timeMap.get(t.start); const endI = timeMap.get(t.end);
             if(startI === undefined || endI === undefined) return;
@@ -320,6 +322,7 @@ function updateStaffLists() {
 function populate(id, sk) {
     const c = $(id); if(!c) return; c.innerHTML = '';
     window.staffList[sk].forEach((s, si) => {
+        if(!s.tasks) s.tasks = []; // ★修正: 空ガード
         if(s.tasks.length === 0) s.tasks.push({start:'',end:'',task:'',remarks:''});
         s.tasks.sort((a,b) => (a.start||'99').localeCompare(b.start||'99'));
         
@@ -341,8 +344,37 @@ function populate(id, sk) {
     });
 }
 function generateSummaryView() {
-    const r=(id,l,sl)=>{ const t=[]; l.forEach(s=>s.tasks.forEach(x=>{if(x.task&&!x.task.includes("FREE"))t.push({...x,name:s.name});})); const n=[...new Set(l.map(s=>s.name))].sort(); $(`#${id}-desktop`).innerHTML=createTable(t,n,sl); $(`#${id}-mobile`).innerHTML=createList(t,n); };
+    const r=(id,l,sl)=>{ const t=[]; l.forEach(s=>(s.tasks||[]).forEach(x=>{if(x.task)t.push({...x,name:s.name});})); const n=[...new Set(l.map(s=>s.name))].sort(); $(`#${id}-desktop`).innerHTML=createTable(t,n,sl); $(`#${id}-mobile`).innerHTML=createList(t,n); };
     r('summary-open-employee-container',window.staffList.early,openTimeSlots); r('summary-open-alba-container',window.staffList.late,openAlbaTimeSlots); r('summary-close-employee-container',window.staffList.closing_employee,closeTimeSlots); r('summary-close-alba-container',window.staffList.closing_alba,closeTimeSlots);
+}
+function createTable(t,n,s){
+    if(n.length===0)return '<p class="p-4 text-center text-slate-400 text-xs">スタッフなし</p>';
+    let h=`<div class="timeline-container"><table class="timeline-table"><thead><tr><th>STAFF</th>${s.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>`;
+    const m=new Map(s.map((x,i)=>[x,i]));
+    n.forEach(name=>{
+        h+=`<tr><th>${name}</th>`; const st=t.filter(x=>x.name===name).sort((a,b)=>a.start.localeCompare(b.start));
+        let idx=0; while(idx<s.length){
+            const slot=s[idx], task=st.find(x=>x.start===slot);
+            if(task){
+                const start=m.get(task.start), end=m.get(task.end); let span=1;
+                if(end!==undefined&&end>start) span=end-start;
+                const taskClass = getTaskColorClass(task.task);
+                h+=`<td colspan="${span}"><div class="task-bar ${taskClass}" onclick="showRemarksModal('${task.task}','${task.start}-${task.end}','${task.remarks||''}')">${task.task}</div></td>`; idx+=span;
+            }else{h+='<td></td>'; idx++;}
+        } h+='</tr>';
+    }); return h+'</tbody></table></div>';
+}
+function createList(t,n){
+    if(n.length===0)return'<p class="text-center text-slate-400 text-xs">なし</p>';
+    let h='<div class="space-y-4">'; n.forEach(name=>{
+        const st=t.filter(x=>x.name===name).sort((a,b)=>a.start.localeCompare(b.start));
+        h+=`<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="bg-slate-50 px-4 py-2 font-bold text-slate-700 border-b border-slate-100 flex justify-between"><span>${name}</span><span class="text-xs bg-white px-2 py-1 rounded border">${st.length}</span></div><div class="p-2 space-y-2">`;
+        st.forEach(x=>{ 
+            const taskClass = getTaskColorClass(x.task);
+            h+=`<div class="task-bar relative top-0 left-0 w-full h-auto block p-2 ${taskClass}"><div class="flex justify-between"><span>${x.task}</span><span class="opacity-70 text-xs">${x.start}-${x.end}</span></div>${x.remarks?`<div class="text-xs mt-1 border-t border-black/10 pt-1">${x.remarks}</div>`:''}</div>`; 
+        });
+        h+='</div></div>';
+    }); return h+'</div>';
 }
 
 // --- Modals & Input ---
@@ -361,7 +393,6 @@ window.showPasswordModal = (ctx) => {
     $('#password-error').classList.add('hidden'); 
     $('#password-input').focus(); 
     
-    // Enterキー対応
     const input = $('#password-input');
     input.onkeydown = (e) => {
         if(e.key === 'Enter') {
@@ -476,8 +507,8 @@ window.autoAssignTasks = async (sec, listType) => {
         const allStaff = [...employees, ...albas];
 
         allStaff.forEach(s => { 
-            if(s.tasks) s.tasks = s.tasks.filter(t => t.remarks === '（固定）'); 
-            else s.tasks = [];
+            if(!s.tasks) s.tasks = []; // ★ガード追加
+            s.tasks = s.tasks.filter(t => t.remarks === '（固定）'); 
         });
 
         const fixedMap = {
@@ -499,10 +530,6 @@ window.autoAssignTasks = async (sec, listType) => {
             
             // ② 抽選 (9:15-10:00)
             let lotteryCount = 0;
-            // ★変更: 抽選も社員にやらせるなら employees ループに変更（現状は全体確認などと被るのでallStaffのまま優先度高で処理）
-            // 要望では「これ全部社員の時間から」とのことなので、抽選も社員優先にしますか？
-            // いったん指示通り「外販・販促」などは7:00から振ります。
-            // 抽選は9:15開始固定。
             for (const s of employees) { // ★社員限定に変更
                 if (lotteryCount >= 2) break;
                 if (fixedNames.includes(s.name)) continue;
