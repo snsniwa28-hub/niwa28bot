@@ -18,12 +18,12 @@ const db = getFirestore(app);
 
 // --- Global State ---
 window.masterStaffList = { employees: [], alba_early: [], alba_late: [] };
-window.specialTasks = [];
+window.specialTasks = []; // 色分けはJS内の関数で行うため、ここは空でもOK
 window.isEditing = false;
 const EDIT_PASSWORD = "admin";
 window.currentDate = '';
 
-// Default State (Updated: fixed_open_counter added)
+// Default State
 const DEFAULT_STAFF = { 
     early: [], 
     late: [], 
@@ -62,6 +62,36 @@ const openAlbaTimeSlots = generateTimeSlots('09:00', '10:00', 15);
 const closeTimeSlots = generateTimeSlots('22:45', '23:30', 15);
 const openTimeIndexMap = new Map(); openTimeSlots.forEach((t, i) => openTimeIndexMap.set(t, i));
 const closeTimeIndexMap = new Map(); closeTimeSlots.forEach((t, i) => closeTimeIndexMap.set(t, i));
+
+// ★追加: タスク名から色クラスを判定する「ペンキ屋さん関数」
+function getTaskColorClass(taskName) {
+    if (!taskName) return "free-task";
+    const n = taskName;
+    
+    // 🟡 黄色: 金銭系
+    if (n.includes("金銭")) return "money-task";
+    
+    // 🔴 赤色: イベント、抽選、新台
+    if (n.includes("抽選") || n.includes("新台") || n.includes("新装")) return "pair-task"; // CSSの赤色クラスを流用
+    
+    // 🔵 青色: カウンター、事務
+    if (n.includes("カウンター") || n.includes("事務") || n.includes("日報")) return "parking-task";
+    
+    // 🟢 緑色: 朝礼、清掃、環境、外販
+    if (n.includes("朝礼") || n.includes("清掃") || n.includes("環境") || n.includes("外販") || n.includes("新聞") || n.includes("岡持")) return "briefing-task";
+    
+    // 🟣 紫色: 倉庫、納品
+    if (n.includes("倉庫") || n.includes("納品")) return "lock-task";
+    
+    // 💧 水色: チェック、巡回、立駐、交換
+    if (n.includes("チェック") || n.includes("立駐") || n.includes("施錠") || n.includes("確認") || n.includes("巡回") || n.includes("交換")) return "staff-15min-task";
+    
+    // ⚪ グレー: 自由時間、その他
+    if (n.includes("個人") || n.includes("自由")) return "free-task";
+    
+    // デフォルト: 薄いグレー
+    return "color-gray";
+}
 
 
 /* =========================================
@@ -104,7 +134,6 @@ window.renderToday = function() {
     $('#todayEventContainer').innerHTML = html; $('#currentDate').textContent = `${today.getFullYear()}.${m + 1}.${d}`;
 };
 
-// ★修正: 新台情報のロジックを完全書き換え。データが見つかれば即座にリスナー登録。
 window.openNewOpening = function() {
     const c = $('#newOpeningInfo'); c.innerHTML = "";
     if (!newOpeningData || !newOpeningData.length) { c.innerHTML = "<p class='text-center text-slate-400 py-10'>データなし</p>"; $('#newOpeningModal').classList.remove("hidden"); return; }
@@ -124,7 +153,6 @@ window.openNewOpening = function() {
             const li = document.createElement("li"); 
             li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm cursor-pointer hover:bg-slate-50 transition";
             
-            // 安全なマッチング処理
             const norm = (s) => (s||"").replace(/\s+/g, '').toLowerCase();
             const targetName = norm(item.name);
             const matched = allMachines.find(m => m && m.name && (norm(m.name).includes(targetName) || targetName.includes(norm(m.name))));
@@ -132,20 +160,17 @@ window.openNewOpening = function() {
 
             li.innerHTML = `<div class="flex flex-col overflow-hidden mr-2 pointer-events-none"><span class="font-bold text-slate-700 truncate text-sm sm:text-base">${item.name}</span>${hasDetail?`<span class="text-xs text-indigo-500 font-bold mt-1">✨ 詳細あり</span>`:`<span class="text-xs text-slate-400 font-medium mt-1">情報なし</span>`}</div><span class="text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0 pointer-events-none">${item.count}台</span>`;
             
-            // クリックリスナーを直接登録
             li.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if(hasDetail) {
                     try {
                         $('#detailName').textContent = matched.name; 
                         $('#detailPitch').textContent = matched.salesPitch || "情報なし"; 
-                        
                         const f=(i,l)=>{
                             $(i).innerHTML="";
                             const list = Array.isArray(l) ? l : [l || "情報なし"];
                             list.forEach(t=>$(i).innerHTML+=`<li class="flex items-start"><span class="mr-2 mt-1.5 w-1.5 h-1.5 bg-current rounded-full flex-shrink-0"></span><span>${t}</span></li>`);
                         }; 
-                        
                         f("#detailPros", matched.pros); 
                         f("#detailCons", matched.cons); 
                         $('#machineDetailModal').classList.remove("hidden");
@@ -156,7 +181,6 @@ window.openNewOpening = function() {
                     alert(`「${item.name}」の詳細データは見つかりませんでした。\n管理者に機種データの登録を確認してください。`);
                 }
             });
-
             ul.appendChild(li);
         });
         section.appendChild(ul);
@@ -192,28 +216,16 @@ window.taskDocRef = null;
 const staffRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'masters', 'staff_data');
 const taskDefRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'masters', 'task_data');
 
-// Master Data Fetch (Keep running to update staff list, but UI is removed)
 window.fetchMasterData = function() {
-    onSnapshot(staffRef, (s) => { 
-        if(s.exists()) { 
-            window.masterStaffList = s.data(); 
-        } 
-    });
-    onSnapshot(taskDefRef, (s) => { 
-        if(s.exists()) { 
-            window.specialTasks = s.data().list || []; 
-            if(window.refreshCurrentView) window.refreshCurrentView(); 
-        } 
-    });
+    onSnapshot(staffRef, (s) => { if(s.exists()) window.masterStaffList = s.data(); });
+    onSnapshot(taskDefRef, (s) => { if(s.exists()) { window.specialTasks = s.data().list || []; if(window.refreshCurrentView) window.refreshCurrentView(); } });
 };
 
 window.handleDateChange = function(dateString) {
     if (!dateString) dateString = window.getTodayDateString();
     window.currentDate = dateString;
     const picker = $('#date-picker'); if(picker) picker.value = dateString;
-    
     window.taskDocRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'task_assignments', dateString);
-    
     if (unsubscribeFromTasks) unsubscribeFromTasks();
     unsubscribeFromTasks = onSnapshot(window.taskDocRef, (docSnap) => {
         if (docSnap.exists()) { window.staffList = { ...window.staffList, ...docSnap.data() }; } 
@@ -264,21 +276,18 @@ window.setEditingMode = function(isEdit) {
     window.isEditing = isEdit;
     $('#view-mode-container').classList.toggle('hidden', isEdit);
     $('#edit-mode-container').classList.toggle('hidden', !isEdit);
-    
     const b = $('#edit-mode-button');
     if(b){ b.textContent = isEdit?"閲覧モードに戻る":"管理者編集"; b.className = isEdit?"text-xs font-bold text-white bg-indigo-600 px-4 py-2 rounded-full shadow-md":"text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-full"; }
-
     if(isEdit) {
         const isOpen = $('#tab-open').classList.contains('bg-white');
         renderEditTimeline(isOpen ? 'open' : 'close');
     }
 };
 
-// --- TIMELINE (READ ONLY) ---
+// ★修正: タイムライン描画時に「getTaskColorClass」を使って色付け！
 function renderEditTimeline(tabName) {
     const container = $('#editor-timeline-content');
     if (!container) return;
-    
     const isEarly = tabName === 'open';
     const empList = isEarly ? window.staffList.early : window.staffList.closing_employee;
     const albaList = isEarly ? window.staffList.late : window.staffList.closing_alba;
@@ -302,8 +311,9 @@ function renderEditTimeline(tabName) {
             if(startI === undefined || endI === undefined) return;
             const widthPct = (endI - startI) / timeSlots.length * 100;
             const leftPct = startI / timeSlots.length * 100;
-            const taskConfig = window.specialTasks.find(v => v.name === t.task) || { class: 'color-gray' };
-            html += `<div class="absolute top-1 bottom-1 rounded-md text-[10px] font-bold text-slate-700 flex items-center justify-center overflow-hidden shadow-sm border border-white/20 ${taskConfig.class}" style="left: ${leftPct}%; width: ${widthPct}%;"><span class="truncate px-1">${t.task}</span></div>`;
+            // 色クラスを取得
+            const taskClass = getTaskColorClass(t.task);
+            html += `<div class="absolute top-1 bottom-1 rounded-md text-[10px] font-bold text-slate-700 flex items-center justify-center overflow-hidden shadow-sm border border-white/20 ${taskClass}" style="left: ${leftPct}%; width: ${widthPct}%;"><span class="truncate px-1">${t.task}</span></div>`;
         });
         html += `</div></div>`;
     });
@@ -343,6 +353,8 @@ function generateSummaryView() {
     const r=(id,l,sl)=>{ const t=[]; l.forEach(s=>s.tasks.forEach(x=>{if(x.task&&!x.task.includes("FREE"))t.push({...x,name:s.name});})); const n=[...new Set(l.map(s=>s.name))].sort(); $(`#${id}-desktop`).innerHTML=createTable(t,n,sl); $(`#${id}-mobile`).innerHTML=createList(t,n); };
     r('summary-open-employee-container',window.staffList.early,openTimeSlots); r('summary-open-alba-container',window.staffList.late,openAlbaTimeSlots); r('summary-close-employee-container',window.staffList.closing_employee,closeTimeSlots); r('summary-close-alba-container',window.staffList.closing_alba,closeTimeSlots);
 }
+
+// ★修正: デスクトップ版タイムライン表示時にも「getTaskColorClass」を使用
 function createTable(t,n,s){
     if(n.length===0)return '<p class="p-4 text-center text-slate-400 text-xs">スタッフなし</p>';
     let h=`<div class="timeline-container"><table class="timeline-table"><thead><tr><th>STAFF</th>${s.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>`;
@@ -354,18 +366,24 @@ function createTable(t,n,s){
             if(task){
                 const start=m.get(task.start), end=m.get(task.end); let span=1;
                 if(end!==undefined&&end>start) span=end-start;
-                const taskConfig = window.specialTasks.find(v=>v.name===task.task) || {class:'free-task'};
-                h+=`<td colspan="${span}"><div class="task-bar ${taskConfig.class}" onclick="showRemarksModal('${task.task}','${task.start}-${task.end}','${task.remarks||''}')">${task.task}</div></td>`; idx+=span;
+                // 色クラスを取得
+                const taskClass = getTaskColorClass(task.task);
+                h+=`<td colspan="${span}"><div class="task-bar ${taskClass}" onclick="showRemarksModal('${task.task}','${task.start}-${task.end}','${task.remarks||''}')">${task.task}</div></td>`; idx+=span;
             }else{h+='<td></td>'; idx++;}
         } h+='</tr>';
     }); return h+'</tbody></table></div>';
 }
+
+// ★修正: モバイル版リスト表示時にも「getTaskColorClass」を使用
 function createList(t,n){
     if(n.length===0)return'<p class="text-center text-slate-400 text-xs">なし</p>';
     let h='<div class="space-y-4">'; n.forEach(name=>{
         const st=t.filter(x=>x.name===name).sort((a,b)=>a.start.localeCompare(b.start));
         h+=`<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="bg-slate-50 px-4 py-2 font-bold text-slate-700 border-b border-slate-100 flex justify-between"><span>${name}</span><span class="text-xs bg-white px-2 py-1 rounded border">${st.length}</span></div><div class="p-2 space-y-2">`;
-        st.forEach(x=>{ const taskConfig = window.specialTasks.find(v=>v.name===x.task) || {class:'free-task'}; h+=`<div class="task-bar relative top-0 left-0 w-full h-auto block p-2 ${taskConfig.class}"><div class="flex justify-between"><span>${x.task}</span><span class="opacity-70 text-xs">${x.start}-${x.end}</span></div>${x.remarks?`<div class="text-xs mt-1 border-t border-black/10 pt-1">${x.remarks}</div>`:''}</div>`; });
+        st.forEach(x=>{ 
+            const taskClass = getTaskColorClass(x.task);
+            h+=`<div class="task-bar relative top-0 left-0 w-full h-auto block p-2 ${taskClass}"><div class="flex justify-between"><span>${x.task}</span><span class="opacity-70 text-xs">${x.start}-${x.end}</span></div>${x.remarks?`<div class="text-xs mt-1 border-t border-black/10 pt-1">${x.remarks}</div>`:''}</div>`; 
+        });
         h+='</div></div>';
     }); return h+'</div>';
 }
@@ -373,16 +391,43 @@ function createList(t,n){
 // --- Modals & Input ---
 window.showRemarksModal=(t,m,r)=>{$('#remarks-modal-task').textContent=t;$('#remarks-modal-time').textContent=m;$('#remarks-modal-text').textContent=r||"備考なし";$('#remarks-modal').classList.remove('hidden');};
 window.closeRemarksModal=()=>$('#remarks-modal').classList.add('hidden');
-// ★修正: 閉じるボタンの関数を確実に追加
 window.closeSelectModal = () => $('#select-modal').classList.add('hidden');
 
-window.showPasswordModal = (ctx) => { if(window.isEditing && ctx==='admin'){ window.setEditingMode(false); return; } authContext=ctx; $('#password-modal').classList.remove('hidden'); $('#password-input').value=""; $('#password-error').classList.add('hidden'); $('#password-input').focus(); };
+window.showPasswordModal = (ctx) => { 
+    if(window.isEditing && ctx==='admin'){ 
+        window.setEditingMode(false); 
+        return; 
+    } 
+    authContext=ctx; 
+    $('#password-modal').classList.remove('hidden'); 
+    $('#password-input').value=""; 
+    $('#password-error').classList.add('hidden'); 
+    $('#password-input').focus(); 
+    
+    // Enterキー対応
+    const input = $('#password-input');
+    input.onkeydown = (e) => {
+        if(e.key === 'Enter') {
+            e.preventDefault();
+            window.checkPassword();
+        }
+    };
+};
 window.closePasswordModal = () => $('#password-modal').classList.add('hidden');
-window.checkPassword = () => { if($('#password-input').value===EDIT_PASSWORD){ window.closePasswordModal(); if(authContext==='admin') window.setEditingMode(true); else { qscEditMode=true; $('#qscEditButton').textContent="✅ 完了"; $('#qscAddForm').classList.remove('hidden'); window.renderQSCList(); } } else { $('#password-error').classList.remove('hidden'); } };
 
-// --- Select Modals ---
+// パスワードチェック (スマホ対策済み)
+window.checkPassword = () => { 
+    const input = $('#password-input');
+    if(input.value.trim().toLowerCase() === EDIT_PASSWORD){ 
+        window.closePasswordModal(); 
+        if(authContext==='admin') window.setEditingMode(true); 
+        else { qscEditMode=true; $('#qscEditButton').textContent="✅ 完了"; $('#qscAddForm').classList.remove('hidden'); window.renderQSCList(); } 
+    } else { 
+        $('#password-error').classList.remove('hidden'); 
+    } 
+};
+
 window.openFixedStaffSelect = (k, type) => { if(!window.isEditing)return; const c=(type.includes('early')||type.includes('open'))?[...window.masterStaffList.employees,...window.masterStaffList.alba_early]:[...window.masterStaffList.employees,...window.masterStaffList.alba_late]; const mb=$('#select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="setFixed('${k}','','${type}')">指定なし</div>`; c.sort().forEach(n=>mb.innerHTML+=`<div class="select-modal-option" onclick="setFixed('${k}','${n}','${type}')">${n}</div>`); $('#select-modal-title').textContent="担当者選択"; $('#select-modal').classList.remove('hidden'); };
-
 window.setFixed = (k, n, type) => {
     window.staffList[k]=n;
     if(n){
@@ -391,7 +436,6 @@ window.setFixed = (k, n, type) => {
         if(type.includes('early')) lKey='early'; else if(type.includes('open')) lKey=isEmp?'early':'late'; else lKey=isEmp?'closing_employee':'closing_alba';
         let p = window.staffList[lKey].find(s=>s.name===n);
         if(!p){ p={name:n, tasks:[]}; window.staffList[lKey].push(p); }
-        
         const defs={
             'fixed_money_count':{t:'金銭業務',s:'07:00',e:'08:15'},
             'fixed_open_warehouse':{t:'倉庫番(特景)',s:'09:15',e:'09:45'},
@@ -409,7 +453,6 @@ window.setFixed = (k, n, type) => {
     }
     updateFixedStaffButtons(); window.saveStaffListToFirestore(); window.refreshCurrentView(); $('#select-modal').classList.add('hidden');
 };
-
 function updateFixedStaffButtons() { 
     const map = {
         'fixed_money_count': 'fixed-money_count-btn',
@@ -437,7 +480,7 @@ window.delTask=(k,s,t)=>{ if(confirm("削除？")){ window.staffList[k][s].tasks
 window.delStaff=(k,s)=>{ if(confirm("スタッフ削除？")){ const n=window.staffList[k][s].name; window.staffList[k].splice(s,1); ['fixed_money_count','fixed_open_warehouse','fixed_open_counter','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(fk=>{if(window.staffList[fk]===n)window.staffList[fk]="";}); window.saveStaffListToFirestore(); window.refreshCurrentView(); } };
 window.addS=(k,n)=>{ window.staffList[k].push({name:n,tasks:[{start:'',end:'',task:'',remarks:''}]}); window.saveStaffListToFirestore(); window.refreshCurrentView(); $('#select-modal').classList.add('hidden'); };
 
-// --- Auto Assign Logic (Updated & Fixed) ---
+// Auto Assign Logic
 const timeToMin = (t) => { if(!t) return 0; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 const checkOverlap = (tasks, sTime, eTime) => {
     if(!tasks) return false;
@@ -454,7 +497,6 @@ const assign = (staff, task, start, end, remarks = "") => {
     return false;
 };
 
-// ★修正: 自動割り振り。エラー防止ガードを完備
 window.autoAssignTasks = async (sec, listType) => {
     try {
         const isOpen = listType === 'open';
@@ -465,7 +507,6 @@ window.autoAssignTasks = async (sec, listType) => {
         const albas = window.staffList[albaKey] || [];
         const allStaff = [...employees, ...albas];
 
-        // 既存タスククリア
         allStaff.forEach(s => { 
             if(s.tasks) s.tasks = s.tasks.filter(t => t.remarks === '（固定）'); 
             else s.tasks = [];
@@ -482,23 +523,19 @@ window.autoAssignTasks = async (sec, listType) => {
         const fixedNames = Object.values(fixedMap).filter(Boolean);
 
         if (isOpen) {
-            // ① カウンター開設準備 (フォールバック)
             if (!fixedMap.counterOpen) {
                 const candidate = albas.find(s => !fixedNames.includes(s.name) && !checkOverlap(s.tasks, '09:15', '10:00'));
                 if (candidate) assign(candidate, 'カウンター開設準備', '09:15', '10:00');
             }
-            // ② 抽選
             let lotteryCount = 0;
             for (const s of allStaff) {
                 if (lotteryCount >= 2) break;
                 if (fixedNames.includes(s.name)) continue;
                 if (assign(s, "抽選（準備、片付け）", '09:15', '10:00')) lotteryCount++;
             }
-            // ③ 朝礼
             allStaff.forEach(s => {
                 if (!checkOverlap(s.tasks, '09:00', '09:15')) assign(s, '朝礼', '09:00', '09:15');
             });
-            // ④ 早番社員
             const empTasks = ["外販出し、新聞、岡持", "販促確認、全体確認、時差島台電落とし", "P台チェック(社員)"];
             empTasks.forEach(taskName => {
                 for (const s of employees) {
@@ -508,7 +545,6 @@ window.autoAssignTasks = async (sec, listType) => {
                     if (assign(s, taskName, '09:45', '10:00')) break;
                 }
             });
-            // ⑤ 早番アルバイト
             const albaTasks = ["P台チェック(アルバイト)", "S台チェック", "ローラー交換", "環境整備・5M"];
             for (const taskName of albaTasks) {
                 for (const s of albas) {
@@ -518,16 +554,13 @@ window.autoAssignTasks = async (sec, listType) => {
                     if (assign(s, taskName, '09:45', '10:00')) break;
                 }
             }
-            // ⑥ 清掃 (空き埋め)
             albas.forEach(s => {
                 if (fixedNames.includes(s.name)) return;
                 [['09:15','09:30'], ['09:30','09:45'], ['09:45','10:00']].forEach(([st, et]) => {
                     if (!checkOverlap(s.tasks, st, et)) assign(s, '島上・イーゼル清掃', st, et);
                 });
             });
-
         } else {
-            // CLOSE Logic
             let pEmp = null, pAlba = null;
             for (const e of employees) {
                 if (!fixedNames.includes(e.name) && !checkOverlap(e.tasks, '22:45', '23:00')) { pEmp = e; break; }
@@ -556,7 +589,6 @@ window.autoAssignTasks = async (sec, listType) => {
                 }
             });
             
-            // フォールバック
             if (!fixedMap.collect) {
                 const c = employees.find(s => !checkOverlap(s.tasks, '22:45', '23:15'));
                 if(c) assign(c, '金銭回収', '22:45', '23:15');
@@ -567,7 +599,6 @@ window.autoAssignTasks = async (sec, listType) => {
             }
         }
 
-        // 共通: 自由時間埋め
         const slots = isOpen ? openTimeSlots : closeTimeSlots;
         allStaff.forEach(s => {
             for (let i = 0; i < slots.length - 1; i++) {
@@ -604,7 +635,6 @@ window.addEventListener("DOMContentLoaded", () => {
     $('#closeDetailModal').onclick=()=>$('#machineDetailModal').classList.add('hidden');
     $('#openQSCButton').onclick=()=>{ $('#qscModal').classList.remove('hidden'); window.renderQSCList(); };
     $('#closeQscModal').onclick=()=>$('#qscModal').classList.add('hidden');
-    // ★追加: QSCタブ切り替えリスナー
     $('#qscTabUnfinished').onclick = () => {
         currentQscTab = '未実施';
         $('#qscTabUnfinished').className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm";
@@ -631,6 +661,7 @@ window.addEventListener("DOMContentLoaded", () => {
             }
         }
     };
+    // JS側からもイベント登録（念のため）
     $('#edit-mode-button').onclick=()=>window.showPasswordModal('admin');
     if(window.location.hash === '#staff') window.switchView('staff');
 });
