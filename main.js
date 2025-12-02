@@ -23,7 +23,7 @@ window.isEditing = false;
 const EDIT_PASSWORD = "admin";
 window.currentDate = '';
 
-// ★修正: "時差島台電落とし" を削除しました
+// 手動選択用のタスクリスト
 const MANUAL_TASK_LIST = [
     "金銭業務", "倉庫番(特景)", "カウンター開設準備", "朝礼", "抽選（準備、片付け）",
     "外販出し、新聞、岡持", "販促確認、全体確認", "P台チェック(社員)",
@@ -221,8 +221,24 @@ window.handleDateChange = function(dateString) {
     window.taskDocRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'task_assignments', dateString);
     if (unsubscribeFromTasks) unsubscribeFromTasks();
     unsubscribeFromTasks = onSnapshot(window.taskDocRef, (docSnap) => {
-        if (docSnap.exists()) { window.staffList = { ...window.staffList, ...docSnap.data() }; } 
-        else { window.staffList = JSON.parse(JSON.stringify(DEFAULT_STAFF)); }
+        if (docSnap.exists()) { 
+            // ★修正: データが存在しても、中身の配列がない場合に備える
+            const data = docSnap.data();
+            window.staffList = {
+                early: data.early || [],
+                late: data.late || [],
+                closing_employee: data.closing_employee || [],
+                closing_alba: data.closing_alba || [],
+                fixed_money_count: data.fixed_money_count || "",
+                fixed_open_warehouse: data.fixed_open_warehouse || "",
+                fixed_open_counter: data.fixed_open_counter || "",
+                fixed_money_collect: data.fixed_money_collect || "",
+                fixed_warehouses: data.fixed_warehouses || "",
+                fixed_counters: data.fixed_counters || ""
+            };
+        } else { 
+            window.staffList = JSON.parse(JSON.stringify(DEFAULT_STAFF)); 
+        }
         window.refreshCurrentView();
     });
 };
@@ -277,12 +293,15 @@ window.setEditingMode = function(isEdit) {
     }
 };
 
+// ★修正: タイムライン描画時の安全ガード追加 (リスト自体がない場合)
 function renderEditTimeline(tabName) {
     const container = $('#editor-timeline-content');
     if (!container) return;
     const isEarly = tabName === 'open';
-    const empList = isEarly ? window.staffList.early : window.staffList.closing_employee;
-    const albaList = isEarly ? window.staffList.late : window.staffList.closing_alba;
+    // ★修正: || [] を追加して、リストがundefinedでもエラーにしない
+    const empList = (isEarly ? window.staffList.early : window.staffList.closing_employee) || [];
+    const albaList = (isEarly ? window.staffList.late : window.staffList.closing_alba) || [];
+    
     const timeSlots = isEarly ? openTimeSlots : closeTimeSlots;
     const timeMap = isEarly ? openTimeIndexMap : closeTimeIndexMap;
     const allStaff = [...empList, ...albaList];
@@ -317,10 +336,13 @@ function updateStaffLists() {
     populate('#staff-list-open-early','early'); populate('#staff-list-open-late','late'); 
     populate('#staff-list-close-employee','closing_employee'); populate('#staff-list-close-alba','closing_alba'); 
 }
+// ★修正: populate内のリスト参照にガード追加
 function populate(id, sk) {
     const c = $(id); if(!c) return; c.innerHTML = '';
-    window.staffList[sk].forEach((s, si) => {
-        if(!s.tasks) s.tasks = [];
+    // ★修正: リストがない場合は空配列
+    const list = window.staffList[sk] || [];
+    list.forEach((s, si) => {
+        if(!s.tasks) s.tasks = []; 
         if(s.tasks.length === 0) s.tasks.push({start:'',end:'',task:'',remarks:''});
         s.tasks.sort((a,b) => (a.start||'99').localeCompare(b.start||'99'));
         
@@ -342,8 +364,39 @@ function populate(id, sk) {
     });
 }
 function generateSummaryView() {
-    const r=(id,l,sl)=>{ const t=[]; l.forEach(s=>(s.tasks||[]).forEach(x=>{if(x.task)t.push({...x,name:s.name});})); const n=[...new Set(l.map(s=>s.name))].sort(); $(`#${id}-desktop`).innerHTML=createTable(t,n,sl); $(`#${id}-mobile`).innerHTML=createList(t,n); };
+    // ★修正: リスト参照にガード追加
+    const r=(id,l,sl)=>{ const t=[]; (l||[]).forEach(s=>(s.tasks||[]).forEach(x=>{if(x.task)t.push({...x,name:s.name});})); const n=[...new Set((l||[]).map(s=>s.name))].sort(); $(`#${id}-desktop`).innerHTML=createTable(t,n,sl); $(`#${id}-mobile`).innerHTML=createList(t,n); };
+    
     r('summary-open-employee-container',window.staffList.early,openTimeSlots); r('summary-open-alba-container',window.staffList.late,openAlbaTimeSlots); r('summary-close-employee-container',window.staffList.closing_employee,closeTimeSlots); r('summary-close-alba-container',window.staffList.closing_alba,closeTimeSlots);
+}
+function createTable(t,n,s){
+    if(n.length===0)return '<p class="p-4 text-center text-slate-400 text-xs">スタッフなし</p>';
+    let h=`<div class="timeline-container"><table class="timeline-table"><thead><tr><th>STAFF</th>${s.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>`;
+    const m=new Map(s.map((x,i)=>[x,i]));
+    n.forEach(name=>{
+        h+=`<tr><th>${name}</th>`; const st=t.filter(x=>x.name===name).sort((a,b)=>a.start.localeCompare(b.start));
+        let idx=0; while(idx<s.length){
+            const slot=s[idx], task=st.find(x=>x.start===slot);
+            if(task){
+                const start=m.get(task.start), end=m.get(task.end); let span=1;
+                if(end!==undefined&&end>start) span=end-start;
+                const taskClass = getTaskColorClass(task.task);
+                h+=`<td colspan="${span}"><div class="task-bar ${taskClass}" onclick="showRemarksModal('${task.task}','${task.start}-${task.end}','${task.remarks||''}')">${task.task}</div></td>`; idx+=span;
+            }else{h+='<td></td>'; idx++;}
+        } h+='</tr>';
+    }); return h+'</tbody></table></div>';
+}
+function createList(t,n){
+    if(n.length===0)return'<p class="text-center text-slate-400 text-xs">なし</p>';
+    let h='<div class="space-y-4">'; n.forEach(name=>{
+        const st=t.filter(x=>x.name===name).sort((a,b)=>a.start.localeCompare(b.start));
+        h+=`<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div class="bg-slate-50 px-4 py-2 font-bold text-slate-700 border-b border-slate-100 flex justify-between"><span>${name}</span><span class="text-xs bg-white px-2 py-1 rounded border">${st.length}</span></div><div class="p-2 space-y-2">`;
+        st.forEach(x=>{ 
+            const taskClass = getTaskColorClass(x.task);
+            h+=`<div class="task-bar relative top-0 left-0 w-full h-auto block p-2 ${taskClass}"><div class="flex justify-between"><span>${x.task}</span><span class="opacity-70 text-xs">${x.start}-${x.end}</span></div>${x.remarks?`<div class="text-xs mt-1 border-t border-black/10 pt-1">${x.remarks}</div>`:''}</div>`; 
+        });
+        h+='</div></div>';
+    }); return h+'</div>';
 }
 
 // --- Modals & Input ---
