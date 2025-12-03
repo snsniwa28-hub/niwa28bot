@@ -125,11 +125,9 @@ window.switchView = function(viewName) {
             $('#app-customer').classList.add('hidden');
             $('#app-staff').classList.remove('hidden');
             
-            // Initial render call - prevent crash if data is missing
-            try {
+            // Initialize view safely
+            if (typeof window.setupInitialView === 'function') {
                 window.setupInitialView();
-            } catch (e) {
-                console.error("Setup View Error:", e);
             }
 
             if (!window.taskDocRef) {
@@ -141,7 +139,7 @@ window.switchView = function(viewName) {
         }
     } catch(e) {
         console.error("Switch View Error:", e);
-        alert("画面切り替え中にエラーが発生しました。リロードしてください。");
+        // Emergency fallback if needed
     }
 };
 
@@ -953,19 +951,24 @@ window.setFixed = (k, n, type) => {
     window.refreshCurrentView(); 
 };
 
+// ★ UPDATE: Label + Name Display Logic
 function updateFixedStaffButtons() { 
     const map = {
-        'fixed_money_count': 'fixed-money_count-btn',
-        'fixed_open_warehouse': 'fixed_open_warehouse-btn',
-        'fixed_open_counter': 'fixed-open_counter-btn', 
-        'fixed_money_collect': 'fixed-money_collect-btn',
-        'fixed_warehouses': 'fixed-warehouses-btn',
-        'fixed_counters': 'fixed-counters-btn'
+        'fixed_money_count': { id: 'fixed-money_count-btn', label: '金銭業務' },
+        'fixed_open_warehouse': { id: 'fixed_open_warehouse-btn', label: '倉庫番 (特景)' },
+        'fixed_open_counter': { id: 'fixed-open_counter-btn', label: 'カウンター開設' }, 
+        'fixed_money_collect': { id: 'fixed-money_collect-btn', label: '金銭回収' },
+        'fixed_warehouses': { id: 'fixed-warehouses-btn', label: '倉庫整理' },
+        'fixed_counters': { id: 'fixed-counters-btn', label: 'カウンター' }
     };
     Object.keys(map).forEach(k => {
-        const btnId = map[k];
-        const btn = $(`#${btnId}`);
-        if (btn) btn.textContent = window.staffList[k] || "未選択";
+        const item = map[k];
+        const btn = $(`#${item.id}`);
+        const staffName = window.staffList[k] || "未選択";
+        if (btn) {
+            // Display Role Label (Upper) + Name (Lower)
+            btn.innerHTML = `<span class="block text-[10px] text-indigo-400 font-extrabold mb-0.5 tracking-wider">${item.label}</span><span class="block text-sm font-bold text-slate-700">${staffName}</span>`;
+        }
     });
 }
 
@@ -1225,12 +1228,14 @@ window.autoAssignTasks = async (sec, listType) => {
         // Fill Free Time
         const slots = isOpen ? openTimeSlots : closeTimeSlots;
         allStaff.forEach(s => {
-            const isEmployee = employees.includes(s);
+            // ★修正ポイント: ここで厳密にマスタデータで社員かどうかチェック
+            const isEmployee = window.masterStaffList.employees.includes(s.name);
+            
             for (let i = 0; i < slots.length - 1; i++) {
                 const st = slots[i]; const et = slots[i+1];
                 if (isOpen && st < '09:00') {
-                    const isFixed = fixedNames.includes(s.name);
-                    if (!isFixed && !isEmployee) continue; 
+                    // ★ 9時前は「社員以外」は絶対に埋めない
+                    if (!isEmployee) continue; 
                 }
                 if (!checkOverlap(s.tasks, st, et)) assign(s, '個人業務、自由時間', st, et);
             }
@@ -1276,20 +1281,7 @@ window.addEventListener("DOMContentLoaded", () => {
         $('#qscTabUnfinished').className = "px-3 py-1 text-xs font-bold rounded-md text-slate-400";
         window.renderQSCList();
     };
-    $('#calendarToggleButton').onclick=()=>{
-        const f=$('#fullCalendarContainer'), t=$('#todayEventContainer'), b=$('#calendarToggleButton');
-        f.classList.toggle('hidden'); t.classList.toggle('hidden'); b.textContent=f.classList.contains('hidden')?"全体を見る":"戻る";
-        if(!f.classList.contains('hidden')) {
-            const g=$('#calendarGrid'); g.innerHTML=["日","月","火","水","木","金","土"].map(d=>`<div class="text-xs text-slate-300 text-center py-2">${d}</div>`).join("") + "<div></div>".repeat(6);
-            const days = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate();
-            for(let i=1; i<=days; i++) {
-                const ev = eventMap.get(i); const btn = document.createElement("button"); btn.className = `calendar-day ${ev&&(ev.p_event||ev.s_event)?'has-event':''}`; btn.textContent = i;
-                if (i === new Date().getDate()) btn.classList.add('is-today');
-                btn.onclick = () => { $$(".calendar-day").forEach(x=>x.classList.remove("is-selected")); btn.classList.add("is-selected"); $('#selectedEventDetails').innerHTML = ev ? `<div class="w-full text-left"><div class="text-indigo-600 font-black mb-1">${i}日</div><ul class="space-y-1 text-sm">${ev.p_event?`<li>${ev.p_event}</li>`:''}${ev.s_event?`<li>${ev.s_event}</li>`:''}</ul></div>` : "情報なし"; };
-                g.appendChild(btn);
-            }
-        }
-    };
+    // Removed problematic calendarToggleButton code
     $('#edit-mode-button').onclick=()=>window.showPasswordModal('admin');
     if(window.location.hash === '#staff') window.switchView('staff');
 });
