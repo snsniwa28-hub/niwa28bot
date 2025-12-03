@@ -928,21 +928,63 @@ window.setFixed = (k, n, type) => {
     if(n){
         const isEmp = window.masterStaffList.employees.includes(n);
         let lKey = '';
-        if(type.includes('early')) lKey='early'; else if(type.includes('open')) lKey=isEmp?'early':'late'; else lKey=isEmp?'closing_employee':'closing_alba';
-        let p = window.staffList[lKey].find(s=>s && s.name===n);
-        if(!p){ p={name:n, tasks:[]}; window.staffList[lKey].push(p); }
+        
+        // ★ 属性判定で正しいリストキーを設定
+        if (['fixed_money_count', 'fixed_open_warehouse', 'fixed_open_counter'].includes(k)) {
+            lKey = isEmp ? 'early' : 'late';
+        } else {
+            lKey = isEmp ? 'closing_employee' : 'closing_alba';
+        }
+
+        // ★ リスト移動処理
+        let p = window.staffList[lKey].find(s => s && s.name === n);
+        if (!p) {
+            const wrongKey = (lKey === 'early') ? 'late' : (lKey === 'late') ? 'early' :
+                             (lKey === 'closing_employee') ? 'closing_alba' : 'closing_employee';
+            
+            const wrongIndex = window.staffList[wrongKey].findIndex(s => s && s.name === n);
+            if (wrongIndex !== -1) {
+                p = window.staffList[wrongKey][wrongIndex];
+                window.staffList[wrongKey].splice(wrongIndex, 1);
+                window.staffList[lKey].push(p);
+            } else {
+                p = { name: n, tasks: [] };
+                window.staffList[lKey].push(p);
+            }
+        }
+
+        // ★ 固定タスクの定義
+        // 金銭: 07:00-08:15 金銭 -> 09:00-09:15 朝礼 -> 09:15-09:45 S台 -> 09:45-10:00 全体
+        // 倉庫: 09:00-09:15 朝礼 -> 09:15-10:00 倉庫
+        // カウンター: 09:00-09:15 朝礼 -> 09:15-09:45 開設 -> 09:45-10:00 全体
         const defs={
-            'fixed_money_count':{t:'金銭業務',s:'07:00',e:'08:15'},
-            'fixed_open_warehouse':{t:'倉庫番(特景)',s:'09:15',e:'09:45'},
-            'fixed_open_counter':{t:'カウンター開設準備',s:'09:15',e:'10:00'}, 
-            'fixed_money_collect':{t:'金銭回収',s:'22:45',e:'23:15'},
-            'fixed_warehouses':{t:'倉庫整理',s:'22:45',e:'23:15'},
-            'fixed_counters':{t:'カウンター業務',s:'22:45',e:'23:00'}
+            'fixed_money_count': [
+                {t:'金銭業務',s:'07:00',e:'08:15'},
+                {t:'朝礼',s:'09:00',e:'09:15'},
+                {t:'S台チェック(社員)',s:'09:15',e:'09:45'},
+                {t:'全体確認',s:'09:45',e:'10:00'}
+            ],
+            'fixed_open_warehouse': [
+                {t:'朝礼',s:'09:00',e:'09:15'},
+                {t:'倉庫番(特景)',s:'09:15',e:'10:00'}
+            ],
+            'fixed_open_counter': [
+                {t:'朝礼',s:'09:00',e:'09:15'},
+                {t:'カウンター開設準備',s:'09:15',e:'09:45'},
+                {t:'全体確認',s:'09:45',e:'10:00'}
+            ],
+            // 遅番は既存のまま
+            'fixed_money_collect': [{t:'金銭回収',s:'22:45',e:'23:15'}],
+            'fixed_warehouses': [{t:'倉庫整理',s:'22:45',e:'23:15'}],
+            'fixed_counters': [{t:'カウンター業務',s:'22:45',e:'23:00'}]
         };
-        const d=defs[k];
-        if(d){ 
-            p.tasks=p.tasks.filter(t=>t.remarks!=='（固定）'&&t.task!==d.t); 
-            p.tasks.push({start:d.s,end:d.e,task:d.t,remarks:'（固定）'}); 
+
+        const tasksToAdd = defs[k];
+        if(tasksToAdd){ 
+            p.tasks = p.tasks.filter(t => t.remarks !== '（固定）');
+            tasksToAdd.forEach(task => {
+                p.tasks.push({ start: task.s, end: task.e, task: task.t, remarks: '（固定）' });
+            });
             p.tasks.sort((a,b)=>a.start.localeCompare(b.start)); 
         }
     }
@@ -966,7 +1008,6 @@ function updateFixedStaffButtons() {
         const btn = $(`#${item.id}`);
         const staffName = window.staffList[k] || "未選択";
         if (btn) {
-            // Display Role Label (Upper) + Name (Lower)
             btn.innerHTML = `<span class="block text-[10px] text-indigo-400 font-extrabold mb-0.5 tracking-wider">${item.label}</span><span class="block text-sm font-bold text-slate-700">${staffName}</span>`;
         }
     });
@@ -1026,7 +1067,6 @@ window.showToast = (msg) => {
 };
 
 window.autoAssignSection = async (section) => {
-    // NO CONFIRM, JUST DO IT
     await window.autoAssignTasks(null, section);
     window.showToast("自動で割り振りました！");
 };
@@ -1049,6 +1089,7 @@ const assign = (staff, task, start, end, remarks = "") => {
     return false;
 };
 
+// ★★★ NEW AUTOMATIC LOGIC ★★★
 window.autoAssignTasks = async (sec, listType) => {
     try {
         if (!window.currentDate) window.currentDate = window.getTodayDateString();
@@ -1065,117 +1106,102 @@ window.autoAssignTasks = async (sec, listType) => {
             s.tasks = s.tasks.filter(t => t.remarks === '（固定）'); 
         });
 
-        // 2. Fixed Tasks
-        const fixedMap = {
-            'fixed_money_count': { t: '金銭業務', s: '07:00', e: '08:15' },
-            'fixed_open_warehouse': { t: '倉庫番(特景)', s: '09:15', e: '09:45' },
-            'fixed_open_counter': { t: 'カウンター開設準備', s: '09:15', e: '10:00' },
-            'fixed_money_collect': { t: '金銭回収', s: '22:45', e: '23:15' },
-            'fixed_warehouses': { t: '倉庫整理', s: '22:45', e: '23:15' },
-            'fixed_counters': { t: 'カウンター業務', s: '22:45', e: '23:00' }
-        };
-        const fixedNames = [];
-        Object.keys(fixedMap).forEach(key => {
-            const staffName = window.staffList[key];
-            if (staffName) {
-                const staff = employees.find(s => s.name === staffName) || albas.find(s => s.name === staffName);
-                if (staff) {
-                    const def = fixedMap[key];
-                    const isTargetList = (isOpen && (key.includes('early') || key.includes('open') || key.includes('money_count'))) || (!isOpen && (key.includes('collect') || key.includes('warehouses') || key.includes('counters')));
-                    if (isTargetList) {
-                        assign(staff, def.t, def.s, def.e, '（固定）');
-                        fixedNames.push(staffName);
-                    }
-                }
-            }
-        });
+        const fixedNames = [
+            window.staffList.fixed_money_count,
+            window.staffList.fixed_open_warehouse,
+            window.staffList.fixed_open_counter,
+            window.staffList.fixed_money_collect,
+            window.staffList.fixed_warehouses,
+            window.staffList.fixed_counters
+        ].filter(n => n);
 
         if (isOpen) {
-            // ① カウンター開設
-            if (!window.staffList.fixed_open_counter) {
-                const candidates = [...albas].sort((a,b) => a.tasks.length - b.tasks.length);
-                for (const s of candidates) {
-                    if (!fixedNames.includes(s.name) && assign(s, 'カウンター開設準備', '09:15', '10:00')) break;
-                }
+            // === 社員の割り振り ===
+            const freeEmployees = employees.filter(s => !fixedNames.includes(s.name));
+            
+            // 7時台のリレー割り振り
+            const empTasks = [
+                { t: "販促確認", s: '07:00', e: '07:30' },
+                { t: "外販出し、新聞、岡持", s: '07:30', e: '07:45' },
+                { t: "P台チェック(社員)", s: '07:45', e: '08:15' }
+            ];
+
+            // 1人ずつ選出して割り当てる
+            let empIndex = 0;
+            if (freeEmployees.length > 0) {
+                empTasks.forEach(task => {
+                    // 順番に割り当て（人数が足りなければループ）
+                    const staff = freeEmployees[empIndex % freeEmployees.length];
+                    assign(staff, task.t, task.s, task.e);
+                    empIndex++;
+                });
             }
-            // ② 抽選
+
+            // 全員共通: 朝礼
+            employees.forEach(s => {
+                if (!checkOverlap(s.tasks, '09:00', '09:15')) assign(s, '朝礼', '09:00', '09:15');
+            });
+
+            // 全員共通: 抽選補助
+            freeEmployees.forEach(s => {
+                if (!checkOverlap(s.tasks, '09:15', '10:00')) assign(s, '抽選（準備、片付け）', '09:15', '10:00');
+            });
+
+
+            // === アルバイトの割り振り ===
+            const freeAlbas = albas.filter(s => !fixedNames.includes(s.name));
+            
+            // 抽選人数の判定
             let isWeekend = false;
             try {
                 const [y, m, d] = window.currentDate.split('-').map(Number);
                 const dayObj = new Date(y, m - 1, d);
                 const dayNum = dayObj.getDay();
                 isWeekend = (dayNum === 0 || dayNum === 6);
-            } catch(e) { console.warn("Date parse error, assuming weekday"); }
-            
-            let lotteryLimit = isWeekend ? 3 : 2;
-            let lotteryAssigned = 0;
-            if (isWeekend) {
-                const candidates = [...employees, ...albas].sort((a,b) => a.tasks.length - b.tasks.length);
-                for (const s of candidates) {
-                    if (lotteryAssigned >= lotteryLimit) break;
-                    if (fixedNames.includes(s.name)) continue;
-                    if (assign(s, "抽選（準備、片付け）", '09:15', '10:00')) lotteryAssigned++;
-                }
-            } else {
-                const albaSorted = [...albas].sort((a,b) => a.tasks.length - b.tasks.length);
-                for (const s of albaSorted) {
-                    if (lotteryAssigned >= lotteryLimit) break;
-                    if (fixedNames.includes(s.name)) continue;
-                    if (assign(s, "抽選（準備、片付け）", '09:15', '10:00')) lotteryAssigned++;
-                }
-                if (lotteryAssigned < lotteryLimit) {
-                    const empSorted = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
-                    for (const s of empSorted) {
-                        if (lotteryAssigned >= lotteryLimit) break;
-                        if (fixedNames.includes(s.name)) continue;
-                        if (assign(s, "抽選（準備、片付け）", '09:15', '10:00')) lotteryAssigned++;
-                    }
+            } catch(e) {}
+            const lotteryCount = isWeekend ? 3 : 2;
+
+            let albaIdx = 0;
+
+            // ① 抽選班の確保
+            for (let i = 0; i < lotteryCount; i++) {
+                if (albaIdx < freeAlbas.length) {
+                    const s = freeAlbas[albaIdx];
+                    assign(s, '朝礼', '09:00', '09:15');
+                    assign(s, '抽選（準備、片付け）', '09:15', '10:00');
+                    albaIdx++;
                 }
             }
-            // ③ 朝礼
-            allStaff.forEach(s => {
-                if (!checkOverlap(s.tasks, '09:00', '09:15')) assign(s, '朝礼', '09:00', '09:15');
-            });
-            // ④ 早番社員タスク (S台チェック追加)
-            const earlyEmpTasks = ["外販出し、新聞、岡持", "販促確認、全体確認", "P台チェック(社員)", "S台チェック(社員)"]; 
-            earlyEmpTasks.forEach(taskName => {
-                const sortedEmps = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
-                for (const s of sortedEmps) {
-                    if (fixedNames.includes(s.name)) continue;
-                    let assigned = false;
-                    for (let i = 0; i < openTimeSlots.length - 1; i++) {
-                        const st = openTimeSlots[i]; const et = openTimeSlots[i+1];
-                        if (st === '09:00') continue;
-                        if (assign(s, taskName, st, et)) { assigned = true; break; }
-                    }
-                    if (assigned) break; 
+
+            // ② 残りの作業班の割り振り
+            // パターン: S台(30) -> ローラー(30) -> 環境(15)+清掃(15) -> 環境(15)+清掃(15)...
+            let jobType = 0; // 0:S台, 1:ローラー, 2+:環境+清掃
+
+            while (albaIdx < freeAlbas.length) {
+                const s = freeAlbas[albaIdx];
+                assign(s, '朝礼', '09:00', '09:15');
+
+                if (jobType === 0) {
+                    // S台担当
+                    assign(s, 'S台チェック(アルバイト)', '09:15', '09:45');
+                    // 9:45以降は空白（バッファ）
+                } else if (jobType === 1) {
+                    // ローラー担当
+                    assign(s, 'ローラー交換', '09:15', '09:45');
+                    // 9:45以降は空白
+                } else {
+                    // 環境＆清掃担当
+                    assign(s, '環境整備・5M', '09:15', '09:30');
+                    assign(s, '島上・イーゼル清掃', '09:30', '09:45');
+                    // 9:45以降は空白
                 }
-            });
-            // ⑤ 早番アルバイトタスク (S台チェック名称変更)
-            const albaTasks = ["P台チェック(アルバイト)", "S台チェック(アルバイト)", "ローラー交換", "環境整備・5M"];
-            albaTasks.forEach(taskName => {
-                const sortedAlbas = [...albas].sort((a,b) => a.tasks.length - b.tasks.length);
-                for (const s of sortedAlbas) {
-                    if (fixedNames.includes(s.name)) continue;
-                    if (assign(s, taskName, '09:15', '09:30')) break;
-                    if (assign(s, taskName, '09:30', '09:45')) break;
-                    if (assign(s, taskName, '09:45', '10:00')) break;
-                }
-            });
-            // ⑥ 清掃
-            albas.forEach(s => {
-                if (fixedNames.includes(s.name)) return;
-                const slots = [['09:15','09:30'], ['09:30','09:45'], ['09:45','10:00']];
-                for (const [st, et] of slots) {
-                    if (!checkOverlap(s.tasks, st, et)) {
-                        if (assign(s, '島上・イーゼル清掃', st, et)) break;
-                    }
-                }
-            });
+
+                albaIdx++;
+                jobType++;
+            }
 
         } else {
-            // CLOSE LOGIC
-            // ① 立駐
+            // === CLOSE LOGIC (既存のまま) ===
             let pEmp = null, pAlba = null;
             const sortedEmps = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
             const sortedAlbas = [...albas].sort((a,b) => a.tasks.length - b.tasks.length);
@@ -1190,7 +1216,7 @@ window.autoAssignTasks = async (sec, listType) => {
                 assign(pAlba, '立駐（アルバイト）', '23:00', '23:15');
                 fixedNames.push(pEmp.name, pAlba.name);
             }
-            // ② 社員タスク
+            // 社員タスク
             ['施錠・工具箱チェック'].forEach(t => {
                 const sorted = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
                 for (const s of sorted) {
@@ -1205,7 +1231,7 @@ window.autoAssignTasks = async (sec, listType) => {
                     if (assign(s, t, '23:15', '23:30')) break;
                 }
             });
-            // ③ アルバイトタスク
+            // バイトタスク
             ['飲み残し・フラッグ確認', '島上清掃・カード補充'].forEach(t => {
                 const sorted = [...albas].sort((a,b) => a.tasks.length - b.tasks.length);
                 for (const s of sorted) {
@@ -1214,7 +1240,7 @@ window.autoAssignTasks = async (sec, listType) => {
                     if (assign(s, t, '23:00', '23:15')) break;
                 }
             });
-            // ④ 固定漏れ補充
+            // 固定漏れ
             if (!window.staffList.fixed_money_collect) {
                 const c = employees.sort((a,b)=>a.tasks.length-b.tasks.length).find(s => !checkOverlap(s.tasks, '22:45', '23:15'));
                 if(c) assign(c, '金銭回収', '22:45', '23:15');
@@ -1225,21 +1251,21 @@ window.autoAssignTasks = async (sec, listType) => {
             }
         }
 
-        // Fill Free Time
+        // === Fill Free Time (隙間埋め) ===
         const slots = isOpen ? openTimeSlots : closeTimeSlots;
         allStaff.forEach(s => {
-            // ★修正ポイント: ここで厳密にマスタデータで社員かどうかチェック
+            // ★重要: マスタで社員判定
             const isEmployee = window.masterStaffList.employees.includes(s.name);
             
             for (let i = 0; i < slots.length - 1; i++) {
                 const st = slots[i]; const et = slots[i+1];
                 if (isOpen && st < '09:00') {
-                    // ★ 9時前は「社員以外」は絶対に埋めない
+                    // ★ 9時前は「社員以外」は絶対に埋めない（固定タスク持ちバイトも含む）
                     if (!isEmployee) continue; 
                 }
                 if (!checkOverlap(s.tasks, st, et)) assign(s, '個人業務、自由時間', st, et);
             }
-            // Merge contiguous tasks
+            // マージ処理
             s.tasks.sort((a, b) => a.start.localeCompare(b.start));
             const merged = [];
             s.tasks.forEach(t => {
