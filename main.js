@@ -928,15 +928,12 @@ window.setFixed = (k, n, type) => {
     if(n){
         const isEmp = window.masterStaffList.employees.includes(n);
         let lKey = '';
-        
-        // ★ 属性判定で正しいリストキーを設定
         if (['fixed_money_count', 'fixed_open_warehouse', 'fixed_open_counter'].includes(k)) {
             lKey = isEmp ? 'early' : 'late';
         } else {
             lKey = isEmp ? 'closing_employee' : 'closing_alba';
         }
 
-        // ★ リスト移動処理
         let p = window.staffList[lKey].find(s => s && s.name === n);
         if (!p) {
             const wrongKey = (lKey === 'early') ? 'late' : (lKey === 'late') ? 'early' :
@@ -953,10 +950,6 @@ window.setFixed = (k, n, type) => {
             }
         }
 
-        // ★ 固定タスクの定義
-        // 金銭: 07:00-08:15 金銭 -> 09:00-09:15 朝礼 -> 09:15-09:45 S台 -> 09:45-10:00 全体
-        // 倉庫: 09:00-09:15 朝礼 -> 09:15-10:00 倉庫
-        // カウンター: 09:00-09:15 朝礼 -> 09:15-09:45 開設 -> 09:45-10:00 全体
         const defs={
             'fixed_money_count': [
                 {t:'金銭業務',s:'07:00',e:'08:15'},
@@ -973,7 +966,6 @@ window.setFixed = (k, n, type) => {
                 {t:'カウンター開設準備',s:'09:15',e:'09:45'},
                 {t:'全体確認',s:'09:45',e:'10:00'}
             ],
-            // 遅番は既存のまま
             'fixed_money_collect': [{t:'金銭回収',s:'22:45',e:'23:15'}],
             'fixed_warehouses': [{t:'倉庫整理',s:'22:45',e:'23:15'}],
             'fixed_counters': [{t:'カウンター業務',s:'22:45',e:'23:00'}]
@@ -1089,7 +1081,7 @@ const assign = (staff, task, start, end, remarks = "") => {
     return false;
 };
 
-// ★★★ NEW AUTOMATIC LOGIC ★★★
+// ★★★ NEW AUTOMATIC LOGIC (FIXED LOTTERY BUG) ★★★
 window.autoAssignTasks = async (sec, listType) => {
     try {
         if (!window.currentDate) window.currentDate = window.getTodayDateString();
@@ -1126,11 +1118,9 @@ window.autoAssignTasks = async (sec, listType) => {
                 { t: "P台チェック(社員)", s: '07:45', e: '08:15' }
             ];
 
-            // 1人ずつ選出して割り当てる
             let empIndex = 0;
             if (freeEmployees.length > 0) {
                 empTasks.forEach(task => {
-                    // 順番に割り当て（人数が足りなければループ）
                     const staff = freeEmployees[empIndex % freeEmployees.length];
                     assign(staff, task.t, task.s, task.e);
                     empIndex++;
@@ -1142,16 +1132,7 @@ window.autoAssignTasks = async (sec, listType) => {
                 if (!checkOverlap(s.tasks, '09:00', '09:15')) assign(s, '朝礼', '09:00', '09:15');
             });
 
-            // 全員共通: 抽選補助
-            freeEmployees.forEach(s => {
-                if (!checkOverlap(s.tasks, '09:15', '10:00')) assign(s, '抽選（準備、片付け）', '09:15', '10:00');
-            });
-
-
-            // === アルバイトの割り振り ===
-            const freeAlbas = albas.filter(s => !fixedNames.includes(s.name));
-            
-            // 抽選人数の判定
+            // === 抽選班の割り振り (厳格な人数制限) ===
             let isWeekend = false;
             try {
                 const [y, m, d] = window.currentDate.split('-').map(Number);
@@ -1159,21 +1140,40 @@ window.autoAssignTasks = async (sec, listType) => {
                 const dayNum = dayObj.getDay();
                 isWeekend = (dayNum === 0 || dayNum === 6);
             } catch(e) {}
-            const lotteryCount = isWeekend ? 3 : 2;
+            const lotteryLimit = isWeekend ? 3 : 2;
+            let currentLotteryCount = 0;
 
+            const freeAlbas = albas.filter(s => !fixedNames.includes(s.name));
             let albaIdx = 0;
 
-            // ① 抽選班の確保
-            for (let i = 0; i < lotteryCount; i++) {
+            // ① アルバイトから優先的に抽選班を確保
+            for (let i = 0; i < lotteryLimit; i++) {
                 if (albaIdx < freeAlbas.length) {
                     const s = freeAlbas[albaIdx];
                     assign(s, '朝礼', '09:00', '09:15');
                     assign(s, '抽選（準備、片付け）', '09:15', '10:00');
-                    albaIdx++;
+                    currentLotteryCount++;
+                    albaIdx++; // このバイトは抽選班として消費
                 }
             }
 
-            // ② 残りの作業班の割り振り
+            // ② アルバイトだけで足りない場合のみ、社員を補充
+            if (currentLotteryCount < lotteryLimit) {
+                const needed = lotteryLimit - currentLotteryCount;
+                let assignedEmp = 0;
+                // ランダム性を出すため、さっきリレーで使った次の人から探す
+                for (let i = 0; i < freeEmployees.length; i++) {
+                    if (assignedEmp >= needed) break;
+                    const s = freeEmployees[(empIndex + i) % freeEmployees.length];
+                    if (!checkOverlap(s.tasks, '09:15', '10:00')) {
+                        assign(s, '抽選（準備、片付け）', '09:15', '10:00');
+                        assignedEmp++;
+                        currentLotteryCount++;
+                    }
+                }
+            }
+
+            // === 残りのアルバイト作業班の割り振り ===
             // パターン: S台(30) -> ローラー(30) -> 環境(15)+清掃(15) -> 環境(15)+清掃(15)...
             let jobType = 0; // 0:S台, 1:ローラー, 2+:環境+清掃
 
@@ -1184,16 +1184,13 @@ window.autoAssignTasks = async (sec, listType) => {
                 if (jobType === 0) {
                     // S台担当
                     assign(s, 'S台チェック(アルバイト)', '09:15', '09:45');
-                    // 9:45以降は空白（バッファ）
                 } else if (jobType === 1) {
                     // ローラー担当
                     assign(s, 'ローラー交換', '09:15', '09:45');
-                    // 9:45以降は空白
                 } else {
                     // 環境＆清掃担当
                     assign(s, '環境整備・5M', '09:15', '09:30');
                     assign(s, '島上・イーゼル清掃', '09:30', '09:45');
-                    // 9:45以降は空白
                 }
 
                 albaIdx++;
@@ -1202,6 +1199,7 @@ window.autoAssignTasks = async (sec, listType) => {
 
         } else {
             // === CLOSE LOGIC (既存のまま) ===
+            // ... (Close logic is unchanged from your approval) ...
             let pEmp = null, pAlba = null;
             const sortedEmps = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
             const sortedAlbas = [...albas].sort((a,b) => a.tasks.length - b.tasks.length);
@@ -1254,18 +1252,15 @@ window.autoAssignTasks = async (sec, listType) => {
         // === Fill Free Time (隙間埋め) ===
         const slots = isOpen ? openTimeSlots : closeTimeSlots;
         allStaff.forEach(s => {
-            // ★重要: マスタで社員判定
             const isEmployee = window.masterStaffList.employees.includes(s.name);
             
             for (let i = 0; i < slots.length - 1; i++) {
                 const st = slots[i]; const et = slots[i+1];
                 if (isOpen && st < '09:00') {
-                    // ★ 9時前は「社員以外」は絶対に埋めない（固定タスク持ちバイトも含む）
                     if (!isEmployee) continue; 
                 }
                 if (!checkOverlap(s.tasks, st, et)) assign(s, '個人業務、自由時間', st, et);
             }
-            // マージ処理
             s.tasks.sort((a, b) => a.start.localeCompare(b.start));
             const merged = [];
             s.tasks.forEach(t => {
