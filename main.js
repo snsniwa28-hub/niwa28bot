@@ -23,32 +23,59 @@ window.isEditing = false;
 const EDIT_PASSWORD = "admin";
 window.currentDate = '';
 
-// 手動選択用のタスクリスト
-const MANUAL_TASK_LIST = [
-    "金銭業務", "倉庫番(特景)", "カウンター開設準備", "朝礼", "抽選（準備、片付け）",
-    "外販出し、新聞、岡持", "販促確認、全体確認", "P台チェック(社員)",
-    "P台チェック(アルバイト)", "S台チェック", "ローラー交換", "環境整備・5M", "島上・イーゼル清掃",
-    "個人業務、自由時間", "金銭回収", "倉庫整理", "カウンター業務",
-    "立駐（社員）", "立駐（アルバイト）", "施錠・工具箱チェック", "引継ぎ・事務所清掃",
-    "飲み残し・フラッグ確認", "島上清掃・カード補充"
+// Operations Data State
+let todayOpData = null;
+let yesterdayOpData = null;
+let monthlyOpData = {}; 
+let editingOpDate = null; 
+let returnToCalendar = false;
+
+// ★ 12月 目標値データ
+const TARGET_DATA_DEC = {
+    1: { t15: 205, t19: 250 }, 2: { t15: 210, t19: 257 }, 3: { t15: 204, t19: 248 },
+    4: { t15: 0, t19: 237 }, 5: { t15: 222, t19: 270 }, 6: { t15: 418, t19: 324 },
+    7: { t15: 499, t19: 377 }, 8: { t15: 237, t19: 290 }, 9: { t15: 234, t19: 288 },
+    10: { t15: 218, t19: 266 }, 11: { t15: 205, t19: 250 }, 12: { t15: 241, t19: 295 },
+    13: { t15: 420, t19: 327 }, 14: { t15: 519, t19: 394 }, 15: { t15: 214, t19: 262 },
+    16: { t15: 207, t19: 252 }, 17: { t15: 201, t19: 245 }, 18: { t15: 233, t19: 286 },
+    19: { t15: 220, t19: 270 }, 20: { t15: 423, t19: 329 }, 21: { t15: 506, t19: 383 },
+    22: { t15: 377, t19: 472 }, 23: { t15: 223, t19: 366 }, 24: { t15: 275, t19: 453 },
+    25: { t15: 0, t19: 0 }, 26: { t15: 301, t19: 369 }, 27: { t15: 571, t19: 450 },
+    28: { t15: 608, t19: 479 }, 29: { t15: 493, t19: 389 }, 30: { t15: 500, t19: 395 },
+    31: { t15: 316, t19: 317 }
+};
+
+// --- Task Definitions ---
+const TASKS_COMMON = ["朝礼", "個人業務、自由時間", "環境整備・5M", "島上・イーゼル清掃"];
+const TASKS_EMPLOYEE = [
+    ...TASKS_COMMON,
+    "金銭業務", "抽選（準備、片付け）", "外販出し、新聞、岡持", "販促確認、全体確認",
+    "P台チェック(社員)", "S台チェック(社員)",
+    "立駐（社員）", "施錠・工具箱チェック", "引継ぎ・事務所清掃",
+    "金銭回収", "倉庫整理", "カウンター業務"
 ];
+const TASKS_ALBA = [
+    ...TASKS_COMMON,
+    "カウンター開設準備", 
+    "P台チェック(アルバイト)", "S台チェック(アルバイト)",
+    "ローラー交換",
+    "カウンター業務", "倉庫番(特景)", "立駐（アルバイト）", 
+    "飲み残し・フラッグ確認", "島上清掃・カード補充", "倉庫整理"
+];
+const MANUAL_TASK_LIST = [...new Set([...TASKS_EMPLOYEE, ...TASKS_ALBA])];
+
+// Modal State Management
+let pendingModalState = { sectionKey: null, staffIndex: null, taskIndex: null, field: null, selectedValue: null, candidatesType: null };
+let pendingDelete = { action: null, targetSection: null, indices: null };
 
 // Default State
 const DEFAULT_STAFF = { 
-    early: [], 
-    late: [], 
-    closing_employee: [], 
-    closing_alba: [], 
-    fixed_money_count: "", 
-    fixed_open_warehouse: "", 
-    fixed_open_counter: "", 
-    fixed_money_collect: "", 
-    fixed_warehouses: "", 
-    fixed_counters: "" 
+    early: [], late: [], closing_employee: [], closing_alba: [], 
+    fixed_money_count: "", fixed_open_warehouse: "", fixed_open_counter: "", 
+    fixed_money_collect: "", fixed_warehouses: "", fixed_counters: "" 
 };
 window.staffList = JSON.parse(JSON.stringify(DEFAULT_STAFF));
 
-let deleteInfo = { type: null, sectionKey: null, staffIndex: null, taskIndex: null };
 let authContext = '';
 let qscEditMode = false;
 
@@ -60,6 +87,7 @@ const latestKeywords = ["アズールレーン", "北斗の拳11", "地獄少女
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 window.getTodayDateString = () => { const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`; };
+window.getYesterdayDateString = () => { const t = new Date(); t.setDate(t.getDate() - 1); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`; };
 
 function generateTimeSlots(startTime, endTime, intervalMinutes) {
     const slots = []; let [sH, sM] = startTime.split(':').map(Number); const [eH, eM] = endTime.split(':').map(Number);
@@ -73,7 +101,6 @@ const closeTimeSlots = generateTimeSlots('22:45', '23:30', 15);
 const openTimeIndexMap = new Map(); openTimeSlots.forEach((t, i) => openTimeIndexMap.set(t, i));
 const closeTimeIndexMap = new Map(); closeTimeSlots.forEach((t, i) => closeTimeIndexMap.set(t, i));
 
-// ペンキ屋さん
 function getTaskColorClass(taskName) {
     if (!taskName) return "free-task";
     const n = taskName;
@@ -93,20 +120,31 @@ function getTaskColorClass(taskName) {
 
 window.switchView = function(viewName) {
     window.scrollTo(0,0);
-    if (viewName === 'staff') {
-        $('#app-customer').classList.add('hidden');
-        $('#app-staff').classList.remove('hidden');
-        if (!window.taskDocRef) {
-            window.setupInitialView();
-            window.handleDateChange(window.getTodayDateString());
+    try {
+        if (viewName === 'staff') {
+            $('#app-customer').classList.add('hidden');
+            $('#app-staff').classList.remove('hidden');
+            
+            // Initial render call - prevent crash if data is missing
+            try {
+                window.setupInitialView();
+            } catch (e) {
+                console.error("Setup View Error:", e);
+            }
+
+            if (!window.taskDocRef) {
+                window.handleDateChange(window.getTodayDateString());
+            }
+        } else {
+            $('#app-staff').classList.add('hidden');
+            $('#app-customer').classList.remove('hidden');
         }
-    } else {
-        $('#app-staff').classList.add('hidden');
-        $('#app-customer').classList.remove('hidden');
+    } catch(e) {
+        console.error("Switch View Error:", e);
+        alert("画面切り替え中にエラーが発生しました。リロードしてください。");
     }
 };
 
-// --- Customer App Logic ---
 window.fetchCustomerData = async function() {
     try {
         const [mSnap, nSnap, cSnap] = await Promise.all([
@@ -126,6 +164,283 @@ window.renderToday = function() {
     const html = ev ? `<div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 w-full"><div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200/60"><div class="flex items-center gap-3"><div class="bg-indigo-600 text-white rounded-xl px-4 py-2 text-center shadow-md shadow-indigo-200"><div class="text-[10px] font-bold opacity-80 tracking-wider">TOPIC</div><div class="text-2xl font-black leading-none">${d}</div></div><div class="font-bold text-indigo-900 text-lg">本日のイベント</div></div><span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">TODAY</span></div><ul class="space-y-3">${ev.p_event?`<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.p_event}</span></li>`:''}${ev.s_event?`<li class="flex items-start p-2 rounded-lg hover:bg-white transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2 mr-3 shrink-0"></span><span class="text-slate-700 font-bold text-sm leading-relaxed">${ev.s_event}</span></li>`:''}${ev.recommend?`<li class="flex items-start p-2 rounded-lg hover:bg-rose-50 transition-colors"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 mt-2 mr-3 shrink-0"></span><span class="text-rose-600 font-bold text-sm leading-relaxed">${ev.recommend}</span></li>`:''}</ul></div>` : `<div class="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 rounded-2xl border border-slate-100 w-full"><div class="text-5xl font-black text-slate-200 mb-3">${d}</div><p class="text-sm font-bold">イベント情報なし</p></div>`;
     $('#todayEventContainer').innerHTML = html; $('#currentDate').textContent = `${today.getFullYear()}.${m + 1}.${d}`;
 };
+
+// =========================================
+//  OPERATIONS BOARD LOGIC
+// =========================================
+window.subscribeOperations = function() {
+    const todayStr = window.getTodayDateString();
+    const yesterdayStr = window.getYesterdayDateString();
+
+    onSnapshot(doc(db, "operations_data", todayStr), (doc) => {
+        todayOpData = doc.exists() ? doc.data() : {};
+        window.renderOperationsBoard();
+    });
+    onSnapshot(doc(db, "operations_data", yesterdayStr), (doc) => {
+        yesterdayOpData = doc.exists() ? doc.data() : {};
+        window.renderOperationsBoard();
+    });
+};
+
+window.renderOperationsBoard = function() {
+    const container = $('#operationsBoardContainer');
+    if (!container) return;
+
+    const today = new Date();
+    const dayNum = today.getDate();
+    const defaultTarget = TARGET_DATA_DEC[dayNum] || { t15: 0, t19: 0 };
+
+    const t = todayOpData || {};
+    const y = yesterdayOpData || {};
+
+    const target15 = (t.target_total_15 !== undefined && t.target_total_15 !== null) ? t.target_total_15 : defaultTarget.t15;
+    const target19 = (t.target_total_19 !== undefined && t.target_total_19 !== null) ? t.target_total_19 : defaultTarget.t19;
+
+    const calcTotal = (d, time) => {
+        if (!d) return null;
+        if (d[`actual_total_${time}`]) return d[`actual_total_${time}`];
+        const p4 = parseInt(d[`actual_4p_${time}`]) || 0;
+        const p1 = parseInt(d[`actual_1p_${time}`]) || 0;
+        const s20 = parseInt(d[`actual_20s_${time}`]) || 0;
+        return (p4 + p1 + s20) > 0 ? (p4 + p1 + s20) : null;
+    };
+
+    const today15 = calcTotal(t, '15');
+    const today19 = calcTotal(t, '19');
+    const yest15 = calcTotal(y, '15');
+    const yest19 = calcTotal(y, '19');
+
+    const num = (n) => (n || n === 0) ? `${n}名` : '<span class="text-slate-300">-</span>';
+
+    let html = `
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 w-full">
+        <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                <span class="text-xl">📊</span> 稼働実績ボード
+            </h3>
+            <div class="flex gap-2">
+                <button onclick="openMonthlyCalendar()" class="bg-indigo-50 text-indigo-600 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition">
+                    📅 月間推移
+                </button>
+                <button onclick="openOpInput()" class="bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-slate-700 transition">
+                    ✏️ 入力
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="bg-slate-50 rounded-xl p-4 text-center border border-slate-100 relative overflow-hidden">
+                <div class="text-xs font-black text-slate-400 mb-1 uppercase tracking-widest">15:00</div>
+                <div class="text-4xl font-black text-slate-800 mb-3 tracking-tight">${num(today15)}</div>
+                <div class="flex justify-between items-center bg-white rounded-lg p-2 border border-slate-100">
+                    <div class="text-center w-1/2 border-r border-slate-100">
+                        <div class="text-[10px] font-bold text-slate-400">目標</div>
+                        <div class="font-black text-indigo-600">${target15}</div>
+                    </div>
+                    <div class="text-center w-1/2">
+                        <div class="text-[10px] font-bold text-slate-400">前日</div>
+                        <div class="font-black text-slate-500">${num(yest15).replace('名','')}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-4 text-center border border-slate-100 relative overflow-hidden">
+                <div class="text-xs font-black text-slate-400 mb-1 uppercase tracking-widest">19:00</div>
+                <div class="text-4xl font-black text-slate-800 mb-3 tracking-tight">${num(today19)}</div>
+                <div class="flex justify-between items-center bg-white rounded-lg p-2 border border-slate-100">
+                    <div class="text-center w-1/2 border-r border-slate-100">
+                        <div class="text-[10px] font-bold text-slate-400">目標</div>
+                        <div class="font-black text-indigo-600">${target19}</div>
+                    </div>
+                    <div class="text-center w-1/2">
+                        <div class="text-[10px] font-bold text-slate-400">前日</div>
+                        <div class="font-black text-slate-500">${num(yest19).replace('名','')}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <details class="group">
+            <summary class="flex justify-between items-center font-bold text-xs text-slate-500 cursor-pointer bg-slate-100 px-3 py-2 rounded-lg hover:bg-slate-200 transition select-none">
+                <span>詳細を見る (4円 / 1円 / 20円)</span>
+                <span class="transition group-open:rotate-180">▼</span>
+            </summary>
+            <div class="mt-3 text-sm space-y-3 px-1 animate-fade-in">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                    <span class="font-bold text-blue-600">4円パチンコ</span>
+                    <div class="flex gap-4">
+                        <span class="font-mono font-bold text-slate-700">15時: ${num(t.actual_4p_15)}</span>
+                        <span class="font-mono font-bold text-slate-700">19時: ${num(t.actual_4p_19)}</span>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                    <span class="font-bold text-yellow-600">1円パチンコ</span>
+                    <div class="flex gap-4">
+                        <span class="font-mono font-bold text-slate-700">15時: ${num(t.actual_1p_15)}</span>
+                        <span class="font-mono font-bold text-slate-700">19時: ${num(t.actual_1p_19)}</span>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center border-b border-slate-100 pb-1">
+                    <span class="font-bold text-emerald-600">20円スロット</span>
+                    <div class="flex gap-4">
+                        <span class="font-mono font-bold text-slate-700">15時: ${num(t.actual_20s_15)}</span>
+                        <span class="font-mono font-bold text-slate-700">19時: ${num(t.actual_20s_19)}</span>
+                    </div>
+                </div>
+            </div>
+        </details>
+    </div>
+    `;
+    container.innerHTML = html;
+};
+
+// --- Monthly Calendar Logic ---
+window.openMonthlyCalendar = async () => {
+    const modal = $('#calendar-modal');
+    if (!modal) { alert("カレンダー画面が見つかりません"); return; }
+    modal.classList.remove('hidden');
+    returnToCalendar = false;
+    
+    const container = $('#calendar-grid-body');
+    if (container) container.innerHTML = '<p class="text-center py-10 text-slate-400">データ読込中...</p>';
+
+    try {
+        const snapshot = await getDocs(collection(db, "operations_data"));
+        monthlyOpData = {};
+        snapshot.forEach(doc => {
+            monthlyOpData[doc.id] = doc.data(); 
+        });
+        renderCalendarGrid();
+    } catch (e) {
+        alert("データ読込に失敗しました: " + e.message);
+    }
+};
+
+window.closeMonthlyCalendar = () => {
+    $('#calendar-modal').classList.add('hidden');
+};
+
+function renderCalendarGrid() {
+    const container = $('#calendar-grid-body');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const year = 2025; 
+    const month = 11; // Dec
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const headers = ['日','月','火','水','木','金','土'];
+    let html = `<div class="grid grid-cols-7 gap-1 mb-2 text-center text-xs font-bold text-slate-400">`;
+    headers.forEach(h => html += `<div>${h}</div>`);
+    html += `</div><div class="grid grid-cols-7 gap-1">`;
+
+    const firstDay = new Date(year, month, 1).getDay();
+    for(let i=0; i<firstDay; i++) {
+        html += `<div></div>`;
+    }
+
+    for(let d=1; d<=daysInMonth; d++) {
+        const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const target = TARGET_DATA_DEC[d] || { t15:0, t19:0 };
+        const actual = monthlyOpData[dateStr] || {};
+        
+        const act15 = actual.actual_total_15 || ((parseInt(actual.actual_4p_15)||0)+(parseInt(actual.actual_1p_15)||0)+(parseInt(actual.actual_20s_15)||0)) || 0;
+        const act19 = actual.actual_total_19 || ((parseInt(actual.actual_4p_19)||0)+(parseInt(actual.actual_1p_19)||0)+(parseInt(actual.actual_20s_19)||0)) || 0;
+
+        const is15Done = act15 >= target.t15 && act15 > 0;
+        const is19Done = act19 >= target.t19 && act19 > 0;
+        const bg15 = is15Done ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-50 text-slate-500';
+        const bg19 = is19Done ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-50 text-slate-500';
+
+        html += `
+        <div onclick="openOpInput('${dateStr}')" class="cursor-pointer hover:bg-slate-50 hover:ring-2 ring-indigo-200 transition border border-slate-100 rounded-lg p-1 bg-white min-h-[80px] flex flex-col justify-between">
+            <div class="text-[10px] font-black text-slate-300 text-center">${d}</div>
+            <div class="flex flex-col gap-1">
+                <div class="${bg15} rounded px-1 py-0.5 text-[9px] text-center">
+                    <div class="font-bold">15時</div>
+                    <div class="font-black text-[10px]">${act15 > 0 ? act15 : '-'}</div>
+                    <div class="text-[8px] opacity-60">/${target.t15}</div>
+                </div>
+                <div class="${bg19} rounded px-1 py-0.5 text-[9px] text-center">
+                    <div class="font-bold">19時</div>
+                    <div class="font-black text-[10px]">${act19 > 0 ? act19 : '-'}</div>
+                    <div class="text-[8px] opacity-60">/${target.t19}</div>
+                </div>
+            </div>
+        </div>`;
+    }
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+// ★ Updated Input Modal Opener
+window.openOpInput = (dateStr) => {
+    const calModal = $('#calendar-modal');
+    if (calModal && !calModal.classList.contains('hidden')) {
+        returnToCalendar = true; 
+        calModal.classList.add('hidden'); 
+    } else {
+        returnToCalendar = false;
+    }
+
+    if (!dateStr) dateStr = window.getTodayDateString();
+    editingOpDate = dateStr; 
+
+    const [y, m, d] = dateStr.split('-');
+    const displayDate = `${m}/${d}`;
+    document.querySelector('#operations-modal h3').innerHTML = `<span class="text-2xl">📝</span> ${displayDate} の稼働入力`;
+
+    let data = {};
+    if (dateStr === window.getTodayDateString()) data = todayOpData || {};
+    else if (dateStr === window.getYesterdayDateString()) data = yesterdayOpData || {};
+    else data = monthlyOpData[dateStr] || {};
+
+    const dayNum = parseInt(d);
+    const defaultTarget = TARGET_DATA_DEC[dayNum] || { t15: 0, t19: 0 };
+
+    const setVal = (id, val, def) => $(`#${id}`).value = (val !== undefined && val !== null) ? val : def;
+    
+    setVal('in_target_15', data.target_total_15, defaultTarget.t15);
+    setVal('in_4p_15', data.actual_4p_15, '');
+    setVal('in_1p_15', data.actual_1p_15, '');
+    setVal('in_20s_15', data.actual_20s_15, '');
+    
+    setVal('in_target_19', data.target_total_19, defaultTarget.t19);
+    setVal('in_4p_19', data.actual_4p_19, '');
+    setVal('in_1p_19', data.actual_1p_19, '');
+    setVal('in_20s_19', data.actual_20s_19, '');
+
+    $('#operations-modal').classList.remove('hidden');
+};
+
+window.closeOpInput = () => {
+    $('#operations-modal').classList.add('hidden');
+    
+    if (returnToCalendar) {
+        window.openMonthlyCalendar();
+        returnToCalendar = false;
+    }
+};
+
+window.saveOpData = async () => {
+    const getVal = (id) => { const v = $(`#${id}`).value; return v ? parseInt(v) : null; };
+    const d = {
+        target_total_15: getVal('in_target_15'), actual_4p_15: getVal('in_4p_15'), actual_1p_15: getVal('in_1p_15'), actual_20s_15: getVal('in_20s_15'),
+        target_total_19: getVal('in_target_19'), actual_4p_19: getVal('in_4p_19'), actual_1p_19: getVal('in_1p_19'), actual_20s_19: getVal('in_20s_19'),
+    };
+    const sum15 = (d.actual_4p_15||0) + (d.actual_1p_15||0) + (d.actual_20s_15||0);
+    const sum19 = (d.actual_4p_19||0) + (d.actual_1p_19||0) + (d.actual_20s_19||0);
+    if (sum15 > 0) d.actual_total_15 = sum15;
+    if (sum19 > 0) d.actual_total_19 = sum19;
+
+    const targetDate = editingOpDate || window.getTodayDateString();
+
+    try {
+        await setDoc(doc(db, "operations_data", targetDate), d, { merge: true });
+        window.closeOpInput();
+        window.showToast("保存しました！");
+    } catch (e) { alert("保存失敗: " + e.message); }
+};
+
 
 window.openNewOpening = function() {
     const c = $('#newOpeningInfo'); c.innerHTML = "";
@@ -206,8 +521,9 @@ window.deleteQscItem = async function(id) { if(confirm("削除しますか？"))
 // --- Staff App Logic ---
 let unsubscribeFromTasks = null;
 window.taskDocRef = null;
-const staffRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'masters', 'staff_data');
-const taskDefRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'masters', 'task_data');
+
+const staffRef = doc(db, 'masters', 'staff_data');
+const taskDefRef = doc(db, 'masters', 'task_data'); 
 
 window.fetchMasterData = function() {
     onSnapshot(staffRef, (s) => { if(s.exists()) window.masterStaffList = s.data(); });
@@ -218,11 +534,12 @@ window.handleDateChange = function(dateString) {
     if (!dateString) dateString = window.getTodayDateString();
     window.currentDate = dateString;
     const picker = $('#date-picker'); if(picker) picker.value = dateString;
-    window.taskDocRef = doc(db, 'artifacts', firebaseConfig.projectId, 'public', 'data', 'task_assignments', dateString);
+    
+    window.taskDocRef = doc(db, 'task_assignments', dateString);
+    
     if (unsubscribeFromTasks) unsubscribeFromTasks();
     unsubscribeFromTasks = onSnapshot(window.taskDocRef, (docSnap) => {
         if (docSnap.exists()) { 
-            // ★修正: データが存在しても、中身の配列がない場合に備える
             const data = docSnap.data();
             window.staffList = {
                 early: data.early || [],
@@ -293,12 +610,10 @@ window.setEditingMode = function(isEdit) {
     }
 };
 
-// ★修正: タイムライン描画時の安全ガード追加 (リスト自体がない場合)
 function renderEditTimeline(tabName) {
     const container = $('#editor-timeline-content');
     if (!container) return;
     const isEarly = tabName === 'open';
-    // ★修正: || [] を追加して、リストがundefinedでもエラーにしない
     const empList = (isEarly ? window.staffList.early : window.staffList.closing_employee) || [];
     const albaList = (isEarly ? window.staffList.late : window.staffList.closing_alba) || [];
     
@@ -314,6 +629,7 @@ function renderEditTimeline(tabName) {
     html += `</div></div>`;
 
     allStaff.forEach(s => {
+        if(!s) return; 
         html += `<div class="flex border-b border-slate-100 h-12"><div class="w-24 shrink-0 p-2 border-r border-slate-200 text-xs font-bold text-slate-700 flex items-center bg-white sticky left-0 z-10 truncate">${s.name}</div><div class="flex-1 flex relative">`;
         timeSlots.forEach(() => html += `<div class="flex-1 border-r border-slate-50"></div>`); 
         (s.tasks || []).forEach(t => {
@@ -331,42 +647,75 @@ function renderEditTimeline(tabName) {
     container.innerHTML = html;
 }
 
-// --- UI UPDATE & LISTS ---
+// =========================================
+//  CARD UI GENERATION
+// =========================================
 function updateStaffLists() { 
     populate('#staff-list-open-early','early'); populate('#staff-list-open-late','late'); 
     populate('#staff-list-close-employee','closing_employee'); populate('#staff-list-close-alba','closing_alba'); 
 }
-// ★修正: populate内のリスト参照にガード追加
+
 function populate(id, sk) {
     const c = $(id); if(!c) return; c.innerHTML = '';
-    // ★修正: リストがない場合は空配列
     const list = window.staffList[sk] || [];
+    
     list.forEach((s, si) => {
+        if (!s) return; 
         if(!s.tasks) s.tasks = []; 
         if(s.tasks.length === 0) s.tasks.push({start:'',end:'',task:'',remarks:''});
         s.tasks.sort((a,b) => (a.start||'99').localeCompare(b.start||'99'));
         
+        const card = document.createElement('div');
+        card.className = "staff-card";
+
+        let headerHtml = `<div class="staff-card-header"><span class="staff-name">${s.name}</span>`;
+        headerHtml += `<button onclick="confirmDeleteRequest('staff', '${sk}', ${si})" class="text-slate-300 hover:text-rose-500 font-bold px-2">×</button></div>`;
+        
+        let bodyHtml = `<div class="staff-card-body">`;
         s.tasks.forEach((t, ti) => {
-            const f = t.remarks === '（固定）';
-            const delBtn = f ? '' : `<button onclick="delTask('${sk}',${si},${ti})" class="text-rose-500 w-6 h-6 hover:bg-rose-50 rounded">×</button>`;
-            const addBtn = `<button onclick="addTask('${sk}',${si})" class="text-slate-400 w-6 h-6 hover:bg-slate-100 rounded">＋</button>`;
-            const btn = (ti > 0 || s.tasks.length > 1) ? delBtn : addBtn;
+            const isFixed = t.remarks === '（固定）';
+            const delBtn = isFixed ? '' : `<button onclick="confirmDeleteRequest('task', '${sk}', ${si}, ${ti})" class="task-delete-btn">×</button>`;
             
-            let html = `<tr class="edit-row border-b border-slate-100 last:border-0">`;
-            html += `<td class="py-2 px-2">${ti===0 ? `<div class="flex items-center justify-between font-bold text-sm text-slate-700">${s.name} <button onclick="delStaff('${sk}',${si})" class="text-slate-300 hover:text-rose-500 ml-2">×</button></div>` : ''}</td>`;
-            html += `<td class="p-1"><button class="custom-select-button w-full text-xs ${t.start?'':'placeholder'}" onclick="${!f?`openTimeSelect('${sk}',${si},${ti},'start')`:''}" ${f?'disabled':''}>${t.start||'開始'}</button></td>`;
-            html += `<td class="p-1"><button class="custom-select-button w-full text-xs ${t.end?'':'placeholder'}" onclick="${!f?`openTimeSelect('${sk}',${si},${ti},'end')`:''}" ${f?'disabled':''}>${t.end||'終了'}</button></td>`;
-            html += `<td class="p-1"><button class="custom-select-button w-full text-xs ${t.task?'':'placeholder'}" onclick="${!f?`openTaskSelect('${sk}',${si},${ti})`:''}" ${f?'disabled':''}>${t.task||'タスク'}</button></td>`;
-            html += `<td class="p-1"><input class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs" value="${t.remarks||''}" onchange="updateRemark('${sk}',${si},${ti},this.value)" ${f?'readonly':''}></td>`;
-            html += `<td class="p-1 text-center">${btn}</td></tr>`;
-            c.innerHTML += html;
+            bodyHtml += `<div class="task-edit-row">`;
+            bodyHtml += `${delBtn}`;
+            
+            bodyHtml += `<div class="time-group">`;
+            bodyHtml += `<button class="time-btn ${t.start ? '' : 'empty'}" onclick="${!isFixed ? `openTimeSelect('${sk}',${si},${ti},'start')` : ''}" ${isFixed?'disabled':''}>${t.start || '--:--'}</button>`;
+            bodyHtml += `<span class="text-slate-300 text-xs">～</span>`;
+            bodyHtml += `<button class="time-btn ${t.end ? '' : 'empty'}" onclick="${!isFixed ? `openTimeSelect('${sk}',${si},${ti},'end')` : ''}" ${isFixed?'disabled':''}>${t.end || '--:--'}</button>`;
+            bodyHtml += `</div>`;
+
+            const taskColor = getTaskColorClass(t.task);
+            const taskLabel = t.task || 'タスクを選択...';
+            bodyHtml += `<button class="task-select-btn ${t.task ? taskColor : 'placeholder'}" onclick="${!isFixed ? `openTaskSelect('${sk}',${si},${ti})` : ''}" ${isFixed?'disabled':''}><span>${taskLabel}</span><span class="text-xs opacity-50">▼</span></button>`;
+            
+            bodyHtml += `<input class="remarks-input" placeholder="備考" value="${t.remarks||''}" onchange="updateRemark('${sk}',${si},${ti},this.value)" ${isFixed?'readonly':''}>`;
+            
+            bodyHtml += `</div>`; 
         });
+
+        bodyHtml += `<button onclick="addTask('${sk}',${si})" class="w-full py-2 text-xs font-bold text-slate-400 border border-dashed border-slate-300 rounded-lg hover:bg-slate-50 hover:text-indigo-500 transition">+ タスク追加</button>`;
+        bodyHtml += `</div>`; 
+
+        card.innerHTML = headerHtml + bodyHtml;
+        c.appendChild(card);
     });
 }
+
 function generateSummaryView() {
-    // ★修正: リスト参照にガード追加
-    const r=(id,l,sl)=>{ const t=[]; (l||[]).forEach(s=>(s.tasks||[]).forEach(x=>{if(x.task)t.push({...x,name:s.name});})); const n=[...new Set((l||[]).map(s=>s.name))].sort(); $(`#${id}-desktop`).innerHTML=createTable(t,n,sl); $(`#${id}-mobile`).innerHTML=createList(t,n); };
-    
+    const r=(id,l,sl)=>{
+        try {
+            const containerDesktop = $(`#${id}-desktop`);
+            const containerMobile = $(`#${id}-mobile`);
+            if (!containerDesktop || !containerMobile) return;
+
+            const t=[]; (l||[]).forEach(s=>{if(s){ (s.tasks||[]).forEach(x=>{if(x.task)t.push({...x,name:s.name});}); }}); 
+            const n=[...new Set((l||[]).filter(s=>s).map(s=>s.name))].sort(); 
+            
+            containerDesktop.innerHTML=createTable(t,n,sl); 
+            containerMobile.innerHTML=createList(t,n);
+        } catch(e) { console.error("Summary Render Error", e); }
+    };
     r('summary-open-employee-container',window.staffList.early,openTimeSlots); r('summary-open-alba-container',window.staffList.late,openAlbaTimeSlots); r('summary-close-employee-container',window.staffList.closing_employee,closeTimeSlots); r('summary-close-alba-container',window.staffList.closing_alba,closeTimeSlots);
 }
 function createTable(t,n,s){
@@ -404,6 +753,226 @@ window.showRemarksModal=(t,m,r)=>{$('#remarks-modal-task').textContent=t;$('#rem
 window.closeRemarksModal=()=>$('#remarks-modal').classList.add('hidden');
 window.closeSelectModal = () => $('#select-modal').classList.add('hidden');
 
+// =========================================
+//  NEW DELETE CONFIRMATION LOGIC
+// =========================================
+window.confirmDeleteRequest = (action, sectionKey, idx1, idx2) => {
+    pendingDelete = { action: action, targetSection: sectionKey, indices: [idx1, idx2] };
+    const msg = action === 'task' ? "このタスクを削除しますか？" : "このスタッフをリストから削除しますか？";
+    openDeleteModal(msg);
+};
+
+window.openBulkDeleteMenu = () => {
+    $('#bulk-delete-modal').classList.remove('hidden');
+};
+window.closeBulkDeleteModal = () => {
+    $('#bulk-delete-modal').classList.add('hidden');
+};
+
+window.requestBulkDelete = (action, target) => {
+    pendingDelete = { action: action, targetSection: target, indices: null };
+    window.closeBulkDeleteModal();
+    let msg = "";
+    if (action === 'bulk_tasks') msg = (target === 'open' ? "【早番】" : "【遅番】") + "の全タスクをクリアしますか？\n(スタッフは残ります)";
+    else if (action === 'bulk_staff') msg = (target === 'open' ? "【早番】" : "【遅番】") + "の人員リストを空にしますか？";
+    else if (action === 'reset_all') msg = "【警告】\nこの日の全データを完全に削除しますか？\nこの操作は取り消せません。";
+    
+    openDeleteModal(msg);
+};
+
+function openDeleteModal(msg) {
+    $('#delete-modal-message').innerText = msg;
+    $('#delete-modal').classList.remove('hidden');
+}
+window.cancelDelete = () => {
+    $('#delete-modal').classList.add('hidden');
+    pendingDelete = {};
+};
+window.confirmDelete = async () => {
+    const p = pendingDelete;
+    $('#delete-modal').classList.add('hidden');
+    if (!p.action) return;
+
+    if (p.action === 'task') {
+        const [sIdx, tIdx] = p.indices;
+        window.staffList[p.targetSection][sIdx].tasks.splice(tIdx, 1);
+    } else if (p.action === 'staff') {
+        const [sIdx] = p.indices;
+        const name = window.staffList[p.targetSection][sIdx].name;
+        window.staffList[p.targetSection].splice(sIdx, 1);
+        // Clear fixed binding if matched
+        ['fixed_money_count','fixed_open_warehouse','fixed_open_counter','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(fk=>{if(window.staffList[fk]===name)window.staffList[fk]="";});
+    } else if (p.action === 'bulk_tasks') {
+        const targets = p.targetSection === 'open' ? ['early', 'late'] : ['closing_employee', 'closing_alba'];
+        targets.forEach(k => {
+             if(window.staffList[k]) window.staffList[k].forEach(s => s.tasks = []);
+        });
+    } else if (p.action === 'bulk_staff') {
+        const targets = p.targetSection === 'open' ? ['early', 'late'] : ['closing_employee', 'closing_alba'];
+        targets.forEach(k => {
+             window.staffList[k] = [];
+        });
+        // Clear relevant fixed
+        const fixedKeys = p.targetSection === 'open' 
+            ? ['fixed_money_count','fixed_open_warehouse','fixed_open_counter'] 
+            : ['fixed_money_collect','fixed_warehouses','fixed_counters'];
+        fixedKeys.forEach(k => window.staffList[k] = "");
+    } else if (p.action === 'reset_all') {
+        ['early', 'late', 'closing_employee', 'closing_alba'].forEach(key => window.staffList[key] = []);
+        ['fixed_money_count','fixed_open_warehouse','fixed_open_counter','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(k => window.staffList[k] = "");
+    }
+
+    await window.saveStaffListToFirestore();
+    window.refreshCurrentView();
+    pendingDelete = {};
+};
+
+
+// =========================================
+//  NEW MODAL LOGIC (Select & Confirm)
+// =========================================
+
+function initModal(title) {
+    $('#select-modal-title').textContent = title;
+    $('#select-modal-body').innerHTML = '';
+    $('#select-confirm-btn').disabled = true;
+    $('#select-modal').classList.remove('hidden');
+    pendingModalState.selectedValue = null;
+}
+window.selectOption = (value, element) => {
+    $$('.select-modal-option').forEach(el => el.classList.remove('selected'));
+    element.classList.add('selected');
+    pendingModalState.selectedValue = value;
+    $('#select-confirm-btn').disabled = false;
+};
+window.confirmSelection = () => {
+    const s = pendingModalState;
+    if (s.selectedValue === null) return; 
+
+    if (s.field === 'fixed_staff') {
+        window.setFixed(s.sectionKey, s.selectedValue, s.candidatesType); 
+    } else {
+        window.staffList[s.sectionKey][s.staffIndex].tasks[s.taskIndex][s.field] = s.selectedValue;
+        window.saveStaffListToFirestore();
+        window.refreshCurrentView();
+    }
+    $('#select-modal').classList.add('hidden');
+};
+
+window.openTimeSelect = (k, s, t, f) => {
+    pendingModalState = { sectionKey: k, staffIndex: s, taskIndex: t, field: f };
+    initModal("時間選択");
+    const isO = $('#tab-open').classList.contains('bg-white');
+    const slots = isO ? openTimeSlots : closeTimeSlots;
+    const mb = $('#select-modal-body');
+    slots.forEach(tm => {
+        const div = document.createElement('div');
+        div.className = "select-modal-option";
+        div.textContent = tm;
+        div.onclick = () => window.selectOption(tm, div);
+        mb.appendChild(div);
+    });
+};
+
+window.openTaskSelect = (k, s, t) => {
+    pendingModalState = { sectionKey: k, staffIndex: s, taskIndex: t, field: 'task' };
+    initModal("タスク選択");
+    const isEmployeeSection = (k === 'early' || k === 'closing_employee');
+    const defaultList = isEmployeeSection ? TASKS_EMPLOYEE : TASKS_ALBA;
+    renderTaskOptions(defaultList, true);
+};
+
+function renderTaskOptions(list, showExpandButton) {
+    const mb = $('#select-modal-body');
+    mb.innerHTML = '';
+    list.forEach(taskName => {
+        const div = document.createElement('div');
+        div.className = "select-modal-option";
+        div.textContent = taskName;
+        const colorClass = getTaskColorClass(taskName);
+        div.innerHTML = `<div class="flex items-center gap-3"><span class="w-3 h-3 rounded-full border border-slate-200 ${colorClass.replace('task-bar', '')}"></span><span>${taskName}</span></div>`;
+        div.onclick = () => window.selectOption(taskName, div);
+        mb.appendChild(div);
+    });
+    if (showExpandButton) {
+        const btn = document.createElement('button');
+        btn.className = "w-full py-3 mt-4 text-xs font-bold text-slate-400 border border-slate-200 rounded-lg hover:bg-slate-100";
+        btn.textContent = "すべてのタスクを表示";
+        btn.onclick = () => renderTaskOptions(MANUAL_TASK_LIST, false);
+        mb.appendChild(btn);
+    }
+}
+
+window.openFixedStaffSelect = (k, type, title) => {
+    if(!window.isEditing) return;
+    pendingModalState = { sectionKey: k, field: 'fixed_staff', candidatesType: type };
+    initModal(title);
+    const candidates = (type.includes('early')||type.includes('open')) 
+        ? [...window.masterStaffList.employees, ...window.masterStaffList.alba_early] 
+        : [...window.masterStaffList.employees, ...window.masterStaffList.alba_late];
+    const mb = $('#select-modal-body');
+    const noneDiv = document.createElement('div');
+    noneDiv.className = "select-modal-option text-slate-400";
+    noneDiv.textContent = "指定なし";
+    noneDiv.onclick = () => { window.selectOption("", noneDiv); };
+    mb.appendChild(noneDiv);
+    candidates.sort().forEach(n => {
+        const div = document.createElement('div');
+        div.className = "select-modal-option";
+        div.textContent = n;
+        div.onclick = () => window.selectOption(n, div);
+        mb.appendChild(div);
+    });
+};
+
+window.setFixed = (k, n, type) => {
+    window.staffList[k]=n;
+    if(n){
+        const isEmp = window.masterStaffList.employees.includes(n);
+        let lKey = '';
+        if(type.includes('early')) lKey='early'; else if(type.includes('open')) lKey=isEmp?'early':'late'; else lKey=isEmp?'closing_employee':'closing_alba';
+        let p = window.staffList[lKey].find(s=>s && s.name===n);
+        if(!p){ p={name:n, tasks:[]}; window.staffList[lKey].push(p); }
+        const defs={
+            'fixed_money_count':{t:'金銭業務',s:'07:00',e:'08:15'},
+            'fixed_open_warehouse':{t:'倉庫番(特景)',s:'09:15',e:'09:45'},
+            'fixed_open_counter':{t:'カウンター開設準備',s:'09:15',e:'10:00'}, 
+            'fixed_money_collect':{t:'金銭回収',s:'22:45',e:'23:15'},
+            'fixed_warehouses':{t:'倉庫整理',s:'22:45',e:'23:15'},
+            'fixed_counters':{t:'カウンター業務',s:'22:45',e:'23:00'}
+        };
+        const d=defs[k];
+        if(d){ 
+            p.tasks=p.tasks.filter(t=>t.remarks!=='（固定）'&&t.task!==d.t); 
+            p.tasks.push({start:d.s,end:d.e,task:d.t,remarks:'（固定）'}); 
+            p.tasks.sort((a,b)=>a.start.localeCompare(b.start)); 
+        }
+    }
+    updateFixedStaffButtons(); 
+    window.saveStaffListToFirestore(); 
+    window.refreshCurrentView(); 
+};
+
+function updateFixedStaffButtons() { 
+    const map = {
+        'fixed_money_count': 'fixed-money_count-btn',
+        'fixed_open_warehouse': 'fixed_open_warehouse-btn',
+        'fixed_open_counter': 'fixed-open_counter-btn', 
+        'fixed_money_collect': 'fixed-money_collect-btn',
+        'fixed_warehouses': 'fixed-warehouses-btn',
+        'fixed_counters': 'fixed-counters-btn'
+    };
+    Object.keys(map).forEach(k => {
+        const btnId = map[k];
+        const btn = $(`#${btnId}`);
+        if (btn) btn.textContent = window.staffList[k] || "未選択";
+    });
+}
+
+window.updateRemark=(k,s,t,v)=>{ window.staffList[k][s].tasks[t].remarks=v; window.saveStaffListToFirestore(); };
+window.addTask=(k,s)=>{ window.staffList[k][s].tasks.push({start:'',end:'',task:'',remarks:''}); window.saveStaffListToFirestore(); window.refreshCurrentView(); };
+window.addS=(k,n)=>{ window.staffList[k].push({name:n,tasks:[{start:'',end:'',task:'',remarks:''}]}); window.saveStaffListToFirestore(); window.refreshCurrentView(); $('#select-modal').classList.add('hidden'); };
+
 window.showPasswordModal = (ctx) => { 
     if(window.isEditing && ctx==='admin'){ 
         window.setEditingMode(false); 
@@ -435,72 +1004,31 @@ window.checkPassword = () => {
         $('#password-error').classList.remove('hidden'); 
     } 
 };
+window.openStaffSelect=(k,mt)=>{ const c=window.masterStaffList[mt], ex=window.staffList[k].filter(s=>s).map(s=>s.name); const mb=$('#select-modal-body'); mb.innerHTML=''; c.filter(n=>!ex.includes(n)).forEach(n=>mb.innerHTML+=`<div class="select-modal-option" onclick="addS('${k}','${n}')">${n}</div>`); $('#select-modal-title').textContent="スタッフ追加"; $('#select-modal').classList.remove('hidden'); };
 
-window.openFixedStaffSelect = (k, type) => { if(!window.isEditing)return; const c=(type.includes('early')||type.includes('open'))?[...window.masterStaffList.employees,...window.masterStaffList.alba_early]:[...window.masterStaffList.employees,...window.masterStaffList.alba_late]; const mb=$('#select-modal-body'); mb.innerHTML=`<div class="select-modal-option text-slate-400" onclick="setFixed('${k}','','${type}')">指定なし</div>`; c.sort().forEach(n=>mb.innerHTML+=`<div class="select-modal-option" onclick="setFixed('${k}','${n}','${type}')">${n}</div>`); $('#select-modal-title').textContent="担当者選択"; $('#select-modal').classList.remove('hidden'); };
-window.setFixed = (k, n, type) => {
-    window.staffList[k]=n;
-    if(n){
-        const isEmp = window.masterStaffList.employees.includes(n);
-        let lKey = '';
-        if(type.includes('early')) lKey='early'; else if(type.includes('open')) lKey=isEmp?'early':'late'; else lKey=isEmp?'closing_employee':'closing_alba';
-        let p = window.staffList[lKey].find(s=>s.name===n);
-        if(!p){ p={name:n, tasks:[]}; window.staffList[lKey].push(p); }
-        const defs={
-            'fixed_money_count':{t:'金銭業務',s:'07:00',e:'08:15'},
-            'fixed_open_warehouse':{t:'倉庫番(特景)',s:'09:15',e:'09:45'},
-            'fixed_open_counter':{t:'カウンター開設準備',s:'09:15',e:'10:00'}, 
-            'fixed_money_collect':{t:'金銭回収',s:'22:45',e:'23:15'},
-            'fixed_warehouses':{t:'倉庫整理',s:'22:45',e:'23:15'},
-            'fixed_counters':{t:'カウンター業務',s:'22:45',e:'23:00'}
-        };
-        const d=defs[k];
-        if(d){ 
-            p.tasks=p.tasks.filter(t=>t.remarks!=='（固定）'&&t.task!==d.t); 
-            p.tasks.push({start:d.s,end:d.e,task:d.t,remarks:'（固定）'}); 
-            p.tasks.sort((a,b)=>a.start.localeCompare(b.start)); 
-        }
-    }
-    updateFixedStaffButtons(); window.saveStaffListToFirestore(); window.refreshCurrentView(); $('#select-modal').classList.add('hidden');
-};
-function updateFixedStaffButtons() { 
-    const map = {
-        'fixed_money_count': 'fixed-money_count-btn',
-        'fixed_open_warehouse': 'fixed_open_warehouse-btn',
-        'fixed_open_counter': 'fixed-open_counter-btn', 
-        'fixed_money_collect': 'fixed-money_collect-btn',
-        'fixed_warehouses': 'fixed-warehouses-btn',
-        'fixed_counters': 'fixed-counters-btn'
-    };
-    Object.keys(map).forEach(k => {
-        const btnId = map[k];
-        const span = $(`#${btnId} span`);
-        if (span) span.textContent = window.staffList[k] || "選択してください";
-    });
-}
 
-window.openTimeSelect=(k,s,t,f)=>{ const isO=$('#tab-open').classList.contains('bg-white'), slots=isO?openTimeSlots:closeTimeSlots; const mb=$('#select-modal-body'); mb.innerHTML=''; slots.forEach(tm=>mb.innerHTML+=`<div class="select-modal-option" onclick="upd('${k}',${s},${t},'${f}','${tm}');$('#select-modal').classList.add('hidden')">${tm}</div>`); $('#select-modal-title').textContent="時間"; $('#select-modal').classList.remove('hidden'); };
-
-// 手動タスク選択
-window.openTaskSelect=(k,s,t)=>{ 
-    const mb=$('#select-modal-body'); 
-    mb.innerHTML=''; 
-    MANUAL_TASK_LIST.forEach(taskName => {
-        mb.innerHTML+=`<div class="select-modal-option" onclick="upd('${k}',${s},${t},'task','${taskName}');$('#select-modal').classList.add('hidden')">${taskName}</div>`;
-    });
-    $('#select-modal-title').textContent="タスク"; 
-    $('#select-modal').classList.remove('hidden'); 
+// =========================================
+//  AUTO ASSIGN (ONE BUTTON WRAPPER)
+// =========================================
+window.showToast = (msg) => {
+    const toast = document.createElement('div');
+    toast.className = "toast-notification";
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => { toast.classList.add('show'); });
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => { document.body.removeChild(toast); }, 300);
+    }, 2000);
 };
 
-window.openStaffSelect=(k,mt)=>{ const c=window.masterStaffList[mt], ex=window.staffList[k].map(s=>s.name); const mb=$('#select-modal-body'); mb.innerHTML=''; c.filter(n=>!ex.includes(n)).forEach(n=>mb.innerHTML+=`<div class="select-modal-option" onclick="addS('${k}','${n}')">${n}</div>`); $('#select-modal-title').textContent="スタッフ追加"; $('#select-modal').classList.remove('hidden'); };
+window.autoAssignSection = async (section) => {
+    // NO CONFIRM, JUST DO IT
+    await window.autoAssignTasks(null, section);
+    window.showToast("自動で割り振りました！");
+};
 
-window.upd=(k,s,t,f,v)=>{ window.staffList[k][s].tasks[t][f]=v; window.saveStaffListToFirestore(); window.refreshCurrentView(); };
-window.updateRemark=(k,s,t,v)=>{ window.staffList[k][s].tasks[t].remarks=v; window.saveStaffListToFirestore(); };
-window.addTask=(k,s)=>{ window.staffList[k][s].tasks.push({start:'',end:'',task:'',remarks:''}); window.saveStaffListToFirestore(); window.refreshCurrentView(); };
-window.delTask=(k,s,t)=>{ if(confirm("削除？")){ window.staffList[k][s].tasks.splice(t,1); window.saveStaffListToFirestore(); window.refreshCurrentView(); } };
-window.delStaff=(k,s)=>{ if(confirm("スタッフ削除？")){ const n=window.staffList[k][s].name; window.staffList[k].splice(s,1); ['fixed_money_count','fixed_open_warehouse','fixed_open_counter','fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(fk=>{if(window.staffList[fk]===n)window.staffList[fk]="";}); window.saveStaffListToFirestore(); window.refreshCurrentView(); } };
-window.addS=(k,n)=>{ window.staffList[k].push({name:n,tasks:[{start:'',end:'',task:'',remarks:''}]}); window.saveStaffListToFirestore(); window.refreshCurrentView(); $('#select-modal').classList.add('hidden'); };
-
-// Auto Assign Logic
+// AUTO ASSIGN CORE
 const timeToMin = (t) => { if(!t) return 0; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 const checkOverlap = (tasks, sTime, eTime) => {
     if(!tasks) return false;
@@ -508,8 +1036,9 @@ const checkOverlap = (tasks, sTime, eTime) => {
     return tasks.some(t => { const ts = timeToMin(t.start), te = timeToMin(t.end); return (ts < e && te > s); });
 };
 const assign = (staff, task, start, end, remarks = "") => {
-    if (!staff || !checkOverlap(staff.tasks, start, end)) {
-        if(!staff.tasks) staff.tasks = [];
+    if (!staff) return false;
+    if (!staff.tasks) staff.tasks = [];
+    if (!checkOverlap(staff.tasks, start, end)) {
         staff.tasks.push({ start, end, task, remarks });
         staff.tasks.sort((a, b) => a.start.localeCompare(b.start));
         return true;
@@ -517,24 +1046,23 @@ const assign = (staff, task, start, end, remarks = "") => {
     return false;
 };
 
-// ★修正: 早番社員タスク (7:00〜) と P台チェック (9:15〜) の分離
 window.autoAssignTasks = async (sec, listType) => {
     try {
+        if (!window.currentDate) window.currentDate = window.getTodayDateString();
         const isOpen = listType === 'open';
         const empKey = isOpen ? 'early' : 'closing_employee';
         const albaKey = isOpen ? 'late' : 'closing_alba';
         
-        const employees = window.staffList[empKey] || [];
-        const albas = window.staffList[albaKey] || [];
+        const employees = (window.staffList[empKey] || []).filter(s => s);
+        const albas = (window.staffList[albaKey] || []).filter(s => s);
         const allStaff = [...employees, ...albas];
 
-        // 1. 全タスクリセット (固定以外削除)
+        // 1. Reset tasks (keep fixed)
         allStaff.forEach(s => { 
-            if(!s.tasks) s.tasks = [];
             s.tasks = s.tasks.filter(t => t.remarks === '（固定）'); 
         });
 
-        // 2. 指定タスク(固定)を強制セット
+        // 2. Fixed Tasks
         const fixedMap = {
             'fixed_money_count': { t: '金銭業務', s: '07:00', e: '08:15' },
             'fixed_open_warehouse': { t: '倉庫番(特景)', s: '09:15', e: '09:45' },
@@ -550,7 +1078,7 @@ window.autoAssignTasks = async (sec, listType) => {
                 const staff = employees.find(s => s.name === staffName) || albas.find(s => s.name === staffName);
                 if (staff) {
                     const def = fixedMap[key];
-                    const isTargetList = (isOpen && (key.includes('open') || key.includes('money_count'))) || (!isOpen && (key.includes('collect') || key.includes('warehouses') || key.includes('counters')));
+                    const isTargetList = (isOpen && (key.includes('early') || key.includes('open') || key.includes('money_count'))) || (!isOpen && (key.includes('collect') || key.includes('warehouses') || key.includes('counters')));
                     if (isTargetList) {
                         assign(staff, def.t, def.s, def.e, '（固定）');
                         fixedNames.push(staffName);
@@ -560,33 +1088,53 @@ window.autoAssignTasks = async (sec, listType) => {
         });
 
         if (isOpen) {
-            // ① カウンター開設準備
+            // ① カウンター開設
             if (!window.staffList.fixed_open_counter) {
                 const candidates = [...albas].sort((a,b) => a.tasks.length - b.tasks.length);
                 for (const s of candidates) {
                     if (!fixedNames.includes(s.name) && assign(s, 'カウンター開設準備', '09:15', '10:00')) break;
                 }
             }
+            // ② 抽選
+            let isWeekend = false;
+            try {
+                const [y, m, d] = window.currentDate.split('-').map(Number);
+                const dayObj = new Date(y, m - 1, d);
+                const dayNum = dayObj.getDay();
+                isWeekend = (dayNum === 0 || dayNum === 6);
+            } catch(e) { console.warn("Date parse error, assuming weekday"); }
             
-            // ② 抽選 (社員限定 9:15〜)
-            let lotteryCount = 0;
-            const empCandidates = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
-            for (const s of empCandidates) {
-                if (lotteryCount >= 2) break;
-                if (fixedNames.includes(s.name)) continue;
-                if (assign(s, "抽選（準備、片付け）", '09:15', '10:00')) lotteryCount++;
+            let lotteryLimit = isWeekend ? 3 : 2;
+            let lotteryAssigned = 0;
+            if (isWeekend) {
+                const candidates = [...employees, ...albas].sort((a,b) => a.tasks.length - b.tasks.length);
+                for (const s of candidates) {
+                    if (lotteryAssigned >= lotteryLimit) break;
+                    if (fixedNames.includes(s.name)) continue;
+                    if (assign(s, "抽選（準備、片付け）", '09:15', '10:00')) lotteryAssigned++;
+                }
+            } else {
+                const albaSorted = [...albas].sort((a,b) => a.tasks.length - b.tasks.length);
+                for (const s of albaSorted) {
+                    if (lotteryAssigned >= lotteryLimit) break;
+                    if (fixedNames.includes(s.name)) continue;
+                    if (assign(s, "抽選（準備、片付け）", '09:15', '10:00')) lotteryAssigned++;
+                }
+                if (lotteryAssigned < lotteryLimit) {
+                    const empSorted = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
+                    for (const s of empSorted) {
+                        if (lotteryAssigned >= lotteryLimit) break;
+                        if (fixedNames.includes(s.name)) continue;
+                        if (assign(s, "抽選（準備、片付け）", '09:15', '10:00')) lotteryAssigned++;
+                    }
+                }
             }
-
-            // ③ 朝礼 (全員 09:00-09:15)
+            // ③ 朝礼
             allStaff.forEach(s => {
                 if (!checkOverlap(s.tasks, '09:00', '09:15')) assign(s, '朝礼', '09:00', '09:15');
             });
-
-            // ④ 早番社員タスク: 「外販など(7:00〜)」と「P台チェック(9:15〜)」を分離
-            const earlyEmpTasks = ["外販出し、新聞、岡持", "販促確認、全体確認"]; // ★時差島台電削除済み
-            const postMorningTasks = ["P台チェック(社員)"]; // ★9:15以降
-
-            // 7:00 ~ (外販など)
+            // ④ 早番社員タスク (S台チェック追加)
+            const earlyEmpTasks = ["外販出し、新聞、岡持", "販促確認、全体確認", "P台チェック(社員)", "S台チェック(社員)"]; 
             earlyEmpTasks.forEach(taskName => {
                 const sortedEmps = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
                 for (const s of sortedEmps) {
@@ -594,30 +1142,14 @@ window.autoAssignTasks = async (sec, listType) => {
                     let assigned = false;
                     for (let i = 0; i < openTimeSlots.length - 1; i++) {
                         const st = openTimeSlots[i]; const et = openTimeSlots[i+1];
-                        if (st === '09:00') continue; 
+                        if (st === '09:00') continue;
                         if (assign(s, taskName, st, et)) { assigned = true; break; }
                     }
                     if (assigned) break; 
                 }
             });
-
-            // 9:15 ~ (P台チェック社員)
-            postMorningTasks.forEach(taskName => {
-                const sortedEmps = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
-                for (const s of sortedEmps) {
-                    if (fixedNames.includes(s.name)) continue;
-                    let assigned = false;
-                    // loop from index 9 (09:15)
-                    for (let i = 9; i < openTimeSlots.length - 1; i++) {
-                        const st = openTimeSlots[i]; const et = openTimeSlots[i+1];
-                        if (assign(s, taskName, st, et)) { assigned = true; break; }
-                    }
-                    if (assigned) break;
-                }
-            });
-
-            // ⑤ 早番アルバイトタスク
-            const albaTasks = ["P台チェック(アルバイト)", "S台チェック", "ローラー交換", "環境整備・5M"];
+            // ⑤ 早番アルバイトタスク (S台チェック名称変更)
+            const albaTasks = ["P台チェック(アルバイト)", "S台チェック(アルバイト)", "ローラー交換", "環境整備・5M"];
             albaTasks.forEach(taskName => {
                 const sortedAlbas = [...albas].sort((a,b) => a.tasks.length - b.tasks.length);
                 for (const s of sortedAlbas) {
@@ -627,53 +1159,59 @@ window.autoAssignTasks = async (sec, listType) => {
                     if (assign(s, taskName, '09:45', '10:00')) break;
                 }
             });
-
-            // ⑥ 清掃 (空き埋め・1人1回)
+            // ⑥ 清掃
             albas.forEach(s => {
                 if (fixedNames.includes(s.name)) return;
                 const slots = [['09:15','09:30'], ['09:30','09:45'], ['09:45','10:00']];
                 for (const [st, et] of slots) {
                     if (!checkOverlap(s.tasks, st, et)) {
-                        if (assign(s, '島上・イーゼル清掃', st, et)) break; // ★1回やったらbreak
+                        if (assign(s, '島上・イーゼル清掃', st, et)) break;
                     }
                 }
             });
 
         } else {
-            // CLOSE Logic (Same)
+            // CLOSE LOGIC
+            // ① 立駐
             let pEmp = null, pAlba = null;
             const sortedEmps = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
             const sortedAlbas = [...albas].sort((a,b) => a.tasks.length - b.tasks.length);
-
             for (const e of sortedEmps) {
-                if (!fixedNames.includes(e.name) && !checkOverlap(e.tasks, '22:45', '23:00')) { pEmp = e; break; }
+                if (!fixedNames.includes(e.name) && !checkOverlap(e.tasks, '23:00', '23:15')) { pEmp = e; break; }
             }
             for (const a of sortedAlbas) {
-                if (!fixedNames.includes(a.name) && !checkOverlap(a.tasks, '22:45', '23:00')) { pAlba = a; break; }
+                if (!fixedNames.includes(a.name) && !checkOverlap(a.tasks, '23:00', '23:15')) { pAlba = a; break; }
             }
             if (pEmp && pAlba) {
-                assign(pEmp, '立駐（社員）', '22:45', '23:00');
-                assign(pAlba, '立駐（アルバイト）', '22:45', '23:00');
+                assign(pEmp, '立駐（社員）', '23:00', '23:15');
+                assign(pAlba, '立駐（アルバイト）', '23:00', '23:15');
                 fixedNames.push(pEmp.name, pAlba.name);
             }
-            
-            const closeEmpTasks = ['施錠・工具箱チェック', '引継ぎ・事務所清掃'];
-            closeEmpTasks.forEach(taskName => {
+            // ② 社員タスク
+            ['施錠・工具箱チェック'].forEach(t => {
                 const sorted = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
                 for (const s of sorted) {
                     if (fixedNames.includes(s.name)) continue;
-                    if (assign(s, taskName, '22:45', '23:00')) break;
+                    if (assign(s, t, '22:45', '23:00')) break;
                 }
             });
-            const closeAlbaTasks = ['飲み残し・フラッグ確認', '島上清掃・カード補充'];
-            closeAlbaTasks.forEach(taskName => {
+            ['引継ぎ・事務所清掃'].forEach(t => {
+                const sorted = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
+                for (const s of sorted) {
+                    if (fixedNames.includes(s.name)) continue;
+                    if (assign(s, t, '23:15', '23:30')) break;
+                }
+            });
+            // ③ アルバイトタスク
+            ['飲み残し・フラッグ確認', '島上清掃・カード補充'].forEach(t => {
                 const sorted = [...albas].sort((a,b) => a.tasks.length - b.tasks.length);
                 for (const s of sorted) {
                     if (fixedNames.includes(s.name)) continue;
-                    if (assign(s, taskName, '22:45', '23:00')) break;
+                    if (assign(s, t, '22:45', '23:00')) break;
+                    if (assign(s, t, '23:00', '23:15')) break;
                 }
             });
-            
+            // ④ 固定漏れ補充
             if (!window.staffList.fixed_money_collect) {
                 const c = employees.sort((a,b)=>a.tasks.length-b.tasks.length).find(s => !checkOverlap(s.tasks, '22:45', '23:15'));
                 if(c) assign(c, '金銭回収', '22:45', '23:15');
@@ -684,6 +1222,7 @@ window.autoAssignTasks = async (sec, listType) => {
             }
         }
 
+        // Fill Free Time
         const slots = isOpen ? openTimeSlots : closeTimeSlots;
         allStaff.forEach(s => {
             const isEmployee = employees.includes(s);
@@ -695,6 +1234,7 @@ window.autoAssignTasks = async (sec, listType) => {
                 }
                 if (!checkOverlap(s.tasks, st, et)) assign(s, '個人業務、自由時間', st, et);
             }
+            // Merge contiguous tasks
             s.tasks.sort((a, b) => a.start.localeCompare(b.start));
             const merged = [];
             s.tasks.forEach(t => {
@@ -709,7 +1249,6 @@ window.autoAssignTasks = async (sec, listType) => {
 
         window.saveStaffListToFirestore();
         window.refreshCurrentView();
-        
     } catch(e) {
         console.error(e);
         alert("割り振り処理中にエラーが発生しました: " + e.message);
@@ -718,6 +1257,7 @@ window.autoAssignTasks = async (sec, listType) => {
 
 window.addEventListener("DOMContentLoaded", () => {
     window.fetchCustomerData(); window.subscribeQSC(); window.fetchMasterData();
+    window.subscribeOperations(); 
     $('#qscEditButton').onclick=()=>{ if(qscEditMode){qscEditMode=false;$('#qscEditButton').textContent="⚙️ 管理";$('#qscAddForm').classList.add('hidden');window.renderQSCList();}else{window.showPasswordModal('qsc');} };
     $('#newOpeningButton').onclick=window.openNewOpening;
     $('#closeNewOpeningModal').onclick=()=>$('#newOpeningModal').classList.add('hidden');
