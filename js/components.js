@@ -55,7 +55,7 @@ export function renderInfoSections() {
         </div>
     </div>`;
 
-    // --- 2. SLOT TEAM (Purple) ---
+    // --- 2. SLOT TEAM (Purple) - Redesigned ---
     const section2 = `
     <div class="bg-gradient-to-br from-white to-purple-50 rounded-2xl p-6 shadow-sm border border-purple-100 h-full">
         <div class="flex items-center gap-3 mb-6">
@@ -68,30 +68,87 @@ export function renderInfoSections() {
             </div>
         </div>
 
-        <div class="space-y-4">
-             <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-                <ul class="space-y-3 text-sm text-slate-700 font-medium">
-                    <li class="pl-2 border-l-4 border-indigo-500">
-                        <span class="font-bold text-indigo-700">8日 (日):</span> 【八潮上空 × おすしさん夜来店】周年月間初回の上空！喰種筆頭にメイン機種を。夜稼働も強化。※9日は競合周年のため新装告知を徹底。
-                    </li>
-                    <li class="pl-2 border-l-4 border-indigo-500">
-                        <span class="font-bold text-indigo-700">9日 (月):</span> 【新装開店 × 七咲ななさん夜来店】暴凶星・アズレン・化物語導入！競合周年に負けず、期待感の高い新台をアピール。
-                    </li>
-                    <li class="pl-2 border-l-4 border-slate-300">
-                        <span class="font-bold text-slate-600">10日(火)・11日(水):</span> 【耐える期間】イベント無し。新台と喰種を埋めつつ、平日はジャグラーで常連様を囲い込み再遊技を促進。
-                    </li>
-                    <li class="pl-2 border-l-4 border-indigo-500">
-                        <span class="font-bold text-indigo-700">12日 (木):</span> 【八潮上空 × よっしー＆烏丸シュウジ × おにくさん夜来店】BASHtv恒例来店！最優先は東京喰種。夜はおにくさん＝サミー系＆モンハンへ誘導。
-                    </li>
-                    <li class="pl-2 border-l-4 border-pink-500">
-                         <span class="font-bold text-pink-700">13日 (金):</span> 【マッティさん来店】出玉期待度大。メインから少数台までチャンスあり。翌日「for埼玉」の告知＋出玉アピールを徹底。
-                    </li>
-                    <li class="pl-2 border-l-4 border-emerald-500">
-                         <span class="font-bold text-emerald-700">14日 (土):</span> 【スロパチ for 埼玉】ジャグラーは「列」か「全体」を意識。並びでの出玉感も演出。常連様へ周年への期待感を醸成。
-                    </li>
-                </ul>
-                <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs font-bold">
-                    【重要周知】W周年月間表記NGにより、真の周年日は「12/27」となります。お客様への案内ミスなきよう注意！
+        <div class="grid grid-cols-1 gap-4">
+            <!-- 8日 -->
+            <div class="bg-white rounded-xl p-4 border-l-4 border-indigo-500 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="bg-indigo-100 text-indigo-700 text-xs font-black px-2 py-1 rounded">8日 (日)</span>
+                    <span class="text-xs font-bold text-slate-400">八潮上空 / 来店</span>
+                </div>
+                <p class="text-sm text-slate-700 font-bold leading-relaxed">
+                    【八潮上空 × おすしさん夜来店】<br>
+                    周年月間初回の上空！喰種筆頭にメイン機種を。夜稼働も強化。※9日は競合周年のため新装告知を徹底。
+                </p>
+            </div>
+
+            <!-- 9日 -->
+            <div class="bg-white rounded-xl p-4 border-l-4 border-indigo-500 shadow-sm hover:shadow-md transition-shadow">
+                 <div class="flex items-center gap-2 mb-2">
+                    <span class="bg-indigo-100 text-indigo-700 text-xs font-black px-2 py-1 rounded">9日 (月)</span>
+                    <span class="text-xs font-bold text-slate-400">新装開店 / 来店</span>
+                </div>
+                <p class="text-sm text-slate-700 font-bold leading-relaxed">
+                    【新装開店 × 七咲ななさん夜来店】<br>
+                    暴凶星・アズレン・化物語導入！競合周年に負けず、期待感の高い新台をアピール。
+                </p>
+            </div>
+
+            <!-- 10日・11日 -->
+            <div class="bg-white rounded-xl p-4 border-l-4 border-slate-300 shadow-sm hover:shadow-md transition-shadow">
+                 <div class="flex items-center gap-2 mb-2">
+                    <span class="bg-slate-100 text-slate-600 text-xs font-black px-2 py-1 rounded">10(火)・11(水)</span>
+                    <span class="text-xs font-bold text-slate-400">通常営業</span>
+                </div>
+                <p class="text-sm text-slate-700 font-bold leading-relaxed">
+                    【耐える期間】<br>
+                    イベント無し。新台と喰種を埋めつつ、平日はジャグラーで常連様を囲い込み再遊技を促進。
+                </p>
+            </div>
+
+            <!-- 12日 -->
+            <div class="bg-white rounded-xl p-4 border-l-4 border-indigo-500 shadow-sm hover:shadow-md transition-shadow">
+                 <div class="flex items-center gap-2 mb-2">
+                    <span class="bg-indigo-100 text-indigo-700 text-xs font-black px-2 py-1 rounded">12日 (木)</span>
+                    <span class="text-xs font-bold text-slate-400">八潮上空 / BASHtv</span>
+                </div>
+                <p class="text-sm text-slate-700 font-bold leading-relaxed">
+                    【八潮上空 × よっしー＆烏丸シュウジ × おにくさん】<br>
+                    BASHtv恒例来店！最優先は東京喰種。夜はおにくさん＝サミー系＆モンハンへ誘導。
+                </p>
+            </div>
+
+            <!-- 13日 -->
+            <div class="bg-white rounded-xl p-4 border-l-4 border-pink-500 shadow-sm hover:shadow-md transition-shadow">
+                 <div class="flex items-center gap-2 mb-2">
+                    <span class="bg-pink-100 text-pink-700 text-xs font-black px-2 py-1 rounded">13日 (金)</span>
+                    <span class="text-xs font-bold text-slate-400">来店イベント</span>
+                </div>
+                <p class="text-sm text-slate-700 font-bold leading-relaxed">
+                    【マッティさん来店】<br>
+                    出玉期待度大。メインから少数台までチャンスあり。翌日「for埼玉」の告知＋出玉アピールを徹底。
+                </p>
+            </div>
+
+            <!-- 14日 -->
+            <div class="bg-white rounded-xl p-4 border-l-4 border-emerald-500 shadow-sm hover:shadow-md transition-shadow">
+                 <div class="flex items-center gap-2 mb-2">
+                    <span class="bg-emerald-100 text-emerald-700 text-xs font-black px-2 py-1 rounded">14日 (土)</span>
+                    <span class="text-xs font-bold text-slate-400">スロパチ / 週末</span>
+                </div>
+                <p class="text-sm text-slate-700 font-bold leading-relaxed">
+                    【スロパチ for 埼玉】<br>
+                    ジャグラーは「列」か「全体」を意識。並びでの出玉感も演出。常連様へ周年への期待感を醸成。
+                </p>
+            </div>
+
+            <!-- 重要周知 -->
+            <div class="mt-2 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 shadow-sm">
+                <span class="text-xl">⚠️</span>
+                <div>
+                    <h4 class="text-xs font-black text-red-700 uppercase tracking-widest mb-1">IMPORTANT NOTICE</h4>
+                    <p class="text-sm font-bold text-red-800 leading-snug">
+                        W周年月間表記NGにより、真の周年日は「12/27」となります。お客様への案内ミスなきよう注意！
+                    </p>
                 </div>
             </div>
         </div>
@@ -99,8 +156,8 @@ export function renderInfoSections() {
 
     container.innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div>${section1}</div>
-            <div>${section2}</div>
+            <div class="h-full">${section1}</div>
+            <div class="h-full">${section2}</div>
         </div>
     `;
 }
