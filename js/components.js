@@ -1,4 +1,34 @@
 
+let currentStrategySlide = 0;
+const strategyImages = [
+    'senryaku1.jpg',
+    'senryaku2.jpg',
+    'senryaku3.jpg',
+    'senryaku4.jpg',
+    'senryaku5.jpg'
+];
+
+export function changeStrategySlide(direction) {
+    const slides = document.querySelectorAll('.strategy-slide');
+    if (slides.length === 0) return;
+
+    // Update index
+    currentStrategySlide += direction;
+    if (currentStrategySlide >= slides.length) currentStrategySlide = 0;
+    if (currentStrategySlide < 0) currentStrategySlide = slides.length - 1;
+
+    // Update visibility
+    slides.forEach((slide, index) => {
+        if (index === currentStrategySlide) {
+            slide.classList.remove('opacity-0', 'pointer-events-none');
+            slide.classList.add('opacity-100', 'pointer-events-auto');
+        } else {
+            slide.classList.remove('opacity-100', 'pointer-events-auto');
+            slide.classList.add('opacity-0', 'pointer-events-none');
+        }
+    });
+}
+
 export function renderInfoSections() {
     const container = document.getElementById('internalSharedModalBody');
     if (!container) return;
@@ -154,20 +184,38 @@ export function renderInfoSections() {
         </div>
     </div>`;
 
-    // --- 3. STRATEGY DETAILS (Red/Special) - REVISED ---
+    // --- 3. STRATEGY DETAILS (Red/Special) - REVISED (SLIDESHOW) ---
+    // Generate slides HTML
+    const slidesHtml = strategyImages.map((src, index) => {
+        const isVisible = index === currentStrategySlide;
+        const opacityClass = isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none';
+        return `
+            <div class="strategy-slide absolute top-0 left-0 w-full h-full transition-opacity duration-500 ease-in-out ${opacityClass} flex items-center justify-center bg-slate-50">
+                <img src="${src}" class="w-full h-full object-contain" alt="Strategy Slide ${index + 1}">
+            </div>
+        `;
+    }).join('');
+
     const sectionStrategy = `
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-full">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col">
         <!-- HEADER -->
-        <div class="bg-gradient-to-r from-red-600 to-rose-500 p-4 text-white text-center">
+        <div class="bg-gradient-to-r from-red-600 to-rose-500 p-4 text-white text-center shrink-0">
             <h3 class="text-xl font-black tracking-tight mb-1">12月戦略詳細</h3>
             <p class="text-xs font-bold opacity-90">周年月間 × エヴァ17大量導入「ヤシオ作戦」</p>
         </div>
 
-        <div class="p-4 space-y-6">
-            <!-- KEY VISUALS (2 Column Grid) -->
-            <div class="grid grid-cols-2 gap-3">
-                <img src="senryaku1.jpg" alt="Strategy 1" class="w-full h-48 object-cover rounded-lg shadow-sm">
-                <img src="senryaku2.jpg" alt="Strategy 2" class="w-full h-48 object-cover rounded-lg shadow-sm">
+        <div class="p-4 flex-1 space-y-6">
+            <!-- SLIDESHOW CONTAINER -->
+            <div id="strategy-slideshow-container" class="relative w-full h-[400px] rounded-xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100 group">
+                ${slidesHtml}
+
+                <!-- Controls -->
+                <button onclick="changeStrategySlide(-1)" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-10">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <button onclick="changeStrategySlide(1)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-10">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                </button>
             </div>
 
             <!-- MONTHLY GOALS -->
@@ -188,49 +236,6 @@ export function renderInfoSections() {
                     <div class="bg-white p-2 rounded shadow-sm border border-slate-100">
                         <div class="text-[10px] font-bold text-slate-500 mb-0.5">12/28</div>
                         <div class="text-sm font-black text-slate-800">700名</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- WEEKLY ACTIONS (List View) -->
-            <div class="space-y-4">
-                <h4 class="font-black text-slate-800 text-sm flex items-center gap-2 border-l-4 border-indigo-500 pl-3">
-                    週別アクション
-                </h4>
-
-                <!-- Week 1-2 -->
-                <div class="flex gap-4 items-start">
-                    <img src="senryaku3.jpg" alt="Week 1-2" class="w-20 h-20 rounded-lg shadow-md object-cover shrink-0">
-                    <div>
-                        <h5 class="text-sm font-bold text-indigo-700 mb-1">第1〜2週 (導入・助走)</h5>
-                        <p class="text-slate-600 font-medium leading-relaxed text-xs">
-                            <span class="font-bold text-slate-800">12/5新装（炎炎・ブルロ）。</span><br>
-                            平日から「ヤシオ作戦」と「周年」を徹底告知。12/14告知開始。
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Week 3 -->
-                <div class="flex gap-4 items-start">
-                    <img src="senryaku4.jpg" alt="Week 3" class="w-20 h-20 rounded-lg shadow-md object-cover shrink-0">
-                    <div>
-                        <h5 class="text-sm font-bold text-indigo-700 mb-1">第3週 (本番・展開)</h5>
-                        <p class="text-slate-600 font-medium leading-relaxed text-xs">
-                             <span class="font-bold text-slate-800">エヴァ17 40台導入。</span><br>
-                            創業70周年装飾で期待感を作る。70周年PJ告知、接客強化。
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Week 4 -->
-                 <div class="flex gap-4 items-start">
-                    <img src="senryaku5.jpg" alt="Week 4" class="w-20 h-20 rounded-lg shadow-md object-cover shrink-0">
-                    <div>
-                        <h5 class="text-sm font-bold text-red-600 mb-1">第4週 (クライマックス)</h5>
-                        <p class="text-slate-600 font-medium leading-relaxed text-xs">
-                             <span class="font-bold text-slate-800">12/27「周年」本番。</span><br>
-                            ROPスロット増台(600台)と合わせて最大稼働へ。12/28庭の日。
-                        </p>
                     </div>
                 </div>
             </div>

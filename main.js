@@ -5,7 +5,7 @@ import * as Operations from './js/operations.js';
 import * as QSC from './js/qsc.js';
 import * as Shift from './js/shift.js';
 import * as Tasks from './js/tasks.js';
-import { renderModals, renderInfoSections } from './js/components.js';
+import { renderModals, renderInfoSections, changeStrategySlide } from './js/components.js';
 import { getTodayDateString, getYesterdayDateString, getTaskColorClass } from './js/utils.js';
 import { EDIT_PASSWORD } from './js/config.js';
 
@@ -50,6 +50,9 @@ window.closeInternalSharedModal = function() {
         modal.classList.remove('flex');
     }
 };
+
+// Slideshow
+window.changeStrategySlide = changeStrategySlide;
 
 // Operations
 window.subscribeOperations = Operations.subscribeOperations;

@@ -142,8 +142,28 @@
                 <div id="operationsBoardContainer" class="mt-4 lg:mt-0 relative z-10 fade-in-up h-full" style="animation-delay: 0.35s;"></div>
             </div>
 
-            <!-- Row 2: Floor Map (Moved here and set to col-span-2) -->
-            <section id="map-section" class="lg:col-span-2 mt-8 lg:mt-0 fade-in-up h-full" style="animation-delay: 0.7s;">
+            <!-- Row 2: Internal Sharing Button -->
+            <div id="internal-sharing-button" class="mt-4 lg:mt-0 relative z-10 fade-in-up lg:col-span-1 h-full" style="animation-delay: 0.4s;">
+                <div onclick="openInternalSharedModal()" class="group cursor-pointer bg-white rounded-2xl shadow-xl shadow-indigo-900/5 border border-slate-100 p-6 sm:p-8 h-full hover:translate-y-[-4px] hover:shadow-2xl transition-all duration-300 flex flex-col justify-center">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-5">
+                            <div class="bg-indigo-50 text-indigo-600 p-4 rounded-2xl shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+                                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xl sm:text-2xl font-bold text-slate-800 group-hover:text-indigo-700 transition-colors">社内共有・戦略</h2>
+                                <p class="text-slate-500 text-sm sm:text-sm font-medium mt-0.5">12月度戦略・チーム共有事項</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-100 rounded-full p-2 text-slate-400 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 3: Floor Map (Spans full width) -->
+            <section id="map-section" class="lg:col-span-3 mt-8 lg:mt-6 fade-in-up h-full" style="animation-delay: 0.7s;">
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-lg overflow-hidden h-full flex flex-col">
                     <div class="p-6 sm:p-8 border-b border-slate-50 shrink-0">
                         <h2 class="text-2xl font-bold text-slate-800">Floor Map</h2>
