@@ -34,6 +34,23 @@ window.openNewOpening = Customer.openNewOpening;
 window.closeNewOpeningModal = Customer.closeNewOpeningModal;
 window.closeDetailModal = Customer.closeDetailModal;
 
+// Internal Shared Modal
+window.openInternalSharedModal = function() {
+    const modal = document.getElementById('internalSharedModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+};
+
+window.closeInternalSharedModal = function() {
+    const modal = document.getElementById('internalSharedModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+};
+
 // Operations
 window.subscribeOperations = Operations.subscribeOperations;
 window.renderOperationsBoard = Operations.renderOperationsBoard;
@@ -119,8 +136,8 @@ window.checkPassword = function() {
 
 document.addEventListener("DOMContentLoaded", () => {
     // 0. Render Static Components
-    renderInfoSections();
     renderModals();
+    renderInfoSections();
 
     // 1. Initial Data Load
     Customer.fetchCustomerData();
