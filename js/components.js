@@ -55,7 +55,7 @@ export function renderInfoSections() {
         </div>
     </div>`;
 
-    // --- 2. SLOT TEAM (Purple) - Redesigned ---
+    // --- 2. SLOT TEAM (Purple) ---
     const section2 = `
     <div class="bg-gradient-to-br from-white to-purple-50 rounded-2xl p-6 shadow-sm border border-purple-100 h-full">
         <div class="flex items-center gap-3 mb-6">
@@ -154,115 +154,98 @@ export function renderInfoSections() {
         </div>
     </div>`;
 
-    // --- 3. STRATEGY DETAILS (Red/Special) ---
-    const section3 = `
+    // --- 3. STRATEGY DETAILS (Red/Special) - REVISED ---
+    const sectionStrategy = `
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-full">
         <!-- HEADER -->
-        <div class="relative bg-gradient-to-r from-red-600 to-rose-500 p-6 text-white text-center">
-            <h3 class="text-3xl font-black tracking-tight mb-2">12月戦略詳細</h3>
-            <p class="text-lg font-bold opacity-90">周年月間 × エヴァ17大量導入「ヤシオ作戦」</p>
+        <div class="bg-gradient-to-r from-red-600 to-rose-500 p-4 text-white text-center">
+            <h3 class="text-xl font-black tracking-tight mb-1">12月戦略詳細</h3>
+            <p class="text-xs font-bold opacity-90">周年月間 × エヴァ17大量導入「ヤシオ作戦」</p>
         </div>
 
-        <div class="p-6 space-y-8">
-            <!-- KEY VISUALS -->
-            <div class="flex flex-col md:flex-row gap-4">
-                <div class="flex-1">
-                    <img src="senryaku1.jpg" alt="Strategy 1" class="w-full h-auto rounded-xl shadow-md object-cover">
-                </div>
-                <div class="flex-1">
-                    <img src="senryaku2.jpg" alt="Strategy 2" class="w-full h-auto rounded-xl shadow-md object-cover">
-                </div>
+        <div class="p-4 space-y-6">
+            <!-- KEY VISUALS (2 Column Grid) -->
+            <div class="grid grid-cols-2 gap-3">
+                <img src="senryaku1.jpg" alt="Strategy 1" class="w-full h-auto rounded-lg shadow-sm object-cover">
+                <img src="senryaku2.jpg" alt="Strategy 2" class="w-full h-auto rounded-lg shadow-sm object-cover">
             </div>
 
             <!-- MONTHLY GOALS -->
-            <div class="bg-slate-50 rounded-xl p-6 border border-slate-200">
-                <h4 class="text-center text-xl font-black text-slate-800 mb-4 border-b border-slate-200 pb-2">
+            <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <h4 class="text-center text-sm font-black text-slate-800 mb-3 border-b border-slate-200 pb-2">
                     🎯 月間集客目標
                 </h4>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                    <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-100">
-                        <div class="text-xs font-bold text-slate-500 mb-1">12/25 (ROP)</div>
-                        <div class="text-2xl font-black text-slate-800">300名</div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="bg-white p-2 rounded shadow-sm border border-slate-100">
+                        <div class="text-[10px] font-bold text-slate-500 mb-0.5">12/25</div>
+                        <div class="text-sm font-black text-slate-800">300名</div>
                     </div>
-                    <div class="bg-white p-4 rounded-lg shadow-md border-2 border-red-500 relative overflow-hidden transform scale-105">
-                        <div class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5">必達</div>
-                        <div class="text-xs font-bold text-slate-500 mb-1">12/27 (周年)</div>
-                        <div class="text-3xl font-black text-red-600">530名</div>
+                    <div class="bg-white p-2 rounded shadow-md border border-red-500 relative overflow-hidden">
+                         <div class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-bl"></div>
+                        <div class="text-[10px] font-bold text-slate-500 mb-0.5">12/27</div>
+                        <div class="text-lg font-black text-red-600">530名</div>
                     </div>
-                    <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-100">
-                        <div class="text-xs font-bold text-slate-500 mb-1">12/28 (庭の日)</div>
-                        <div class="text-2xl font-black text-slate-800">700名</div>
+                    <div class="bg-white p-2 rounded shadow-sm border border-slate-100">
+                        <div class="text-[10px] font-bold text-slate-500 mb-0.5">12/28</div>
+                        <div class="text-sm font-black text-slate-800">700名</div>
                     </div>
                 </div>
             </div>
 
-            <!-- WEEKLY ACTIONS -->
-            <div class="space-y-8">
-                <h4 class="font-black text-slate-800 text-lg flex items-center gap-2 border-l-4 border-indigo-500 pl-3">
+            <!-- WEEKLY ACTIONS (List View) -->
+            <div class="space-y-4">
+                <h4 class="font-black text-slate-800 text-sm flex items-center gap-2 border-l-4 border-indigo-500 pl-3">
                     週別アクション
                 </h4>
 
                 <!-- Week 1-2 -->
-                <div class="flex flex-col md:flex-row gap-6 items-center">
-                    <div class="w-full md:w-1/2">
-                        <img src="senryaku3.jpg" alt="Week 1-2" class="w-full h-auto rounded-xl shadow-md">
-                    </div>
-                    <div class="w-full md:w-1/2">
-                        <h5 class="text-lg font-bold text-indigo-700 mb-2">第1〜2週 (導入・助走)</h5>
-                        <p class="text-slate-700 font-medium leading-relaxed text-sm">
-                            <span class="font-bold">12/5新装（炎炎・ブルロ）。</span><br>
-                            平日から「ヤシオ作戦（エヴァ17）」と「周年」を徹底告知。周年スタート、新装告知、12/14「ヤシオ作戦」告知開始。
+                <div class="flex gap-4 items-start">
+                    <img src="senryaku3.jpg" alt="Week 1-2" class="w-20 h-20 rounded-lg shadow-md object-cover shrink-0">
+                    <div>
+                        <h5 class="text-sm font-bold text-indigo-700 mb-1">第1〜2週 (導入・助走)</h5>
+                        <p class="text-slate-600 font-medium leading-relaxed text-xs">
+                            <span class="font-bold text-slate-800">12/5新装（炎炎・ブルロ）。</span><br>
+                            平日から「ヤシオ作戦」と「周年」を徹底告知。12/14告知開始。
                         </p>
                     </div>
                 </div>
 
                 <!-- Week 3 -->
-                <div class="flex flex-col md:flex-row-reverse gap-6 items-center">
-                    <div class="w-full md:w-1/2">
-                        <img src="senryaku4.jpg" alt="Week 3" class="w-full h-auto rounded-xl shadow-md">
-                    </div>
-                    <div class="w-full md:w-1/2">
-                        <h5 class="text-lg font-bold text-indigo-700 mb-2">第3週 (本番・展開)</h5>
-                        <p class="text-slate-700 font-medium leading-relaxed text-sm">
-                            <span class="font-bold">エヴァ17 40台導入。</span><br>
+                <div class="flex gap-4 items-start">
+                    <img src="senryaku4.jpg" alt="Week 3" class="w-20 h-20 rounded-lg shadow-md object-cover shrink-0">
+                    <div>
+                        <h5 class="text-sm font-bold text-indigo-700 mb-1">第3週 (本番・展開)</h5>
+                        <p class="text-slate-600 font-medium leading-relaxed text-xs">
+                             <span class="font-bold text-slate-800">エヴァ17 40台導入。</span><br>
                             創業70周年装飾で期待感を作る。70周年PJ告知、接客強化。
                         </p>
                     </div>
                 </div>
 
                 <!-- Week 4 -->
-                <div class="flex flex-col md:flex-row gap-6 items-center">
-                    <div class="w-full md:w-1/2">
-                        <img src="senryaku5.jpg" alt="Week 4" class="w-full h-auto rounded-xl shadow-md">
-                    </div>
-                    <div class="w-full md:w-1/2">
-                        <h5 class="text-lg font-bold text-red-600 mb-2">第4週 (クライマックス)</h5>
-                        <p class="text-slate-700 font-medium leading-relaxed text-sm">
-                            <span class="font-bold">12/27「周年」本番。</span><br>
-                            ROPスロット増台(600台)と合わせて最大稼働へ。12/28庭の日、集大成。
+                 <div class="flex gap-4 items-start">
+                    <img src="senryaku5.jpg" alt="Week 4" class="w-20 h-20 rounded-lg shadow-md object-cover shrink-0">
+                    <div>
+                        <h5 class="text-sm font-bold text-red-600 mb-1">第4週 (クライマックス)</h5>
+                        <p class="text-slate-600 font-medium leading-relaxed text-xs">
+                             <span class="font-bold text-slate-800">12/27「周年」本番。</span><br>
+                            ROPスロット増台(600台)と合わせて最大稼働へ。12/28庭の日。
                         </p>
                     </div>
                 </div>
             </div>
 
-            <!-- STAFF MISSION -->
-            <div class="bg-indigo-900 rounded-xl overflow-hidden text-white shadow-lg relative">
-                <div class="flex flex-col md:flex-row">
-                    <div class="w-full md:w-1/3 min-h-[150px]">
-                        <img src="senryaku6.jpg" alt="Mission" class="w-full h-full object-cover">
+            <!-- STAFF MISSION (Text Only) -->
+            <div class="bg-indigo-900 rounded-xl p-5 text-white shadow-lg border border-indigo-800">
+                <h4 class="text-center font-black text-yellow-400 tracking-widest border-b border-indigo-700 pb-2 mb-4 text-sm">STAFF MISSION</h4>
+                <div class="space-y-4">
+                    <div class="flex items-start gap-3">
+                         <span class="bg-white text-indigo-900 text-[10px] font-bold px-2 py-0.5 rounded shrink-0 mt-0.5">早番</span>
+                         <p class="font-bold text-sm leading-snug">「新台・オススメ」で稼働を作る。<br><span class="text-indigo-300 text-xs font-medium">お客様への積極的なお声がけを！</span></p>
                     </div>
-                    <div class="w-full md:w-2/3 p-6 flex flex-col justify-center">
-                        <h4 class="text-xl font-black text-yellow-400 mb-4 tracking-widest border-b border-indigo-700 pb-2">STAFF MISSION</h4>
-                        <div class="space-y-4">
-                            <div>
-                                <span class="bg-white text-indigo-900 text-xs font-bold px-2 py-1 rounded mb-1 inline-block">早番</span>
-                                <p class="font-bold text-base md:text-lg">「新台・オススメ」で稼働を作る。</p>
-                            </div>
-                            <div>
-                                <span class="bg-slate-700 text-white text-xs font-bold px-2 py-1 rounded mb-1 inline-block">遅番</span>
-                                <p class="font-bold text-base md:text-lg">「翌日・特日告知」で朝の並びを作る。</p>
-                            </div>
-                        </div>
+                    <div class="flex items-start gap-3">
+                         <span class="bg-slate-700 text-white text-[10px] font-bold px-2 py-0.5 rounded shrink-0 mt-0.5">遅番</span>
+                         <p class="font-bold text-sm leading-snug">「翌日・特日告知」で朝の並びを作る。<br><span class="text-indigo-300 text-xs font-medium">退店時のお客様へアピール！</span></p>
                     </div>
                 </div>
             </div>
@@ -273,7 +256,7 @@ export function renderInfoSections() {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div class="h-full">${section1}</div>
             <div class="h-full">${section2}</div>
-            <div class="col-span-1 md:col-span-2">${section3}</div>
+            <div class="col-span-1 md:col-span-2">${sectionStrategy}</div>
         </div>
     `;
 }
