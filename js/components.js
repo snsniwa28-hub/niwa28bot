@@ -338,9 +338,13 @@ export function renderModals() {
                         <span class="w-2 h-4 bg-indigo-500 rounded-full"></span> 15:00 の数値
                     </div>
                     <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div class="op-input-group col-span-2">
-                            <label>目標数 (全体)</label>
+                        <div class="op-input-group">
+                            <label>予想目標</label>
                             <input type="number" id="in_target_15" class="op-input" placeholder="目標">
+                        </div>
+                        <div class="op-input-group">
+                            <label class="text-indigo-600 font-bold">当日目標</label>
+                            <input type="number" id="in_today_target_15" class="op-input border-indigo-200 focus:border-indigo-500" placeholder="当日決定">
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-3">
@@ -364,9 +368,13 @@ export function renderModals() {
                         <span class="w-2 h-4 bg-purple-500 rounded-full"></span> 19:00 の数値
                     </div>
                     <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div class="op-input-group col-span-2">
-                            <label>目標数 (全体)</label>
+                        <div class="op-input-group">
+                            <label>予想目標</label>
                             <input type="number" id="in_target_19" class="op-input" placeholder="目標">
+                        </div>
+                        <div class="op-input-group">
+                            <label class="text-indigo-600 font-bold">当日目標</label>
+                            <input type="number" id="in_today_target_19" class="op-input border-indigo-200 focus:border-indigo-500" placeholder="当日決定">
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-3">
