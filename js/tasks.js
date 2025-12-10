@@ -21,19 +21,33 @@ const staffRef = doc(db, 'masters', 'staff_data');
 const taskDefRef = doc(db, 'masters', 'task_data');
 
 export function fetchMasterData() {
-    onSnapshot(staffRef, (s) => {
-        if(s.exists()) {
-            masterStaffList = s.data();
-            // Expose to window for Shift module access (as requested in prompt to minimize rewrites of shift logic which relies on window.masterStaffList)
-            // Ideally shift.js should import it, but shift.js was written to use window.masterStaffList.
-            window.masterStaffList = masterStaffList;
-        }
-    });
-    onSnapshot(taskDefRef, (s) => {
-        if(s.exists()) {
-            specialTasks = s.data().list || [];
-            if(refreshCurrentView) refreshCurrentView();
-        }
+    return new Promise((resolve) => {
+        let staffLoaded = false;
+        let tasksLoaded = false;
+
+        const checkResolve = () => {
+            if (staffLoaded && tasksLoaded) resolve();
+        };
+
+        onSnapshot(staffRef, (s) => {
+            if(s.exists()) {
+                masterStaffList = s.data();
+                // Expose to window for Shift module access (as requested in prompt to minimize rewrites of shift logic which relies on window.masterStaffList)
+                // Ideally shift.js should import it, but shift.js was written to use window.masterStaffList.
+                window.masterStaffList = masterStaffList;
+                if (window.renderMemberRaceBoard) window.renderMemberRaceBoard(); // Re-render member board if active
+            }
+            staffLoaded = true;
+            checkResolve();
+        });
+        onSnapshot(taskDefRef, (s) => {
+            if(s.exists()) {
+                specialTasks = s.data().list || [];
+                if(refreshCurrentView) refreshCurrentView();
+            }
+            tasksLoaded = true;
+            checkResolve();
+        });
     });
 }
 

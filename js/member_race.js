@@ -104,7 +104,10 @@ export function renderMemberRaceBoard() {
     }
 
     // 2. Render List
-    if (!window.masterStaffList) {
+    // We expect window.masterStaffList to be populated or being populated.
+    // If it's missing (rare with new logic), we show loading.
+    const staffList = window.masterStaffList;
+    if (!staffList || (!staffList.employees && !staffList.alba_early)) {
         container.innerHTML = '<p class="text-center text-slate-400 text-xs font-bold col-span-full py-8">スタッフデータ読み込み中...</p>';
         return;
     }
@@ -148,7 +151,8 @@ export function renderMemberRaceBoard() {
         const crownHtml = isAchieved ? `<div class="absolute -top-3 -left-2 bg-yellow-400 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-md transform -rotate-12 z-10 text-lg">👑</div>` : '';
 
         // Target Text
-        const targetText = hasTarget ? ` / ${indTarget}` : '<span class="text-[10px] opacity-50 ml-1">目標未定</span>';
+        const displayTarget = hasTarget ? indTarget : '未定';
+        const targetHtml = `<span onclick="editMemberTarget('${name}')" class="cursor-pointer hover:text-indigo-500 hover:underline decoration-dotted ml-1" title="目標を変更">/ ${displayTarget}</span>`;
 
         card.innerHTML = `
             ${crownHtml}
@@ -160,7 +164,7 @@ export function renderMemberRaceBoard() {
                     <div class="truncate">
                         <p class="font-bold text-slate-700 text-sm truncate">${name}</p>
                         <p class="text-[10px] font-bold ${isAchieved ? 'text-yellow-600' : (isActive ? 'text-amber-500' : 'text-slate-400')}">
-                           獲得: ${count}${targetText}
+                           獲得: ${count}${targetHtml}
                         </p>
                     </div>
                 </div>
@@ -280,5 +284,49 @@ export async function saveMemberTargets() {
     } catch(e) {
         console.error("Save Target Error:", e);
         alert("保存に失敗しました");
+    }
+}
+
+export async function editMemberTarget(name) {
+    const currentTarget = (memberData.individual_targets && memberData.individual_targets[name]) || 0;
+    const input = prompt(`${name}さんの目標数を入力してください (0=目標なし):`, currentTarget);
+
+    if (input === null) return; // Cancelled
+
+    const newTarget = parseInt(input);
+    if (isNaN(newTarget) || newTarget < 0) {
+        alert("有効な数値を入力してください。");
+        return;
+    }
+
+    const docId = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+    const docRef = doc(db, "member_acquisition", docId);
+
+    try {
+        // We use setDoc with merge to ensure nested field update works correctly or create if missing
+        // Construct the update object strictly for this field to avoid overwriting others if race condition (though transaction is safer, setDoc merge is okay for single field if structure is known)
+        // Actually, to update a nested map field "individual_targets.NAME", we need dot notation in update(), or read-modify-write.
+        // Let's use setDoc with merge for simplicity as we have the full object structure logic.
+        // Wait, setDoc with { merge: true } matches top level. To update nested, we need:
+        // { "individual_targets.NAME": val }
+        // BUT setDoc doesn't support dot notation for keys in the object passed as first arg in the same way update() does unless we structure it: { individual_targets: { [name]: val } } WITH merge:true.
+
+        const updatePayload = {
+            individual_targets: {
+                [name]: newTarget
+            }
+        };
+
+        if (newTarget === 0) {
+            // If 0, maybe we want to delete it? But keeping as 0 is fine based on logic.
+            // "0=目標なし" implies 0 is stored.
+        }
+
+        await setDoc(docRef, updatePayload, { merge: true });
+        showToast(`${name}さんの目標を更新しました`);
+
+    } catch(e) {
+        console.error("Edit Target Error:", e);
+        alert("更新に失敗しました");
     }
 }

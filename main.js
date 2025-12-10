@@ -100,6 +100,8 @@ window.changeMemberMonth = MemberRace.changeMemberMonth;
 window.openMemberSettings = MemberRace.openMemberSettings;
 window.closeMemberTargetModal = MemberRace.closeMemberTargetModal;
 window.saveMemberTargets = MemberRace.saveMemberTargets;
+window.editMemberTarget = MemberRace.editMemberTarget;
+window.renderMemberRaceBoard = MemberRace.renderMemberRaceBoard;
 
 // Tasks (Staff App)
 window.fetchMasterData = Tasks.fetchMasterData;
@@ -158,9 +160,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // 1. Initial Data Load
     Customer.fetchCustomerData();
     QSC.subscribeQSC();
-    Tasks.fetchMasterData();
+    Tasks.fetchMasterData().then(() => {
+        MemberRace.subscribeMemberRace();
+    });
     Operations.subscribeOperations();
-    MemberRace.subscribeMemberRace();
 
     // 2. Event Listeners Setup (replacing some inline onclicks where possible or convenient)
     
