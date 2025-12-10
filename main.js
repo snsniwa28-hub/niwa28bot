@@ -96,6 +96,10 @@ window.checkShiftAdminPassword = Shift.checkShiftAdminPassword;
 // Member Race
 window.switchMemberTab = MemberRace.switchMemberTab;
 window.updateMemberCount = MemberRace.updateMemberCount;
+window.changeMemberMonth = MemberRace.changeMemberMonth;
+window.openMemberSettings = MemberRace.openMemberSettings;
+window.closeMemberTargetModal = MemberRace.closeMemberTargetModal;
+window.saveMemberTargets = MemberRace.saveMemberTargets;
 
 // Tasks (Staff App)
 window.fetchMasterData = Tasks.fetchMasterData;
@@ -138,6 +142,8 @@ window.checkPassword = function() {
             QSC.activateQscEditMode();
         } else if (ctx === 'shift_admin') {
             Shift.activateShiftAdminMode();
+        } else if (ctx === 'member_admin') {
+            MemberRace.showMemberTargetModal();
         }
     } else {
         document.getElementById('password-error').classList.remove('hidden');

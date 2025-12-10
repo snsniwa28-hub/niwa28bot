@@ -1,24 +1,52 @@
 import { db } from './firebase.js';
 import { doc, onSnapshot, setDoc, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { MEMBER_TARGET } from './config.js';
+import { showPasswordModal, closePasswordModal, showToast } from './ui.js';
 
-let memberData = { counts: {} };
+let memberData = { counts: {}, global_target: MEMBER_TARGET, individual_targets: {} };
 let currentTab = 'early'; // early, late, employee
+let currentYear = new Date().getFullYear();
+let currentMonth = new Date().getMonth() + 1;
+let unsubscribe = null;
 
 export function subscribeMemberRace() {
-    const d = new Date();
-    const docId = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (unsubscribe) unsubscribe();
+
+    const docId = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
     const docRef = doc(db, "member_acquisition", docId);
 
-    onSnapshot(docRef, (docSnap) => {
+    // Update Month Display
+    const monthLabel = document.getElementById('member-current-month');
+    if (monthLabel) monthLabel.textContent = `${currentYear}年 ${currentMonth}月`;
+
+    unsubscribe = onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
             memberData = docSnap.data();
+            // Ensure defaults
+            if (!memberData.counts) memberData.counts = {};
+            if (!memberData.individual_targets) memberData.individual_targets = {};
+            if (memberData.global_target === undefined) memberData.global_target = MEMBER_TARGET;
         } else {
             // Initialize if not exists
-            memberData = { counts: {}, target: MEMBER_TARGET };
+            memberData = {
+                counts: {},
+                global_target: MEMBER_TARGET,
+                individual_targets: {}
+            };
         }
         renderMemberRaceBoard();
     });
+}
+
+export function changeMemberMonth(delta) {
+    let newM = currentMonth + delta;
+    let newY = currentYear;
+    if (newM > 12) { newM = 1; newY++; }
+    else if (newM < 1) { newM = 12; newY--; }
+
+    currentMonth = newM;
+    currentYear = newY;
+    subscribeMemberRace();
 }
 
 export function switchMemberTab(tab) {
@@ -49,8 +77,8 @@ export function renderMemberRaceBoard() {
         Object.values(memberData.counts).forEach(c => total += (c || 0));
     }
 
-    const target = MEMBER_TARGET;
-    const percentage = Math.min(100, Math.round((total / target) * 100));
+    const target = memberData.global_target || MEMBER_TARGET;
+    const percentage = target > 0 ? Math.min(100, Math.round((total / target) * 100)) : 0;
 
     document.getElementById('member-total-count').textContent = total;
     document.getElementById('member-target-count').textContent = target;
@@ -61,12 +89,18 @@ export function renderMemberRaceBoard() {
 
     if (percentage >= 100) {
         progBar.className = "bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-300 h-full rounded-full transition-all duration-1000 ease-out animate-pulse";
-        document.getElementById('member-progress-shine').classList.remove('opacity-0');
-        document.getElementById('member-progress-shine').classList.add('animate-ping');
+        const shine = document.getElementById('member-progress-shine');
+        if(shine) {
+             shine.classList.remove('opacity-0');
+             shine.classList.add('animate-ping');
+        }
     } else {
          progBar.className = "bg-gradient-to-r from-amber-400 to-amber-500 h-full rounded-full transition-all duration-1000 ease-out";
-         document.getElementById('member-progress-shine').classList.add('opacity-0');
-         document.getElementById('member-progress-shine').classList.remove('animate-ping');
+         const shine = document.getElementById('member-progress-shine');
+         if(shine) {
+             shine.classList.add('opacity-0');
+             shine.classList.remove('animate-ping');
+         }
     }
 
     // 2. Render List
@@ -84,50 +118,50 @@ export function renderMemberRaceBoard() {
 
     list.forEach(name => {
         const count = (memberData.counts && memberData.counts[name]) || 0;
+        const indTarget = (memberData.individual_targets && memberData.individual_targets[name]) || 0;
+
+        // Logic for styling
+        const hasTarget = indTarget > 0;
+        const isAchieved = hasTarget && count >= indTarget;
         const isActive = count > 0;
 
         const card = document.createElement('div');
-        card.className = `flex items-center justify-between p-3 rounded-xl border transition-all ${isActive ? 'bg-amber-50 border-amber-200 shadow-sm' : 'bg-slate-50 border-slate-100'}`;
+
+        // Base classes
+        let borderClass = 'border-slate-100';
+        let bgClass = 'bg-slate-50';
+        let shadowClass = '';
+
+        if (isAchieved) {
+            borderClass = 'border-yellow-400 border-2';
+            bgClass = 'bg-yellow-50';
+            shadowClass = 'shadow-md shadow-yellow-100';
+        } else if (isActive) {
+            borderClass = 'border-amber-200';
+            bgClass = 'bg-amber-50';
+            shadowClass = 'shadow-sm';
+        }
+
+        card.className = `flex items-center justify-between p-3 rounded-xl border transition-all relative ${borderClass} ${bgClass} ${shadowClass}`;
+
+        // Achievement Crown
+        const crownHtml = isAchieved ? `<div class="absolute -top-3 -left-2 bg-yellow-400 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-md transform -rotate-12 z-10 text-lg">👑</div>` : '';
+
+        // Target Text
+        const targetText = hasTarget ? ` / ${indTarget}` : '<span class="text-[10px] opacity-50 ml-1">目標未定</span>';
 
         card.innerHTML = `
-            <div class="flex items-center gap-3">
-                <div class="${isActive ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-400'} w-8 h-8 rounded-full flex items-center justify-center font-black text-sm shrink-0">
-                    ${name.charAt(0)}
-                </div>
-                <div>
-                    <p class="text-xs font-bold text-slate-400 leading-none mb-1">獲得数</p>
-                    <p class="text-lg font-black ${isActive ? 'text-amber-600' : 'text-slate-600'}">${count}</p>
-                </div>
-            </div>
-            <div class="flex flex-col gap-1">
-                <button onclick="updateMemberCount('${name}', 1)" class="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition shadow-sm">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"/></svg>
-                </button>
-                 <button onclick="updateMemberCount('${name}', -1)" class="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:bg-slate-50 transition">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M20 12H4"/></svg>
-                </button>
-            </div>
-        `;
-
-        // Add full name as title
-        card.title = name;
-
-        // Name overlay
-        const nameOverlay = document.createElement('div');
-        nameOverlay.className = "absolute top-0 left-0 w-full h-full opacity-0 hover:opacity-100 bg-white/90 backdrop-blur-sm flex items-center justify-center font-bold text-slate-800 transition-opacity rounded-xl pointer-events-none";
-        nameOverlay.textContent = name;
-        // Actually, just showing name is better.
-        // Let's adjust layout to show name always.
-
-        card.innerHTML = `
-             <div class="flex items-center justify-between w-full">
+            ${crownHtml}
+            <div class="flex items-center justify-between w-full pl-2">
                 <div class="flex items-center gap-3 overflow-hidden">
-                     <div class="${isActive ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-500'} w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shrink-0 shadow-sm border-2 border-white">
+                     <div class="${isAchieved ? 'bg-yellow-500 text-white' : (isActive ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-500')} w-10 h-10 rounded-full flex items-center justify-center font-black text-sm shrink-0 shadow-sm border-2 border-white">
                         ${count}
                     </div>
                     <div class="truncate">
                         <p class="font-bold text-slate-700 text-sm truncate">${name}</p>
-                         <p class="text-[10px] font-bold ${isActive ? 'text-amber-500' : 'text-slate-400'}">${isActive ? '獲得あり!' : '未獲得'}</p>
+                        <p class="text-[10px] font-bold ${isAchieved ? 'text-yellow-600' : (isActive ? 'text-amber-500' : 'text-slate-400')}">
+                           獲得: ${count}${targetText}
+                        </p>
                     </div>
                 </div>
                 <div class="flex items-center gap-1 ml-2">
@@ -142,25 +176,25 @@ export function renderMemberRaceBoard() {
 }
 
 export async function updateMemberCount(name, delta) {
-    const d = new Date();
-    const docId = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const docId = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
     const docRef = doc(db, "member_acquisition", docId);
 
     try {
         await runTransaction(db, async (transaction) => {
             const sfDoc = await transaction.get(docRef);
             if (!sfDoc.exists()) {
-                const newData = { counts: {}, target: MEMBER_TARGET, lastUpdated: new Date() };
+                const newData = {
+                    counts: {},
+                    global_target: MEMBER_TARGET,
+                    individual_targets: {},
+                    lastUpdated: new Date()
+                };
                 newData.counts[name] = Math.max(0, delta);
                 transaction.set(docRef, newData);
             } else {
                 const data = sfDoc.data();
                 const current = (data.counts && data.counts[name]) || 0;
                 const newCount = Math.max(0, current + delta);
-
-                if (!data.counts) data.counts = {};
-                data.counts[name] = newCount;
-                data.lastUpdated = new Date();
 
                 transaction.update(docRef, {
                     [`counts.${name}`]: newCount,
@@ -171,5 +205,80 @@ export async function updateMemberCount(name, delta) {
     } catch (e) {
         console.error("Member Update Error:", e);
         alert("更新に失敗しました。");
+    }
+}
+
+// --- Admin Settings ---
+export function openMemberSettings() {
+    showPasswordModal('member_admin');
+}
+
+export function showMemberTargetModal() {
+    const modal = document.getElementById('member-target-modal');
+    document.getElementById('member-target-modal-month').textContent = `${currentYear}年${currentMonth}月`;
+
+    // Fill Global Target
+    document.getElementById('member-global-target-input').value = memberData.global_target || MEMBER_TARGET;
+
+    // Generate Staff List
+    const listContainer = document.getElementById('member-individual-target-list');
+    listContainer.innerHTML = '';
+
+    if (window.masterStaffList) {
+        // Merge all lists for editing
+        const allStaff = [
+            ...(window.masterStaffList.employees || []),
+            ...(window.masterStaffList.alba_early || []),
+            ...(window.masterStaffList.alba_late || [])
+        ];
+
+        // Remove duplicates if any
+        const uniqueStaff = [...new Set(allStaff)];
+
+        uniqueStaff.forEach(name => {
+            const currentTarget = (memberData.individual_targets && memberData.individual_targets[name]) || 0;
+            const div = document.createElement('div');
+            div.className = "flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100";
+            div.innerHTML = `
+                <span class="text-sm font-bold text-slate-700">${name}</span>
+                <input type="number" data-name="${name}" class="member-ind-target-input w-20 bg-white border border-slate-200 rounded px-2 py-1 text-right text-sm font-bold" value="${currentTarget}" min="0">
+            `;
+            listContainer.appendChild(div);
+        });
+    }
+
+    modal.classList.remove('hidden');
+}
+
+export function closeMemberTargetModal() {
+    document.getElementById('member-target-modal').classList.add('hidden');
+}
+
+export async function saveMemberTargets() {
+    const globalTarget = parseInt(document.getElementById('member-global-target-input').value) || 0;
+    const indInputs = document.querySelectorAll('.member-ind-target-input');
+    const newIndTargets = {};
+
+    indInputs.forEach(input => {
+        const val = parseInt(input.value);
+        if (val > 0) {
+            newIndTargets[input.dataset.name] = val;
+        }
+    });
+
+    const docId = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+    const docRef = doc(db, "member_acquisition", docId);
+
+    try {
+        await setDoc(docRef, {
+            global_target: globalTarget,
+            individual_targets: newIndTargets
+        }, { merge: true });
+
+        showToast("目標を保存しました");
+        closeMemberTargetModal();
+    } catch(e) {
+        console.error("Save Target Error:", e);
+        alert("保存に失敗しました");
     }
 }
