@@ -104,8 +104,6 @@ export function renderMemberRaceBoard() {
     }
 
     // 2. Render List
-    // We expect window.masterStaffList to be populated or being populated.
-    // If it's missing (rare with new logic), we show loading.
     const staffList = window.masterStaffList;
     if (!staffList || (!staffList.employees && !staffList.alba_early)) {
         container.innerHTML = '<p class="text-center text-slate-400 text-xs font-bold col-span-full py-8">スタッフデータ読み込み中...</p>';
@@ -153,7 +151,8 @@ export function renderMemberRaceBoard() {
         // Target Text
         const displayTarget = hasTarget ? indTarget : '未定';
         const targetHtml = `<span onclick="editMemberTarget('${name}')" class="cursor-pointer hover:text-indigo-500 hover:underline decoration-dotted ml-1" title="目標を変更">/ ${displayTarget}</span>`;
-        const editBtnHtml = `<button onclick="editMemberTarget('${name}')" class="ml-1 w-5 h-5 inline-flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-colors" title="目標を編集"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" /></svg></button>`;
+        // UI Improvement: Icon + Text button
+        const editBtnHtml = `<button onclick="editMemberTarget('${name}')" class="ml-2 inline-flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg px-2 py-1 transition-colors group" title="目標を編集"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" /></svg><span class="text-xs font-bold ml-1 group-hover:text-indigo-600">目標</span></button>`;
 
         card.innerHTML = `
             ${crownHtml}
@@ -288,13 +287,52 @@ export async function saveMemberTargets() {
     }
 }
 
-export async function editMemberTarget(name) {
-    const currentTarget = (memberData.individual_targets && memberData.individual_targets[name]) || 0;
-    const input = prompt(`${name}さんの目標数を入力してください (0=目標なし):`, currentTarget);
+// --- Dynamic Modal for Single User Target Editing ---
+function ensureEditTargetModalExists() {
+    if (document.getElementById('editMemberTargetModal')) return;
 
-    if (input === null) return; // Cancelled
+    // Inject Custom Modal HTML
+    const modalHtml = `
+    <div id="editMemberTargetModal" class="modal-overlay hidden" style="z-index: 90;">
+        <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-2xl transform transition-all">
+            <h3 class="text-lg font-bold text-slate-800 mb-4" id="editMemberTargetTitle">目標設定</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">個人目標数 (0=目標なし)</label>
+                    <input type="number" id="editMemberTargetInput" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-2xl font-black text-slate-700 text-center focus:ring-2 focus:ring-indigo-500 outline-none" min="0">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="window.closeEditMemberTargetModal()" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
+                <button onclick="window.saveEditMemberTarget()" class="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存</button>
+            </div>
+        </div>
+    </div>
+    `;
 
-    const newTarget = parseInt(input);
+    const container = document.createElement('div');
+    container.innerHTML = modalHtml;
+    // Prefer appending to modals container if exists
+    const modalContainer = document.getElementById('modals-container');
+    if (modalContainer) {
+        modalContainer.appendChild(container.firstElementChild);
+    } else {
+        document.body.appendChild(container.firstElementChild);
+    }
+}
+
+// Exposed Functions for Modal Interactions
+window.closeEditMemberTargetModal = function() {
+    const modal = document.getElementById('editMemberTargetModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+window.saveEditMemberTarget = async function() {
+    const name = window.currentEditingMember;
+    const input = document.getElementById('editMemberTargetInput');
+    if (!name || !input) return;
+
+    const newTarget = parseInt(input.value);
     if (isNaN(newTarget) || newTarget < 0) {
         alert("有効な数値を入力してください。");
         return;
@@ -304,30 +342,36 @@ export async function editMemberTarget(name) {
     const docRef = doc(db, "member_acquisition", docId);
 
     try {
-        // We use setDoc with merge to ensure nested field update works correctly or create if missing
-        // Construct the update object strictly for this field to avoid overwriting others if race condition (though transaction is safer, setDoc merge is okay for single field if structure is known)
-        // Actually, to update a nested map field "individual_targets.NAME", we need dot notation in update(), or read-modify-write.
-        // Let's use setDoc with merge for simplicity as we have the full object structure logic.
-        // Wait, setDoc with { merge: true } matches top level. To update nested, we need:
-        // { "individual_targets.NAME": val }
-        // BUT setDoc doesn't support dot notation for keys in the object passed as first arg in the same way update() does unless we structure it: { individual_targets: { [name]: val } } WITH merge:true.
-
         const updatePayload = {
             individual_targets: {
                 [name]: newTarget
             }
         };
 
-        if (newTarget === 0) {
-            // If 0, maybe we want to delete it? But keeping as 0 is fine based on logic.
-            // "0=目標なし" implies 0 is stored.
-        }
-
         await setDoc(docRef, updatePayload, { merge: true });
         showToast(`${name}さんの目標を更新しました`);
+        window.closeEditMemberTargetModal();
 
     } catch(e) {
         console.error("Edit Target Error:", e);
         alert("更新に失敗しました");
     }
+}
+
+export function editMemberTarget(name) {
+    ensureEditTargetModalExists();
+    window.currentEditingMember = name;
+
+    const currentTarget = (memberData.individual_targets && memberData.individual_targets[name]) || 0;
+
+    document.getElementById('editMemberTargetTitle').textContent = `${name}さんの目標設定`;
+    const input = document.getElementById('editMemberTargetInput');
+    input.value = currentTarget;
+
+    // Show modal
+    const modal = document.getElementById('editMemberTargetModal');
+    modal.classList.remove('hidden');
+
+    // Auto focus
+    setTimeout(() => input.select(), 100);
 }
