@@ -31,7 +31,7 @@ export function injectShiftButton() {
                     </div>
                     <div>
                         <h2 class="text-xl sm:text-2xl font-bold text-slate-800 group-hover:text-emerald-700 transition-colors">シフト提出・管理</h2>
-                        <p class="text-slate-500 text-sm sm:text-sm font-medium mt-0.5">公休希望の提出はこちら</p>
+                        <p class="text-slate-500 text-sm sm:text-sm font-medium mt-0.5">公休・出勤希望の提出はこちら</p>
                     </div>
                 </div>
                 <div class="bg-slate-100 rounded-full p-2 text-slate-400 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors">
@@ -60,7 +60,7 @@ export function createShiftModals() {
                     </div>
                     <div>
                         <h3 class="font-black text-slate-800 text-xl leading-none">シフト提出</h3>
-                        <p class="text-xs font-bold text-slate-400 mt-1">希望休入力</p>
+                        <p class="text-xs font-bold text-slate-400 mt-1">希望休・出勤入力</p>
                     </div>
                 </div>
                 <div class="flex gap-2">
@@ -171,6 +171,7 @@ export function createShiftModals() {
              <p class="text-xs text-slate-500 mb-6">操作を選択してください</p>
              <div class="space-y-3">
                 <button id="btn-shift-action-toggle" class="w-full py-3 rounded-xl font-bold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100">公休 設定/解除</button>
+                <button id="btn-shift-action-work" class="w-full py-3 rounded-xl font-bold bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100">出勤希望 設定/解除</button>
                 <button id="btn-shift-action-note" class="w-full py-3 rounded-xl font-bold bg-yellow-50 text-yellow-600 border border-yellow-100 hover:bg-yellow-100">備考を入力</button>
                 <button onclick="closeShiftActionModal()" class="w-full py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-50">キャンセル</button>
              </div>
@@ -208,6 +209,26 @@ export function createShiftModals() {
     $('#btn-shift-admin-prev').onclick = () => changeShiftMonth(-1);
     $('#btn-shift-admin-next').onclick = () => changeShiftMonth(1);
     $('#btn-shift-admin-close').onclick = backToShiftList;
+
+    // --- Daily Remarks Input Listener (Attached Once) ---
+    const drInput = document.getElementById('shift-daily-remark-input');
+    if(drInput) {
+        drInput.oninput = () => {
+             if(!shiftState.selectedDay || !shiftState.selectedStaff) return;
+             const name = shiftState.selectedStaff;
+
+             // Ensure structure exists
+             if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { off_days: [], work_days: [], remarks: "", daily_remarks: {} };
+             if (!shiftState.shiftDataCache[name].daily_remarks) shiftState.shiftDataCache[name].daily_remarks = {};
+
+             const val = drInput.value;
+             if(val === "") {
+                delete shiftState.shiftDataCache[name].daily_remarks[shiftState.selectedDay];
+             } else {
+                shiftState.shiftDataCache[name].daily_remarks[shiftState.selectedDay] = val;
+             }
+        };
+    }
 }
 
 export function checkShiftAdminPassword() {
@@ -314,8 +335,14 @@ export function renderShiftCalendar() {
     container.innerHTML = '';
     const firstDay = new Date(y, m - 1, 1).getDay();
     const daysInMonth = new Date(y, m, 0).getDate();
-    const staffData = shiftState.shiftDataCache[shiftState.selectedStaff] || { off_days: [], remarks: "", daily_remarks: {} };
+
+    // Ensure cache exists for selected staff
+    if (!shiftState.shiftDataCache[shiftState.selectedStaff]) {
+        shiftState.shiftDataCache[shiftState.selectedStaff] = { off_days: [], work_days: [], remarks: "", daily_remarks: {} };
+    }
+    const staffData = shiftState.shiftDataCache[shiftState.selectedStaff];
     const offDays = staffData.off_days || [];
+    const workDays = staffData.work_days || [];
     document.getElementById('shift-remarks-input').value = staffData.remarks || "";
 
     // Deadline Logic
@@ -336,7 +363,7 @@ export function renderShiftCalendar() {
         warningDiv.classList.add('hidden');
     }
 
-    // Daily Remark UI
+    // Daily Remark UI Visibility
     const drContainer = document.getElementById('shift-daily-remark-container');
     const drLabel = document.getElementById('shift-daily-remark-label');
     const drInput = document.getElementById('shift-daily-remark-input');
@@ -345,10 +372,6 @@ export function renderShiftCalendar() {
         drContainer.classList.remove('hidden');
         drLabel.textContent = `${shiftState.selectedDay}日の備考:`;
         drInput.value = (staffData.daily_remarks && staffData.daily_remarks[shiftState.selectedDay]) || "";
-        drInput.oninput = () => {
-             if (!shiftState.shiftDataCache[shiftState.selectedStaff].daily_remarks) shiftState.shiftDataCache[shiftState.selectedStaff].daily_remarks = {};
-             shiftState.shiftDataCache[shiftState.selectedStaff].daily_remarks[shiftState.selectedDay] = drInput.value;
-        };
     } else {
         drContainer.classList.add('hidden');
     }
@@ -357,14 +380,24 @@ export function renderShiftCalendar() {
 
     for (let d = 1; d <= daysInMonth; d++) {
         const isOff = offDays.includes(d);
+        const isWork = workDays.includes(d);
         const isSelected = d === shiftState.selectedDay;
         const dateObj = new Date(y, m - 1, d);
         const dayOfWeek = dateObj.getDay();
         let numColor = "text-slate-700";
         if (dayOfWeek === 0) numColor = "text-rose-500";
         if (dayOfWeek === 6) numColor = "text-blue-500";
-        if (isOff) numColor = "text-white";
-        const bgClass = isOff ? 'bg-rose-500' : 'bg-white hover:bg-emerald-50';
+
+        let bgClass = 'bg-white hover:bg-emerald-50';
+
+        if (isOff) {
+            numColor = "text-white";
+            bgClass = "bg-rose-500";
+        } else if (isWork) {
+            numColor = "text-white";
+            bgClass = "bg-blue-500";
+        }
+
         const borderClass = isSelected ? 'border-4 border-yellow-400 z-10' : 'border-transparent';
 
         const cell = document.createElement('div');
@@ -374,24 +407,22 @@ export function renderShiftCalendar() {
         const hasDailyRemark = staffData.daily_remarks && staffData.daily_remarks[d];
         const remarkIndicator = hasDailyRemark ? '<span class="absolute top-1 right-1 text-[8px]">📝</span>' : '';
 
-        cell.innerHTML = `<span class="text-xl sm:text-2xl font-black ${numColor}">${d}</span>${isOff ? '<span class="text-[10px] text-white font-bold leading-none mt-1">公休</span>' : ''}${remarkIndicator}`;
+        cell.innerHTML = `<span class="text-xl sm:text-2xl font-black ${numColor}">${d}</span>
+          ${isOff ? '<span class="text-[10px] text-white font-bold leading-none mt-1">公休</span>' : ''}
+          ${isWork ? '<span class="text-[10px] text-white font-bold leading-none mt-1">出勤</span>' : ''}
+          ${remarkIndicator}`;
 
-        // --- Task 2 Modification: Show Action Select Modal ---
         cell.onclick = () => showActionSelectModal(d);
 
         container.appendChild(cell);
     }
 }
 
-// --- Task 2: Action Select Modal Logic ---
+// --- Action Select Modal Logic ---
 export function showActionSelectModal(day) {
-    // If admin mode, maybe direct toggle or same behavior?
-    // Requirement implies this is for shift submission (calendar view).
-    // Let's apply it generally for calendar view.
+    shiftState.selectedDay = day;
 
-    shiftState.selectedDay = day; // Set selected day so remarks input updates if visible
-
-    // Update daily remark input if it's already visible in the background
+    // Update daily remark input if it's already visible
     const staffData = shiftState.shiftDataCache[shiftState.selectedStaff] || { daily_remarks: {} };
     const drInput = document.getElementById('shift-daily-remark-input');
     const drLabel = document.getElementById('shift-daily-remark-label');
@@ -405,35 +436,75 @@ export function showActionSelectModal(day) {
 
     // Setup Buttons
     const btnToggle = document.getElementById('btn-shift-action-toggle');
+    const btnWork = document.getElementById('btn-shift-action-work');
     const btnNote = document.getElementById('btn-shift-action-note');
 
-    btnToggle.onclick = () => {
-        toggleShiftOffDay(day);
-        closeShiftActionModal();
-    };
+    if(btnToggle) {
+        btnToggle.onclick = () => {
+            toggleShiftOffDay(day);
+            closeShiftActionModal();
+        };
+    }
 
-    btnNote.onclick = () => {
-        closeShiftActionModal();
-        // Focus the daily remark input
-        document.getElementById('shift-daily-remark-container').classList.remove('hidden');
-        document.getElementById('shift-daily-remark-input').focus();
-    };
+    if(btnWork) {
+        btnWork.onclick = () => {
+            toggleShiftWorkDay(day);
+            closeShiftActionModal();
+        };
+    }
+
+    if(btnNote) {
+        btnNote.onclick = () => {
+            closeShiftActionModal();
+            document.getElementById('shift-daily-remark-container').classList.remove('hidden');
+            document.getElementById('shift-daily-remark-input').focus();
+        };
+    }
 
     modal.classList.remove('hidden');
 }
 
-
 export function toggleShiftOffDay(day) {
     const name = shiftState.selectedStaff;
-    if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { off_days: [], remarks: "", daily_remarks: {} };
+    if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { off_days: [], work_days: [], remarks: "", daily_remarks: {} };
 
-    // Select Day Logic
     shiftState.selectedDay = day;
 
-    let list = shiftState.shiftDataCache[name].off_days || [];
-    if (list.includes(day)) list = list.filter(d => d !== day);
-    else list.push(day);
-    shiftState.shiftDataCache[name].off_days = list;
+    let offList = shiftState.shiftDataCache[name].off_days || [];
+    let workList = shiftState.shiftDataCache[name].work_days || [];
+
+    if (offList.includes(day)) {
+        offList = offList.filter(d => d !== day);
+    } else {
+        offList.push(day);
+        // Remove from work_days if present (Mutually exclusive)
+        workList = workList.filter(d => d !== day);
+    }
+    shiftState.shiftDataCache[name].off_days = offList;
+    shiftState.shiftDataCache[name].work_days = workList;
+
+    if (shiftState.isAdminMode) renderShiftAdminTable();
+    else renderShiftCalendar();
+}
+
+export function toggleShiftWorkDay(day) {
+    const name = shiftState.selectedStaff;
+    if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { off_days: [], work_days: [], remarks: "", daily_remarks: {} };
+
+    shiftState.selectedDay = day;
+
+    let offList = shiftState.shiftDataCache[name].off_days || [];
+    let workList = shiftState.shiftDataCache[name].work_days || [];
+
+    if (workList.includes(day)) {
+        workList = workList.filter(d => d !== day);
+    } else {
+        workList.push(day);
+        // Remove from off_days if present
+        offList = offList.filter(d => d !== day);
+    }
+    shiftState.shiftDataCache[name].off_days = offList;
+    shiftState.shiftDataCache[name].work_days = workList;
 
     if (shiftState.isAdminMode) renderShiftAdminTable();
     else renderShiftCalendar();
@@ -518,7 +589,6 @@ export function renderShiftAdminTable() {
             tdName.className = "sticky left-0 z-10 bg-white p-2 border-b border-r border-slate-300 font-bold text-slate-700 text-xs truncate max-w-[120px]";
             tdName.innerHTML = `<div class="flex items-center justify-between"><span>${name}</span>${hasRemarks ? '<span class="text-lg cursor-pointer" title="備考あり">📝</span>' : ''}</div>`;
 
-            // --- Task 3 Modification: Show Admin Note Modal ---
             if(hasRemarks) {
                 tdName.onclick = () => showAdminNoteModal(name, data.remarks, dailyRemarks);
             }
@@ -527,12 +597,19 @@ export function renderShiftAdminTable() {
             for(let d=1; d<=daysInMonth; d++) {
                 const td = document.createElement('td');
                 const isOff = data.off_days && data.off_days.includes(d);
+                const isWork = data.work_days && data.work_days.includes(d);
                 const dailyRemark = data.daily_remarks && data.daily_remarks[d];
 
-                td.className = `border-b border-r border-slate-200 text-center cursor-pointer hover:bg-slate-100 transition ${isOff ? 'bg-rose-50' : ''}`;
+                let bgCell = 'hover:bg-slate-100';
+                if (isOff) bgCell = 'bg-rose-50 hover:bg-rose-100';
+                else if (isWork) bgCell = 'bg-blue-50 hover:bg-blue-100';
 
-                // Show icon for daily remark
-                let cellContent = isOff ? '<span class="text-rose-500 font-black">休</span>' : '';
+                td.className = `border-b border-r border-slate-200 text-center cursor-pointer transition ${bgCell}`;
+
+                let cellContent = '';
+                if(isOff) cellContent = '<span class="text-rose-500 font-black">休</span>';
+                else if(isWork) cellContent = '<span class="text-blue-500 font-black">出</span>';
+
                 if (dailyRemark) {
                     cellContent += `<span class="text-[10px] block" title="${dailyRemark}">📝</span>`;
                 }
@@ -543,41 +620,6 @@ export function renderShiftAdminTable() {
                 td.onclick = async () => {
                     let shouldToggle = true;
                     if (dailyRemark) {
-                         // --- Task 3 Context: Even if we click a cell, if it has a note, we might want to see it nicely?
-                         // The requirement specifically says "Name's note icon OR Date cell's note icon".
-                         // Current logic uses confirm(). Let's change it to use modal if clicked specifically on a note?
-                         // But cell click is one event.
-                         // Requirement 3: "日付セルの備考アイコンをクリックした際...専用の閲覧モーダル"
-                         // This implies we need to detect if the note icon was clicked or just the cell.
-                         // But for simplicity and better UX on mobile, maybe just show the modal for the day if a note exists?
-                         // Wait, "toggleShiftOffDay" is the primary action.
-                         // "日付セルの備考アイコンをクリックした際" -> "When clicking the note icon in the date cell".
-                         // Hard to distinguish click target inside a small cell.
-                         // Let's modify: If there is a daily remark, show the Admin Note Modal focused on that day or general notes?
-                         // "閲覧モーダル仕様: タイトル... 月間備考... デイリー備考..."
-                         // So it seems it shows ALL notes for that user.
-
-                         // Let's change the logic: If the cell has a daily remark, show the modal.
-                         // But then how do they toggle off day?
-                         // "Actions selection modal" was for Task 2 (User side).
-                         // Task 3 is Admin side.
-                         // Maybe if there is a remark, show modal. Inside modal or outside, how to toggle?
-                         // The prompt says "Currently it shows alert(). Change to specialized view modal".
-                         // It doesn't explicitly say "Don't toggle off day".
-                         // Existing code: `const confirmed = confirm(...)`.
-
-                         // Let's assume: If there is a daily remark, show the Note Modal.
-                         // To toggle off day for a day with a note, maybe we rely on the fact that the modal is for VIEWING.
-                         // If the user wants to toggle off-day on a day with a note, maybe long press? Or maybe the prompt implies
-                         // we should prioritize viewing notes.
-                         // OR, maybe I should just show the modal, and the modal is just for viewing.
-                         // But I must not break "Toggle Off Day" functionality.
-
-                         // Let's stick to: If remark exists, show modal.
-                         // But then we can't toggle.
-                         // Let's look at the previous code: `const confirmed = confirm(...)`. If confirmed, it toggles.
-                         // The user probably wants to see the note.
-                         // I will show the modal.
                          shouldToggle = false;
                          showAdminNoteModal(name, data.remarks, dailyRemarks);
                     }
@@ -602,7 +644,7 @@ export function renderShiftAdminTable() {
     }
 }
 
-// --- Task 3: Admin Note Modal Logic ---
+// --- Admin Note Modal Logic ---
 export function showAdminNoteModal(name, monthlyNote, dailyNotes) {
     const modal = document.getElementById('admin-note-modal');
     document.getElementById('admin-note-title').textContent = `${name} さんの備考詳細`;
@@ -634,7 +676,7 @@ export function showAdminNoteModal(name, monthlyNote, dailyNotes) {
     modal.classList.remove('hidden');
 }
 
-// Ensure global access if needed (though module based, event listeners are attached in createShiftModals)
+// Ensure global access if needed
 window.showActionSelectModal = showActionSelectModal;
 window.closeShiftActionModal = closeShiftActionModal;
 window.closeAdminNoteModal = closeAdminNoteModal;
