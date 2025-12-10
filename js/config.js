@@ -42,3 +42,4 @@ export const DEFAULT_STAFF = {
 export const latestKeywords = ["アズールレーン", "北斗の拳11", "地獄少女7500", "海物語極", "化物語", "プリズムナナ", "バーニングエキスプレス"];
 
 export const EDIT_PASSWORD = "admin";
+export const MEMBER_TARGET = 120;

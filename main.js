@@ -5,6 +5,7 @@ import * as Operations from './js/operations.js';
 import * as QSC from './js/qsc.js';
 import * as Shift from './js/shift.js';
 import * as Tasks from './js/tasks.js';
+import * as MemberRace from './js/member_race.js';
 import { renderModals, renderInfoSections, changeStrategySlide } from './js/components.js';
 import { getTodayDateString, getYesterdayDateString, getTaskColorClass } from './js/utils.js';
 import { EDIT_PASSWORD } from './js/config.js';
@@ -92,6 +93,16 @@ window.saveShiftSubmission = Shift.saveShiftSubmission;
 window.renderShiftAdminTable = Shift.renderShiftAdminTable;
 window.checkShiftAdminPassword = Shift.checkShiftAdminPassword;
 
+// Member Race
+window.switchMemberTab = MemberRace.switchMemberTab;
+window.updateMemberCount = MemberRace.updateMemberCount;
+window.changeMemberMonth = MemberRace.changeMemberMonth;
+window.openMemberSettings = MemberRace.openMemberSettings;
+window.closeMemberTargetModal = MemberRace.closeMemberTargetModal;
+window.saveMemberTargets = MemberRace.saveMemberTargets;
+window.editMemberTarget = MemberRace.editMemberTarget;
+window.renderMemberRaceBoard = MemberRace.renderMemberRaceBoard;
+
 // Tasks (Staff App)
 window.fetchMasterData = Tasks.fetchMasterData;
 window.handleDateChange = Tasks.handleDateChange;
@@ -133,6 +144,8 @@ window.checkPassword = function() {
             QSC.activateQscEditMode();
         } else if (ctx === 'shift_admin') {
             Shift.activateShiftAdminMode();
+        } else if (ctx === 'member_admin') {
+            MemberRace.showMemberTargetModal();
         }
     } else {
         document.getElementById('password-error').classList.remove('hidden');
@@ -147,7 +160,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // 1. Initial Data Load
     Customer.fetchCustomerData();
     QSC.subscribeQSC();
-    Tasks.fetchMasterData();
+    Tasks.fetchMasterData().then(() => {
+        MemberRace.subscribeMemberRace();
+    });
     Operations.subscribeOperations();
 
     // 2. Event Listeners Setup (replacing some inline onclicks where possible or convenient)
