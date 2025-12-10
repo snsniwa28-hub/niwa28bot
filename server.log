@@ -1,20 +1,18 @@
-127.0.0.1 - - [09/Dec/2025 12:34:56] "GET /index.html HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:56] "GET /style.css HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:56] "GET /main.js HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:56] "GET /sinsou1.jpg HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:56] "GET /simazu.jpg HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:57] "GET /js/ui.js HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:57] "GET /js/shift.js HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:57] "GET /js/customer.js HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:57] "GET /js/operations.js HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:57] "GET /js/tasks.js HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:57] "GET /js/qsc.js HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:57] "GET /js/components.js HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:57] "GET /js/utils.js HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:57] "GET /js/config.js HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:57] "GET /js/firebase.js HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:58] "GET /senryaku2.jpg HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:58] "GET /senryaku1.jpg HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:58] "GET /senryaku4.jpg HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:58] "GET /senryaku3.jpg HTTP/1.1" 200 -
-127.0.0.1 - - [09/Dec/2025 12:34:58] "GET /senryaku5.jpg HTTP/1.1" 200 -
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 1314, in <module>
+    test(
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 1261, in test
+    with ServerClass(addr, HandlerClass) as httpd:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/socketserver.py", line 457, in __init__
+    self.server_bind()
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 1308, in server_bind
+    return super().server_bind()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 136, in server_bind
+    socketserver.TCPServer.server_bind(self)
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/socketserver.py", line 478, in server_bind
+    self.socket.bind(self.server_address)
+OSError: [Errno 98] Address already in use

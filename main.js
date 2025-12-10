@@ -5,7 +5,7 @@ import * as Operations from './js/operations.js';
 import * as QSC from './js/qsc.js';
 import * as Shift from './js/shift.js';
 import * as Tasks from './js/tasks.js';
-import { renderModals, renderInfoSections } from './js/components.js';
+import { renderModals, renderInfoSections, changeStrategySlide } from './js/components.js';
 import { getTodayDateString, getYesterdayDateString, getTaskColorClass } from './js/utils.js';
 import { EDIT_PASSWORD } from './js/config.js';
 
@@ -33,6 +33,26 @@ window.renderToday = Customer.renderToday;
 window.openNewOpening = Customer.openNewOpening;
 window.closeNewOpeningModal = Customer.closeNewOpeningModal;
 window.closeDetailModal = Customer.closeDetailModal;
+
+// Internal Shared Modal
+window.openInternalSharedModal = function() {
+    const modal = document.getElementById('internalSharedModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+};
+
+window.closeInternalSharedModal = function() {
+    const modal = document.getElementById('internalSharedModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+};
+
+// Slideshow
+window.changeStrategySlide = changeStrategySlide;
 
 // Operations
 window.subscribeOperations = Operations.subscribeOperations;
@@ -119,8 +139,8 @@ window.checkPassword = function() {
 
 document.addEventListener("DOMContentLoaded", () => {
     // 0. Render Static Components
-    renderInfoSections();
     renderModals();
+    renderInfoSections();
 
     // 1. Initial Data Load
     Customer.fetchCustomerData();
