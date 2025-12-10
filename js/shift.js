@@ -14,35 +14,10 @@ let shiftState = {
 
 // --- DOM Injection (UI生成) ---
 export function injectShiftButton() {
-    const targetCard = document.getElementById('newOpeningButton');
-    if (!targetCard || document.getElementById('shiftEntryCard')) return;
-
-    const container = targetCard.parentNode;
-    const newDiv = document.createElement('div');
-    newDiv.className = "container mx-auto px-4 mt-4 relative z-10 fade-in-up";
-    newDiv.style.animationDelay = "0.4s";
-
-    newDiv.innerHTML = `
-        <div id="shiftEntryCard" class="group cursor-pointer bg-white rounded-2xl shadow-xl shadow-indigo-900/5 border border-slate-100 p-6 sm:p-8 max-w-xl mx-auto hover:translate-y-[-4px] hover:shadow-2xl transition-all duration-300">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-5">
-                    <div class="bg-emerald-50 text-emerald-600 p-4 rounded-2xl shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
-                        <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    </div>
-                    <div>
-                        <h2 class="text-xl sm:text-2xl font-bold text-slate-800 group-hover:text-emerald-700 transition-colors">シフト提出・管理</h2>
-                        <p class="text-slate-500 text-sm sm:text-sm font-medium mt-0.5">公休・出勤希望の提出はこちら</p>
-                    </div>
-                </div>
-                <div class="bg-slate-100 rounded-full p-2 text-slate-400 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
-                </div>
-            </div>
-        </div>
-    `;
-    container.parentNode.insertBefore(newDiv, container.nextSibling);
-
-    document.getElementById('shiftEntryCard').onclick = openShiftUserModal;
+    const card = document.getElementById('shiftEntryCard');
+    if (card) {
+        card.onclick = openShiftUserModal;
+    }
 }
 
 export function createShiftModals() {

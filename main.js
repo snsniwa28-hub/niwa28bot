@@ -69,6 +69,8 @@ window.renderQSCList = QSC.renderQSCList;
 window.addQscItem = QSC.addQscItem;
 window.deleteQscItem = QSC.deleteQscItem;
 window.openQSCModal = QSC.openQSCModal; // Replaced specific inline code
+window.closeQscEditModal = QSC.closeQscEditModal;
+window.saveQscEdit = QSC.saveQscEdit;
 // Handle QSC tab switching specifically to avoid complex inline JS
 window.handleQscTab = (tab) => QSC.setQscTab(tab);
 // Note: We need to bind specific QSC actions from HTML if they are complex
@@ -200,6 +202,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Shift Button Injection
-    setTimeout(Shift.injectShiftButton, 600);
+    // Shift Button Setup (Static HTML)
+    Shift.injectShiftButton();
 });

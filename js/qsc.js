@@ -87,22 +87,51 @@ export async function addQscItem() {
     $('#newQscContent').value='';
 }
 
-export async function editQscItem(item) {
-    const newContent = prompt("内容を編集:", item.content);
-    if (newContent === null) return;
+let currentEditingQscId = null;
 
-    const newArea = prompt("エリアを編集:", item.area);
-    if (newArea === null) return;
+export function editQscItem(item) {
+    currentEditingQscId = item.id;
+    const modal = document.getElementById('qscEditModal');
+    if (!modal) return;
 
-    if (newContent !== item.content || newArea !== item.area) {
-        try {
-            await updateDoc(doc(db, "qsc_items", item.id), {
-                content: newContent,
-                area: newArea
-            });
-        } catch(e) {
-            alert("更新エラー: " + e.message);
-        }
+    document.getElementById('qscEditNo').value = item.no;
+    document.getElementById('qscEditArea').value = item.area;
+    document.getElementById('qscEditContent').value = item.content;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex', 'items-center', 'justify-center');
+}
+
+export function closeQscEditModal() {
+    const modal = document.getElementById('qscEditModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex', 'items-center', 'justify-center');
+    }
+    currentEditingQscId = null;
+}
+
+export async function saveQscEdit() {
+    if (!currentEditingQscId) return;
+
+    const no = document.getElementById('qscEditNo').value;
+    const area = document.getElementById('qscEditArea').value;
+    const content = document.getElementById('qscEditContent').value;
+
+    if (!no || !area || !content) {
+        alert("すべての項目を入力してください");
+        return;
+    }
+
+    try {
+        await updateDoc(doc(db, "qsc_items", currentEditingQscId), {
+            no: Number(no),
+            area: area,
+            content: content
+        });
+        closeQscEditModal();
+    } catch(e) {
+        alert("更新エラー: " + e.message);
     }
 }
 
