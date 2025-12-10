@@ -35,8 +35,25 @@ export function renderOperationsBoard() {
     const t = todayOpData || {};
     const y = yesterdayOpData || {};
 
-    const target15 = (t.target_total_15 !== undefined && t.target_total_15 !== null) ? t.target_total_15 : defaultTarget.t15;
-    const target19 = (t.target_total_19 !== undefined && t.target_total_19 !== null) ? t.target_total_19 : defaultTarget.t19;
+    const expected15 = (t.target_total_15 !== undefined && t.target_total_15 !== null) ? t.target_total_15 : defaultTarget.t15;
+    const daily15 = (t.today_target_total_15 !== undefined && t.today_target_total_15 !== null) ? t.today_target_total_15 : null;
+    const target15_display = daily15 ?
+        `<div class="flex flex-col leading-none">
+            <span class="font-black text-indigo-600 text-lg">${daily15}</span>
+            <span class="text-xs text-slate-400 line-through decoration-slate-300 decoration-1">${expected15}</span>
+         </div>` :
+        `<div class="font-black text-indigo-600">${expected15}</div>`;
+    const target15_label = daily15 ? '当日/予想' : '目標';
+
+    const expected19 = (t.target_total_19 !== undefined && t.target_total_19 !== null) ? t.target_total_19 : defaultTarget.t19;
+    const daily19 = (t.today_target_total_19 !== undefined && t.today_target_total_19 !== null) ? t.today_target_total_19 : null;
+    const target19_display = daily19 ?
+        `<div class="flex flex-col leading-none">
+            <span class="font-black text-indigo-600 text-lg">${daily19}</span>
+            <span class="text-xs text-slate-400 line-through decoration-slate-300 decoration-1">${expected19}</span>
+         </div>` :
+        `<div class="font-black text-indigo-600">${expected19}</div>`;
+    const target19_label = daily19 ? '当日/予想' : '目標';
 
     const calcTotal = (d, time) => {
         if (!d) return null;
@@ -76,8 +93,8 @@ export function renderOperationsBoard() {
                 <div class="text-4xl font-black text-slate-800 mb-3 tracking-tight">${num(today15)}</div>
                 <div class="flex justify-between items-center bg-white rounded-lg p-2 border border-slate-100">
                     <div class="text-center w-1/2 border-r border-slate-100">
-                        <div class="text-[10px] font-bold text-slate-400">目標</div>
-                        <div class="font-black text-indigo-600">${target15}</div>
+                        <div class="text-[10px] font-bold text-slate-400">${target15_label}</div>
+                        ${target15_display}
                     </div>
                     <div class="text-center w-1/2">
                         <div class="text-[10px] font-bold text-slate-400">前日</div>
@@ -90,8 +107,8 @@ export function renderOperationsBoard() {
                 <div class="text-4xl font-black text-slate-800 mb-3 tracking-tight">${num(today19)}</div>
                 <div class="flex justify-between items-center bg-white rounded-lg p-2 border border-slate-100">
                     <div class="text-center w-1/2 border-r border-slate-100">
-                        <div class="text-[10px] font-bold text-slate-400">目標</div>
-                        <div class="font-black text-indigo-600">${target19}</div>
+                        <div class="text-[10px] font-bold text-slate-400">${target19_label}</div>
+                        ${target19_display}
                     </div>
                     <div class="text-center w-1/2">
                         <div class="text-[10px] font-bold text-slate-400">前日</div>
@@ -194,11 +211,20 @@ function renderCalendarGrid() {
         const target = TARGET_DATA_DEC[d] || { t15:0, t19:0 };
         const actual = monthlyOpData[dateStr] || {};
 
+        // Determine effective target
+        const exp15 = (actual.target_total_15 !== undefined && actual.target_total_15 !== null) ? actual.target_total_15 : target.t15;
+        const daily15 = actual.today_target_total_15;
+        const effTarget15 = (daily15 !== undefined && daily15 !== null) ? daily15 : exp15;
+
+        const exp19 = (actual.target_total_19 !== undefined && actual.target_total_19 !== null) ? actual.target_total_19 : target.t19;
+        const daily19 = actual.today_target_total_19;
+        const effTarget19 = (daily19 !== undefined && daily19 !== null) ? daily19 : exp19;
+
         const act15 = actual.actual_total_15 || ((parseInt(actual.actual_4p_15)||0)+(parseInt(actual.actual_1p_15)||0)+(parseInt(actual.actual_20s_15)||0)) || 0;
         const act19 = actual.actual_total_19 || ((parseInt(actual.actual_4p_19)||0)+(parseInt(actual.actual_1p_19)||0)+(parseInt(actual.actual_20s_19)||0)) || 0;
 
-        const is15Done = act15 >= target.t15 && act15 > 0;
-        const is19Done = act19 >= target.t19 && act19 > 0;
+        const is15Done = act15 >= effTarget15 && act15 > 0;
+        const is19Done = act19 >= effTarget19 && act19 > 0;
         const bg15 = is15Done ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-50 text-slate-500';
         const bg19 = is19Done ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-50 text-slate-500';
 
@@ -211,12 +237,12 @@ function renderCalendarGrid() {
                 <div class="${bg15} rounded px-1 py-0.5 text-[9px] text-center">
                     <div class="font-bold">15時</div>
                     <div class="font-black text-[10px]">${act15 > 0 ? act15 : '-'}</div>
-                    <div class="text-[8px] opacity-60">/${target.t15}</div>
+                    <div class="text-[8px] opacity-60">/${effTarget15}</div>
                 </div>
                 <div class="${bg19} rounded px-1 py-0.5 text-[9px] text-center">
                     <div class="font-bold">19時</div>
                     <div class="font-black text-[10px]">${act19 > 0 ? act19 : '-'}</div>
-                    <div class="text-[8px] opacity-60">/${target.t19}</div>
+                    <div class="text-[8px] opacity-60">/${effTarget19}</div>
                 </div>
             </div>
         </div>`;
@@ -259,11 +285,13 @@ export function openOpInput(dateStr) {
     const setVal = (id, val, def) => $(`#${id}`).value = (val !== undefined && val !== null) ? val : def;
 
     setVal('in_target_15', data.target_total_15, defaultTarget.t15);
+    setVal('in_today_target_15', data.today_target_total_15, '');
     setVal('in_4p_15', data.actual_4p_15, '');
     setVal('in_1p_15', data.actual_1p_15, '');
     setVal('in_20s_15', data.actual_20s_15, '');
 
     setVal('in_target_19', data.target_total_19, defaultTarget.t19);
+    setVal('in_today_target_19', data.today_target_total_19, '');
     setVal('in_4p_19', data.actual_4p_19, '');
     setVal('in_1p_19', data.actual_1p_19, '');
     setVal('in_20s_19', data.actual_20s_19, '');
@@ -283,8 +311,12 @@ export function closeOpInput() {
 export async function saveOpData() {
     const getVal = (id) => { const v = $(`#${id}`).value; return v ? parseInt(v) : null; };
     const d = {
-        target_total_15: getVal('in_target_15'), actual_4p_15: getVal('in_4p_15'), actual_1p_15: getVal('in_1p_15'), actual_20s_15: getVal('in_20s_15'),
-        target_total_19: getVal('in_target_19'), actual_4p_19: getVal('in_4p_19'), actual_1p_19: getVal('in_1p_19'), actual_20s_19: getVal('in_20s_19'),
+        target_total_15: getVal('in_target_15'),
+        today_target_total_15: getVal('in_today_target_15'),
+        actual_4p_15: getVal('in_4p_15'), actual_1p_15: getVal('in_1p_15'), actual_20s_15: getVal('in_20s_15'),
+        target_total_19: getVal('in_target_19'),
+        today_target_total_19: getVal('in_today_target_19'),
+        actual_4p_19: getVal('in_4p_19'), actual_1p_19: getVal('in_1p_19'), actual_20s_19: getVal('in_20s_19'),
     };
     const sum15 = (d.actual_4p_15||0) + (d.actual_1p_15||0) + (d.actual_20s_15||0);
     const sum19 = (d.actual_4p_19||0) + (d.actual_1p_19||0) + (d.actual_20s_19||0);
