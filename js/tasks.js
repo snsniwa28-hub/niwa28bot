@@ -477,7 +477,7 @@ export function openFixedStaffSelect(k, type, title) {
     noneDiv.textContent = "指定なし";
     noneDiv.onclick = () => { selectOption("", noneDiv); };
     mb.appendChild(noneDiv);
-    candidates.sort().forEach(n => {
+    candidates.forEach(n => {
         const div = document.createElement('div');
         div.className = "select-modal-option";
         div.textContent = n;
