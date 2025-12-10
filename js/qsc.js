@@ -44,7 +44,16 @@ export function renderQSCList() {
             d.className = `bg-white p-4 rounded-xl border ${item.status === '完了' ? 'border-slate-100 opacity-60' : 'border-slate-200'} shadow-sm flex items-center gap-4`;
 
             if (qscEditMode) {
-                d.innerHTML = `<div class="flex-1"><p class="text-sm font-bold text-slate-700">${item.no}. ${item.content}</p></div><button class="p-2 bg-rose-50 text-rose-500 rounded-full btn-delete-qsc">×</button>`;
+                d.innerHTML = `
+                    <div class="flex-1">
+                        <p class="text-sm font-bold text-slate-700">${item.no}. ${item.content}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="p-2 bg-slate-100 text-slate-500 rounded-full btn-edit-qsc hover:bg-slate-200 transition">✎</button>
+                        <button class="p-2 bg-rose-50 text-rose-500 rounded-full btn-delete-qsc hover:bg-rose-100 transition">×</button>
+                    </div>
+                `;
+                d.querySelector('.btn-edit-qsc').onclick = () => editQscItem(item);
                 d.querySelector('.btn-delete-qsc').onclick = () => deleteQscItem(item.id);
             } else {
                 const cb = document.createElement("input");
@@ -76,6 +85,25 @@ export async function addQscItem() {
     await addDoc(collection(db, "qsc_items"), { no: Number(n), area:a, content:c, status: "未実施" });
     $('#newQscNo').value='';
     $('#newQscContent').value='';
+}
+
+export async function editQscItem(item) {
+    const newContent = prompt("内容を編集:", item.content);
+    if (newContent === null) return;
+
+    const newArea = prompt("エリアを編集:", item.area);
+    if (newArea === null) return;
+
+    if (newContent !== item.content || newArea !== item.area) {
+        try {
+            await updateDoc(doc(db, "qsc_items", item.id), {
+                content: newContent,
+                area: newArea
+            });
+        } catch(e) {
+            alert("更新エラー: " + e.message);
+        }
+    }
 }
 
 export async function deleteQscItem(id) {
