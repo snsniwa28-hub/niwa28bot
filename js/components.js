@@ -184,7 +184,7 @@ export function renderInfoSections() {
         </div>
     </div>`;
 
-    // --- 3. STRATEGY DETAILS (Red/Special) - REVISED (SLIDESHOW) ---
+    // --- 3. STRATEGY DETAILS (Red/Special) - REVISED (SLIDESHOW + WEEKLY ACTIONS) ---
     // Generate slides HTML
     const slidesHtml = strategyImages.map((src, index) => {
         const isVisible = index === currentStrategySlide;
@@ -236,6 +236,49 @@ export function renderInfoSections() {
                     <div class="bg-white p-2 rounded shadow-sm border border-slate-100">
                         <div class="text-[10px] font-bold text-slate-500 mb-0.5">12/28</div>
                         <div class="text-sm font-black text-slate-800">700名</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WEEKLY ACTIONS (Restored) -->
+            <div class="space-y-4 px-1">
+                <!-- Week 1-2 -->
+                <div class="flex gap-4 items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <img src="senryaku3.jpg" class="w-24 h-16 object-cover rounded shadow-sm shrink-0" alt="Week 1-2">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded">第1〜2週</span>
+                            <span class="text-xs font-bold text-slate-500">導入・助走</span>
+                        </div>
+                        <p class="text-xs text-slate-700 font-bold leading-relaxed">
+                            エヴァ17・バジリスクなどの話題機導入で集客のベースを作る期間。
+                        </p>
+                    </div>
+                </div>
+                <!-- Week 3 -->
+                <div class="flex gap-4 items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <img src="senryaku4.jpg" class="w-24 h-16 object-cover rounded shadow-sm shrink-0" alt="Week 3">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="bg-red-100 text-red-700 text-[10px] font-black px-2 py-0.5 rounded">第3週</span>
+                            <span class="text-xs font-bold text-slate-500">本番・展開</span>
+                        </div>
+                        <p class="text-xs text-slate-700 font-bold leading-relaxed">
+                            12/27 周年本番！最大級の出玉と演出で地域No.1の稼働を目指す。
+                        </p>
+                    </div>
+                </div>
+                <!-- Week 4 -->
+                <div class="flex gap-4 items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <img src="senryaku5.jpg" class="w-24 h-16 object-cover rounded shadow-sm shrink-0" alt="Week 4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="bg-purple-100 text-purple-700 text-[10px] font-black px-2 py-0.5 rounded">第4週</span>
+                            <span class="text-xs font-bold text-slate-500">クライマックス</span>
+                        </div>
+                        <p class="text-xs text-slate-700 font-bold leading-relaxed">
+                            年末年始営業へ突入。総力戦で2023年を締めくくり、良いスタートダッシュを。
+                        </p>
                     </div>
                 </div>
             </div>
