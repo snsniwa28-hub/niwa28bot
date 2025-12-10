@@ -5,6 +5,7 @@ import * as Operations from './js/operations.js';
 import * as QSC from './js/qsc.js';
 import * as Shift from './js/shift.js';
 import * as Tasks from './js/tasks.js';
+import * as MemberRace from './js/member_race.js';
 import { renderModals, renderInfoSections, changeStrategySlide } from './js/components.js';
 import { getTodayDateString, getYesterdayDateString, getTaskColorClass } from './js/utils.js';
 import { EDIT_PASSWORD } from './js/config.js';
@@ -92,6 +93,10 @@ window.saveShiftSubmission = Shift.saveShiftSubmission;
 window.renderShiftAdminTable = Shift.renderShiftAdminTable;
 window.checkShiftAdminPassword = Shift.checkShiftAdminPassword;
 
+// Member Race
+window.switchMemberTab = MemberRace.switchMemberTab;
+window.updateMemberCount = MemberRace.updateMemberCount;
+
 // Tasks (Staff App)
 window.fetchMasterData = Tasks.fetchMasterData;
 window.handleDateChange = Tasks.handleDateChange;
@@ -149,6 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
     QSC.subscribeQSC();
     Tasks.fetchMasterData();
     Operations.subscribeOperations();
+    MemberRace.subscribeMemberRace();
 
     // 2. Event Listeners Setup (replacing some inline onclicks where possible or convenient)
     

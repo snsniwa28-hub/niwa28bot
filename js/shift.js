@@ -592,20 +592,9 @@ export function renderShiftAdminTable() {
                 td.innerHTML = cellContent;
 
                 // Onclick for admin cells
-                td.onclick = async () => {
-                    let shouldToggle = true;
-                    if (dailyRemark) {
-                         shouldToggle = false;
-                         showAdminNoteModal(name, data.remarks, dailyRemarks);
-                    }
-
-                    if (shouldToggle) {
-                        shiftState.selectedStaff = name;
-                        toggleShiftOffDay(d);
-                        const docId = `${y}-${String(m).padStart(2,'0')}`;
-                        const up = {}; up[name] = shiftState.shiftDataCache[name];
-                        await setDoc(doc(db, "shift_submissions", docId), up, { merge: true });
-                    }
+                td.onclick = () => {
+                     shiftState.selectedStaff = name;
+                     showActionSelectModal(d);
                 };
                 tr.appendChild(td);
             }
