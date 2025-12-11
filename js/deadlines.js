@@ -16,6 +16,14 @@ export function subscribeDeadlines() {
     });
 }
 
+function formatDate(dateStr) {
+    if(!dateStr) return "";
+    try {
+        const [y, m, d] = dateStr.split('-');
+        return `${parseInt(m)}/${parseInt(d)}`;
+    } catch(e) { return dateStr; }
+}
+
 export function renderDeadlinesList() {
     const c = $('#deadlinesListContainer');
     if(!c) return;
@@ -41,16 +49,21 @@ export function renderDeadlinesList() {
                 ? "bg-rose-500 text-white px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0"
                 : "bg-rose-100 text-rose-600 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0";
 
+             const displayDate = formatDate(item.date);
+             const remarksHtml = item.remarks
+                ? `<span class="text-xs font-normal opacity-70 ml-2">(${item.remarks})</span>`
+                : "";
+
              const el = document.createElement('div');
              el.className = containerClass;
 
              let html = `
                 <div class="flex items-center gap-3 overflow-hidden">
                     <div class="${badgeClass}">
-                        ${item.displayDate || item.date}
+                        ${displayDate}
                     </div>
                     <div class="text-sm font-bold ${textClass} truncate">
-                        ${item.content}
+                        ${item.content}${remarksHtml}
                     </div>
                 </div>
              `;
@@ -79,11 +92,9 @@ function renderAddForm(container) {
     form.className = "mt-4 pt-4 border-t border-slate-100";
     form.innerHTML = `
         <div class="grid grid-cols-1 gap-2 mb-2">
-            <div class="flex gap-2">
-                <input type="date" id="newDeadlineSortDate" class="w-1/3 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="ソート日付">
-                <input type="text" id="newDeadlineDisplay" placeholder="表示日付 (例: 12/15 12時)" class="w-2/3 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            </div>
+            <input type="date" id="newDeadlineDate" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <input type="text" id="newDeadlineContent" placeholder="内容 (例: シフト提出)" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="text" id="newDeadlineRemarks" placeholder="備考 (任意: 12時まで等)" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <div class="flex items-center gap-2 mt-1">
                 <input type="checkbox" id="newDeadlinePriority" class="w-4 h-4 text-rose-600 bg-gray-100 border-gray-300 rounded focus:ring-rose-500">
                 <label for="newDeadlinePriority" class="text-xs font-bold text-rose-500">⚠️ 重要（赤字にする）</label>
@@ -95,27 +106,27 @@ function renderAddForm(container) {
 }
 
 export async function addDeadline() {
-    const sortDate = $('#newDeadlineSortDate').value;
-    const dispDate = $('#newDeadlineDisplay').value;
+    const dateVal = $('#newDeadlineDate').value;
     const content = $('#newDeadlineContent').value;
+    const remarks = $('#newDeadlineRemarks').value;
     const isPriority = $('#newDeadlinePriority').checked;
 
-    if (!sortDate || !dispDate || !content) {
-        alert("すべての項目を入力してください");
+    if (!dateVal || !content) {
+        alert("日付と内容は必須です");
         return;
     }
 
     try {
         await addDoc(collection(db, "deadlines"), {
-            date: sortDate,
-            displayDate: dispDate,
+            date: dateVal,
             content: content,
+            remarks: remarks,
             priority: isPriority ? 'high' : 'normal'
         });
         // Clear inputs
-        $('#newDeadlineSortDate').value = '';
-        $('#newDeadlineDisplay').value = '';
+        $('#newDeadlineDate').value = '';
         $('#newDeadlineContent').value = '';
+        $('#newDeadlineRemarks').value = '';
         $('#newDeadlinePriority').checked = false;
     } catch(e) {
         console.error("Error adding deadline:", e);
