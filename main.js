@@ -6,6 +6,7 @@ import * as QSC from './js/qsc.js';
 import * as Shift from './js/shift.js';
 import * as Tasks from './js/tasks.js';
 import * as MemberRace from './js/member_race.js';
+import * as Deadlines from './js/deadlines.js';
 import { renderModals, renderInfoSections, changeStrategySlide } from './js/components.js';
 import { getTodayDateString, getYesterdayDateString, getTaskColorClass } from './js/utils.js';
 import { EDIT_PASSWORD } from './js/config.js';
@@ -103,6 +104,10 @@ window.saveMemberTargets = MemberRace.saveMemberTargets;
 window.editMemberTarget = MemberRace.editMemberTarget;
 window.renderMemberRaceBoard = MemberRace.renderMemberRaceBoard;
 
+// Deadlines
+window.addDeadline = Deadlines.addDeadline;
+window.deleteDeadline = Deadlines.deleteDeadline;
+
 // Tasks (Staff App)
 window.fetchMasterData = Tasks.fetchMasterData;
 window.handleDateChange = Tasks.handleDateChange;
@@ -140,6 +145,7 @@ window.checkPassword = function() {
         
         if (ctx === 'admin') {
             Tasks.activateAdminMode();
+            Deadlines.activateEditMode();
         } else if (ctx === 'qsc') {
             QSC.activateQscEditMode();
         } else if (ctx === 'shift_admin') {
@@ -160,6 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // 1. Initial Data Load
     Customer.fetchCustomerData();
     QSC.subscribeQSC();
+    Deadlines.subscribeDeadlines();
     Tasks.fetchMasterData().then(() => {
         MemberRace.subscribeMemberRace();
     });
