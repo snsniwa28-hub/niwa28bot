@@ -53,6 +53,51 @@
                 </div>
             </section>
 
+            <!-- Deadlines / Notices Section -->
+            <section id="deadlines-section" class="lg:col-span-3 mb-6 lg:mb-0 relative z-10 fade-in-up" style="animation-delay: 0.15s;">
+                <div class="bg-white rounded-2xl shadow-xl shadow-indigo-900/5 border border-slate-100 overflow-hidden">
+                    <div class="p-4 sm:p-5 border-b border-slate-50 flex items-center justify-between">
+                        <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                            <span>📅</span> 今月の期限物・お知らせ
+                        </h2>
+                        <button onclick="showPasswordModal('admin')" class="text-slate-300 hover:text-slate-500 transition p-1">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        </button>
+                    </div>
+                    <div class="p-4">
+                        <div id="deadlines-list">
+                            <p class="text-slate-400 text-sm text-center py-4">読み込み中...</p>
+                        </div>
+
+                        <!-- Admin Add Form (Hidden by default) -->
+                        <div id="deadline-add-form" class="hidden mt-4 pt-4 border-t border-slate-100 animate-fade-in">
+                            <h3 class="text-xs font-bold text-slate-400 mb-3">新規追加</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">ソート用日付 (YYYY-MM-DD)</label>
+                                    <input type="date" id="deadline-date-input" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">表示用日付 (例: 12/15)</label>
+                                    <input type="text" id="deadline-display-date-input" placeholder="例: 12/15" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">内容</label>
+                                <input type="text" id="deadline-content-input" placeholder="例: シフト提出期限" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="deadline-priority-input" class="w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500">
+                                    <span class="text-xs font-bold text-rose-600">⚠️ 重要 (赤字にする)</span>
+                                </label>
+                                <button id="deadline-add-btn" class="bg-indigo-600 text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">追加する</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Row 1: Task Button -->
             <div id="task-section" class="relative z-10 fade-in-up lg:col-span-1 h-full" style="animation-delay: 0.2s;">
                 <div onclick="switchView('staff')" class="group cursor-pointer bg-slate-800 rounded-2xl shadow-xl shadow-slate-900/10 border border-slate-700 p-5 sm:p-6 h-full hover:translate-y-[-4px] hover:shadow-2xl transition-all duration-300 flex flex-col justify-center">
