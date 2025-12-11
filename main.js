@@ -6,6 +6,7 @@ import * as QSC from './js/qsc.js';
 import * as Shift from './js/shift.js';
 import * as Tasks from './js/tasks.js';
 import * as MemberRace from './js/member_race.js';
+import * as Deadlines from './js/deadlines.js';
 import { renderModals, renderInfoSections, changeStrategySlide } from './js/components.js';
 import { getTodayDateString, getYesterdayDateString, getTaskColorClass } from './js/utils.js';
 import { EDIT_PASSWORD } from './js/config.js';
@@ -140,6 +141,7 @@ window.checkPassword = function() {
         
         if (ctx === 'admin') {
             Tasks.activateAdminMode();
+            Deadlines.activateDeadlineAdminMode();
         } else if (ctx === 'qsc') {
             QSC.activateQscEditMode();
         } else if (ctx === 'shift_admin') {
@@ -159,6 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 1. Initial Data Load
     Customer.fetchCustomerData();
+    Deadlines.initDeadlines();
     QSC.subscribeQSC();
     Tasks.fetchMasterData().then(() => {
         MemberRace.subscribeMemberRace();
