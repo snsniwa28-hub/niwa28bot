@@ -109,12 +109,10 @@ function updateEditModeUI() {
 
 async function addDeadline() {
     const dateInput = document.getElementById('deadline-date-input');
-    const displayDateInput = document.getElementById('deadline-display-date-input');
     const contentInput = document.getElementById('deadline-content-input');
     const priorityInput = document.getElementById('deadline-priority-input'); // checkbox
 
     const dateVal = dateInput.value;
-    const displayVal = displayDateInput.value;
     const contentVal = contentInput.value.trim();
     const isHigh = priorityInput.checked;
 
@@ -123,17 +121,20 @@ async function addDeadline() {
         return;
     }
 
+    // Auto format date: YYYY-MM-DD -> M/D
+    const [year, month, day] = dateVal.split('-');
+    const displayVal = `${Number(month)}/${Number(day)}`;
+
     try {
         await addDoc(collection(db, "deadlines"), {
             date: dateVal, // used for sorting
-            displayDate: displayVal || dateVal.slice(5), // fallback to MM-DD
+            displayDate: displayVal,
             content: contentVal,
             priority: isHigh ? 'high' : 'normal',
             createdAt: serverTimestamp()
         });
 
-        // Reset inputs but keep date for convenience maybe? Or reset all.
-        // User didn't specify, I'll reset content.
+        // Reset inputs
         contentInput.value = '';
         priorityInput.checked = false;
 

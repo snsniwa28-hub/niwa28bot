@@ -155,20 +155,28 @@ export function createShiftModals() {
 
     <!-- Admin Note Modal -->
     <div id="admin-note-modal" class="modal-overlay hidden" style="z-index: 70;">
-        <div class="modal-content p-6 w-full max-w-md">
-            <h3 class="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100" id="admin-note-title">備考詳細</h3>
+        <div class="modal-content p-6 w-full max-w-md max-h-[90vh] flex flex-col">
+            <h3 class="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex justify-between items-center">
+                <span>備考詳細・編集</span>
+                <span id="admin-note-staff-name" class="text-sm font-normal text-slate-500"></span>
+            </h3>
 
-            <div class="mb-4">
-                <p class="text-xs font-bold text-slate-400 mb-1">月間備考</p>
-                <div id="admin-note-monthly" class="bg-slate-50 p-3 rounded-lg text-sm text-slate-700 min-h-[3em]"></div>
+            <div class="flex-1 overflow-y-auto pr-2">
+                <div class="mb-6">
+                    <p class="text-xs font-bold text-slate-400 mb-1">月間備考</p>
+                    <textarea id="admin-note-monthly-edit" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" rows="3"></textarea>
+                </div>
+
+                 <div class="mb-4">
+                    <p class="text-xs font-bold text-slate-400 mb-1">デイリー備考</p>
+                    <div id="admin-note-daily-list" class="space-y-3"></div>
+                </div>
             </div>
 
-             <div class="mb-6">
-                <p class="text-xs font-bold text-slate-400 mb-1">デイリー備考</p>
-                <div id="admin-note-daily-list" class="space-y-2 max-h-[30vh] overflow-y-auto"></div>
+            <div class="mt-4 pt-4 border-t border-slate-100 flex gap-3 shrink-0">
+                <button onclick="closeAdminNoteModal()" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200">キャンセル</button>
+                <button id="btn-save-admin-note" class="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200">保存する</button>
             </div>
-
-            <button onclick="closeAdminNoteModal()" class="w-full py-3 rounded-xl font-bold bg-slate-800 text-white hover:bg-slate-700 shadow-lg shadow-slate-200">閉じる</button>
         </div>
     </div>
     `;
@@ -557,14 +565,19 @@ export function renderShiftAdminTable() {
         list.forEach(name => {
             const tr = document.createElement('tr');
             const data = shiftState.shiftDataCache[name] || { off_days: [] };
-            const hasRemarks = data.remarks && data.remarks.trim() !== "";
+
+            // Check for monthly remark or ANY daily remark
+            const hasMonthly = data.remarks && data.remarks.trim() !== "";
+            const hasDaily = data.daily_remarks && Object.keys(data.daily_remarks).length > 0;
+            const hasAnyRemark = hasMonthly || hasDaily;
+
             const dailyRemarks = data.daily_remarks || {};
 
             const tdName = document.createElement('td');
             tdName.className = "sticky left-0 z-10 bg-white p-2 border-b border-r border-slate-300 font-bold text-slate-700 text-xs truncate max-w-[120px]";
-            tdName.innerHTML = `<div class="flex items-center justify-between"><span>${name}</span>${hasRemarks ? '<span class="text-lg cursor-pointer" title="備考あり">📝</span>' : ''}</div>`;
+            tdName.innerHTML = `<div class="flex items-center justify-between"><span>${name}</span>${hasAnyRemark ? '<span class="text-lg cursor-pointer" title="備考あり">📝</span>' : ''}</div>`;
 
-            if(hasRemarks) {
+            if(hasAnyRemark) {
                 tdName.onclick = () => showAdminNoteModal(name, data.remarks, dailyRemarks);
             }
             tr.appendChild(tdName);
@@ -608,36 +621,88 @@ export function renderShiftAdminTable() {
     }
 }
 
-// --- Admin Note Modal Logic ---
+// --- Admin Note Modal Logic (Editable) ---
 export function showAdminNoteModal(name, monthlyNote, dailyNotes) {
     const modal = document.getElementById('admin-note-modal');
-    document.getElementById('admin-note-title').textContent = `${name} さんの備考詳細`;
+    document.getElementById('admin-note-staff-name').textContent = name;
 
-    // Monthly Note
-    const monthlyDiv = document.getElementById('admin-note-monthly');
-    monthlyDiv.textContent = monthlyNote || "（なし）";
+    // Monthly Note (Textarea)
+    document.getElementById('admin-note-monthly-edit').value = monthlyNote || "";
 
-    // Daily Notes
+    // Daily Notes (Inputs)
     const dailyListDiv = document.getElementById('admin-note-daily-list');
     dailyListDiv.innerHTML = '';
 
-    if (dailyNotes && Object.keys(dailyNotes).length > 0) {
-        // Sort by date
-        const sortedDays = Object.keys(dailyNotes).sort((a,b) => Number(a) - Number(b));
+    // Collect all days that have remarks
+    const sortedDays = (dailyNotes ? Object.keys(dailyNotes) : []).sort((a,b) => Number(a) - Number(b));
+
+    if (sortedDays.length > 0) {
         sortedDays.forEach(day => {
             const note = dailyNotes[day];
-            if(note) {
-                const item = document.createElement('div');
-                item.className = "bg-yellow-50 p-2 rounded border border-yellow-100 text-xs text-slate-700";
-                item.innerHTML = `<span class="font-bold text-yellow-700 mr-2">${day}日:</span>${note}`;
-                dailyListDiv.appendChild(item);
-            }
+            const div = document.createElement('div');
+            div.className = "flex items-center gap-2";
+            div.innerHTML = `
+                <span class="w-8 text-xs font-bold text-yellow-700">${day}日</span>
+                <input type="text" class="flex-1 bg-white border border-yellow-200 rounded px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-indigo-500 admin-daily-note-input" data-day="${day}" value="${note}">
+            `;
+            dailyListDiv.appendChild(div);
         });
     } else {
         dailyListDiv.innerHTML = '<p class="text-xs text-slate-400">デイリー備考はありません</p>';
     }
 
+    // Attach Save Event
+    const saveBtn = document.getElementById('btn-save-admin-note');
+    saveBtn.onclick = () => saveAdminNote(name);
+
     modal.classList.remove('hidden');
+}
+
+export async function saveAdminNote(name) {
+    const monthlyVal = document.getElementById('admin-note-monthly-edit').value;
+    const dailyInputs = document.querySelectorAll('.admin-daily-note-input');
+
+    // Construct new daily remarks object
+    // Note: We are only editing *existing* daily remarks here.
+    // If we wanted to allow adding new ones, we'd need a way to add rows.
+    // Assuming the requirement implies editing the ones that show up.
+
+    // However, if we read the current state to preserve other fields, we should be careful.
+    // The modal shows a list based on what was passed.
+    // We should update the cache and then firestore.
+
+    if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = {};
+    const staffData = shiftState.shiftDataCache[name];
+
+    staffData.remarks = monthlyVal;
+
+    if (!staffData.daily_remarks) staffData.daily_remarks = {};
+
+    dailyInputs.forEach(input => {
+        const day = input.dataset.day;
+        const val = input.value;
+        if(val.trim() === "") {
+            delete staffData.daily_remarks[day];
+        } else {
+            staffData.daily_remarks[day] = val;
+        }
+    });
+
+    // Save to Firebase
+    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+    const docRef = doc(db, "shift_submissions", docId);
+
+    try {
+        const updateData = {};
+        updateData[name] = staffData;
+        await setDoc(docRef, updateData, { merge: true });
+
+        showToast("備考を保存しました");
+        closeAdminNoteModal();
+        renderShiftAdminTable(); // Refresh table to update icons
+    } catch(e) {
+        alert("保存失敗: " + e.message);
+    }
 }
 
 // Ensure global access if needed
