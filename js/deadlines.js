@@ -7,6 +7,7 @@ import {
     addDoc,
     deleteDoc,
     doc,
+    updateDoc,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { showToast } from './ui.js';
@@ -48,8 +49,12 @@ function subscribeDeadlines() {
 function createDeadlineElement(id, data) {
     const isHighPriority = data.priority === 'high';
 
-    const div = document.createElement('div');
-    div.className = `flex items-center justify-between p-3 rounded-xl border ${isHighPriority ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100'} mb-2`;
+    const container = document.createElement('div');
+    container.className = `rounded-xl border ${isHighPriority ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100'} mb-2 overflow-hidden transition-all duration-300`;
+
+    // Main Row
+    const mainRow = document.createElement('div');
+    mainRow.className = "flex items-center justify-between p-3";
 
     const leftPart = document.createElement('div');
     leftPart.className = 'flex items-center gap-3 overflow-hidden flex-1';
@@ -67,17 +72,90 @@ function createDeadlineElement(id, data) {
     leftPart.appendChild(dateSpan);
     leftPart.appendChild(contentSpan);
 
-    div.appendChild(leftPart);
+    mainRow.appendChild(leftPart);
+
+    const actionContainer = document.createElement('div');
+    actionContainer.className = 'flex items-center gap-1 shrink-0';
+
+    // Check Status Toggle Button
+    const checkToggleBtn = document.createElement('button');
+    checkToggleBtn.className = "text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm";
+
+    // Calculate checked count
+    const checks = data.checks || {};
+    const checkedCount = Object.values(checks).filter(v => v === true).length;
+    checkToggleBtn.textContent = `確認 ${checkedCount}名`;
+
+    const checklistId = `checklist-${id}`;
+    checkToggleBtn.onclick = () => {
+        const cl = document.getElementById(checklistId);
+        if (cl) {
+            cl.classList.toggle('hidden');
+        }
+    };
+
+    actionContainer.appendChild(checkToggleBtn);
 
     // Delete button (hidden by default)
     const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'deadline-delete-btn hidden shrink-0 ml-2 text-slate-400 hover:text-rose-500 transition-colors p-1 rounded-full hover:bg-rose-50';
+    deleteBtn.className = 'deadline-delete-btn hidden text-slate-400 hover:text-rose-500 transition-colors p-1.5 rounded-full hover:bg-rose-100';
     deleteBtn.innerHTML = '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>';
     deleteBtn.onclick = () => deleteDeadline(id);
 
-    div.appendChild(deleteBtn);
+    actionContainer.appendChild(deleteBtn);
+    mainRow.appendChild(actionContainer);
+    container.appendChild(mainRow);
 
-    return div;
+    // Checklist Container (Collapsible)
+    const checklistDiv = document.createElement('div');
+    checklistDiv.id = checklistId;
+    checklistDiv.className = "hidden bg-white border-t border-slate-100 p-4 animate-fade-in";
+
+    // Staff List Generation
+    if (window.masterStaffList) {
+        const staffList = [
+            ...(window.masterStaffList.employees || []),
+            ...(window.masterStaffList.alba_early || []),
+            ...(window.masterStaffList.alba_late || [])
+        ];
+
+        // Remove duplicates just in case
+        const uniqueStaff = [...new Set(staffList)];
+
+        if (uniqueStaff.length > 0) {
+            const grid = document.createElement('div');
+            grid.className = "grid grid-cols-2 sm:grid-cols-3 gap-2";
+
+            uniqueStaff.forEach(name => {
+                const label = document.createElement('label');
+                label.className = "flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-slate-50 transition-colors";
+
+                const checkbox = document.createElement('input');
+                checkbox.type = "checkbox";
+                checkbox.className = "w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500";
+                checkbox.checked = !!checks[name];
+
+                checkbox.onchange = () => toggleDeadlineCheck(id, name, checkbox.checked);
+
+                const span = document.createElement('span');
+                span.className = "text-xs font-bold text-slate-600 select-none";
+                span.textContent = name;
+
+                label.appendChild(checkbox);
+                label.appendChild(span);
+                grid.appendChild(label);
+            });
+            checklistDiv.appendChild(grid);
+        } else {
+            checklistDiv.innerHTML = '<p class="text-xs text-slate-400 text-center">スタッフリストが読み込まれていません</p>';
+        }
+    } else {
+        checklistDiv.innerHTML = '<p class="text-xs text-slate-400 text-center">スタッフリスト読み込み中...</p>';
+    }
+
+    container.appendChild(checklistDiv);
+
+    return container;
 }
 
 function setupDeadlineForm() {
@@ -131,7 +209,8 @@ async function addDeadline() {
             displayDate: displayVal,
             content: contentVal,
             priority: isHigh ? 'high' : 'normal',
-            createdAt: serverTimestamp()
+            createdAt: serverTimestamp(),
+            checks: {} // Initialize empty checks map
         });
 
         // Reset inputs
@@ -142,6 +221,19 @@ async function addDeadline() {
     } catch (e) {
         console.error("Error adding deadline:", e);
         alert("追加に失敗しました");
+    }
+}
+
+async function toggleDeadlineCheck(id, name, isChecked) {
+    try {
+        const docRef = doc(db, "deadlines", id);
+        const updateData = {};
+        updateData[`checks.${name}`] = isChecked;
+        await updateDoc(docRef, updateData);
+        // Note: Real-time listener will update the UI count
+    } catch (e) {
+        console.error("Error updating check:", e);
+        showToast("更新に失敗しました", true); // Error toast
     }
 }
 

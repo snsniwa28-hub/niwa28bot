@@ -244,7 +244,7 @@ export function renderInfoSections() {
             <div class="space-y-4 px-1">
                 <!-- Week 1-2 -->
                 <div class="flex gap-4 items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <img src="senryaku3.jpg" class="w-24 h-16 object-cover rounded shadow-sm shrink-0" alt="Week 1-2">
+                    <img src="senryaku3.jpg" class="w-24 h-auto object-contain rounded shadow-sm shrink-0" alt="Week 1-2">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <span class="bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded">第1〜2週</span>
@@ -257,7 +257,7 @@ export function renderInfoSections() {
                 </div>
                 <!-- Week 3 -->
                 <div class="flex gap-4 items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <img src="senryaku4.jpg" class="w-24 h-16 object-cover rounded shadow-sm shrink-0" alt="Week 3">
+                    <img src="senryaku4.jpg" class="w-24 h-auto object-contain rounded shadow-sm shrink-0" alt="Week 3">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <span class="bg-red-100 text-red-700 text-[10px] font-black px-2 py-0.5 rounded">第3週</span>
@@ -270,7 +270,7 @@ export function renderInfoSections() {
                 </div>
                 <!-- Week 4 -->
                 <div class="flex gap-4 items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <img src="senryaku5.jpg" class="w-24 h-16 object-cover rounded shadow-sm shrink-0" alt="Week 4">
+                    <img src="senryaku5.jpg" class="w-24 h-auto object-contain rounded shadow-sm shrink-0" alt="Week 4">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <span class="bg-purple-100 text-purple-700 text-[10px] font-black px-2 py-0.5 rounded">第4週</span>

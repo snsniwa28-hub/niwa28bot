@@ -438,9 +438,24 @@ export function showActionSelectModal(day) {
 
     if(btnNote) {
         btnNote.onclick = () => {
+            const container = document.getElementById('shift-daily-remark-container');
+            const input = document.getElementById('shift-daily-remark-input');
+            const label = document.getElementById('shift-daily-remark-label');
+
             closeShiftActionModal();
-            document.getElementById('shift-daily-remark-container').classList.remove('hidden');
-            document.getElementById('shift-daily-remark-input').focus();
+
+            if(container) container.classList.remove('hidden');
+            if(label) label.textContent = `${shiftState.selectedDay}日の備考:`;
+
+            // Scroll to container to ensure visibility
+            if(container) container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            if(input) {
+                // Restore value just in case
+                const staffData = shiftState.shiftDataCache[shiftState.selectedStaff] || { daily_remarks: {} };
+                input.value = (staffData.daily_remarks && staffData.daily_remarks[shiftState.selectedDay]) || "";
+                input.focus();
+            }
         };
     }
 
