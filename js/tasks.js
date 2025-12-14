@@ -3,6 +3,7 @@ import { doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6
 import { TASKS_EMPLOYEE, TASKS_ALBA, MANUAL_TASK_LIST, DEFAULT_STAFF } from './config.js';
 import { $, $$, getTodayDateString, openTimeSlots, closeTimeSlots, openAlbaTimeSlots, openTimeIndexMap, closeTimeIndexMap, getTaskColorClass } from './utils.js';
 import { showToast, initModal, selectOptionUI, closeModal, showPasswordModal } from './ui.js';
+import { updateDeadlineStaffLists } from './deadlines.js';
 
 // --- State ---
 let masterStaffList = { employees: [], alba_early: [], alba_late: [] };
@@ -36,6 +37,9 @@ export function fetchMasterData() {
                 // Ideally shift.js should import it, but shift.js was written to use window.masterStaffList.
                 window.masterStaffList = masterStaffList;
                 if (window.renderMemberRaceBoard) window.renderMemberRaceBoard(); // Re-render member board if active
+
+                // Fix for Deadlines sync issue: update lists when staff data is loaded
+                updateDeadlineStaffLists();
             }
             staffLoaded = true;
             checkResolve();

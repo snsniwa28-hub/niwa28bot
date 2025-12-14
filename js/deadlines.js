@@ -19,31 +19,45 @@ export function initDeadlines() {
     setupDeadlineForm();
 }
 
+// Function to update staff lists in existing deadlines (called from tasks.js after master fetch)
+// (Logic moved to the bottom implementation of updateDeadlineStaffLists)
+
+let latestDeadlineSnapshot = null;
+
 function subscribeDeadlines() {
     const q = query(collection(db, "deadlines"), orderBy("date", "asc"));
 
     // Using onSnapshot for real-time updates
     onSnapshot(q, (snapshot) => {
-        const container = document.getElementById("deadlines-list");
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        if (snapshot.empty) {
-            container.innerHTML = '<p class="text-slate-400 text-sm text-center py-4">現在のお知らせはありません</p>';
-            return;
-        }
-
-        snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            const el = createDeadlineElement(docSnap.id, data);
-            container.appendChild(el);
-        });
-
-        updateEditModeUI();
+        latestDeadlineSnapshot = snapshot;
+        renderDeadlinesList();
     }, (error) => {
         console.error("Error fetching deadlines:", error);
     });
+}
+
+function renderDeadlinesList() {
+    const container = document.getElementById("deadlines-list");
+    if (!container || !latestDeadlineSnapshot) return;
+
+    container.innerHTML = '';
+
+    if (latestDeadlineSnapshot.empty) {
+        container.innerHTML = '<p class="text-slate-400 text-sm text-center py-4">現在のお知らせはありません</p>';
+        return;
+    }
+
+    latestDeadlineSnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const el = createDeadlineElement(docSnap.id, data);
+        container.appendChild(el);
+    });
+
+    updateEditModeUI();
+}
+
+export function updateDeadlineStaffLists() {
+    renderDeadlinesList();
 }
 
 function createDeadlineElement(id, data) {
