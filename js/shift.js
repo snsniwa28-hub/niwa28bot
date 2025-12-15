@@ -135,6 +135,7 @@ export function createShiftModals() {
                         </div>
                         <div class="flex gap-2">
                             <button id="btn-open-staff-master" class="text-xs font-bold bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg border border-indigo-400">👥 スタッフ管理</button>
+                            <button id="btn-clear-shift" class="text-xs font-bold bg-slate-600 hover:bg-slate-500 px-3 py-1.5 rounded-lg border border-slate-400 text-white">🔄 割り振りクリア</button>
                             <button id="btn-auto-create-shift" class="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg border border-emerald-400">⚡ 自動作成</button>
                             <button id="btn-shift-admin-close" class="text-xs font-bold bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg">閉じる</button>
                         </div>
@@ -283,6 +284,7 @@ export function createShiftModals() {
     $('#btn-se-save').onclick = saveStaffDetails;
     $('#btn-se-delete').onclick = deleteStaff;
     $('#btn-auto-create-shift').onclick = generateAutoShift;
+    $('#btn-clear-shift').onclick = clearShiftAssignments;
 
     // --- Daily Remarks Input Listener (Attached Once) ---
     const drInput = document.getElementById('shift-daily-remark-input');
@@ -983,7 +985,7 @@ async function deleteStaff() {
         await setDoc(docRef, {
             employees: lists.employees,
             alba_early: lists.alba_early,
-            alba_late: lists.alba_late
+            alba_late: lists.alba_late,
             // staff_details: ... keep existing
         }, { merge: true });
 
@@ -1262,8 +1264,33 @@ async function saveAdminNote(name) {
     }
 }
 
+// Clear Shift Assignments
+async function clearShiftAssignments() {
+    if(!confirm(`${shiftState.currentYear}年${shiftState.currentMonth}月の割り振りを全てクリアします。\n希望休・出勤希望・備考は保持されます。\nよろしいですか？`)) return;
+
+    const names = Object.keys(shiftState.shiftDataCache);
+    names.forEach(name => {
+        if(shiftState.shiftDataCache[name]) {
+            shiftState.shiftDataCache[name].assignments = {};
+        }
+    });
+
+    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+    const docRef = doc(db, "shift_submissions", docId);
+
+    try {
+        await setDoc(docRef, shiftState.shiftDataCache, { merge: true });
+        showToast("割り振りをクリアしました");
+        renderShiftAdminTable();
+    } catch(e) {
+        alert("クリア失敗: " + e.message);
+    }
+}
+
 // Global Exports
 window.showActionSelectModal = showActionSelectModal;
 window.closeShiftActionModal = closeShiftActionModal;
 window.closeAdminNoteModal = closeAdminNoteModal;
 window.showAdminNoteModal = showAdminNoteModal;
+window.clearShiftAssignments = clearShiftAssignments;
+window.generateAutoShift = generateAutoShift; // Explicit export if needed
