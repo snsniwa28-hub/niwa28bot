@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { showPasswordModal, closePasswordModal, showToast } from './ui.js';
 import { $ } from './utils.js';
 
@@ -9,7 +9,22 @@ let shiftState = {
     selectedStaff: null,
     shiftDataCache: {},
     isAdminMode: false,
-    selectedDay: null
+    selectedDay: null,
+    staffDetails: {}, // New: Stores Rank, Type, ContractDays, etc.
+    staffListLists: { employees: [], alba_early: [], alba_late: [] } // Sync with masters/staff_data
+};
+
+// --- Definitions ---
+const RANKS = {
+    EMPLOYEE: ['マネージャー', '主任', '副主任', '一般'],
+    BYTE: ['チーフ', 'リーダー', 'コア', 'レギュラー']
+};
+
+const ROLES = {
+    MONEY: '金',
+    SUB: 'サ',
+    WAREHOUSE: '倉',
+    HALL: 'ホ'
 };
 
 // --- DOM Injection (UI生成) ---
@@ -26,7 +41,7 @@ export function createShiftModals() {
     const modalHTML = `
     <!-- MAIN SHIFT MODAL -->
     <div id="shift-modal" class="modal-overlay hidden" style="z-index: 60;">
-        <div class="modal-content p-0 w-full max-w-4xl h-[95vh] flex flex-col bg-slate-50 overflow-hidden rounded-2xl shadow-2xl">
+        <div class="modal-content p-0 w-full max-w-6xl h-[95vh] flex flex-col bg-slate-50 overflow-hidden rounded-2xl shadow-2xl">
             <!-- Header -->
             <div class="bg-white p-4 border-b border-slate-200 flex justify-between items-center shrink-0 z-10">
                 <div class="flex items-center gap-3">
@@ -34,12 +49,12 @@ export function createShiftModals() {
                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                     </div>
                     <div>
-                        <h3 class="font-black text-slate-800 text-xl leading-none">シフト提出</h3>
-                        <p class="text-xs font-bold text-slate-400 mt-1">希望休・出勤入力</p>
+                        <h3 class="font-black text-slate-800 text-xl leading-none">シフト提出・管理</h3>
+                        <p class="text-xs font-bold text-slate-400 mt-1">公休・希望提出 / 管理者承認</p>
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <button id="btn-shift-admin-login" class="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition">🔑 管理者一覧</button>
+                    <button id="btn-shift-admin-login" class="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition">🔑 管理者メニュー</button>
                     <button id="btn-close-shift" class="p-2 bg-slate-100 rounded-full text-slate-400 hover:bg-slate-200 transition">
                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
@@ -84,7 +99,7 @@ export function createShiftModals() {
                             `<div class="py-2 text-center text-xs font-black ${i===0?'text-rose-500':i===6?'text-blue-500':'text-slate-500'}">${d}</div>`
                         ).join('')}
                     </div>
-                    <div id="shift-cal-grid" class="flex-1 grid grid-cols-7 gap-px bg-slate-200 p-px"></div>
+                    <div id="shift-cal-grid" class="flex-1 grid grid-cols-7 gap-px bg-slate-200 p-px overflow-y-auto"></div>
                     <div class="p-3 bg-white border-t border-slate-200 shrink-0 pb-6 sm:pb-3">
                         <div id="shift-daily-remark-container" class="hidden mb-2 p-2 bg-yellow-50 rounded-lg border border-yellow-100">
                              <div class="flex items-center gap-2">
@@ -96,7 +111,7 @@ export function createShiftModals() {
                             <span class="text-xs font-bold text-slate-400">月間備考:</span>
                             <input type="text" id="shift-remarks-input" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-emerald-500" placeholder="早番希望など">
                         </div>
-                        <!-- Deadline Warning (Inserted dynamically) -->
+                        <!-- Deadline Warning -->
                         <div id="shift-deadline-warning" class="hidden mb-2 text-center">
                             <p class="text-xs font-bold text-rose-500 bg-rose-50 border border-rose-200 p-2 rounded-lg">今月の提出期間は終了しました（1日〜15日まで）</p>
                         </div>
@@ -108,33 +123,94 @@ export function createShiftModals() {
                 </div>
 
                 <!-- 3. Admin Matrix View -->
-                <div id="shift-view-admin" class="hidden h-full flex flex-col bg-white">
+                <div id="shift-view-admin" class="hidden h-full flex flex-col bg-white text-sm">
                     <div class="flex justify-between items-center px-4 py-3 bg-slate-800 text-white shrink-0">
                         <div class="flex items-center gap-3">
-                            <h4 class="font-bold text-lg">管理者ビュー</h4>
+                            <h4 class="font-bold text-lg">シフト管理・作成</h4>
                             <div class="flex items-center gap-2 text-sm bg-slate-700 px-3 py-1 rounded-lg">
                                 <button id="btn-shift-admin-prev" class="hover:text-emerald-400">◀</button>
                                 <span id="shift-admin-title" class="font-mono font-bold"></span>
                                 <button id="btn-shift-admin-next" class="hover:text-emerald-400">▶</button>
                             </div>
                         </div>
-                        <button id="btn-shift-admin-close" class="text-xs font-bold bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg">閉じる</button>
+                        <div class="flex gap-2">
+                            <button id="btn-open-staff-master" class="text-xs font-bold bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg border border-indigo-400">👥 スタッフ管理</button>
+                            <button id="btn-auto-create-shift" class="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg border border-emerald-400">⚡ 自動作成</button>
+                            <button id="btn-shift-admin-close" class="text-xs font-bold bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg">閉じる</button>
+                        </div>
                     </div>
+
                     <div class="flex-1 overflow-auto relative">
-                        <table class="w-full border-collapse text-sm whitespace-nowrap">
+                        <table class="w-full border-collapse whitespace-nowrap">
                             <thead class="sticky top-0 z-20 bg-slate-100 text-slate-600 font-bold shadow-sm">
                                 <tr id="shift-admin-header-row">
-                                    <th class="sticky left-0 z-30 bg-slate-100 p-2 border-b border-r border-slate-300 min-w-[100px] text-left">名前</th>
+                                    <th class="sticky left-0 z-30 bg-slate-100 p-2 border-b border-r border-slate-300 min-w-[150px] text-left">
+                                        名前 <span class="text-[10px] font-normal text-slate-400">(設定)</span>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody id="shift-admin-body"></tbody>
                         </table>
                     </div>
-                    <div class="p-2 bg-yellow-50 text-yellow-800 text-xs font-bold text-center border-t border-yellow-100">
-                        マスをタップすると「公休」を変更できます。名前横の📝は備考あり。
-                    </div>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    <!-- Staff Master Modal -->
+    <div id="staff-master-modal" class="modal-overlay hidden" style="z-index: 70;">
+        <div class="modal-content p-0 w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+             <div class="p-4 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800">スタッフマスタ管理</h3>
+                <button onclick="document.getElementById('staff-master-modal').classList.add('hidden')" class="text-slate-400">✕</button>
+             </div>
+             <div class="p-4 overflow-y-auto flex-1 bg-slate-50">
+                <div id="staff-master-list" class="space-y-2"></div>
+                <button id="btn-add-staff" class="w-full mt-4 py-3 border-2 border-dashed border-slate-300 text-slate-400 font-bold rounded-xl hover:bg-white hover:text-indigo-500 transition">+ スタッフを追加</button>
+             </div>
+        </div>
+    </div>
+
+    <!-- Staff Edit Modal -->
+    <div id="staff-edit-modal" class="modal-overlay hidden" style="z-index: 80;">
+        <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-xl">
+            <h3 class="font-bold text-slate-800 text-lg mb-4" id="staff-edit-title">スタッフ編集</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-500">名前</label>
+                    <input type="text" id="se-name" class="w-full border border-slate-200 rounded-lg p-2 text-sm font-bold">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500">区分</label>
+                        <select id="se-type" class="w-full border border-slate-200 rounded-lg p-2 text-sm bg-white" onchange="updateRankOptions()">
+                            <option value="employee">社員</option>
+                            <option value="byte">アルバイト</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500">基本シフト</label>
+                        <select id="se-basic-shift" class="w-full border border-slate-200 rounded-lg p-2 text-sm bg-white">
+                            <option value="A">A (早番)</option>
+                            <option value="B">B (遅番)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500">役職 (ランク)</label>
+                    <select id="se-rank" class="w-full border border-slate-200 rounded-lg p-2 text-sm bg-white"></select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500">契約日数 (目標)</label>
+                    <input type="number" id="se-contract-days" class="w-full border border-slate-200 rounded-lg p-2 text-sm font-bold" value="20">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button id="btn-se-delete" class="px-4 py-2 bg-rose-50 text-rose-600 font-bold rounded-lg text-xs hover:bg-rose-100">削除</button>
+                <div class="flex-1"></div>
+                <button onclick="document.getElementById('staff-edit-modal').classList.add('hidden')" class="px-4 py-2 bg-slate-100 text-slate-500 font-bold rounded-lg text-xs">キャンセル</button>
+                <button id="btn-se-save" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg text-xs shadow-lg shadow-indigo-200">保存</button>
             </div>
         </div>
     </div>
@@ -143,14 +219,26 @@ export function createShiftModals() {
     <div id="shift-action-modal" class="modal-overlay hidden" style="z-index: 70;">
         <div class="modal-content p-6 w-full max-w-sm text-center">
              <h3 class="text-lg font-bold text-slate-800 mb-2" id="shift-action-title">日付の操作</h3>
-             <p class="text-xs text-slate-500 mb-6">操作を選択してください</p>
-             <div class="space-y-3">
+
+             <!-- Admin Role Selection -->
+             <div id="shift-admin-roles" class="hidden mb-4 grid grid-cols-2 gap-2">
+                <button class="role-btn bg-yellow-100 text-yellow-800 font-bold py-2 rounded" data-role="金">金 (Main)</button>
+                <button class="role-btn bg-orange-100 text-orange-800 font-bold py-2 rounded" data-role="サ">サ (Sub)</button>
+                <button class="role-btn bg-blue-100 text-blue-800 font-bold py-2 rounded" data-role="倉">倉 (Whs)</button>
+                <button class="role-btn bg-purple-100 text-purple-800 font-bold py-2 rounded" data-role="ホ">ホ (Hall)</button>
+                <button class="role-btn bg-rose-100 text-rose-800 font-bold py-2 rounded" data-role="公休">公休</button>
+                <button class="role-btn bg-slate-100 text-slate-800 font-bold py-2 rounded" data-role="">クリア</button>
+             </div>
+
+             <div id="shift-user-actions" class="space-y-3">
                 <button id="btn-shift-action-toggle" class="w-full py-3 rounded-xl font-bold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100">公休 設定/解除</button>
                 <button id="btn-shift-action-work" class="w-full py-3 rounded-xl font-bold bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100">出勤希望 設定/解除</button>
                 <button id="btn-shift-action-note" class="w-full py-3 rounded-xl font-bold bg-yellow-50 text-yellow-600 border border-yellow-100 hover:bg-yellow-100">備考を入力</button>
-                <input type="text" id="shift-action-daily-input" class="hidden w-full py-3 px-4 rounded-xl border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="備考を入力...">
-                <button onclick="closeShiftActionModal()" class="w-full py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-50">キャンセル</button>
              </div>
+
+             <input type="text" id="shift-action-daily-input" class="hidden w-full py-3 px-4 rounded-xl border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-2" placeholder="備考を入力...">
+
+             <button onclick="closeShiftActionModal()" class="w-full mt-4 py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-50">キャンセル</button>
         </div>
     </div>
 
@@ -161,19 +249,16 @@ export function createShiftModals() {
                 <span>備考詳細・編集</span>
                 <span id="admin-note-staff-name" class="text-sm font-normal text-slate-500"></span>
             </h3>
-
             <div class="flex-1 overflow-y-auto pr-2">
                 <div class="mb-6">
                     <p class="text-xs font-bold text-slate-400 mb-1">月間備考</p>
                     <textarea id="admin-note-monthly-edit" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" rows="3"></textarea>
                 </div>
-
                  <div class="mb-4">
                     <p class="text-xs font-bold text-slate-400 mb-1">デイリー備考</p>
                     <div id="admin-note-daily-list" class="space-y-3"></div>
                 </div>
             </div>
-
             <div class="mt-4 pt-4 border-t border-slate-100 flex gap-3 shrink-0">
                 <button onclick="closeAdminNoteModal()" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200">キャンセル</button>
                 <button id="btn-save-admin-note" class="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200">保存する</button>
@@ -193,6 +278,11 @@ export function createShiftModals() {
     $('#btn-shift-admin-prev').onclick = () => changeShiftMonth(-1);
     $('#btn-shift-admin-next').onclick = () => changeShiftMonth(1);
     $('#btn-shift-admin-close').onclick = backToShiftList;
+    $('#btn-open-staff-master').onclick = openStaffMasterModal;
+    $('#btn-add-staff').onclick = () => openStaffEditModal(null);
+    $('#btn-se-save').onclick = saveStaffDetails;
+    $('#btn-se-delete').onclick = deleteStaff;
+    $('#btn-auto-create-shift').onclick = generateAutoShift;
 
     // --- Daily Remarks Input Listener (Attached Once) ---
     const drInput = document.getElementById('shift-daily-remark-input');
@@ -213,7 +303,17 @@ export function createShiftModals() {
              }
         };
     }
+
+    // Role button listeners
+    document.querySelectorAll('.role-btn').forEach(btn => {
+        btn.onclick = () => {
+            setAdminRole(btn.dataset.role);
+            closeShiftActionModal();
+        };
+    });
 }
+
+// --- Init & Data Loading ---
 
 export function checkShiftAdminPassword() {
     const pwModal = document.getElementById('password-modal');
@@ -230,7 +330,6 @@ export function activateShiftAdminMode() {
 export async function openShiftUserModal() {
     createShiftModals();
     document.getElementById('shift-modal').classList.remove('hidden');
-    renderShiftStaffList();
 
     // Default: Next Month
     const d = new Date();
@@ -240,21 +339,40 @@ export async function openShiftUserModal() {
     shiftState.isAdminMode = false;
     shiftState.selectedDay = null;
 
-    await loadAllShiftData();
+    await loadAllShiftData(); // Loads Shift Submissions & Staff Details
+    renderShiftStaffList();
     switchShiftView('list');
 }
 
-export function closeShiftModal() {
-    document.getElementById('shift-modal').classList.add('hidden');
+export async function loadAllShiftData() {
+    // 1. Load Staff Master Data (includes Details)
+    const staffDocRef = doc(db, 'masters', 'staff_data');
+    try {
+        const staffSnap = await getDoc(staffDocRef);
+        if (staffSnap.exists()) {
+            const data = staffSnap.data();
+            shiftState.staffListLists = {
+                employees: data.employees || [],
+                alba_early: data.alba_early || [],
+                alba_late: data.alba_late || []
+            };
+            shiftState.staffDetails = data.staff_details || {};
+        }
+    } catch(e) { console.error("Staff Load Error:", e); }
+
+    // 2. Load Shift Submissions
+    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+    try {
+        const docRef = doc(db, "shift_submissions", docId);
+        const snap = await getDoc(docRef);
+        shiftState.shiftDataCache = snap.exists() ? snap.data() : {};
+    } catch(e) {
+        console.error("Shift Load Error:", e);
+        shiftState.shiftDataCache = {};
+    }
 }
 
-export function closeShiftActionModal() {
-    document.getElementById('shift-action-modal').classList.add('hidden');
-}
-
-export function closeAdminNoteModal() {
-    document.getElementById('admin-note-modal').classList.add('hidden');
-}
+// --- View Switching ---
 
 export function switchShiftView(viewName) {
     ['list', 'calendar', 'admin'].forEach(v => {
@@ -268,8 +386,20 @@ export function switchShiftView(viewName) {
     if (viewName === 'admin') renderShiftAdminTable();
 }
 
+export function closeShiftModal() {
+    document.getElementById('shift-modal').classList.add('hidden');
+}
+
+export function backToShiftList() {
+    shiftState.selectedStaff = null;
+    shiftState.isAdminMode = false;
+    shiftState.selectedDay = null;
+    switchShiftView('list');
+}
+
+// --- Staff List View (User Mode) ---
+
 export function renderShiftStaffList() {
-    if (!window.masterStaffList) return;
     const render = (cid, list) => {
         const c = document.getElementById(cid);
         if(!c) return;
@@ -282,8 +412,8 @@ export function renderShiftStaffList() {
             c.appendChild(btn);
         });
     };
-    render('shift-list-employees', window.masterStaffList.employees || []);
-    render('shift-list-alba', [...(window.masterStaffList.alba_early || []), ...(window.masterStaffList.alba_late || [])]);
+    render('shift-list-employees', shiftState.staffListLists.employees);
+    render('shift-list-alba', [...shiftState.staffListLists.alba_early, ...shiftState.staffListLists.alba_late]);
 }
 
 export function selectShiftStaff(name) {
@@ -292,24 +422,7 @@ export function selectShiftStaff(name) {
     switchShiftView('calendar');
 }
 
-export function backToShiftList() {
-    shiftState.selectedStaff = null;
-    shiftState.isAdminMode = false;
-    shiftState.selectedDay = null;
-    switchShiftView('list');
-}
-
-export async function loadAllShiftData() {
-    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
-    try {
-        const docRef = doc(db, "shift_submissions", docId);
-        const snap = await getDoc(docRef);
-        shiftState.shiftDataCache = snap.exists() ? snap.data() : {};
-    } catch(e) {
-        console.error("Shift Load Error:", e);
-        shiftState.shiftDataCache = {};
-    }
-}
+// --- Calendar View (User Mode) ---
 
 export function renderShiftCalendar() {
     const y = shiftState.currentYear;
@@ -320,16 +433,17 @@ export function renderShiftCalendar() {
     const firstDay = new Date(y, m - 1, 1).getDay();
     const daysInMonth = new Date(y, m, 0).getDate();
 
-    // Ensure cache exists for selected staff
     if (!shiftState.shiftDataCache[shiftState.selectedStaff]) {
-        shiftState.shiftDataCache[shiftState.selectedStaff] = { off_days: [], work_days: [], remarks: "", daily_remarks: {} };
+        shiftState.shiftDataCache[shiftState.selectedStaff] = { off_days: [], work_days: [], remarks: "", daily_remarks: {}, assignments: {} };
     }
     const staffData = shiftState.shiftDataCache[shiftState.selectedStaff];
     const offDays = staffData.off_days || [];
     const workDays = staffData.work_days || [];
+    const assignments = staffData.assignments || {};
+
     document.getElementById('shift-remarks-input').value = staffData.remarks || "";
 
-    // Deadline Logic
+    // Check deadlines
     const today = new Date();
     const isDeadlinePassed = today.getDate() > 15;
     const isRestricted = !shiftState.isAdminMode && isDeadlinePassed;
@@ -347,7 +461,7 @@ export function renderShiftCalendar() {
         warningDiv.classList.add('hidden');
     }
 
-    // Daily Remark UI Visibility
+    // Daily Remarks
     const drContainer = document.getElementById('shift-daily-remark-container');
     const drLabel = document.getElementById('shift-daily-remark-label');
     const drInput = document.getElementById('shift-daily-remark-input');
@@ -365,6 +479,8 @@ export function renderShiftCalendar() {
     for (let d = 1; d <= daysInMonth; d++) {
         const isOff = offDays.includes(d);
         const isWork = workDays.includes(d);
+        const assignedRole = assignments[d]; // If admin confirmed
+
         const isSelected = d === shiftState.selectedDay;
         const dateObj = new Date(y, m - 1, d);
         const dayOfWeek = dateObj.getDay();
@@ -374,231 +490,46 @@ export function renderShiftCalendar() {
 
         let bgClass = 'bg-white hover:bg-emerald-50';
 
-        if (isOff) {
-            numColor = "text-white";
-            bgClass = "bg-rose-500";
-        } else if (isWork) {
-            numColor = "text-white";
-            bgClass = "bg-blue-500";
+        // Visualization Priority: Admin Confirmed > User Request
+        let label = '';
+        if (assignedRole) {
+            if (assignedRole === '公休') {
+                numColor = "text-white";
+                bgClass = "bg-rose-500";
+                label = '<span class="text-[10px] text-white font-bold leading-none mt-1">公休</span>';
+            } else {
+                // Working role
+                numColor = "text-white";
+                bgClass = "bg-indigo-600";
+                label = `<span class="text-[10px] text-white font-bold leading-none mt-1">${assignedRole}</span>`;
+            }
+        } else {
+            // User Requests
+            if (isOff) {
+                numColor = "text-white";
+                bgClass = "bg-rose-400 opacity-80"; // Slightly different to show it's request
+                label = '<span class="text-[10px] text-white font-bold leading-none mt-1">希望休</span>';
+            } else if (isWork) {
+                numColor = "text-white";
+                bgClass = "bg-blue-400 opacity-80";
+                label = '<span class="text-[10px] text-white font-bold leading-none mt-1">出勤希</span>';
+            }
         }
 
         const borderClass = isSelected ? 'border-4 border-yellow-400 z-10' : 'border-transparent';
-
-        const cell = document.createElement('div');
-        cell.className = `${bgClass} ${borderClass} flex flex-col items-center justify-center cursor-pointer transition-colors select-none active:opacity-80 relative`;
-
-        // Show indicator if daily remark exists
         const hasDailyRemark = staffData.daily_remarks && staffData.daily_remarks[d];
         const remarkIndicator = hasDailyRemark ? '<span class="absolute top-1 right-1 text-[8px]">📝</span>' : '';
 
-        cell.innerHTML = `<span class="text-xl sm:text-2xl font-black ${numColor}">${d}</span>
-          ${isOff ? '<span class="text-[10px] text-white font-bold leading-none mt-1">公休</span>' : ''}
-          ${isWork ? '<span class="text-[10px] text-white font-bold leading-none mt-1">出勤</span>' : ''}
-          ${remarkIndicator}`;
+        const cell = document.createElement('div');
+        cell.className = `${bgClass} ${borderClass} flex flex-col items-center justify-center cursor-pointer transition-colors select-none active:opacity-80 relative min-h-[60px]`;
+        cell.innerHTML = `<span class="text-xl font-black ${numColor}">${d}</span>${label}${remarkIndicator}`;
 
         cell.onclick = () => showActionSelectModal(d);
-
         container.appendChild(cell);
     }
 }
 
-// --- Action Select Modal Logic ---
-export function showActionSelectModal(day) {
-    shiftState.selectedDay = day;
-
-    // Update daily remark input if it's already visible
-    const staffData = shiftState.shiftDataCache[shiftState.selectedStaff] || { daily_remarks: {} };
-    const drInput = document.getElementById('shift-daily-remark-input');
-    const drLabel = document.getElementById('shift-daily-remark-label');
-    if (drInput && drLabel) {
-        drLabel.textContent = `${day}日の備考:`;
-        drInput.value = (staffData.daily_remarks && staffData.daily_remarks[day]) || "";
-    }
-
-    const modal = document.getElementById('shift-action-modal');
-    document.getElementById('shift-action-title').textContent = `${shiftState.currentMonth}/${day} の操作`;
-
-    // Setup Buttons
-    const btnToggle = document.getElementById('btn-shift-action-toggle');
-    const btnWork = document.getElementById('btn-shift-action-work');
-    const btnNote = document.getElementById('btn-shift-action-note');
-
-    if(btnToggle) {
-        btnToggle.onclick = () => {
-            toggleShiftOffDay(day);
-            closeShiftActionModal();
-        };
-    }
-
-    if(btnWork) {
-        btnWork.onclick = () => {
-            toggleShiftWorkDay(day);
-            closeShiftActionModal();
-        };
-    }
-
-    if(btnNote) {
-        btnNote.onclick = () => {
-            const container = document.getElementById('shift-daily-remark-container');
-            const input = document.getElementById('shift-daily-remark-input');
-            const label = document.getElementById('shift-daily-remark-label');
-
-            closeShiftActionModal();
-
-            if(container) container.classList.remove('hidden');
-            if(label) label.textContent = `${shiftState.selectedDay}日の備考:`;
-
-            // Scroll to container to ensure visibility
-            if(container) container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-            if(input) {
-                // Restore value just in case
-                const staffData = shiftState.shiftDataCache[shiftState.selectedStaff] || { daily_remarks: {} };
-                input.value = (staffData.daily_remarks && staffData.daily_remarks[shiftState.selectedDay]) || "";
-                input.focus();
-            }
-        };
-    }
-
-    // --- Admin Mode Logic ---
-    const dailyInput = document.getElementById('shift-action-daily-input');
-    if (shiftState.isAdminMode) {
-        // Hide normal Note button, Show Input
-        if (btnNote) btnNote.classList.add('hidden');
-        if (dailyInput) {
-            dailyInput.classList.remove('hidden');
-
-            // Set value
-            const staffData = shiftState.shiftDataCache[shiftState.selectedStaff] || { daily_remarks: {} };
-            dailyInput.value = (staffData.daily_remarks && staffData.daily_remarks[day]) || "";
-
-            // On Change Save
-            dailyInput.onchange = async () => {
-                 const val = dailyInput.value;
-                 const name = shiftState.selectedStaff;
-                 if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = {};
-                 const sData = shiftState.shiftDataCache[name];
-                 if (!sData.daily_remarks) sData.daily_remarks = {};
-
-                 if(val.trim() === "") {
-                     delete sData.daily_remarks[day];
-                 } else {
-                     sData.daily_remarks[day] = val;
-                 }
-
-                 // Save to Firestore
-                 const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
-                 const docRef = doc(db, "shift_submissions", docId);
-                 try {
-                     const updateData = {};
-                     updateData[name] = sData;
-                     await setDoc(docRef, updateData, { merge: true });
-                     showToast("備考を保存しました");
-
-                     // Update Admin Table UI to show/hide icon
-                     renderShiftAdminTable();
-                 } catch(e) {
-                     alert("保存失敗: " + e.message);
-                 }
-            };
-        }
-    } else {
-        // Normal Mode
-        if (btnNote) btnNote.classList.remove('hidden');
-        if (dailyInput) dailyInput.classList.add('hidden');
-    }
-
-    modal.classList.remove('hidden');
-}
-
-export function toggleShiftOffDay(day) {
-    const name = shiftState.selectedStaff;
-    if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { off_days: [], work_days: [], remarks: "", daily_remarks: {} };
-
-    shiftState.selectedDay = day;
-
-    let offList = shiftState.shiftDataCache[name].off_days || [];
-    let workList = shiftState.shiftDataCache[name].work_days || [];
-
-    if (offList.includes(day)) {
-        offList = offList.filter(d => d !== day);
-    } else {
-        offList.push(day);
-        // Remove from work_days if present (Mutually exclusive)
-        workList = workList.filter(d => d !== day);
-    }
-    shiftState.shiftDataCache[name].off_days = offList;
-    shiftState.shiftDataCache[name].work_days = workList;
-
-    if (shiftState.isAdminMode) renderShiftAdminTable();
-    else renderShiftCalendar();
-}
-
-export function toggleShiftWorkDay(day) {
-    const name = shiftState.selectedStaff;
-    if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { off_days: [], work_days: [], remarks: "", daily_remarks: {} };
-
-    shiftState.selectedDay = day;
-
-    let offList = shiftState.shiftDataCache[name].off_days || [];
-    let workList = shiftState.shiftDataCache[name].work_days || [];
-
-    if (workList.includes(day)) {
-        workList = workList.filter(d => d !== day);
-    } else {
-        workList.push(day);
-        // Remove from off_days if present
-        offList = offList.filter(d => d !== day);
-    }
-    shiftState.shiftDataCache[name].off_days = offList;
-    shiftState.shiftDataCache[name].work_days = workList;
-
-    if (shiftState.isAdminMode) renderShiftAdminTable();
-    else renderShiftCalendar();
-}
-
-export async function changeShiftMonth(delta) {
-    if (!shiftState.isAdminMode && shiftState.selectedStaff) {
-        const rem = document.getElementById('shift-remarks-input').value;
-        if (!shiftState.shiftDataCache[shiftState.selectedStaff]) shiftState.shiftDataCache[shiftState.selectedStaff] = {};
-        shiftState.shiftDataCache[shiftState.selectedStaff].remarks = rem;
-    }
-    let newM = shiftState.currentMonth + delta;
-    let newY = shiftState.currentYear;
-    if (newM > 12) { newM = 1; newY++; }
-    else if (newM < 1) { newM = 12; newY--; }
-    shiftState.currentMonth = newM;
-    shiftState.currentYear = newY;
-    await loadAllShiftData();
-    if (shiftState.isAdminMode) renderShiftAdminTable();
-    else renderShiftCalendar();
-}
-
-export async function saveShiftSubmission() {
-    if (shiftState.isAdminMode) return;
-
-    // Deadline Check
-    if (new Date().getDate() > 15) {
-        alert("提出期間が終了しています（毎月15日まで）");
-        return;
-    }
-
-    const name = shiftState.selectedStaff;
-    const remarks = document.getElementById('shift-remarks-input').value;
-    if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { off_days: [] };
-    shiftState.shiftDataCache[name].remarks = remarks;
-    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
-    const docRef = doc(db, "shift_submissions", docId);
-    try {
-        const updateData = {};
-        updateData[name] = shiftState.shiftDataCache[name];
-        await setDoc(docRef, updateData, { merge: true });
-        showToast("提出しました！");
-        setTimeout(backToShiftList, 500);
-    } catch(e) {
-        alert("保存失敗: " + e.message);
-    }
-}
+// --- Admin Matrix View ---
 
 export function renderShiftAdminTable() {
     const y = shiftState.currentYear;
@@ -612,7 +543,7 @@ export function renderShiftAdminTable() {
         const th = document.createElement('th');
         const dayOfWeek = new Date(y, m-1, d).getDay();
         const color = dayOfWeek===0?'text-rose-500':dayOfWeek===6?'text-blue-500':'text-slate-600';
-        th.className = `p-2 border-b border-r border-slate-200 min-w-[40px] text-center ${color}`;
+        th.className = `p-2 border-b border-r border-slate-200 min-w-[30px] text-center ${color}`;
         th.textContent = d;
         headerRow.appendChild(th);
     }
@@ -628,47 +559,90 @@ export function renderShiftAdminTable() {
 
         list.forEach(name => {
             const tr = document.createElement('tr');
-            const data = shiftState.shiftDataCache[name] || { off_days: [] };
+            const data = shiftState.shiftDataCache[name] || { off_days: [], work_days: [], assignments: {} };
+            const details = shiftState.staffDetails[name] || {};
+            const monthlySettings = (data.monthly_settings) || {};
 
-            // Check for monthly remark or ANY daily remark
+            // Current Shift Type (A/B) for this month
+            const currentType = monthlySettings.shift_type || details.basic_shift || 'A';
+
+            // Check for remarks
             const hasMonthly = data.remarks && data.remarks.trim() !== "";
             const hasDaily = data.daily_remarks && Object.keys(data.daily_remarks).length > 0;
             const hasAnyRemark = hasMonthly || hasDaily;
 
-            const dailyRemarks = data.daily_remarks || {};
-
             const tdName = document.createElement('td');
-            tdName.className = "sticky left-0 z-10 bg-white p-2 border-b border-r border-slate-300 font-bold text-slate-700 text-xs truncate max-w-[120px]";
-            tdName.innerHTML = `<div class="flex items-center justify-between"><span>${name}</span>${hasAnyRemark ? '<span class="text-lg cursor-pointer" title="備考あり">📝</span>' : ''}</div>`;
+            tdName.className = "sticky left-0 z-10 bg-white p-2 border-b border-r border-slate-300 font-bold text-slate-700 text-xs truncate max-w-[150px]";
 
+            // Name Cell Content
+            const nameContainer = document.createElement('div');
+            nameContainer.className = "flex items-center justify-between gap-2";
+
+            // Name & Remark Icon
+            const nameSpan = document.createElement('span');
+            nameSpan.innerHTML = `${name} ${hasAnyRemark ? '📝' : ''}`;
             if(hasAnyRemark) {
-                tdName.onclick = () => showAdminNoteModal(name, data.remarks, dailyRemarks);
+                nameSpan.className = "cursor-pointer hover:text-indigo-600";
+                nameSpan.onclick = () => showAdminNoteModal(name, data.remarks, data.daily_remarks);
             }
+
+            // Shift Type Toggle
+            const typeBtn = document.createElement('button');
+            typeBtn.className = `w-6 h-6 rounded flex items-center justify-center font-black text-[10px] ${currentType==='A'?'bg-amber-100 text-amber-700':'bg-indigo-100 text-indigo-700'}`;
+            typeBtn.textContent = currentType;
+            typeBtn.title = "今月の早番(A)/遅番(B)切り替え";
+            typeBtn.onclick = (e) => { e.stopPropagation(); toggleStaffShiftType(name, currentType); };
+
+            nameContainer.appendChild(nameSpan);
+            nameContainer.appendChild(typeBtn);
+            tdName.appendChild(nameContainer);
             tr.appendChild(tdName);
 
             for(let d=1; d<=daysInMonth; d++) {
                 const td = document.createElement('td');
-                const isOff = data.off_days && data.off_days.includes(d);
-                const isWork = data.work_days && data.work_days.includes(d);
+                const isOffReq = data.off_days && data.off_days.includes(d);
+                const isWorkReq = data.work_days && data.work_days.includes(d);
+                const assignment = (data.assignments && data.assignments[d]) || null;
                 const dailyRemark = data.daily_remarks && data.daily_remarks[d];
 
                 let bgCell = 'hover:bg-slate-100';
-                if (isOff) bgCell = 'bg-rose-50 hover:bg-rose-100';
-                else if (isWork) bgCell = 'bg-blue-50 hover:bg-blue-100';
-
-                td.className = `border-b border-r border-slate-200 text-center cursor-pointer transition ${bgCell}`;
-
                 let cellContent = '';
-                if(isOff) cellContent = '<span class="text-rose-500 font-black">休</span>';
-                else if(isWork) cellContent = '<span class="text-blue-500 font-black">出</span>';
 
-                if (dailyRemark) {
-                    cellContent += `<span class="text-[10px] block" title="${dailyRemark}">📝</span>`;
+                if (assignment) {
+                    if (assignment === '公休') {
+                         bgCell = 'bg-rose-100 hover:bg-rose-200';
+                         cellContent = '<span class="text-rose-600 font-black">休</span>';
+                    } else {
+                         // Role assigned
+                         bgCell = 'bg-white hover:bg-slate-100';
+                         // Color code based on role
+                         let roleColor = 'text-slate-800';
+                         if(assignment.includes('金')) roleColor = 'text-yellow-600';
+                         if(assignment.includes('サ')) roleColor = 'text-orange-600';
+                         if(assignment.includes('倉')) roleColor = 'text-blue-600';
+                         if(assignment.includes('ホ')) roleColor = 'text-purple-600';
+
+                         cellContent = `<span class="${roleColor} font-black">${assignment}</span>`;
+                    }
+                } else {
+                    // Requests
+                    if (isOffReq) {
+                        bgCell = 'bg-slate-100 hover:bg-slate-200';
+                        cellContent = '<span class="text-rose-300 font-bold text-[10px]">(休)</span>';
+                    } else if (isWorkReq) {
+                         bgCell = 'bg-slate-50 hover:bg-slate-100';
+                        cellContent = '<span class="text-blue-300 font-bold text-[10px]">(出)</span>';
+                    } else {
+                        cellContent = '<span class="text-slate-200">-</span>';
+                    }
                 }
 
-                td.innerHTML = cellContent;
+                if (dailyRemark) {
+                    cellContent += `<span class="absolute top-0 right-0 text-[8px] text-yellow-600">●</span>`;
+                }
 
-                // Onclick for admin cells
+                td.className = `border-b border-r border-slate-200 text-center cursor-pointer transition relative ${bgCell}`;
+                td.innerHTML = cellContent;
                 td.onclick = () => {
                      shiftState.selectedStaff = name;
                      showActionSelectModal(d);
@@ -678,26 +652,560 @@ export function renderShiftAdminTable() {
             tbody.appendChild(tr);
         });
     };
-    if (window.masterStaffList) {
-        createSection("▼ 社員", window.masterStaffList.employees, "bg-indigo-100 text-indigo-800");
-        createSection("▼ 早番", window.masterStaffList.alba_early, "bg-teal-100 text-teal-800");
-        createSection("▼ 遅番", window.masterStaffList.alba_late, "bg-purple-100 text-purple-800");
+
+    createSection("▼ 社員", shiftState.staffListLists.employees, "bg-indigo-100 text-indigo-800");
+    createSection("▼ 早番アルバイト", shiftState.staffListLists.alba_early, "bg-teal-100 text-teal-800");
+    createSection("▼ 遅番アルバイト", shiftState.staffListLists.alba_late, "bg-purple-100 text-purple-800");
+}
+
+async function toggleStaffShiftType(name, currentType) {
+    const newType = currentType === 'A' ? 'B' : 'A';
+    if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = {};
+    if (!shiftState.shiftDataCache[name].monthly_settings) shiftState.shiftDataCache[name].monthly_settings = {};
+
+    shiftState.shiftDataCache[name].monthly_settings.shift_type = newType;
+
+    // Save to Firestore immediately
+    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+    const docRef = doc(db, "shift_submissions", docId);
+    try {
+        const updateData = {};
+        updateData[`${name}.monthly_settings`] = shiftState.shiftDataCache[name].monthly_settings;
+        await setDoc(docRef, updateData, { merge: true });
+        renderShiftAdminTable();
+    } catch(e) {
+        alert("設定保存失敗: " + e.message);
     }
 }
 
-// --- Admin Note Modal Logic (Editable) ---
+// --- Action Select (Shared & Admin Logic) ---
+
+export function showActionSelectModal(day) {
+    shiftState.selectedDay = day;
+    const name = shiftState.selectedStaff;
+    const staffData = shiftState.shiftDataCache[name] || {};
+
+    // Update input
+    const drInput = document.getElementById('shift-action-daily-input');
+    if (drInput) drInput.value = (staffData.daily_remarks && staffData.daily_remarks[day]) || "";
+
+    document.getElementById('shift-action-title').textContent = `${shiftState.currentMonth}/${day} ${name}`;
+    document.getElementById('shift-action-modal').classList.remove('hidden');
+
+    const adminRolesDiv = document.getElementById('shift-admin-roles');
+    const userActionsDiv = document.getElementById('shift-user-actions');
+    const noteBtn = document.getElementById('btn-shift-action-note');
+
+    if (shiftState.isAdminMode) {
+        adminRolesDiv.classList.remove('hidden');
+        userActionsDiv.classList.add('hidden');
+        drInput.classList.remove('hidden');
+    } else {
+        adminRolesDiv.classList.add('hidden');
+        userActionsDiv.classList.remove('hidden');
+        drInput.classList.add('hidden');
+
+        // Setup User Buttons
+        document.getElementById('btn-shift-action-toggle').onclick = () => { toggleShiftRequest(day, 'off'); closeShiftActionModal(); };
+        document.getElementById('btn-shift-action-work').onclick = () => { toggleShiftRequest(day, 'work'); closeShiftActionModal(); };
+        document.getElementById('btn-shift-action-note').onclick = () => {
+             // Redirect to main modal note input
+             closeShiftActionModal();
+             const container = document.getElementById('shift-daily-remark-container');
+             const input = document.getElementById('shift-daily-remark-input');
+             if(container) {
+                 container.classList.remove('hidden');
+                 document.getElementById('shift-daily-remark-label').textContent = `${day}日の備考:`;
+                 if(input) input.focus();
+             }
+        };
+    }
+}
+
+export function closeShiftActionModal() {
+    document.getElementById('shift-action-modal').classList.add('hidden');
+    // If admin changed daily note via the input in action modal, save it?
+    // Logic is handled by `setAdminRole` or standard save,
+    // but the input in Action Modal is currently just text.
+    // For simplicity, Admin changes to remark in Action Modal are saved when Input changes.
+    // Let's attach an onchange handler to the input.
+    const inp = document.getElementById('shift-action-daily-input');
+    if (inp && shiftState.isAdminMode && shiftState.selectedDay && shiftState.selectedStaff) {
+         const val = inp.value;
+         const name = shiftState.selectedStaff;
+         const day = shiftState.selectedDay;
+         if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { daily_remarks: {} };
+         if (!shiftState.shiftDataCache[name].daily_remarks) shiftState.shiftDataCache[name].daily_remarks = {};
+
+         if(val.trim() === "") delete shiftState.shiftDataCache[name].daily_remarks[day];
+         else shiftState.shiftDataCache[name].daily_remarks[day] = val;
+
+         // Trigger save? Ideally yes, but let's bundle it with role change or explicit save if we had one.
+         // For now, let's just update cache. The role buttons trigger a save.
+    }
+}
+
+// User Request Toggle
+function toggleShiftRequest(day, type) {
+    const name = shiftState.selectedStaff;
+    if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { off_days: [], work_days: [], assignments: {} };
+
+    let offList = shiftState.shiftDataCache[name].off_days || [];
+    let workList = shiftState.shiftDataCache[name].work_days || [];
+
+    if (type === 'off') {
+        if (offList.includes(day)) offList = offList.filter(d => d !== day);
+        else {
+            offList.push(day);
+            workList = workList.filter(d => d !== day); // Mutually exclusive
+        }
+    } else if (type === 'work') {
+        if (workList.includes(day)) workList = workList.filter(d => d !== day);
+        else {
+            workList.push(day);
+            offList = offList.filter(d => d !== day);
+        }
+    }
+
+    shiftState.shiftDataCache[name].off_days = offList;
+    shiftState.shiftDataCache[name].work_days = workList;
+    renderShiftCalendar();
+}
+
+// Admin Set Role
+async function setAdminRole(role) {
+    const name = shiftState.selectedStaff;
+    const day = shiftState.selectedDay;
+    if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = {};
+    if (!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
+
+    if (role === "") {
+        delete shiftState.shiftDataCache[name].assignments[day];
+    } else {
+        shiftState.shiftDataCache[name].assignments[day] = role;
+    }
+
+    // Save Daily Remark from the input as well
+    const noteVal = document.getElementById('shift-action-daily-input').value;
+    if (!shiftState.shiftDataCache[name].daily_remarks) shiftState.shiftDataCache[name].daily_remarks = {};
+    if (noteVal.trim() === "") delete shiftState.shiftDataCache[name].daily_remarks[day];
+    else shiftState.shiftDataCache[name].daily_remarks[day] = noteVal;
+
+    // Save to Firestore
+    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+    const docRef = doc(db, "shift_submissions", docId);
+    try {
+        const updateData = {};
+        updateData[name] = shiftState.shiftDataCache[name];
+        await setDoc(docRef, updateData, { merge: true });
+        renderShiftAdminTable();
+    } catch(e) {
+        alert("保存失敗: " + e.message);
+    }
+}
+
+// --- Shift Submission Save (User) ---
+
+export async function saveShiftSubmission() {
+    if (shiftState.isAdminMode) return;
+    const name = shiftState.selectedStaff;
+    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+    const docRef = doc(db, "shift_submissions", docId);
+
+    // Update remarks from input
+    shiftState.shiftDataCache[name].remarks = document.getElementById('shift-remarks-input').value;
+
+    try {
+        const updateData = {};
+        updateData[name] = shiftState.shiftDataCache[name];
+        await setDoc(docRef, updateData, { merge: true });
+        showToast("提出しました！");
+        setTimeout(backToShiftList, 500);
+    } catch(e) {
+        alert("保存失敗: " + e.message);
+    }
+}
+
+export async function changeShiftMonth(delta) {
+    let newM = shiftState.currentMonth + delta;
+    let newY = shiftState.currentYear;
+    if (newM > 12) { newM = 1; newY++; }
+    else if (newM < 1) { newM = 12; newY--; }
+    shiftState.currentMonth = newM;
+    shiftState.currentYear = newY;
+    await loadAllShiftData();
+    if (shiftState.isAdminMode) renderShiftAdminTable();
+    else {
+        if(shiftState.selectedStaff) renderShiftCalendar();
+    }
+}
+
+// --- Staff Master Management ---
+
+export function openStaffMasterModal() {
+    renderStaffMasterList();
+    document.getElementById('staff-master-modal').classList.remove('hidden');
+}
+
+function renderStaffMasterList() {
+    const listDiv = document.getElementById('staff-master-list');
+    listDiv.innerHTML = '';
+
+    const allStaff = [
+        ...shiftState.staffListLists.employees.map(n => ({name: n, cat: 'employee'})),
+        ...shiftState.staffListLists.alba_early.map(n => ({name: n, cat: 'alba'})),
+        ...shiftState.staffListLists.alba_late.map(n => ({name: n, cat: 'alba'}))
+    ];
+    // Remove duplicates just in case
+    const uniqueStaff = Array.from(new Set(allStaff.map(s => s.name))).map(name => {
+        return allStaff.find(s => s.name === name);
+    });
+
+    uniqueStaff.forEach(s => {
+        const details = shiftState.staffDetails[s.name] || {};
+        const div = document.createElement('div');
+        div.className = "flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm";
+        div.innerHTML = `
+            <div>
+                <div class="font-bold text-slate-800">${s.name}</div>
+                <div class="text-xs text-slate-500">
+                    ${details.rank || '-'} /
+                    ${details.type === 'employee' ? '社員' : 'バイト'} /
+                    基本:${details.basic_shift || '-'} /
+                    契約:${details.contract_days || '-'}日
+                </div>
+            </div>
+            <button class="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 btn-edit-staff">編集</button>
+        `;
+        div.querySelector('.btn-edit-staff').onclick = () => openStaffEditModal(s.name);
+        listDiv.appendChild(div);
+    });
+}
+
+function openStaffEditModal(name) {
+    document.getElementById('staff-edit-modal').classList.remove('hidden');
+    const isNew = !name;
+    document.getElementById('staff-edit-title').textContent = isNew ? "スタッフ追加" : "スタッフ編集";
+
+    const inputName = document.getElementById('se-name');
+    inputName.value = name || "";
+    inputName.disabled = !isNew; // Cannot rename key for now to keep it simple
+
+    const details = name ? (shiftState.staffDetails[name] || {}) : {};
+
+    document.getElementById('se-type').value = details.type || 'byte';
+    document.getElementById('se-basic-shift').value = details.basic_shift || 'A';
+    document.getElementById('se-contract-days').value = details.contract_days || 20;
+
+    updateRankOptions(); // Populate ranks based on type
+    document.getElementById('se-rank').value = details.rank || '';
+
+    // Store editing target
+    document.getElementById('btn-se-save').dataset.target = name || "";
+}
+
+function updateRankOptions() {
+    const type = document.getElementById('se-type').value;
+    const select = document.getElementById('se-rank');
+    select.innerHTML = '';
+    const opts = type === 'employee' ? RANKS.EMPLOYEE : RANKS.BYTE;
+    opts.forEach(r => {
+        const op = document.createElement('option');
+        op.value = r;
+        op.textContent = r;
+        select.appendChild(op);
+    });
+}
+
+async function saveStaffDetails() {
+    const isNew = document.getElementById('se-name').disabled === false;
+    const name = document.getElementById('se-name').value.trim();
+    if(!name) return alert("名前を入力してください");
+
+    const type = document.getElementById('se-type').value;
+    const rank = document.getElementById('se-rank').value;
+    const basicShift = document.getElementById('se-basic-shift').value;
+    const contractDays = parseInt(document.getElementById('se-contract-days').value) || 0;
+
+    // Update Local State
+    shiftState.staffDetails[name] = { type, rank, basic_shift: basicShift, contract_days: contractDays };
+
+    // Update Lists (Categorization)
+    // First remove from all lists to ensure no duplicates if category changed (though name is key)
+    let lists = shiftState.staffListLists;
+    lists.employees = lists.employees.filter(n => n !== name);
+    lists.alba_early = lists.alba_early.filter(n => n !== name);
+    lists.alba_late = lists.alba_late.filter(n => n !== name);
+
+    if (type === 'employee') {
+        lists.employees.push(name);
+    } else {
+        // Decide Early vs Late based on Basic Shift?
+        // Logic in tasks.js expects distinct lists.
+        // For now, if Basic Shift is A -> Early, B -> Late.
+        if (basicShift === 'A') lists.alba_early.push(name);
+        else lists.alba_late.push(name);
+    }
+
+    // Save to Firestore
+    const docRef = doc(db, 'masters', 'staff_data');
+    try {
+        await setDoc(docRef, {
+            employees: lists.employees,
+            alba_early: lists.alba_early,
+            alba_late: lists.alba_late,
+            staff_details: shiftState.staffDetails
+        }, { merge: true });
+
+        showToast("スタッフ情報を保存しました");
+        document.getElementById('staff-edit-modal').classList.add('hidden');
+        renderStaffMasterList();
+        renderShiftAdminTable(); // Refresh table
+    } catch(e) {
+        alert("保存失敗: " + e.message);
+    }
+}
+
+async function deleteStaff() {
+    const name = document.getElementById('se-name').value;
+    if(!name || !confirm(`本当に ${name} を削除しますか？\n過去のデータには残りますが、リストからは消えます。`)) return;
+
+    let lists = shiftState.staffListLists;
+    lists.employees = lists.employees.filter(n => n !== name);
+    lists.alba_early = lists.alba_early.filter(n => n !== name);
+    lists.alba_late = lists.alba_late.filter(n => n !== name);
+
+    // We don't necessarily delete from staffDetails to keep history, but we can if wanted.
+    // Let's keep it in details but remove from active lists.
+
+    const docRef = doc(db, 'masters', 'staff_data');
+    try {
+        await setDoc(docRef, {
+            employees: lists.employees,
+            alba_early: lists.alba_early,
+            alba_late: lists.alba_late
+            // staff_details: ... keep existing
+        }, { merge: true });
+
+        showToast("削除しました");
+        document.getElementById('staff-edit-modal').classList.add('hidden');
+        renderStaffMasterList();
+        renderShiftAdminTable();
+    } catch(e) {
+        alert("削除失敗: " + e.message);
+    }
+}
+
+// --- Auto Shift Generation Logic (The Brain) ---
+
+async function generateAutoShift() {
+    if(!confirm(`${shiftState.currentYear}年${shiftState.currentMonth}月のシフトを自動作成します。\n既存の確定済みシフトは上書きされます（希望休などは保持）。\nよろしいですか？`)) return;
+
+    const Y = shiftState.currentYear;
+    const M = shiftState.currentMonth;
+    const daysInMonth = new Date(Y, M, 0).getDate();
+
+    // Prepare Data
+    const shifts = shiftState.shiftDataCache; // { StaffName: { work_days, off_days, assignments, monthly_settings } }
+    const details = shiftState.staffDetails; // { StaffName: { rank, type, contract_days, basic_shift } }
+    const staffNames = [
+        ...shiftState.staffListLists.employees,
+        ...shiftState.staffListLists.alba_early,
+        ...shiftState.staffListLists.alba_late
+    ];
+
+    // Helper: Get Staff Info
+    const getS = (name) => {
+        const d = details[name] || {};
+        const s = shifts[name] || {};
+        const m = s.monthly_settings || {};
+        return {
+            name,
+            rank: d.rank || '一般',
+            type: d.type || 'byte',
+            contractDays: d.contract_days || 20,
+            shiftType: m.shift_type || d.basic_shift || 'A', // Monthly setting priority
+            requests: {
+                work: s.work_days || [],
+                off: s.off_days || []
+            },
+            assignedCount: 0
+        };
+    };
+
+    let staffObjects = staffNames.map(getS);
+
+    // Track assigned count for contract fulfillment logic
+    // (In a real scenario, we might need to check previous assignments if we run this mid-month,
+    // but here we assume a fresh generation or full re-gen)
+
+    // Helper: Is Special Day?
+    const isSpecialDay = (d) => [2, 8, 12, 18, 22, 28].includes(d);
+
+    // Helper: Get Required Headcount
+    const getRequired = (day) => {
+        const date = new Date(Y, M - 1, day);
+        const dayOfWeek = date.getDay();
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6); // Sun or Sat (what about holidays? ignoring for MVP unless using a lib)
+
+        if (isWeekend && isSpecialDay(day)) return 11;
+        if (isWeekend) return 10;
+        return 9;
+    };
+
+    // Helper: Rank Weight / Eligibility
+    const isViceChiefOrAbove = (rank) => ['マネージャー', '主任', '副主任'].includes(rank);
+
+    // Clear existing assignments in memory first
+    staffNames.forEach(n => {
+        if(!shifts[n]) shifts[n] = {};
+        if(!shifts[n].assignments) shifts[n].assignments = {};
+        // We will overwrite assignments day by day
+    });
+
+    // --- Daily Loop ---
+    for (let d = 1; d <= daysInMonth; d++) {
+        const reqCount = getRequired(d);
+
+        // 1. Separate Candidates by Shift A / B
+        const candidatesA = staffObjects.filter(s => s.shiftType === 'A' && !s.requests.off.includes(d));
+        const candidatesB = staffObjects.filter(s => s.shiftType === 'B' && !s.requests.off.includes(d));
+
+        const processShift = (candidates, label) => {
+            let working = [];
+
+            // Step 1: Force Include "Hope Work"
+            const forced = candidates.filter(s => s.requests.work.includes(d));
+            forced.forEach(s => {
+                if(!working.includes(s)) working.push(s);
+            });
+
+            // Step 2: Ensure Leadership (Vice-Chief+)
+            const hasLeader = working.some(s => isViceChiefOrAbove(s.rank));
+            if (!hasLeader) {
+                // Find a leader from candidates not yet working
+                const leaders = candidates.filter(s => !working.includes(s) && isViceChiefOrAbove(s.rank));
+                if (leaders.length > 0) {
+                    // Pick one (Random or prioritized by low assignment?)
+                    // Prioritize low assignment count
+                    leaders.sort((a,b) => a.assignedCount - b.assignedCount);
+                    working.push(leaders[0]);
+                } else {
+                    // No leader available! (Maybe alert or proceed without?)
+                    // Proceeding...
+                }
+            }
+
+            // Step 3: Fill to Required Count
+            // Prioritize staff who have low assignedCount relative to contractDays
+            const pool = candidates.filter(s => !working.includes(s));
+
+            // Sort pool: Higher (Contract - Assigned) => Higher Priority
+            pool.sort((a,b) => {
+                const defA = a.contractDays - a.assignedCount;
+                const defB = b.contractDays - b.assignedCount;
+                return defB - defA;
+            });
+
+            while (working.length < reqCount && pool.length > 0) {
+                working.push(pool.shift());
+            }
+
+            // Step 4: Assign Roles
+            // Roles: 金(Money), サ(Sub), 倉(Warehouse), ホ(Hall)
+            // Constraints:
+            // 金: General Emp (Default), else Vice-Chief+
+            // サ: Gen Emp, Chief, Leader
+            // 倉: Gen Emp, Chief, Leader
+            // ホ: Gen Emp, All Bytes
+
+            // Helper to check role eligibility
+            const canDoMoney = (s) => (s.type === 'employee' && s.rank === '一般') || isViceChiefOrAbove(s.rank);
+            const canDoSub = (s) => (s.type === 'employee' && s.rank === '一般') || ['チーフ', 'リーダー'].includes(s.rank);
+            const canDoWhs = (s) => (s.type === 'employee' && s.rank === '一般') || ['チーフ', 'リーダー'].includes(s.rank);
+            // Hall is everyone
+
+            let unassigned = [...working];
+            const assignedRoles = {}; // name -> role
+
+            // Assign Money (1 person)
+            const moneyCand = unassigned.filter(canDoMoney);
+            if(moneyCand.length > 0) {
+                // Prefer General Employee
+                let p = moneyCand.find(s => s.rank === '一般' && s.type === 'employee');
+                if(!p) p = moneyCand[0];
+                assignedRoles[p.name] = ROLES.MONEY;
+                unassigned = unassigned.filter(x => x !== p);
+            }
+
+            // Assign Sub (1 person)
+            if(unassigned.length > 0) {
+                const subCand = unassigned.filter(canDoSub);
+                if(subCand.length > 0) {
+                    const p = subCand[Math.floor(Math.random()*subCand.length)];
+                    assignedRoles[p.name] = ROLES.SUB;
+                    unassigned = unassigned.filter(x => x !== p);
+                }
+            }
+
+            // Assign Warehouse (1 person)
+            if(unassigned.length > 0) {
+                const whsCand = unassigned.filter(canDoWhs);
+                if(whsCand.length > 0) {
+                    const p = whsCand[Math.floor(Math.random()*whsCand.length)];
+                    assignedRoles[p.name] = ROLES.WAREHOUSE;
+                    unassigned = unassigned.filter(x => x !== p);
+                }
+            }
+
+            // Assign Hall (Rest)
+            unassigned.forEach(s => {
+                assignedRoles[s.name] = ROLES.HALL;
+            });
+
+            // Commit to Memory
+            working.forEach(s => {
+                const r = assignedRoles[s.name] || ROLES.HALL;
+                if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
+                shifts[s.name].assignments[d] = r;
+                s.assignedCount++;
+            });
+
+            // Mark Public Holiday for non-working? (Optional, user didn't ask)
+            // But we should explicitly mark non-working as '公休' if we want to be thorough
+            // Or just leave null? The Admin table treats null as blank.
+            // Let's mark '公休' for those not selected to be clear.
+            const notWorking = candidates.filter(s => !working.includes(s));
+            notWorking.forEach(s => {
+                 if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
+                 shifts[s.name].assignments[d] = '公休';
+            });
+        };
+
+        processShift(candidatesA, 'A');
+        processShift(candidatesB, 'B');
+    }
+
+    // Save to Firestore
+    const docId = `${Y}-${String(M).padStart(2,'0')}`;
+    const docRef = doc(db, "shift_submissions", docId);
+    try {
+        await setDoc(docRef, shifts, { merge: true });
+        showToast("シフト自動作成完了！");
+        renderShiftAdminTable();
+    } catch(e) {
+        alert("自動作成保存失敗: " + e.message);
+    }
+}
+
+// Admin Note Modal functions
 export function showAdminNoteModal(name, monthlyNote, dailyNotes) {
     const modal = document.getElementById('admin-note-modal');
     document.getElementById('admin-note-staff-name').textContent = name;
-
-    // Monthly Note (Textarea)
     document.getElementById('admin-note-monthly-edit').value = monthlyNote || "";
 
-    // Daily Notes (Inputs)
     const dailyListDiv = document.getElementById('admin-note-daily-list');
     dailyListDiv.innerHTML = '';
-
-    // Collect all days that have remarks
     const sortedDays = (dailyNotes ? Object.keys(dailyNotes) : []).sort((a,b) => Number(a) - Number(b));
 
     if (sortedDays.length > 0) {
@@ -715,44 +1223,30 @@ export function showAdminNoteModal(name, monthlyNote, dailyNotes) {
         dailyListDiv.innerHTML = '<p class="text-xs text-slate-400">デイリー備考はありません</p>';
     }
 
-    // Attach Save Event
-    const saveBtn = document.getElementById('btn-save-admin-note');
-    saveBtn.onclick = () => saveAdminNote(name);
-
+    document.getElementById('btn-save-admin-note').onclick = () => saveAdminNote(name);
     modal.classList.remove('hidden');
 }
 
-export async function saveAdminNote(name) {
+export function closeAdminNoteModal() {
+    document.getElementById('admin-note-modal').classList.add('hidden');
+}
+
+async function saveAdminNote(name) {
     const monthlyVal = document.getElementById('admin-note-monthly-edit').value;
     const dailyInputs = document.querySelectorAll('.admin-daily-note-input');
 
-    // Construct new daily remarks object
-    // Note: We are only editing *existing* daily remarks here.
-    // If we wanted to allow adding new ones, we'd need a way to add rows.
-    // Assuming the requirement implies editing the ones that show up.
-
-    // However, if we read the current state to preserve other fields, we should be careful.
-    // The modal shows a list based on what was passed.
-    // We should update the cache and then firestore.
-
     if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = {};
     const staffData = shiftState.shiftDataCache[name];
-
     staffData.remarks = monthlyVal;
-
     if (!staffData.daily_remarks) staffData.daily_remarks = {};
 
     dailyInputs.forEach(input => {
         const day = input.dataset.day;
         const val = input.value;
-        if(val.trim() === "") {
-            delete staffData.daily_remarks[day];
-        } else {
-            staffData.daily_remarks[day] = val;
-        }
+        if(val.trim() === "") delete staffData.daily_remarks[day];
+        else staffData.daily_remarks[day] = val;
     });
 
-    // Save to Firebase
     const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
     const docRef = doc(db, "shift_submissions", docId);
 
@@ -760,16 +1254,15 @@ export async function saveAdminNote(name) {
         const updateData = {};
         updateData[name] = staffData;
         await setDoc(docRef, updateData, { merge: true });
-
         showToast("備考を保存しました");
         closeAdminNoteModal();
-        renderShiftAdminTable(); // Refresh table to update icons
+        renderShiftAdminTable();
     } catch(e) {
         alert("保存失敗: " + e.message);
     }
 }
 
-// Ensure global access if needed
+// Global Exports
 window.showActionSelectModal = showActionSelectModal;
 window.closeShiftActionModal = closeShiftActionModal;
 window.closeAdminNoteModal = closeAdminNoteModal;
