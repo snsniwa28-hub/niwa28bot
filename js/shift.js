@@ -148,6 +148,7 @@ export function createShiftModals() {
                 <button id="btn-shift-action-toggle" class="w-full py-3 rounded-xl font-bold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100">公休 設定/解除</button>
                 <button id="btn-shift-action-work" class="w-full py-3 rounded-xl font-bold bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100">出勤希望 設定/解除</button>
                 <button id="btn-shift-action-note" class="w-full py-3 rounded-xl font-bold bg-yellow-50 text-yellow-600 border border-yellow-100 hover:bg-yellow-100">備考を入力</button>
+                <input type="text" id="shift-action-daily-input" class="hidden w-full py-3 px-4 rounded-xl border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="備考を入力...">
                 <button onclick="closeShiftActionModal()" class="w-full py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-50">キャンセル</button>
              </div>
         </div>
@@ -457,6 +458,54 @@ export function showActionSelectModal(day) {
                 input.focus();
             }
         };
+    }
+
+    // --- Admin Mode Logic ---
+    const dailyInput = document.getElementById('shift-action-daily-input');
+    if (shiftState.isAdminMode) {
+        // Hide normal Note button, Show Input
+        if (btnNote) btnNote.classList.add('hidden');
+        if (dailyInput) {
+            dailyInput.classList.remove('hidden');
+
+            // Set value
+            const staffData = shiftState.shiftDataCache[shiftState.selectedStaff] || { daily_remarks: {} };
+            dailyInput.value = (staffData.daily_remarks && staffData.daily_remarks[day]) || "";
+
+            // On Change Save
+            dailyInput.onchange = async () => {
+                 const val = dailyInput.value;
+                 const name = shiftState.selectedStaff;
+                 if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = {};
+                 const sData = shiftState.shiftDataCache[name];
+                 if (!sData.daily_remarks) sData.daily_remarks = {};
+
+                 if(val.trim() === "") {
+                     delete sData.daily_remarks[day];
+                 } else {
+                     sData.daily_remarks[day] = val;
+                 }
+
+                 // Save to Firestore
+                 const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+                 const docRef = doc(db, "shift_submissions", docId);
+                 try {
+                     const updateData = {};
+                     updateData[name] = sData;
+                     await setDoc(docRef, updateData, { merge: true });
+                     showToast("備考を保存しました");
+
+                     // Update Admin Table UI to show/hide icon
+                     renderShiftAdminTable();
+                 } catch(e) {
+                     alert("保存失敗: " + e.message);
+                 }
+            };
+        }
+    } else {
+        // Normal Mode
+        if (btnNote) btnNote.classList.remove('hidden');
+        if (dailyInput) dailyInput.classList.add('hidden');
     }
 
     modal.classList.remove('hidden');
