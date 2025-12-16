@@ -237,6 +237,23 @@ export function createShiftModals() {
                     <label class="text-xs font-bold text-slate-500">契約日数 (目標)</label>
                     <input type="number" id="se-contract-days" class="w-full border border-slate-200 rounded-lg p-2 text-sm font-bold" value="20">
                 </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500">特例許可 (スキル設定)</label>
+                    <div class="flex gap-4 mt-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="se-allow-money" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700 font-bold">金銭</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="se-allow-sub" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700 font-bold">サブ</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="se-allow-warehouse" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700 font-bold">倉庫</span>
+                        </label>
+                    </div>
+                </div>
             </div>
             <div class="flex gap-3 mt-6">
                 <button id="btn-se-delete" class="px-4 py-2 bg-rose-50 text-rose-600 font-bold rounded-lg text-xs hover:bg-rose-100">削除</button>
@@ -660,8 +677,8 @@ export function renderShiftAdminTable() {
                 } else {
                     // Requests
                     if (isOffReq) {
-                        bgCell = 'bg-slate-100 hover:bg-slate-200';
-                        cellContent = '<span class="text-rose-300 font-bold text-[10px]">(休)</span>';
+                        bgCell = 'bg-white hover:bg-slate-100';
+                        cellContent = '<span class="text-slate-300 font-bold text-[10px] select-none">/</span>';
                     } else if (isWorkReq) {
                          bgCell = 'bg-slate-50 hover:bg-slate-100';
                         cellContent = '<span class="text-blue-300 font-bold text-[10px]">(出)</span>';
@@ -946,6 +963,11 @@ function openStaffEditModal(name) {
     document.getElementById('se-basic-shift').value = details.basic_shift || 'A';
     document.getElementById('se-contract-days').value = details.contract_days || 20;
 
+    const ar = details.allowed_roles || [];
+    document.getElementById('se-allow-money').checked = ar.includes('money');
+    document.getElementById('se-allow-sub').checked = ar.includes('sub');
+    document.getElementById('se-allow-warehouse').checked = ar.includes('warehouse');
+
     window.updateRankOptions(); // Use global
     document.getElementById('se-rank').value = details.rank || '';
 
@@ -976,8 +998,19 @@ async function saveStaffDetails() {
     const basicShift = document.getElementById('se-basic-shift').value;
     const contractDays = parseInt(document.getElementById('se-contract-days').value) || 0;
 
+    const allowedRoles = [];
+    if(document.getElementById('se-allow-money').checked) allowedRoles.push('money');
+    if(document.getElementById('se-allow-sub').checked) allowedRoles.push('sub');
+    if(document.getElementById('se-allow-warehouse').checked) allowedRoles.push('warehouse');
+
     // Update Local State
-    shiftState.staffDetails[name] = { type, rank, basic_shift: basicShift, contract_days: contractDays };
+    shiftState.staffDetails[name] = {
+        type,
+        rank,
+        basic_shift: basicShift,
+        contract_days: contractDays,
+        allowed_roles: allowedRoles
+    };
 
     // Update Lists (Categorization)
     let lists = shiftState.staffListLists;
@@ -1131,6 +1164,7 @@ async function generateAutoShift() {
             rank: d.rank || '一般',
             type: d.type || 'byte',
             contractDays: d.contract_days || 20,
+            allowedRoles: d.allowed_roles || [],
             shiftType: m.shift_type || d.basic_shift || 'A',
             requests: {
                 work: s.work_days || [],
@@ -1233,24 +1267,27 @@ async function generateAutoShift() {
             };
 
             // 1. 金 (Money)
-            // Target: Employee(General) OR ViceChief+
+            // Target: Employee(General) OR ViceChief+ OR Allowed
             assignRole(ROLES.MONEY, (s) => {
+                if (s.allowedRoles.includes('money')) return true;
                 if (s.type === 'employee' && s.rank === '一般') return true;
                 if (isViceChiefOrAbove(s.rank)) return true;
                 return false;
             });
 
             // 2. サ (Sub)
-            // Target: Employee(General) OR Alba(Chief, Leader)
+            // Target: Employee(General) OR Alba(Chief, Leader) OR Allowed
             assignRole(ROLES.SUB, (s) => {
+                if (s.allowedRoles.includes('sub')) return true;
                 if (s.type === 'employee' && s.rank === '一般') return true;
                 if (['チーフ', 'リーダー'].includes(s.rank)) return true;
                 return false;
             });
 
             // 3. 倉 (Warehouse)
-            // Target: Employee(General) OR Alba(Chief, Leader)
+            // Target: Employee(General) OR Alba(Chief, Leader) OR Allowed
             assignRole(ROLES.WAREHOUSE, (s) => {
+                if (s.allowedRoles.includes('warehouse')) return true;
                 if (s.type === 'employee' && s.rank === '一般') return true;
                 if (['チーフ', 'リーダー'].includes(s.rank)) return true;
                 return false;
