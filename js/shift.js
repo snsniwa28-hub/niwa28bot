@@ -660,8 +660,8 @@ export function renderShiftAdminTable() {
 
                 if (assignment) {
                     if (assignment === '公休') {
-                         bgCell = 'bg-rose-100 hover:bg-rose-200';
-                         cellContent = '<span class="text-rose-600 font-black">休</span>';
+                         bgCell = 'bg-white hover:bg-slate-100';
+                         cellContent = '<span class="text-slate-200 font-bold text-[10px] select-none">/</span>';
                     } else {
                          // Role assigned
                          bgCell = 'bg-white hover:bg-slate-100';
@@ -678,7 +678,7 @@ export function renderShiftAdminTable() {
                     // Requests
                     if (isOffReq) {
                         bgCell = 'bg-white hover:bg-slate-100';
-                        cellContent = '<span class="text-slate-300 font-bold text-[10px] select-none">/</span>';
+                        cellContent = '<span class="text-slate-300 font-bold text-[10px] select-none">(休)</span>';
                     } else if (isWorkReq) {
                          bgCell = 'bg-slate-50 hover:bg-slate-100';
                         cellContent = '<span class="text-blue-300 font-bold text-[10px]">(出)</span>';
@@ -1213,27 +1213,37 @@ async function generateAutoShift() {
             const forced = candidates.filter(s => s.requests.work.includes(d));
             forced.forEach(s => { if(!working.includes(s)) working.push(s); });
 
-            // Step 2: Ensure Leadership (Existing Logic)
-            const hasLeader = working.some(s => isViceChiefOrAbove(s.rank));
-            if (!hasLeader) {
-                const leaders = candidates.filter(s => !working.includes(s) && isViceChiefOrAbove(s.rank));
-                if (leaders.length > 0) {
-                    leaders.sort((a,b) => a.assignedCount - b.assignedCount);
-                    working.push(leaders[0]);
-                }
-            }
+            // Step 2: Secure Contract Days (Ignore Capacity)
+            let pool = candidates.filter(s => !working.includes(s));
 
-            // Step 3: Fill to Required Count
-            const pool = candidates.filter(s => !working.includes(s));
-            // Prioritize by contract diff
-            pool.sort((a,b) => {
+            // Filter those who haven't met contract days
+            let needingDays = pool.filter(s => s.assignedCount < s.contractDays);
+
+            // Sort by deficit (descending: largest deficit first)
+            needingDays.sort((a,b) => {
                 const defA = a.contractDays - a.assignedCount;
                 const defB = b.contractDays - b.assignedCount;
                 return defB - defA;
             });
 
-            while (working.length < reqCount && pool.length > 0) {
-                working.push(pool.shift());
+            // Add ALL of them (even if it exceeds reqCount)
+            needingDays.forEach(s => working.push(s));
+
+            // Step 3: Fill to Minimum Staffing (if count < reqCount)
+            if (working.length < reqCount) {
+                // Refresh pool (remove those just added)
+                pool = candidates.filter(s => !working.includes(s));
+
+                // Sort remaining by deficit (closest to target first)
+                pool.sort((a,b) => {
+                    const defA = a.contractDays - a.assignedCount;
+                    const defB = b.contractDays - b.assignedCount;
+                    return defB - defA;
+                });
+
+                while (working.length < reqCount && pool.length > 0) {
+                    working.push(pool.shift());
+                }
             }
 
             // Step 4: Assign Roles (New Logic)
