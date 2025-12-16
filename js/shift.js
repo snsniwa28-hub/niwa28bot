@@ -10,7 +10,7 @@ let shiftState = {
     shiftDataCache: {},
     isAdminMode: false,
     selectedDay: null,
-    staffDetails: {}, // New: Stores Rank, Type, ContractDays, etc.
+    staffDetails: {}, // Stores Rank, Type, ContractDays, etc.
     staffListLists: { employees: [], alba_early: [], alba_late: [] } // Sync with masters/staff_data
 };
 
@@ -27,7 +27,35 @@ const ROLES = {
     HALL: 'ホ'
 };
 
-// --- DOM Injection (UI生成) ---
+// --- Helper Functions for Sorting ---
+function getRankPriority(rank, type) {
+    if (type === 'employee') {
+        const idx = RANKS.EMPLOYEE.indexOf(rank);
+        return idx === -1 ? 99 : idx;
+    } else {
+        const idx = RANKS.BYTE.indexOf(rank);
+        return idx === -1 ? 99 : idx;
+    }
+}
+
+function sortStaffList(list, catType) {
+    list.sort((a, b) => {
+        const da = shiftState.staffDetails[a] || {};
+        const db = shiftState.staffDetails[b] || {};
+        const ra = da.rank || (catType === 'employee' ? '一般' : 'レギュラー');
+        const rb = db.rank || (catType === 'employee' ? '一般' : 'レギュラー');
+
+        const pa = getRankPriority(ra, catType);
+        const pb = getRankPriority(rb, catType);
+
+        if (pa !== pb) return pa - pb;
+        // Same rank: Name sort
+        return a.localeCompare(b, 'ja');
+    });
+    return list;
+}
+
+// --- DOM Injection ---
 export function injectShiftButton() {
     const card = document.getElementById('shiftEntryCard');
     if (card) {
@@ -166,8 +194,11 @@ export function createShiftModals() {
                 <h3 class="font-bold text-slate-800">スタッフマスタ管理</h3>
                 <button onclick="document.getElementById('staff-master-modal').classList.add('hidden')" class="text-slate-400">✕</button>
              </div>
+             <div class="p-2 border-b border-slate-100 flex justify-end">
+                <button onclick="window.resetStaffSort()" class="px-3 py-1 bg-slate-100 text-slate-600 rounded text-xs font-bold hover:bg-slate-200">役職順にリセット</button>
+             </div>
              <div class="p-4 overflow-y-auto flex-1 bg-slate-50">
-                <div id="staff-master-list" class="space-y-2"></div>
+                <div id="staff-master-list" class="space-y-4"></div>
                 <button id="btn-add-staff" class="w-full mt-4 py-3 border-2 border-dashed border-slate-300 text-slate-400 font-bold rounded-xl hover:bg-white hover:text-indigo-500 transition">+ スタッフを追加</button>
              </div>
         </div>
@@ -185,7 +216,7 @@ export function createShiftModals() {
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-xs font-bold text-slate-500">区分</label>
-                        <select id="se-type" class="w-full border border-slate-200 rounded-lg p-2 text-sm bg-white" onchange="updateRankOptions()">
+                        <select id="se-type" class="w-full border border-slate-200 rounded-lg p-2 text-sm bg-white" onchange="window.updateRankOptions()">
                             <option value="employee">社員</option>
                             <option value="byte">アルバイト</option>
                         </select>
@@ -286,7 +317,7 @@ export function createShiftModals() {
     $('#btn-auto-create-shift').onclick = generateAutoShift;
     $('#btn-clear-shift').onclick = clearShiftAssignments;
 
-    // --- Daily Remarks Input Listener (Attached Once) ---
+    // --- Daily Remarks Input Listener ---
     const drInput = document.getElementById('shift-daily-remark-input');
     if(drInput) {
         drInput.oninput = () => {
@@ -436,7 +467,7 @@ export function renderShiftCalendar() {
     const daysInMonth = new Date(y, m, 0).getDate();
 
     if (!shiftState.shiftDataCache[shiftState.selectedStaff]) {
-        shiftState.shiftDataCache[shiftState.selectedStaff] = { off_days: [], work_days: [], remarks: "", daily_remarks: {}, assignments: {} };
+        shiftState.shiftDataCache[shiftState.selectedStaff] = { off_days: [], work_days: [], assignments: {} };
     }
     const staffData = shiftState.shiftDataCache[shiftState.selectedStaff];
     const offDays = staffData.off_days || [];
@@ -726,11 +757,7 @@ export function showActionSelectModal(day) {
 
 export function closeShiftActionModal() {
     document.getElementById('shift-action-modal').classList.add('hidden');
-    // If admin changed daily note via the input in action modal, save it?
-    // Logic is handled by `setAdminRole` or standard save,
-    // but the input in Action Modal is currently just text.
-    // For simplicity, Admin changes to remark in Action Modal are saved when Input changes.
-    // Let's attach an onchange handler to the input.
+    // Save note if input present
     const inp = document.getElementById('shift-action-daily-input');
     if (inp && shiftState.isAdminMode && shiftState.selectedDay && shiftState.selectedStaff) {
          const val = inp.value;
@@ -741,9 +768,6 @@ export function closeShiftActionModal() {
 
          if(val.trim() === "") delete shiftState.shiftDataCache[name].daily_remarks[day];
          else shiftState.shiftDataCache[name].daily_remarks[day] = val;
-
-         // Trigger save? Ideally yes, but let's bundle it with role change or explicit save if we had one.
-         // For now, let's just update cache. The role buttons trigger a save.
     }
 }
 
@@ -787,7 +811,7 @@ async function setAdminRole(role) {
         shiftState.shiftDataCache[name].assignments[day] = role;
     }
 
-    // Save Daily Remark from the input as well
+    // Save Daily Remark
     const noteVal = document.getElementById('shift-action-daily-input').value;
     if (!shiftState.shiftDataCache[name].daily_remarks) shiftState.shiftDataCache[name].daily_remarks = {};
     if (noteVal.trim() === "") delete shiftState.shiftDataCache[name].daily_remarks[day];
@@ -853,34 +877,57 @@ function renderStaffMasterList() {
     const listDiv = document.getElementById('staff-master-list');
     listDiv.innerHTML = '';
 
-    const allStaff = [
-        ...shiftState.staffListLists.employees.map(n => ({name: n, cat: 'employee'})),
-        ...shiftState.staffListLists.alba_early.map(n => ({name: n, cat: 'alba'})),
-        ...shiftState.staffListLists.alba_late.map(n => ({name: n, cat: 'alba'}))
+    // Render 3 sections
+    const sections = [
+        { title: '社員', key: 'employees', cat: 'employee' },
+        { title: 'アルバイト (早番)', key: 'alba_early', cat: 'byte' },
+        { title: 'アルバイト (遅番)', key: 'alba_late', cat: 'byte' }
     ];
-    // Remove duplicates just in case
-    const uniqueStaff = Array.from(new Set(allStaff.map(s => s.name))).map(name => {
-        return allStaff.find(s => s.name === name);
-    });
 
-    uniqueStaff.forEach(s => {
-        const details = shiftState.staffDetails[s.name] || {};
-        const div = document.createElement('div');
-        div.className = "flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm";
-        div.innerHTML = `
-            <div>
-                <div class="font-bold text-slate-800">${s.name}</div>
-                <div class="text-xs text-slate-500">
-                    ${details.rank || '-'} /
-                    ${details.type === 'employee' ? '社員' : 'バイト'} /
-                    基本:${details.basic_shift || '-'} /
-                    契約:${details.contract_days || '-'}日
-                </div>
-            </div>
-            <button class="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 btn-edit-staff">編集</button>
-        `;
-        div.querySelector('.btn-edit-staff').onclick = () => openStaffEditModal(s.name);
-        listDiv.appendChild(div);
+    sections.forEach(sec => {
+        const list = shiftState.staffListLists[sec.key];
+        if (list.length > 0) {
+            const h4 = document.createElement('h4');
+            h4.className = "text-xs font-bold text-slate-500 mb-2 mt-4 px-2";
+            h4.textContent = sec.title;
+            listDiv.appendChild(h4);
+
+            list.forEach((name, idx) => {
+                const details = shiftState.staffDetails[name] || {};
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm mb-2";
+
+                // Content
+                div.innerHTML = `
+                    <div class="flex-1">
+                        <div class="font-bold text-slate-800">${name}</div>
+                        <div class="text-xs text-slate-500">
+                            ${details.rank || '-'} / 基本:${details.basic_shift || '-'} / 契約:${details.contract_days || '-'}日
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                         <div class="flex flex-col gap-1">
+                            <button class="w-8 h-6 flex items-center justify-center bg-slate-100 rounded text-xs hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed btn-up">↑</button>
+                            <button class="w-8 h-6 flex items-center justify-center bg-slate-100 rounded text-xs hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed btn-down">↓</button>
+                         </div>
+                         <button class="px-3 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 btn-edit-staff">編集</button>
+                    </div>
+                `;
+
+                // Handlers
+                const btnUp = div.querySelector('.btn-up');
+                const btnDown = div.querySelector('.btn-down');
+
+                if (idx === 0) btnUp.disabled = true;
+                if (idx === list.length - 1) btnDown.disabled = true;
+
+                btnUp.onclick = () => window.moveStaffUp(name);
+                btnDown.onclick = () => window.moveStaffDown(name);
+                div.querySelector('.btn-edit-staff').onclick = () => openStaffEditModal(name);
+
+                listDiv.appendChild(div);
+            });
+        }
     });
 }
 
@@ -891,7 +938,7 @@ function openStaffEditModal(name) {
 
     const inputName = document.getElementById('se-name');
     inputName.value = name || "";
-    inputName.disabled = !isNew; // Cannot rename key for now to keep it simple
+    inputName.disabled = !isNew;
 
     const details = name ? (shiftState.staffDetails[name] || {}) : {};
 
@@ -899,7 +946,7 @@ function openStaffEditModal(name) {
     document.getElementById('se-basic-shift').value = details.basic_shift || 'A';
     document.getElementById('se-contract-days').value = details.contract_days || 20;
 
-    updateRankOptions(); // Populate ranks based on type
+    window.updateRankOptions(); // Use global
     document.getElementById('se-rank').value = details.rank || '';
 
     // Store editing target
@@ -933,21 +980,24 @@ async function saveStaffDetails() {
     shiftState.staffDetails[name] = { type, rank, basic_shift: basicShift, contract_days: contractDays };
 
     // Update Lists (Categorization)
-    // First remove from all lists to ensure no duplicates if category changed (though name is key)
     let lists = shiftState.staffListLists;
     lists.employees = lists.employees.filter(n => n !== name);
     lists.alba_early = lists.alba_early.filter(n => n !== name);
     lists.alba_late = lists.alba_late.filter(n => n !== name);
 
+    let targetList = null;
+    let catType = 'byte';
     if (type === 'employee') {
-        lists.employees.push(name);
+        targetList = lists.employees;
+        catType = 'employee';
     } else {
-        // Decide Early vs Late based on Basic Shift?
-        // Logic in tasks.js expects distinct lists.
-        // For now, if Basic Shift is A -> Early, B -> Late.
-        if (basicShift === 'A') lists.alba_early.push(name);
-        else lists.alba_late.push(name);
+        if (basicShift === 'A') targetList = lists.alba_early;
+        else targetList = lists.alba_late;
     }
+
+    targetList.push(name);
+    // Sort logic call
+    sortStaffList(targetList, catType);
 
     // Save to Firestore
     const docRef = doc(db, 'masters', 'staff_data');
@@ -962,7 +1012,7 @@ async function saveStaffDetails() {
         showToast("スタッフ情報を保存しました");
         document.getElementById('staff-edit-modal').classList.add('hidden');
         renderStaffMasterList();
-        renderShiftAdminTable(); // Refresh table
+        renderShiftAdminTable();
     } catch(e) {
         alert("保存失敗: " + e.message);
     }
@@ -970,23 +1020,19 @@ async function saveStaffDetails() {
 
 async function deleteStaff() {
     const name = document.getElementById('se-name').value;
-    if(!name || !confirm(`本当に ${name} を削除しますか？\n過去のデータには残りますが、リストからは消えます。`)) return;
+    if(!name || !confirm(`本当に ${name} を削除しますか？`)) return;
 
     let lists = shiftState.staffListLists;
     lists.employees = lists.employees.filter(n => n !== name);
     lists.alba_early = lists.alba_early.filter(n => n !== name);
     lists.alba_late = lists.alba_late.filter(n => n !== name);
 
-    // We don't necessarily delete from staffDetails to keep history, but we can if wanted.
-    // Let's keep it in details but remove from active lists.
-
     const docRef = doc(db, 'masters', 'staff_data');
     try {
         await setDoc(docRef, {
             employees: lists.employees,
             alba_early: lists.alba_early,
-            alba_late: lists.alba_late,
-            // staff_details: ... keep existing
+            alba_late: lists.alba_late
         }, { merge: true });
 
         showToast("削除しました");
@@ -998,7 +1044,68 @@ async function deleteStaff() {
     }
 }
 
-// --- Auto Shift Generation Logic (The Brain) ---
+// --- List Mutation Helpers ---
+
+async function moveStaffUp(name) {
+    const lists = shiftState.staffListLists;
+    let list = null;
+    if (lists.employees.includes(name)) list = lists.employees;
+    else if (lists.alba_early.includes(name)) list = lists.alba_early;
+    else if (lists.alba_late.includes(name)) list = lists.alba_late;
+
+    if (!list) return;
+    const idx = list.indexOf(name);
+    if (idx <= 0) return;
+
+    // Swap
+    [list[idx - 1], list[idx]] = [list[idx], list[idx - 1]];
+    await saveStaffListsOnly();
+}
+
+async function moveStaffDown(name) {
+    const lists = shiftState.staffListLists;
+    let list = null;
+    if (lists.employees.includes(name)) list = lists.employees;
+    else if (lists.alba_early.includes(name)) list = lists.alba_early;
+    else if (lists.alba_late.includes(name)) list = lists.alba_late;
+
+    if (!list) return;
+    const idx = list.indexOf(name);
+    if (idx === -1 || idx >= list.length - 1) return;
+
+    // Swap
+    [list[idx], list[idx + 1]] = [list[idx + 1], list[idx]];
+    await saveStaffListsOnly();
+}
+
+async function resetStaffSort() {
+    if(!confirm("全てのスタッフの並び順を役職・名前順にリセットしますか？")) return;
+
+    sortStaffList(shiftState.staffListLists.employees, 'employee');
+    sortStaffList(shiftState.staffListLists.alba_early, 'byte');
+    sortStaffList(shiftState.staffListLists.alba_late, 'byte');
+
+    await saveStaffListsOnly();
+    showToast("並び順をリセットしました");
+}
+
+async function saveStaffListsOnly() {
+    const docRef = doc(db, 'masters', 'staff_data');
+    try {
+        await setDoc(docRef, {
+            employees: shiftState.staffListLists.employees,
+            alba_early: shiftState.staffListLists.alba_early,
+            alba_late: shiftState.staffListLists.alba_late
+        }, { merge: true });
+        renderStaffMasterList();
+        renderShiftAdminTable();
+    } catch(e) {
+        console.error(e);
+        showToast("並び替え保存失敗");
+    }
+}
+
+// --- Auto Shift Generation Logic (Revised) ---
 
 async function generateAutoShift() {
     if(!confirm(`${shiftState.currentYear}年${shiftState.currentMonth}月のシフトを自動作成します。\n既存の確定済みシフトは上書きされます（希望休などは保持）。\nよろしいですか？`)) return;
@@ -1007,16 +1114,14 @@ async function generateAutoShift() {
     const M = shiftState.currentMonth;
     const daysInMonth = new Date(Y, M, 0).getDate();
 
-    // Prepare Data
-    const shifts = shiftState.shiftDataCache; // { StaffName: { work_days, off_days, assignments, monthly_settings } }
-    const details = shiftState.staffDetails; // { StaffName: { rank, type, contract_days, basic_shift } }
+    const shifts = shiftState.shiftDataCache;
+    const details = shiftState.staffDetails;
     const staffNames = [
         ...shiftState.staffListLists.employees,
         ...shiftState.staffListLists.alba_early,
         ...shiftState.staffListLists.alba_late
     ];
 
-    // Helper: Get Staff Info
     const getS = (name) => {
         const d = details[name] || {};
         const s = shifts[name] || {};
@@ -1026,83 +1131,67 @@ async function generateAutoShift() {
             rank: d.rank || '一般',
             type: d.type || 'byte',
             contractDays: d.contract_days || 20,
-            shiftType: m.shift_type || d.basic_shift || 'A', // Monthly setting priority
+            shiftType: m.shift_type || d.basic_shift || 'A',
             requests: {
                 work: s.work_days || [],
                 off: s.off_days || []
             },
-            assignedCount: 0
+            assignedCount: 0,
+            roleCounts: { // Track role assignments count
+                [ROLES.MONEY]: 0,
+                [ROLES.SUB]: 0,
+                [ROLES.WAREHOUSE]: 0,
+                [ROLES.HALL]: 0
+            }
         };
     };
 
     let staffObjects = staffNames.map(getS);
 
-    // Track assigned count for contract fulfillment logic
-    // (In a real scenario, we might need to check previous assignments if we run this mid-month,
-    // but here we assume a fresh generation or full re-gen)
-
-    // Helper: Is Special Day?
     const isSpecialDay = (d) => [2, 8, 12, 18, 22, 28].includes(d);
-
-    // Helper: Get Required Headcount
     const getRequired = (day) => {
         const date = new Date(Y, M - 1, day);
         const dayOfWeek = date.getDay();
-        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6); // Sun or Sat (what about holidays? ignoring for MVP unless using a lib)
-
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
         if (isWeekend && isSpecialDay(day)) return 11;
         if (isWeekend) return 10;
         return 9;
     };
 
-    // Helper: Rank Weight / Eligibility
     const isViceChiefOrAbove = (rank) => ['マネージャー', '主任', '副主任'].includes(rank);
 
-    // Clear existing assignments in memory first
+    // Clear assignments
     staffNames.forEach(n => {
         if(!shifts[n]) shifts[n] = {};
         if(!shifts[n].assignments) shifts[n].assignments = {};
-        // We will overwrite assignments day by day
     });
 
-    // --- Daily Loop ---
     for (let d = 1; d <= daysInMonth; d++) {
         const reqCount = getRequired(d);
 
-        // 1. Separate Candidates by Shift A / B
         const candidatesA = staffObjects.filter(s => s.shiftType === 'A' && !s.requests.off.includes(d));
         const candidatesB = staffObjects.filter(s => s.shiftType === 'B' && !s.requests.off.includes(d));
 
         const processShift = (candidates, label) => {
             let working = [];
 
-            // Step 1: Force Include "Hope Work"
+            // Step 1: Force Include
             const forced = candidates.filter(s => s.requests.work.includes(d));
-            forced.forEach(s => {
-                if(!working.includes(s)) working.push(s);
-            });
+            forced.forEach(s => { if(!working.includes(s)) working.push(s); });
 
-            // Step 2: Ensure Leadership (Vice-Chief+)
+            // Step 2: Ensure Leadership (Existing Logic)
             const hasLeader = working.some(s => isViceChiefOrAbove(s.rank));
             if (!hasLeader) {
-                // Find a leader from candidates not yet working
                 const leaders = candidates.filter(s => !working.includes(s) && isViceChiefOrAbove(s.rank));
                 if (leaders.length > 0) {
-                    // Pick one (Random or prioritized by low assignment?)
-                    // Prioritize low assignment count
                     leaders.sort((a,b) => a.assignedCount - b.assignedCount);
                     working.push(leaders[0]);
-                } else {
-                    // No leader available! (Maybe alert or proceed without?)
-                    // Proceeding...
                 }
             }
 
             // Step 3: Fill to Required Count
-            // Prioritize staff who have low assignedCount relative to contractDays
             const pool = candidates.filter(s => !working.includes(s));
-
-            // Sort pool: Higher (Contract - Assigned) => Higher Priority
+            // Prioritize by contract diff
             pool.sort((a,b) => {
                 const defA = a.contractDays - a.assignedCount;
                 const defB = b.contractDays - b.assignedCount;
@@ -1113,71 +1202,94 @@ async function generateAutoShift() {
                 working.push(pool.shift());
             }
 
-            // Step 4: Assign Roles
-            // Roles: 金(Money), サ(Sub), 倉(Warehouse), ホ(Hall)
-            // Constraints:
-            // 金: General Emp (Default), else Vice-Chief+
-            // サ: Gen Emp, Chief, Leader
-            // 倉: Gen Emp, Chief, Leader
-            // ホ: Gen Emp, All Bytes
-
-            // Helper to check role eligibility
-            const canDoMoney = (s) => (s.type === 'employee' && s.rank === '一般') || isViceChiefOrAbove(s.rank);
-            const canDoSub = (s) => (s.type === 'employee' && s.rank === '一般') || ['チーフ', 'リーダー'].includes(s.rank);
-            const canDoWhs = (s) => (s.type === 'employee' && s.rank === '一般') || ['チーフ', 'リーダー'].includes(s.rank);
-            // Hall is everyone
+            // Step 4: Assign Roles (New Logic)
+            // Roles: 金(1), サ(1), 倉(1), ホ(1)
+            // Priority: Min role count
 
             let unassigned = [...working];
-            const assignedRoles = {}; // name -> role
+            const assignedRoles = {};
 
-            // Assign Money (1 person)
-            const moneyCand = unassigned.filter(canDoMoney);
-            if(moneyCand.length > 0) {
-                // Prefer General Employee
-                let p = moneyCand.find(s => s.rank === '一般' && s.type === 'employee');
-                if(!p) p = moneyCand[0];
-                assignedRoles[p.name] = ROLES.MONEY;
+            const assignRole = (roleName, filterFn, sortFn) => {
+                let cands = unassigned.filter(filterFn);
+                if (cands.length === 0) return;
+
+                // Sort candidates
+                cands.sort((a,b) => {
+                    // Priority 1: Role Count (Equalization)
+                    const countA = a.roleCounts[roleName];
+                    const countB = b.roleCounts[roleName];
+                    if (countA !== countB) return countA - countB;
+
+                    // Priority 2: Custom Sort (e.g. Priority for Hall)
+                    if (sortFn) return sortFn(a,b);
+
+                    return 0;
+                });
+
+                const p = cands[0];
+                assignedRoles[p.name] = roleName;
+                p.roleCounts[roleName]++;
                 unassigned = unassigned.filter(x => x !== p);
-            }
+            };
 
-            // Assign Sub (1 person)
-            if(unassigned.length > 0) {
-                const subCand = unassigned.filter(canDoSub);
-                if(subCand.length > 0) {
-                    const p = subCand[Math.floor(Math.random()*subCand.length)];
-                    assignedRoles[p.name] = ROLES.SUB;
-                    unassigned = unassigned.filter(x => x !== p);
-                }
-            }
-
-            // Assign Warehouse (1 person)
-            if(unassigned.length > 0) {
-                const whsCand = unassigned.filter(canDoWhs);
-                if(whsCand.length > 0) {
-                    const p = whsCand[Math.floor(Math.random()*whsCand.length)];
-                    assignedRoles[p.name] = ROLES.WAREHOUSE;
-                    unassigned = unassigned.filter(x => x !== p);
-                }
-            }
-
-            // Assign Hall (Rest)
-            unassigned.forEach(s => {
-                assignedRoles[s.name] = ROLES.HALL;
+            // 1. 金 (Money)
+            // Target: Employee(General) OR ViceChief+
+            assignRole(ROLES.MONEY, (s) => {
+                if (s.type === 'employee' && s.rank === '一般') return true;
+                if (isViceChiefOrAbove(s.rank)) return true;
+                return false;
             });
 
-            // Commit to Memory
-            working.forEach(s => {
-                const r = assignedRoles[s.name] || ROLES.HALL;
-                if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
-                shifts[s.name].assignments[d] = r;
-                s.assignedCount++;
+            // 2. サ (Sub)
+            // Target: Employee(General) OR Alba(Chief, Leader)
+            assignRole(ROLES.SUB, (s) => {
+                if (s.type === 'employee' && s.rank === '一般') return true;
+                if (['チーフ', 'リーダー'].includes(s.rank)) return true;
+                return false;
             });
 
-            // Mark Public Holiday for non-working? (Optional, user didn't ask)
-            // But we should explicitly mark non-working as '公休' if we want to be thorough
-            // Or just leave null? The Admin table treats null as blank.
-            // Let's mark '公休' for those not selected to be clear.
+            // 3. 倉 (Warehouse)
+            // Target: Employee(General) OR Alba(Chief, Leader)
+            assignRole(ROLES.WAREHOUSE, (s) => {
+                if (s.type === 'employee' && s.rank === '一般') return true;
+                if (['チーフ', 'リーダー'].includes(s.rank)) return true;
+                return false;
+            });
+
+            // 4. ホ (Hall Leader)
+            // Target: Employee(General) OR All Alba
+            // Priority: Alba & General Employee
+            assignRole(ROLES.HALL, (s) => {
+                if (s.type === 'employee' && s.rank === '一般') return true;
+                if (s.type === 'byte') return true;
+                return false;
+            }, (a,b) => {
+                // Priority logic if counts are equal?
+                // "Prioritize Alba and General Employee" is implicitly handled by filtering
+                // since we filter for them.
+                // If we allowed others, we would sort them down.
+                return 0;
+            });
+
+            // Remainder: Blank (No Assignment)
+            // But mark "Off" for those not working
             const notWorking = candidates.filter(s => !working.includes(s));
+
+            // Commit
+            working.forEach(s => {
+                s.assignedCount++;
+                const r = assignedRoles[s.name];
+                if (r) {
+                    if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
+                    shifts[s.name].assignments[d] = r;
+                } else {
+                    // Blank (delete assignment if exists)
+                    if (shifts[s.name].assignments && shifts[s.name].assignments[d]) {
+                        delete shifts[s.name].assignments[d];
+                    }
+                }
+            });
+
             notWorking.forEach(s => {
                  if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
                  shifts[s.name].assignments[d] = '公休';
@@ -1188,7 +1300,6 @@ async function generateAutoShift() {
         processShift(candidatesB, 'B');
     }
 
-    // Save to Firestore
     const docId = `${Y}-${String(M).padStart(2,'0')}`;
     const docRef = doc(db, "shift_submissions", docId);
     try {
@@ -1293,4 +1404,8 @@ window.closeShiftActionModal = closeShiftActionModal;
 window.closeAdminNoteModal = closeAdminNoteModal;
 window.showAdminNoteModal = showAdminNoteModal;
 window.clearShiftAssignments = clearShiftAssignments;
-window.generateAutoShift = generateAutoShift; // Explicit export if needed
+window.generateAutoShift = generateAutoShift;
+window.updateRankOptions = updateRankOptions;
+window.moveStaffUp = moveStaffUp;
+window.moveStaffDown = moveStaffDown;
+window.resetStaffSort = resetStaffSort;
