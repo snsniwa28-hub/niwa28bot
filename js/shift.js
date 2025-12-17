@@ -677,8 +677,8 @@ export function renderShiftAdminTable() {
                 } else {
                     // Requests
                     if (isOffReq) {
-                        bgCell = 'bg-white hover:bg-slate-100';
-                        cellContent = '<span class="text-slate-300 font-bold text-[10px] select-none">(休)</span>';
+                        bgCell = 'bg-rose-50 hover:bg-rose-100';
+                        cellContent = '<span class="text-rose-500 font-bold text-[10px] select-none">(休)</span>';
                     } else if (isWorkReq) {
                          bgCell = 'bg-slate-50 hover:bg-slate-100';
                         cellContent = '<span class="text-blue-300 font-bold text-[10px]">(出)</span>';
@@ -748,8 +748,12 @@ export function showActionSelectModal(day) {
 
     if (shiftState.isAdminMode) {
         adminRolesDiv.classList.remove('hidden');
-        userActionsDiv.classList.add('hidden');
+        userActionsDiv.classList.remove('hidden');
         drInput.classList.remove('hidden');
+
+        // Admin also gets User Action Listeners
+        document.getElementById('btn-shift-action-toggle').onclick = () => { toggleShiftRequest(day, 'off'); closeShiftActionModal(); };
+        document.getElementById('btn-shift-action-work').onclick = () => { toggleShiftRequest(day, 'work'); closeShiftActionModal(); };
     } else {
         adminRolesDiv.classList.add('hidden');
         userActionsDiv.classList.remove('hidden');
@@ -1276,32 +1280,14 @@ async function generateAutoShift() {
                 unassigned = unassigned.filter(x => x !== p);
             };
 
-            // 1. 金 (Money)
-            // Target: Employee(General) OR ViceChief+ OR Allowed
-            assignRole(ROLES.MONEY, (s) => {
-                if (s.allowedRoles.includes('money')) return true;
-                if (s.type === 'employee' && s.rank === '一般') return true;
-                if (isViceChiefOrAbove(s.rank)) return true;
-                return false;
-            });
+            // 1. 金 (Money) - チェックリストのみ
+            assignRole(ROLES.MONEY, (s) => s.allowedRoles.includes('money'));
 
-            // 2. サ (Sub)
-            // Target: Employee(General) OR Alba(Chief, Leader) OR Allowed
-            assignRole(ROLES.SUB, (s) => {
-                if (s.allowedRoles.includes('sub')) return true;
-                if (s.type === 'employee' && s.rank === '一般') return true;
-                if (['チーフ', 'リーダー'].includes(s.rank)) return true;
-                return false;
-            });
+            // 2. サブ (Sub) - チェックリストのみ
+            assignRole(ROLES.SUB, (s) => s.allowedRoles.includes('sub'));
 
-            // 3. 倉 (Warehouse)
-            // Target: Employee(General) OR Alba(Chief, Leader) OR Allowed
-            assignRole(ROLES.WAREHOUSE, (s) => {
-                if (s.allowedRoles.includes('warehouse')) return true;
-                if (s.type === 'employee' && s.rank === '一般') return true;
-                if (['チーフ', 'リーダー'].includes(s.rank)) return true;
-                return false;
-            });
+            // 3. 倉庫 (Warehouse) - チェックリストのみ
+            assignRole(ROLES.WAREHOUSE, (s) => s.allowedRoles.includes('warehouse'));
 
             // 4. ホ (Hall Leader)
             // Target: Employee(General) OR All Alba
