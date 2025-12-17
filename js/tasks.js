@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { doc, onSnapshot, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { TASKS_EMPLOYEE, TASKS_ALBA, MANUAL_TASK_LIST, DEFAULT_STAFF } from './config.js';
 import { $, $$, getTodayDateString, openTimeSlots, closeTimeSlots, openAlbaTimeSlots, openTimeIndexMap, closeTimeIndexMap, getTaskColorClass } from './utils.js';
 import { showToast, initModal, selectOptionUI, closeModal, showPasswordModal } from './ui.js';
@@ -171,9 +171,20 @@ function renderEditTimeline(tabName) {
     const timeMap = isEarly ? openTimeIndexMap : closeTimeIndexMap;
     const allStaff = [...empList, ...albaList];
 
-    if(allStaff.length === 0) { container.innerHTML = "<p class='text-xs text-slate-400'>スタッフがいません</p>"; return; }
+    const buttonsHtml = `
+    <div class="flex gap-2 mb-4">
+        <button onclick="importFromShift(false)" class="px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-lg text-xs hover:bg-slate-200 border border-slate-200 flex items-center gap-1">
+            <span>📥</span> シフトから人員のみ
+        </button>
+        <button onclick="importFromShift(true)" class="px-4 py-2 bg-indigo-50 text-indigo-600 font-bold rounded-lg text-xs hover:bg-indigo-100 border border-indigo-200 flex items-center gap-1">
+            <span>⚡</span> 全自動読み込み（タスク付）
+        </button>
+    </div>
+    `;
 
-    let html = `<div class="relative min-w-[800px] border border-slate-200 rounded-lg overflow-hidden bg-white select-none">`;
+    if(allStaff.length === 0) { container.innerHTML = buttonsHtml + "<p class='text-xs text-slate-400'>スタッフがいません</p>"; return; }
+
+    let html = buttonsHtml + `<div class="relative min-w-[800px] border border-slate-200 rounded-lg overflow-hidden bg-white select-none">`;
     html += `<div class="flex border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 sticky top-0 z-10"><div class="w-24 shrink-0 p-2 border-r border-slate-200 sticky left-0 bg-slate-50 z-20">STAFF</div><div class="flex-1 flex">`;
     timeSlots.forEach(t => html += `<div class="flex-1 text-center py-2 border-r border-slate-100">${t}</div>`);
     html += `</div></div>`;
@@ -822,3 +833,176 @@ export async function autoAssignTasks(sec, listType) {
         alert("割り振り処理中にエラーが発生しました: " + e.message);
     }
 }
+
+// === Shift Import ===
+
+export async function importFromShift(fullAutoMode) {
+    if (!currentDate) return alert("日付が選択されていません");
+    if (!confirm('現在の入力内容は上書きされますがよろしいですか？')) return;
+
+    const [y, m, d] = currentDate.split('-');
+    const dayNum = parseInt(d).toString(); // "05" -> "5"
+    const docId = `${y}-${m}`;
+
+    try {
+        const shiftDocRef = doc(db, 'shift_submissions', docId);
+        const shiftSnap = await getDoc(shiftDocRef);
+
+        if (!shiftSnap.exists()) {
+            alert(`${y}年${m}月のシフトデータが見つかりません`);
+            return;
+        }
+
+        const shiftData = shiftSnap.data();
+        const assignments = {}; // name -> role
+        const shiftTypes = {}; // name -> 'A' | 'B'
+
+        // Scan all staff in shift data
+        Object.keys(shiftData).forEach(name => {
+            const s = shiftData[name];
+            if (s.assignments && s.assignments[dayNum]) {
+                const role = s.assignments[dayNum];
+                if (role !== '公休') {
+                    assignments[name] = role;
+                    // Determine Type
+                    let type = 'A';
+                    if (s.monthly_settings && s.monthly_settings.shift_type) {
+                        type = s.monthly_settings.shift_type;
+                    } else if (masterStaffList.staff_details && masterStaffList.staff_details[name]) {
+                        type = masterStaffList.staff_details[name].basic_shift || 'A';
+                    }
+                    shiftTypes[name] = type;
+                }
+            }
+        });
+
+        // Reset Lists (Early/Late)
+        const newEarly = [];
+        const newLate = [];
+        // Note: Closing lists are NOT reset based on prompt instruction ("staffList.early... staffList.late... をリセット")
+        // But to prevent duplicates if someone moves from early/late to closing, we might want to be careful.
+        // However, standard usage seems to separate them. I'll stick to instructions.
+        staffList.early = [];
+        staffList.late = [];
+
+        // Populate Lists
+        Object.keys(assignments).forEach(name => {
+            const type = shiftTypes[name];
+            const staffObj = { name: name, tasks: [] };
+            if (type === 'A') newEarly.push(staffObj);
+            else newLate.push(staffObj);
+        });
+
+        // Sort lists (Simple helper)
+        const getSortIdx = (n) => {
+            let i = masterStaffList.employees.indexOf(n);
+            if(i!==-1) return i;
+            i = masterStaffList.alba_early.indexOf(n);
+            if(i!==-1) return i + 1000;
+            i = masterStaffList.alba_late.indexOf(n);
+            if(i!==-1) return i + 2000;
+            return 9999;
+        };
+        newEarly.sort((a,b) => getSortIdx(a.name) - getSortIdx(b.name));
+        newLate.sort((a,b) => getSortIdx(a.name) - getSortIdx(b.name));
+
+        staffList.early = newEarly;
+        staffList.late = newLate;
+
+        // Full Auto Logic
+        if (fullAutoMode) {
+             // Reset fixed roles
+             ['fixed_money_count','fixed_open_warehouse','fixed_open_counter',
+              'fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(k => staffList[k] = "");
+
+             // Identify Roles
+             const fixedAssignments = {};
+
+             Object.keys(assignments).forEach(name => {
+                 const role = assignments[name];
+                 const type = shiftTypes[name];
+                 const isA = (type === 'A');
+
+                 if (role.includes('金')) {
+                     if (isA) staffList.fixed_money_count = name;
+                     else staffList.fixed_money_collect = name;
+                 } else if (role.includes('倉')) {
+                     if (isA) staffList.fixed_open_warehouse = name;
+                     else staffList.fixed_warehouses = name;
+                 }
+                 // 'Sub' and 'Hall' are not fixed roles in task manager usually (except 'fixed_counters' maybe?)
+                 // 'Sub' -> 'サ'. Not mapped to fixed fields in tasks.js config generally.
+                 // 'Hall' -> 'ホ'.
+             });
+
+             // Apply Fixed Tasks (Logic adapted from setFixed)
+             const defs={
+                'fixed_money_count': [
+                    {t:'金銭業務',s:'07:00',e:'08:15'},
+                    {t:'朝礼',s:'09:00',e:'09:15'},
+                    {t:'S台チェック(社員)',s:'09:15',e:'09:45'},
+                    {t:'全体確認',s:'09:45',e:'10:00'}
+                ],
+                'fixed_open_warehouse': [
+                    {t:'朝礼',s:'09:00',e:'09:15'},
+                    {t:'倉庫番(特景)',s:'09:15',e:'10:00'}
+                ],
+                'fixed_open_counter': [
+                    {t:'朝礼',s:'09:00',e:'09:15'},
+                    {t:'カウンター開設準備',s:'09:15',e:'09:45'},
+                    {t:'全体確認',s:'09:45',e:'10:00'}
+                ],
+                'fixed_money_collect': [{t:'金銭回収',s:'22:45',e:'23:15'}],
+                'fixed_warehouses': [{t:'倉庫整理',s:'22:45',e:'23:15'}],
+                'fixed_counters': [{t:'カウンター業務',s:'22:45',e:'23:00'}]
+            };
+
+            const applyTasks = (key) => {
+                const name = staffList[key];
+                if(!name) return;
+                // Find staff
+                let p = staffList.early.find(s => s.name === name);
+                if (!p) p = staffList.late.find(s => s.name === name);
+                // Also check closing? If Late shift person assigned closing role?
+                if (!p) p = staffList.closing_employee.find(s => s.name === name);
+                if (!p) p = staffList.closing_alba.find(s => s.name === name);
+
+                if (p) {
+                    const tasksToAdd = defs[key];
+                    if(tasksToAdd){
+                        tasksToAdd.forEach(task => {
+                            p.tasks.push({ start: task.s, end: task.e, task: task.t, remarks: '（固定）' });
+                        });
+                        p.tasks.sort((a,b)=>a.start.localeCompare(b.start));
+                    }
+                }
+            };
+
+            ['fixed_money_count','fixed_open_warehouse','fixed_open_counter',
+             'fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(k => applyTasks(k));
+
+             // Then trigger auto assign for the rest?
+             // Prompt says: "タスク生成まで行う" -> "役割判定、固定枠セット、タスク生成まで行う"
+             // Does it mean running the AI Auto Assign for EVERYONE?
+             // "セットされた固定役割に対して...タスクバーを自動生成する"
+             // It implies just the fixed tasks.
+             // But "AI Automatic Allocation" button does more (fills free time etc).
+             // Label: "全自動読み込み（タスク付）"
+             // Usually "Full Auto" implies running the solver.
+             // But the instructions specifically said:
+             // "セットされた固定役割に対して、setFixed 関数等のロジックでタスクバー（timeline tasks）を自動生成する。"
+             // It did NOT explicitly say "Run autoAssignTasks()".
+             // It said "Task generation for the fixed roles".
+             // So I will STOP at fixed tasks. The user can click AI Assign if they want more.
+        }
+
+        await saveStaffListToFirestore();
+        refreshCurrentView();
+        showToast("シフトから取り込みました");
+
+    } catch(e) {
+        console.error(e);
+        alert("エラー: " + e.message);
+    }
+}
+window.importFromShift = importFromShift;
