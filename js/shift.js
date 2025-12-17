@@ -1,7 +1,7 @@
 import { db } from './firebase.js';
 import { doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { showPasswordModal, closePasswordModal, showToast } from './ui.js';
-import { $ } from './utils.js';
+import { $, shuffleArray } from './utils.js';
 
 let shiftState = {
     currentYear: new Date().getFullYear(),
@@ -575,10 +575,20 @@ export function renderShiftCalendar() {
         const remarkIndicator = hasDailyRemark ? '<span class="absolute top-1 right-1 text-[8px]">📝</span>' : '';
 
         const cell = document.createElement('div');
-        cell.className = `${bgClass} ${borderClass} flex flex-col items-center justify-center cursor-pointer transition-colors select-none active:opacity-80 relative min-h-[60px]`;
+        let cursorClass = 'cursor-pointer';
+        let hoverClass = 'hover:bg-emerald-50 active:opacity-80';
+
+        if (isRestricted) {
+            cursorClass = 'cursor-default';
+            hoverClass = '';
+        }
+
+        cell.className = `${bgClass} ${borderClass} flex flex-col items-center justify-center ${cursorClass} ${hoverClass} transition-colors select-none relative min-h-[60px]`;
         cell.innerHTML = `<span class="text-xl font-black ${numColor}">${d}</span>${label}${remarkIndicator}`;
 
-        cell.onclick = () => showActionSelectModal(d);
+        if (!isRestricted) {
+            cell.onclick = () => showActionSelectModal(d);
+        }
         container.appendChild(cell);
     }
 }
@@ -1290,6 +1300,9 @@ async function generateAutoShift() {
             const assignRole = (roleName, filterFn, sortFn) => {
                 let cands = unassigned.filter(filterFn);
                 if (cands.length === 0) return;
+
+                // Shuffle first to randomize order for equal priorities
+                shuffleArray(cands);
 
                 // Sort candidates
                 cands.sort((a,b) => {
