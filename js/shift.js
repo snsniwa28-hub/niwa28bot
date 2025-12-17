@@ -239,18 +239,22 @@ export function createShiftModals() {
                 </div>
                 <div>
                     <label class="text-xs font-bold text-slate-500">特例許可 (スキル設定)</label>
-                    <div class="flex gap-4 mt-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                    <div class="grid grid-cols-2 gap-2 mt-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
                         <label class="flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" id="se-allow-money" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
-                            <span class="text-sm text-slate-700 font-bold">金銭</span>
+                            <input type="checkbox" id="se-allow-money-main" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700 font-bold">金銭メイン</span>
                         </label>
                         <label class="flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" id="se-allow-sub" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
-                            <span class="text-sm text-slate-700 font-bold">サブ</span>
+                            <input type="checkbox" id="se-allow-money-sub" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700 font-bold">金銭サブ</span>
                         </label>
                         <label class="flex items-center gap-2 cursor-pointer select-none">
                             <input type="checkbox" id="se-allow-warehouse" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
                             <span class="text-sm text-slate-700 font-bold">倉庫</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="se-allow-hall-resp" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700 font-bold">ホ責</span>
                         </label>
                     </div>
                 </div>
@@ -677,8 +681,8 @@ export function renderShiftAdminTable() {
                 } else {
                     // Requests
                     if (isOffReq) {
-                        bgCell = 'bg-rose-50 hover:bg-rose-100';
-                        cellContent = '<span class="text-rose-500 font-bold text-[10px] select-none">(休)</span>';
+                        bgCell = 'bg-red-50 hover:bg-red-100';
+                        cellContent = '<span class="text-red-500 font-bold text-[10px] select-none">(休)</span>';
                     } else if (isWorkReq) {
                          bgCell = 'bg-slate-50 hover:bg-slate-100';
                         cellContent = '<span class="text-blue-300 font-bold text-[10px]">(出)</span>';
@@ -748,6 +752,7 @@ export function showActionSelectModal(day) {
 
     if (shiftState.isAdminMode) {
         adminRolesDiv.classList.remove('hidden');
+        // Explicitly show user actions (requests) for admin as well
         userActionsDiv.classList.remove('hidden');
         drInput.classList.remove('hidden');
 
@@ -793,7 +798,7 @@ export function closeShiftActionModal() {
 }
 
 // User Request Toggle
-function toggleShiftRequest(day, type) {
+async function toggleShiftRequest(day, type) {
     const name = shiftState.selectedStaff;
     if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { off_days: [], work_days: [], assignments: {} };
 
@@ -816,7 +821,22 @@ function toggleShiftRequest(day, type) {
 
     shiftState.shiftDataCache[name].off_days = offList;
     shiftState.shiftDataCache[name].work_days = workList;
-    renderShiftCalendar();
+
+    if (shiftState.isAdminMode) {
+        // Immediate Save
+        const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+        const docRef = doc(db, "shift_submissions", docId);
+        try {
+            const updateData = {};
+            updateData[name] = shiftState.shiftDataCache[name];
+            await setDoc(docRef, updateData, { merge: true });
+            renderShiftAdminTable();
+        } catch(e) {
+            alert("保存失敗: " + e.message);
+        }
+    } else {
+        renderShiftCalendar();
+    }
 }
 
 // Admin Set Role
@@ -918,10 +938,18 @@ function renderStaffMasterList() {
                 const div = document.createElement('div');
                 div.className = "flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm mb-2";
 
+                // Generate Badges
+                const ar = details.allowed_roles || [];
+                let badges = '';
+                if(ar.includes('money_main')) badges += `<span class="ml-1 text-[10px] bg-yellow-100 text-yellow-700 px-1 rounded">金主</span>`;
+                if(ar.includes('money_sub')) badges += `<span class="ml-1 text-[10px] bg-yellow-50 text-yellow-600 px-1 rounded">金副</span>`;
+                if(ar.includes('warehouse')) badges += `<span class="ml-1 text-[10px] bg-blue-100 text-blue-700 px-1 rounded">倉</span>`;
+                if(ar.includes('hall_resp')) badges += `<span class="ml-1 text-[10px] bg-orange-100 text-orange-700 px-1 rounded">ホ責</span>`;
+
                 // Content
                 div.innerHTML = `
                     <div class="flex-1">
-                        <div class="font-bold text-slate-800">${name}</div>
+                        <div class="font-bold text-slate-800 flex items-center">${name}${badges}</div>
                         <div class="text-xs text-slate-500">
                             ${details.rank || '-'} / 基本:${details.basic_shift || '-'} / 契約:${details.contract_days || '-'}日
                         </div>
@@ -968,9 +996,10 @@ function openStaffEditModal(name) {
     document.getElementById('se-contract-days').value = details.contract_days || 20;
 
     const ar = details.allowed_roles || [];
-    document.getElementById('se-allow-money').checked = ar.includes('money');
-    document.getElementById('se-allow-sub').checked = ar.includes('sub');
+    document.getElementById('se-allow-money-main').checked = ar.includes('money_main');
+    document.getElementById('se-allow-money-sub').checked = ar.includes('money_sub');
     document.getElementById('se-allow-warehouse').checked = ar.includes('warehouse');
+    document.getElementById('se-allow-hall-resp').checked = ar.includes('hall_resp');
 
     window.updateRankOptions(); // Use global
     document.getElementById('se-rank').value = details.rank || '';
@@ -1003,9 +1032,10 @@ async function saveStaffDetails() {
     const contractDays = parseInt(document.getElementById('se-contract-days').value) || 0;
 
     const allowedRoles = [];
-    if(document.getElementById('se-allow-money').checked) allowedRoles.push('money');
-    if(document.getElementById('se-allow-sub').checked) allowedRoles.push('sub');
+    if(document.getElementById('se-allow-money-main').checked) allowedRoles.push('money_main');
+    if(document.getElementById('se-allow-money-sub').checked) allowedRoles.push('money_sub');
     if(document.getElementById('se-allow-warehouse').checked) allowedRoles.push('warehouse');
+    if(document.getElementById('se-allow-hall-resp').checked) allowedRoles.push('hall_resp');
 
     // Update Local State
     shiftState.staffDetails[name] = {
@@ -1280,13 +1310,13 @@ async function generateAutoShift() {
                 unassigned = unassigned.filter(x => x !== p);
             };
 
-            // 1. 金 (Money) - チェックリストのみ
-            assignRole(ROLES.MONEY, (s) => s.allowedRoles.includes('money'));
+            // 1. 金 (Money) - Checks 'money_main'
+            assignRole(ROLES.MONEY, (s) => s.allowedRoles.includes('money_main'));
 
-            // 2. サブ (Sub) - チェックリストのみ
-            assignRole(ROLES.SUB, (s) => s.allowedRoles.includes('sub'));
+            // 2. サブ (Sub) - Checks 'hall_resp'
+            assignRole(ROLES.SUB, (s) => s.allowedRoles.includes('hall_resp'));
 
-            // 3. 倉庫 (Warehouse) - チェックリストのみ
+            // 3. 倉庫 (Warehouse) - Checks 'warehouse'
             assignRole(ROLES.WAREHOUSE, (s) => s.allowedRoles.includes('warehouse'));
 
             // 4. ホ (Hall Leader)
