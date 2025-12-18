@@ -1323,6 +1323,13 @@ async function generateAutoShift() {
 
     let staffObjects = staffNames.map(getS);
 
+    // --- 1. Contract Days Pre-correction (Physical Limit) ---
+    staffObjects.forEach(s => {
+        // Corrected Target = Min(Contract, DaysInMonth - OffDays)
+        const maxDays = daysInMonth - s.requests.off.length;
+        s.contractDays = Math.min(s.contractDays, maxDays);
+    });
+
     // Track consecutive work days
     const consecutiveWork = {};
     staffNames.forEach(n => consecutiveWork[n] = 0);
@@ -1354,73 +1361,68 @@ async function generateAutoShift() {
             return needed / daysRemaining;
         };
 
+        // Helper: Future Prediction Check
+        // Returns true if adding today does NOT violate the "Max 5 Consecutive" rule
+        // considering future requests.
+        const checkFutureConsecutive = (s) => {
+            let current = consecutiveWork[s.name]; // Consecutive days leading up to today
+            // If today (1 day) + current > 5, it's already bad, but usually current <= 5.
+            // We need to check if adding today triggers a chain > 5.
+
+            let future = 0;
+            let checkDay = d + 1;
+            while (s.requests.work.includes(checkDay)) {
+                future++;
+                checkDay++;
+            }
+
+            return (current + 1 + future) <= 5;
+        };
+
         // Separate processing for A and B groups
         ['A', 'B'].forEach(type => {
             // Get candidates: Staff of this type, NOT requested OFF
             const candidates = staffObjects.filter(s => s.shiftType === type && !s.requests.off.includes(d));
             let working = [];
 
-            // Step 1: Priority (Requests) - Unconditional
+            // --- Step 1: Work Requests (Unconditional) ---
             const step1 = candidates.filter(s => s.requests.work.includes(d));
             step1.forEach(s => { if(!working.includes(s)) working.push(s); });
 
-            // Step 2: Critical (Urgency >= 1.0) - Unconditional
+            // --- Step 2: Critical Urgency >= 1.0 (Absolute Adoption) ---
+            // Ignore Consecutive Rules, Ignore Future Prediction, Ignore Capacity
             const step2 = candidates.filter(s => {
-                if(working.includes(s)) return false;
+                if (working.includes(s)) return false;
                 return getUrgency(s) >= 1.0;
             });
             step2.forEach(s => working.push(s));
 
-            // Step 2.5: Employee Security (Priority B) - Ensure 4 Employees
-            const minEmpTarget = 4;
-            const currentEmpCount = working.filter(s => s.type === 'employee').length;
+            // --- Step 3 & 4: Adjustment (Safe Zone) ---
+            // Filter: Urgency < 1.0 (implicitly, since >= 1.0 are taken)
+            // Check: Future Prediction
+            let pool = candidates.filter(s => !working.includes(s));
 
-            if (currentEmpCount < minEmpTarget) {
-                const neededEmp = minEmpTarget - currentEmpCount;
-                // Candidates: Employees, Not working, Consecutive < 4
-                const empCandidates = candidates.filter(s =>
-                    s.type === 'employee' &&
-                    !working.includes(s) &&
-                    consecutiveWork[s.name] < 4
-                );
+            // Apply Future Prediction Filter
+            // "NGの場合: 今日は休ませて連勤を回避する" -> Remove from pool
+            pool = pool.filter(s => checkFutureConsecutive(s));
 
-                // Sort by Urgency DESC
-                empCandidates.sort((a,b) => getUrgency(b) - getUrgency(a));
+            // Sort by Urgency (High -> Low)
+            shuffleArray(pool); // Randomize ties
+            pool.sort((a,b) => getUrgency(b) - getUrgency(a));
 
-                // Add up to needed amount
-                const toAdd = empCandidates.slice(0, neededEmp);
-                toAdd.forEach(s => working.push(s));
-            }
+            // Fill
+            for (const s of pool) {
+                const urgency = getUrgency(s);
+                // Condition to add:
+                // 1. Capacity not reached
+                // 2. OR Capacity reached but Urgency >= 0.85 (Overflow)
 
-            // Step 3: Warning (Urgency >= 0.75) - Check Consecutive < 4
-            const step3 = candidates.filter(s => {
-                if(working.includes(s)) return false;
-                return getUrgency(s) >= 0.75;
-            });
-            // Sort by urgency desc for Step 3? Not strictly required by prompt but logical
-            step3.sort((a,b) => getUrgency(b) - getUrgency(a));
-
-            step3.forEach(s => {
-                if (consecutiveWork[s.name] < 4) {
+                if (working.length < reqCount) {
+                    working.push(s);
+                } else if (urgency >= 0.85) {
                     working.push(s);
                 }
-            });
-
-            // Step 4: Adjustment (Fill to reqCount)
-            if (working.length < reqCount) {
-                const needed = reqCount - working.length;
-                let pool = candidates.filter(s => !working.includes(s));
-
-                // Check Consecutive < 4
-                pool = pool.filter(s => consecutiveWork[s.name] < 4);
-
-                // Sort: Urgency High -> Low
-                shuffleArray(pool); // Randomize ties
-                pool.sort((a,b) => getUrgency(b) - getUrgency(a));
-
-                // Take needed
-                const added = pool.slice(0, needed);
-                added.forEach(s => working.push(s));
+                // Else: Do not add (Skip)
             }
 
             // --- Commit & Role Assignment ---
@@ -1432,7 +1434,6 @@ async function generateAutoShift() {
             });
 
             // Reset consecutive for those not working in this group
-            // Note: We only touch this group's staff.
             const allInGroup = staffObjects.filter(s => s.shiftType === type);
             allInGroup.forEach(s => {
                 if (!working.includes(s)) {
@@ -1476,7 +1477,6 @@ async function generateAutoShift() {
                     const r = assignedRoles[s.name];
                     shifts[s.name].assignments[d] = r || '出勤';
                 } else {
-                     // Not working, not Off Request -> Adjusted Off
                      delete shifts[s.name].assignments[d];
                 }
             });
