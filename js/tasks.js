@@ -936,10 +936,12 @@ export async function importFromShift(fullAutoMode) {
                  } else if (role.includes('倉')) {
                      if (isA) staffList.fixed_open_warehouse = name;
                      else staffList.fixed_warehouses = name;
+                 } else if (role.includes('サ')) {
+                     if (isA) staffList.fixed_open_counter = name;
+                     else staffList.fixed_counters = name;
                  }
-                 // 'Sub' and 'Hall' are not fixed roles in task manager usually (except 'fixed_counters' maybe?)
-                 // 'Sub' -> 'サ'. Not mapped to fixed fields in tasks.js config generally.
-                 // 'Hall' -> 'ホ'.
+                 // 'Hall' ('ホ') is a general role and does not map to a specific fixed task field.
+                 // These staff will be available for auto-assignment.
              });
 
              // Apply Fixed Tasks (Logic adapted from setFixed)
