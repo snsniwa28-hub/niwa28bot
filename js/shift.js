@@ -1371,6 +1371,27 @@ async function generateAutoShift() {
             });
             step2.forEach(s => working.push(s));
 
+            // Step 2.5: Employee Security (Priority B) - Ensure 4 Employees
+            const minEmpTarget = 4;
+            const currentEmpCount = working.filter(s => s.type === 'employee').length;
+
+            if (currentEmpCount < minEmpTarget) {
+                const neededEmp = minEmpTarget - currentEmpCount;
+                // Candidates: Employees, Not working, Consecutive < 4
+                const empCandidates = candidates.filter(s =>
+                    s.type === 'employee' &&
+                    !working.includes(s) &&
+                    consecutiveWork[s.name] < 4
+                );
+
+                // Sort by Urgency DESC
+                empCandidates.sort((a,b) => getUrgency(b) - getUrgency(a));
+
+                // Add up to needed amount
+                const toAdd = empCandidates.slice(0, neededEmp);
+                toAdd.forEach(s => working.push(s));
+            }
+
             // Step 3: Warning (Urgency >= 0.75) - Check Consecutive < 4
             const step3 = candidates.filter(s => {
                 if(working.includes(s)) return false;
