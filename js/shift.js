@@ -724,10 +724,11 @@ export function renderShiftAdminTable() {
                              `;
                          } else {
                              // Pattern 2: Without Role (e.g. '出勤')
+                             const typeLabel = currentType === 'A' ? 'A早' : 'B遅';
                              const typeColor = currentType === 'A' ? 'text-amber-500' : 'text-indigo-500';
                              cellContent = `
                                 <div class="flex items-center justify-center h-full">
-                                    <span class="${typeColor} font-black text-base">${currentType}</span>
+                                    <span class="${typeColor} font-black text-[11px]">${typeLabel}</span>
                                 </div>
                              `;
                          }
@@ -741,7 +742,7 @@ export function renderShiftAdminTable() {
                          bgCell = 'bg-slate-50 hover:bg-slate-100';
                         cellContent = '<span class="text-blue-300 font-bold text-[10px]">(出)</span>';
                     } else {
-                        cellContent = '<span class="text-slate-200">-</span>';
+                        cellContent = '<span class="text-slate-300 font-bold text-[10px] select-none">/</span>';
                     }
                 }
 
@@ -1332,9 +1333,20 @@ async function generateAutoShift() {
         return 9;
     };
 
-    const isViceChiefOrAbove = (rank) => ['マネージャー', '主任', '副主任'].includes(rank);
+    // Helper: Check for 5 consecutive work days (d-1 to d-5)
+    // Returns true if staff worked all 5 previous days
+    const hasWorkedLast5Days = (name, currentDay) => {
+        if (currentDay <= 5) return false;
+        for (let k = 1; k <= 5; k++) {
+            const d = currentDay - k;
+            const assign = shifts[name].assignments && shifts[name].assignments[d];
+            // If undefined or '公休', then they didn't work
+            if (!assign || assign === '公休') return false;
+        }
+        return true;
+    };
 
-    // Clear assignments
+    // Ensure structure
     staffNames.forEach(n => {
         if(!shifts[n]) shifts[n] = {};
         if(!shifts[n].assignments) shifts[n].assignments = {};
@@ -1343,127 +1355,92 @@ async function generateAutoShift() {
     for (let d = 1; d <= daysInMonth; d++) {
         const reqCount = getRequired(d);
 
+        // Candidates: Exclude Requested Off
         const candidatesA = staffObjects.filter(s => s.shiftType === 'A' && !s.requests.off.includes(d));
         const candidatesB = staffObjects.filter(s => s.shiftType === 'B' && !s.requests.off.includes(d));
 
         const processShift = (candidates, label) => {
             let working = [];
 
-            // Step 1: Force Include
+            // --- Priority S: Work Request (Must Include) ---
             const forced = candidates.filter(s => s.requests.work.includes(d));
             forced.forEach(s => { if(!working.includes(s)) working.push(s); });
 
-            // Step 2: Secure Contract Days (Ignore Capacity)
-            let pool = candidates.filter(s => !working.includes(s));
+            // --- Priority A: Urgent Contract (Must Include) ---
+            // Condition: Remaining Business Days <= Remaining Contract Needed
+            // Remaining Business Days = daysInMonth - d + 1
+            const remainingDays = daysInMonth - d + 1;
+            const urgent = candidates.filter(s => !working.includes(s) && (remainingDays <= (s.contractDays - s.assignedCount)));
+            urgent.forEach(s => working.push(s));
 
-            // Filter those who haven't met contract days
-            let needingDays = pool.filter(s => s.assignedCount < s.contractDays);
-
-            // Sort by deficit (descending: largest deficit first)
-            needingDays.sort((a,b) => {
-                const defA = a.contractDays - a.assignedCount;
-                const defB = b.contractDays - b.assignedCount;
-                return defB - defA;
-            });
-
-            // Add ALL of them (even if it exceeds reqCount)
-            needingDays.forEach(s => working.push(s));
-
-            // Step 3: Fill to Minimum Staffing (if count < reqCount)
+            // --- Priority B: Adjustment (Fill to reqCount) ---
             if (working.length < reqCount) {
-                // Refresh pool (remove those just added)
-                pool = candidates.filter(s => !working.includes(s));
+                const needed = reqCount - working.length;
+                let pool = candidates.filter(s => !working.includes(s));
 
-                // Sort remaining by deficit (closest to target first)
+                // Filter: Prevent 6 consecutive days (exclude if worked last 5 days)
+                pool = pool.filter(s => !hasWorkedLast5Days(s.name, d));
+
+                // Sort: Progress Lag Ascending (assigned / contract)
                 pool.sort((a,b) => {
-                    const defA = a.contractDays - a.assignedCount;
-                    const defB = b.contractDays - b.assignedCount;
-                    return defB - defA;
+                    const rA = a.contractDays > 0 ? a.assignedCount / a.contractDays : 999;
+                    const rB = b.contractDays > 0 ? b.assignedCount / b.contractDays : 999;
+                    return rA - rB;
                 });
 
-                while (working.length < reqCount && pool.length > 0) {
-                    working.push(pool.shift());
+                // Take needed
+                for (let i = 0; i < needed && i < pool.length; i++) {
+                    working.push(pool[i]);
                 }
             }
 
-            // Step 4: Assign Roles (New Logic)
-            // Roles: 金(1), サ(1), 倉(1), ホ(1)
-            // Priority: Min role count
-
+            // --- Role Assignment ---
             let unassigned = [...working];
             const assignedRoles = {};
 
             const assignRole = (roleName, filterFn, sortFn) => {
                 let cands = unassigned.filter(filterFn);
                 if (cands.length === 0) return;
-
-                // Shuffle first to randomize order for equal priorities
                 shuffleArray(cands);
-
-                // Sort candidates
                 cands.sort((a,b) => {
-                    // Priority 1: Role Count (Equalization)
                     const countA = a.roleCounts[roleName];
                     const countB = b.roleCounts[roleName];
                     if (countA !== countB) return countA - countB;
-
-                    // Priority 2: Custom Sort (e.g. Priority for Hall)
                     if (sortFn) return sortFn(a,b);
-
                     return 0;
                 });
-
                 const p = cands[0];
                 assignedRoles[p.name] = roleName;
                 p.roleCounts[roleName]++;
                 unassigned = unassigned.filter(x => x !== p);
             };
 
-            // 1. 金 (Money) - Checks 'money_main'
             assignRole(ROLES.MONEY, (s) => s.allowedRoles.includes('money_main'));
-
-            // 2. サブ (Sub) - Checks 'hall_resp'
             assignRole(ROLES.SUB, (s) => s.allowedRoles.includes('hall_resp'));
-
-            // 3. 倉庫 (Warehouse) - Checks 'warehouse'
             assignRole(ROLES.WAREHOUSE, (s) => s.allowedRoles.includes('warehouse'));
+            assignRole(ROLES.HALL, (s) => (s.type === 'employee' && s.rank === '一般') || s.type === 'byte');
 
-            // 4. ホ (Hall Leader)
-            // Target: Employee(General) OR All Alba
-            // Priority: Alba & General Employee
-            assignRole(ROLES.HALL, (s) => {
-                if (s.type === 'employee' && s.rank === '一般') return true;
-                if (s.type === 'byte') return true;
-                return false;
-            }, (a,b) => {
-                // Priority logic if counts are equal?
-                // "Prioritize Alba and General Employee" is implicitly handled by filtering
-                // since we filter for them.
-                // If we allowed others, we would sort them down.
-                return 0;
-            });
-
-            // Remainder: Blank (No Assignment)
-            // But mark "Off" for those not working
-            const notWorking = candidates.filter(s => !working.includes(s));
-
-            // Commit
+            // --- Apply to State ---
+            // Working
             working.forEach(s => {
                 s.assignedCount++;
                 const r = assignedRoles[s.name];
-                if (r) {
-                    if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
-                    shifts[s.name].assignments[d] = r;
-                } else {
-                    // Working but no role -> '出勤'
-                    if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
-                    shifts[s.name].assignments[d] = '出勤';
-                }
+                const assignment = r || '出勤';
+                shifts[s.name].assignments[d] = assignment;
             });
 
-            notWorking.forEach(s => {
-                 if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
-                 shifts[s.name].assignments[d] = '公休';
+            // Not Working
+            // Handle `requests.off` (set '公休') and others (delete)
+            const allInType = staffObjects.filter(s => s.shiftType === label);
+            allInType.forEach(s => {
+                if (working.includes(s)) return; // Already handled
+
+                if (s.requests.off.includes(d)) {
+                    shifts[s.name].assignments[d] = '公休';
+                } else {
+                    // Surplus / Not Selected / 6-day exclusion
+                    delete shifts[s.name].assignments[d];
+                }
             });
         };
 
