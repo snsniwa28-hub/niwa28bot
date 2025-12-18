@@ -692,8 +692,13 @@ export function renderShiftAdminTable() {
 
                 if (assignment) {
                     if (assignment === '公休') {
-                         bgCell = 'bg-white hover:bg-slate-100';
-                         cellContent = '<span class="text-slate-200 font-bold text-[10px] select-none">/</span>';
+                         if (isOffReq) {
+                             bgCell = 'bg-red-50 hover:bg-red-100';
+                             cellContent = '<span class="text-red-500 font-bold text-[10px] select-none">(休)</span>';
+                         } else {
+                             bgCell = 'bg-white hover:bg-slate-100';
+                             cellContent = '<span class="text-slate-200 font-bold text-[10px] select-none">/</span>';
+                         }
                     } else {
                          // Role assigned
                          bgCell = 'bg-white hover:bg-slate-100';
@@ -704,7 +709,13 @@ export function renderShiftAdminTable() {
                          if(assignment.includes('倉')) roleColor = 'text-blue-600';
                          if(assignment.includes('ホ')) roleColor = 'text-purple-600';
 
-                         cellContent = `<span class="${roleColor} font-black">${assignment}</span>`;
+                         const typeLabel = currentType === 'A' ? 'A早' : 'B遅';
+                         cellContent = `
+                            <div class="flex flex-col items-center justify-center leading-none -mt-0.5">
+                                <span class="text-[7px] text-slate-400 font-normal transform scale-90">${typeLabel}</span>
+                                <span class="${roleColor} font-black text-xs -mt-px">${assignment}</span>
+                            </div>
+                         `;
                     }
                 } else {
                     // Requests
@@ -760,7 +771,7 @@ export function renderShiftAdminTable() {
             else listB.push(name);
         });
 
-        // Custom Sort for Mixed List (Rank > Name, Employee priority in rank check)
+        // Custom Sort for Mixed List (Emp > Byte, then Rank > Name)
         const mixedSort = (list) => {
              return list.sort((a,b) => {
                  const da = shiftState.staffDetails[a] || {};
@@ -769,7 +780,12 @@ export function renderShiftAdminTable() {
                  const typeA = da.type || 'byte';
                  const typeB = db.type || 'byte';
 
-                 // Rank Priority
+                 // 1. Employment Type: Employee (0) < Byte (1)
+                 const isEmpA = typeA === 'employee' ? 0 : 1;
+                 const isEmpB = typeB === 'employee' ? 0 : 1;
+                 if (isEmpA !== isEmpB) return isEmpA - isEmpB;
+
+                 // 2. Rank Priority
                  const ra = da.rank || (typeA === 'employee' ? '一般' : 'レギュラー');
                  const rb = db.rank || (typeB === 'employee' ? '一般' : 'レギュラー');
 
