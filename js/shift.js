@@ -2,6 +2,7 @@ import { db } from './firebase.js';
 import { doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { showPasswordModal, closePasswordModal, showToast } from './ui.js';
 import { $, shuffleArray } from './utils.js';
+import { masterStaffList } from './tasks.js';
 
 let shiftState = {
     currentYear: new Date().getFullYear(),
@@ -406,11 +407,10 @@ export async function openShiftUserModal() {
 
 export async function loadAllShiftData() {
     // 1. Load Staff Master Data (includes Details)
-    const staffDocRef = doc(db, 'masters', 'staff_data');
+    // Use imported masterStaffList from tasks.js to avoid redundant fetch
     try {
-        const staffSnap = await getDoc(staffDocRef);
-        if (staffSnap.exists()) {
-            const data = staffSnap.data();
+        if (masterStaffList) {
+            const data = masterStaffList;
             shiftState.staffListLists = {
                 employees: data.employees || [],
                 alba_early: data.alba_early || [],

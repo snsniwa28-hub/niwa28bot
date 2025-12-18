@@ -6,7 +6,7 @@ import { showToast, initModal, selectOptionUI, closeModal, showPasswordModal } f
 import { updateDeadlineStaffLists } from './deadlines.js';
 
 // --- State ---
-let masterStaffList = { employees: [], alba_early: [], alba_late: [] };
+export let masterStaffList = { employees: [], alba_early: [], alba_late: [] };
 let specialTasks = [];
 let isEditing = false;
 let currentDate = '';
