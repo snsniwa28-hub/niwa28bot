@@ -22,9 +22,10 @@ const RANKS = {
 };
 
 const ROLES = {
-    MONEY: '金',
-    SUB: 'サ',
-    WAREHOUSE: '倉',
+    MONEY: '金メ',
+    MONEY_SUB: '金サブ',
+    HALL_RESP: 'ホ責',
+    WAREHOUSE: '倉庫',
     HALL: 'ホ'
 };
 
@@ -283,12 +284,12 @@ export function createShiftModals() {
 
              <!-- Admin Role Selection -->
              <div id="shift-admin-roles" class="hidden mb-4 grid grid-cols-2 gap-2">
-                <button class="role-btn bg-yellow-100 text-yellow-800 font-bold py-2 rounded" data-role="金">金 (Main)</button>
-                <button class="role-btn bg-orange-100 text-orange-800 font-bold py-2 rounded" data-role="サ">サ (Sub)</button>
-                <button class="role-btn bg-blue-100 text-blue-800 font-bold py-2 rounded" data-role="倉">倉 (Whs)</button>
-                <button class="role-btn bg-purple-100 text-purple-800 font-bold py-2 rounded" data-role="ホ">ホ (Hall)</button>
-                <button class="role-btn bg-rose-100 text-rose-800 font-bold py-2 rounded" data-role="公休">公休</button>
-                <button class="role-btn bg-slate-100 text-slate-800 font-bold py-2 rounded" data-role="">クリア</button>
+                <button class="role-btn bg-yellow-50 text-yellow-600 font-bold py-2 rounded text-xs" data-role="金メ">金メ</button>
+                <button class="role-btn bg-amber-50 text-amber-600 font-bold py-2 rounded text-xs" data-role="金サブ">金サブ</button>
+                <button class="role-btn bg-orange-50 text-orange-600 font-bold py-2 rounded text-xs" data-role="ホ責">ホ責</button>
+                <button class="role-btn bg-blue-50 text-blue-600 font-bold py-2 rounded text-xs" data-role="倉庫">倉庫</button>
+                <button class="role-btn bg-rose-50 text-rose-600 font-bold py-2 rounded text-xs" data-role="公休">公休</button>
+                <button class="role-btn bg-slate-100 text-slate-800 font-bold py-2 rounded text-xs" data-role="">クリア</button>
              </div>
 
              <div id="shift-user-actions" class="space-y-3">
@@ -668,22 +669,22 @@ export function renderShiftAdminTable() {
 
             // Name & Remark Icon & Details
             const nameSpan = document.createElement('div');
-            nameSpan.className = "flex flex-col";
+            nameSpan.className = "flex flex-col mb-1"; // Ensure stacking and spacing
             const cd = details.contract_days || 0;
             const mc = details.max_consecutive_days || 5;
             nameSpan.innerHTML = `
-                <span class="leading-tight">${name} ${hasAnyRemark ? '📝' : ''}</span>
-                <span class="text-[9px] text-slate-400 font-normal leading-none">契:${cd} / 連:${mc}</span>
+                <span class="leading-tight block mb-0.5">${name} ${hasAnyRemark ? '📝' : ''}</span>
+                <span class="text-[9px] text-slate-300 font-normal leading-none block">契:${cd} / 連:${mc}</span>
             `;
 
             if(hasAnyRemark) {
-                nameSpan.className = "cursor-pointer hover:text-indigo-600";
+                nameSpan.classList.add("cursor-pointer", "hover:text-indigo-600");
                 nameSpan.onclick = () => showAdminNoteModal(name, data.remarks, data.daily_remarks);
             }
 
             // Shift Type Toggle
             const typeBtn = document.createElement('button');
-            typeBtn.className = `w-6 h-6 rounded flex items-center justify-center font-black text-[10px] ${currentType==='A'?'bg-amber-100 text-amber-700':'bg-indigo-100 text-indigo-700'}`;
+            typeBtn.className = `w-5 h-5 rounded flex items-center justify-center font-bold text-[9px] ${currentType==='A'?'bg-slate-50 text-slate-300':'bg-slate-50 text-slate-400'}`;
             typeBtn.textContent = currentType;
             typeBtn.title = "今月の早番(A)/遅番(B)切り替え";
             typeBtn.onclick = (e) => { e.stopPropagation(); toggleStaffShiftType(name, currentType); };
@@ -714,40 +715,29 @@ export function renderShiftAdminTable() {
                          }
                     } else {
                          // Role assigned
-                         bgCell = 'bg-white hover:bg-slate-100';
 
                          // Check if role exists
-                         const roles = ['金', 'サ', '倉', 'ホ'];
-                         const hasRole = roles.some(r => assignment.includes(r));
+                         // New ROLES: 金メ, 金サブ, ホ責, 倉庫, ホ, 公休
 
-                         if (hasRole) {
-                             // Pattern 1: With Role
-                             let roleColor = 'text-slate-800';
-                             if(assignment.includes('金')) roleColor = 'text-yellow-600';
-                             if(assignment.includes('サ')) roleColor = 'text-orange-600';
-                             if(assignment.includes('倉')) roleColor = 'text-blue-600';
-                             if(assignment.includes('ホ')) roleColor = 'text-purple-600';
+                         let roleColor = 'text-slate-800';
+                         if(assignment.includes('金メ')) { bgCell = 'bg-yellow-50'; roleColor = 'text-yellow-600'; }
+                         else if(assignment.includes('金サブ')) { bgCell = 'bg-amber-50'; roleColor = 'text-amber-600'; }
+                         else if(assignment.includes('ホ責')) { bgCell = 'bg-orange-50'; roleColor = 'text-orange-600'; }
+                         else if(assignment.includes('倉庫')) { bgCell = 'bg-blue-50'; roleColor = 'text-blue-600'; }
+                         else if(assignment.includes('ホ')) { bgCell = 'bg-purple-50'; roleColor = 'text-purple-600'; }
+                         else { bgCell = 'bg-white'; } // Fallback
 
-                             const typeLabel = currentType === 'A' ? 'A早' : 'B遅';
-                             cellContent = `
-                                <div class="flex flex-col items-center justify-center leading-none -mt-0.5">
-                                    <span class="text-[7px] text-slate-400 font-normal transform scale-90">${typeLabel}</span>
-                                    <span class="${roleColor} font-black text-xs -mt-px">${assignment}</span>
-                                </div>
-                             `;
-                         } else {
-                             // Pattern 2: Without Role (e.g. '出勤')
-                             const typeColor = currentType === 'A' ? 'text-amber-500' : 'text-indigo-500';
-                             const typeLabel = currentType === 'A' ? 'A早' : 'B遅';
-                             cellContent = `
-                                <div class="flex items-center justify-center h-full">
-                                    <span class="${typeColor} font-bold text-[11px]">${typeLabel}</span>
-                                </div>
-                             `;
-                         }
+                         const typeLabel = currentType === 'A' ? 'A早' : 'B遅';
+                         cellContent = `
+                            <div class="flex flex-col items-center justify-center leading-none -mt-0.5">
+                                <span class="text-[7px] text-slate-300 font-normal transform scale-90">${typeLabel}</span>
+                                <span class="${roleColor} font-bold text-[10px] -mt-px">${assignment}</span>
+                            </div>
+                         `;
                     }
                 } else {
-                    // Requests
+                    // Requests or Empty
+                    // Display A/B faint
                     if (isOffReq) {
                         bgCell = 'bg-red-50 hover:bg-red-100';
                         cellContent = '<span class="text-red-500 font-bold text-[10px] select-none">(休)</span>';
@@ -755,7 +745,9 @@ export function renderShiftAdminTable() {
                          bgCell = 'bg-slate-50 hover:bg-slate-100';
                         cellContent = '<span class="text-blue-300 font-bold text-[10px]">(出)</span>';
                     } else {
-                        cellContent = '<span class="text-slate-200">-</span>';
+                        // Empty cell -> show faint A/B
+                        const typeLabel = currentType === 'A' ? 'A早' : 'B遅';
+                        cellContent = `<span class="text-slate-200 text-[9px]">${typeLabel}</span>`;
                     }
                 }
 
@@ -1332,7 +1324,8 @@ async function generateAutoShift() {
             assignedDays: [], // Track assigned days
             roleCounts: {
                 [ROLES.MONEY]: 0,
-                [ROLES.SUB]: 0,
+                [ROLES.MONEY_SUB]: 0,
+                [ROLES.HALL_RESP]: 0,
                 [ROLES.WAREHOUSE]: 0,
                 [ROLES.HALL]: 0
             }
@@ -1576,8 +1569,10 @@ async function generateAutoShift() {
             };
 
             // Priority: Money > Sub > Warehouse > Hall (default)
+            // Updated roles: Money Main, Money Sub, Hall Resp, Warehouse
             assign(ROLES.MONEY, s => s.allowedRoles.includes('money_main'));
-            assign(ROLES.SUB, s => s.allowedRoles.includes('hall_resp')); // "Hall Resp" usually maps to Sub/Leader role in this context? Old code used hall_resp for Sub.
+            assign(ROLES.MONEY_SUB, s => s.allowedRoles.includes('money_sub'));
+            assign(ROLES.HALL_RESP, s => s.allowedRoles.includes('hall_resp')); // "Hall Resp" -> ホ責
             assign(ROLES.WAREHOUSE, s => s.allowedRoles.includes('warehouse'));
 
             // Rest get Hall or just '出勤' (implied Hall)
