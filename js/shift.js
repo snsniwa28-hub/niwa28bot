@@ -697,25 +697,40 @@ export function renderShiftAdminTable() {
                              cellContent = '<span class="text-red-500 font-bold text-[10px] select-none">(休)</span>';
                          } else {
                              bgCell = 'bg-white hover:bg-slate-100';
-                             cellContent = '<span class="text-slate-200 font-bold text-[10px] select-none">/</span>';
+                             cellContent = '<span class="text-slate-300 font-bold text-[10px] select-none">/</span>';
                          }
                     } else {
                          // Role assigned
                          bgCell = 'bg-white hover:bg-slate-100';
-                         // Color code based on role
-                         let roleColor = 'text-slate-800';
-                         if(assignment.includes('金')) roleColor = 'text-yellow-600';
-                         if(assignment.includes('サ')) roleColor = 'text-orange-600';
-                         if(assignment.includes('倉')) roleColor = 'text-blue-600';
-                         if(assignment.includes('ホ')) roleColor = 'text-purple-600';
 
-                         const typeLabel = currentType === 'A' ? 'A早' : 'B遅';
-                         cellContent = `
-                            <div class="flex flex-col items-center justify-center leading-none -mt-0.5">
-                                <span class="text-[7px] text-slate-400 font-normal transform scale-90">${typeLabel}</span>
-                                <span class="${roleColor} font-black text-xs -mt-px">${assignment}</span>
-                            </div>
-                         `;
+                         // Check if role exists
+                         const roles = ['金', 'サ', '倉', 'ホ'];
+                         const hasRole = roles.some(r => assignment.includes(r));
+
+                         if (hasRole) {
+                             // Pattern 1: With Role
+                             let roleColor = 'text-slate-800';
+                             if(assignment.includes('金')) roleColor = 'text-yellow-600';
+                             if(assignment.includes('サ')) roleColor = 'text-orange-600';
+                             if(assignment.includes('倉')) roleColor = 'text-blue-600';
+                             if(assignment.includes('ホ')) roleColor = 'text-purple-600';
+
+                             const typeLabel = currentType === 'A' ? 'A早' : 'B遅';
+                             cellContent = `
+                                <div class="flex flex-col items-center justify-center leading-none -mt-0.5">
+                                    <span class="text-[7px] text-slate-400 font-normal transform scale-90">${typeLabel}</span>
+                                    <span class="${roleColor} font-black text-xs -mt-px">${assignment}</span>
+                                </div>
+                             `;
+                         } else {
+                             // Pattern 2: Without Role (e.g. '出勤')
+                             const typeColor = currentType === 'A' ? 'text-amber-500' : 'text-indigo-500';
+                             cellContent = `
+                                <div class="flex items-center justify-center h-full">
+                                    <span class="${typeColor} font-black text-base">${currentType}</span>
+                                </div>
+                             `;
+                         }
                     }
                 } else {
                     // Requests
@@ -1440,10 +1455,9 @@ async function generateAutoShift() {
                     if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
                     shifts[s.name].assignments[d] = r;
                 } else {
-                    // Blank (delete assignment if exists)
-                    if (shifts[s.name].assignments && shifts[s.name].assignments[d]) {
-                        delete shifts[s.name].assignments[d];
-                    }
+                    // Working but no role -> '出勤'
+                    if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
+                    shifts[s.name].assignments[d] = '出勤';
                 }
             });
 
