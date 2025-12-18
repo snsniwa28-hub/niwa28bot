@@ -235,9 +235,15 @@ export function createShiftModals() {
                     <label class="text-xs font-bold text-slate-500">役職 (ランク)</label>
                     <select id="se-rank" class="w-full border border-slate-200 rounded-lg p-2 text-sm bg-white"></select>
                 </div>
-                <div>
-                    <label class="text-xs font-bold text-slate-500">契約日数 (目標)</label>
-                    <input type="number" id="se-contract-days" class="w-full border border-slate-200 rounded-lg p-2 text-sm font-bold" value="20">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500">契約日数 (目標)</label>
+                        <input type="number" id="se-contract-days" class="w-full border border-slate-200 rounded-lg p-2 text-sm font-bold" value="20">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500">最大連勤数</label>
+                        <input type="number" id="se-max-consecutive" class="w-full border border-slate-200 rounded-lg p-2 text-sm font-bold" value="5">
+                    </div>
                 </div>
                 <div>
                     <label class="text-xs font-bold text-slate-500">特例許可 (スキル設定)</label>
@@ -658,11 +664,18 @@ export function renderShiftAdminTable() {
 
             // Name Cell Content
             const nameContainer = document.createElement('div');
-            nameContainer.className = "flex items-center justify-between gap-2";
+            nameContainer.className = "flex items-center justify-between gap-1";
 
-            // Name & Remark Icon
-            const nameSpan = document.createElement('span');
-            nameSpan.innerHTML = `${name} ${hasAnyRemark ? '📝' : ''}`;
+            // Name & Remark Icon & Details
+            const nameSpan = document.createElement('div');
+            nameSpan.className = "flex flex-col";
+            const cd = details.contract_days || 0;
+            const mc = details.max_consecutive_days || 5;
+            nameSpan.innerHTML = `
+                <span class="leading-tight">${name} ${hasAnyRemark ? '📝' : ''}</span>
+                <span class="text-[9px] text-slate-400 font-normal leading-none">契:${cd} / 連:${mc}</span>
+            `;
+
             if(hasAnyRemark) {
                 nameSpan.className = "cursor-pointer hover:text-indigo-600";
                 nameSpan.onclick = () => showAdminNoteModal(name, data.remarks, data.daily_remarks);
@@ -1058,7 +1071,7 @@ function renderStaffMasterList() {
                     <div class="flex-1">
                         <div class="font-bold text-slate-800 flex items-center">${name}${badges}</div>
                         <div class="text-xs text-slate-500">
-                            ${details.rank || '-'} / 基本:${details.basic_shift || '-'} / 契約:${details.contract_days || '-'}日
+                            ${details.rank || '-'} / 基本:${details.basic_shift || '-'} / 契約:${details.contract_days || '-'}日 / 連勤:${details.max_consecutive_days || 5}
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
@@ -1101,6 +1114,7 @@ function openStaffEditModal(name) {
     document.getElementById('se-type').value = details.type || 'byte';
     document.getElementById('se-basic-shift').value = details.basic_shift || 'A';
     document.getElementById('se-contract-days').value = details.contract_days || 20;
+    document.getElementById('se-max-consecutive').value = details.max_consecutive_days || 5;
 
     const ar = details.allowed_roles || [];
     document.getElementById('se-allow-money-main').checked = ar.includes('money_main');
@@ -1137,6 +1151,7 @@ async function saveStaffDetails() {
     const rank = document.getElementById('se-rank').value;
     const basicShift = document.getElementById('se-basic-shift').value;
     const contractDays = parseInt(document.getElementById('se-contract-days').value) || 0;
+    const maxConsecutive = parseInt(document.getElementById('se-max-consecutive').value) || 5;
 
     const allowedRoles = [];
     if(document.getElementById('se-allow-money-main').checked) allowedRoles.push('money_main');
@@ -1150,6 +1165,7 @@ async function saveStaffDetails() {
         rank,
         basic_shift: basicShift,
         contract_days: contractDays,
+        max_consecutive_days: maxConsecutive,
         allowed_roles: allowedRoles
     };
 
@@ -1296,6 +1312,7 @@ async function generateAutoShift() {
         ...shiftState.staffListLists.alba_late
     ];
 
+    // Prepare Staff Objects
     const getS = (name) => {
         const d = details[name] || {};
         const s = shifts[name] || {};
@@ -1305,14 +1322,15 @@ async function generateAutoShift() {
             rank: d.rank || '一般',
             type: d.type || 'byte',
             contractDays: d.contract_days || 20,
+            maxConsecutive: d.max_consecutive_days || 5, // Default 5
             allowedRoles: d.allowed_roles || [],
             shiftType: m.shift_type || d.basic_shift || 'A',
             requests: {
                 work: s.work_days || [],
                 off: s.off_days || []
             },
-            assignedCount: 0,
-            roleCounts: { // Track role assignments count
+            assignedDays: [], // Track assigned days
+            roleCounts: {
                 [ROLES.MONEY]: 0,
                 [ROLES.SUB]: 0,
                 [ROLES.WAREHOUSE]: 0,
@@ -1323,171 +1341,265 @@ async function generateAutoShift() {
 
     let staffObjects = staffNames.map(getS);
 
-    // --- 1. Contract Days Pre-correction (Physical Limit) ---
+    // --- 0. Pre-calculation & Cleaning ---
+
+    // Clear existing assignments in local object (keep requests)
     staffObjects.forEach(s => {
-        // Corrected Target = Min(Contract, DaysInMonth - OffDays)
-        const maxDays = daysInMonth - s.requests.off.length;
-        s.contractDays = Math.min(s.contractDays, maxDays);
+        if(!shifts[s.name]) shifts[s.name] = {};
+        shifts[s.name].assignments = {};
+
+        // Mark "Work Requests" as assigned initially?
+        // Prompt says "Contract Days Priority".
+        // Existing logic usually treats "Work Request" as fixed.
+        // Let's assume Work Requests are fixed and count towards contract.
+        // Also need to respect OFF requests (never assign).
+
+        // Add work requests to assignedDays IF not off (conflict check)
+        s.requests.work.forEach(d => {
+            if (!s.requests.off.includes(d)) {
+                s.assignedDays.push(d);
+            }
+        });
     });
 
-    // Track consecutive work days
-    const consecutiveWork = {};
-    staffNames.forEach(n => consecutiveWork[n] = 0);
+    // Helper: isResponsible
+    const isResponsible = (s) => s.allowedRoles.includes('money_main');
 
-    const isSpecialDay = (d) => [2, 8, 12, 18, 22, 28].includes(d);
-    const getRequired = (day) => {
-        const date = new Date(Y, M - 1, day);
-        const dayOfWeek = date.getDay();
-        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-        if (isWeekend && isSpecialDay(day)) return 11;
-        if (isWeekend) return 10;
-        return 9;
+    // Helper: canWork
+    // Checks if adding 'day' violates max_consecutive_days
+    const canWork = (s, day) => {
+        if (s.requests.off.includes(day)) return false;
+        if (s.assignedDays.includes(day)) return true; // Already assigned
+
+        // Check consecutive
+        // We need to look at the chain including 'day'.
+        // Simplified: check potential chain length if we add 'day'.
+        // Since we are adding one by one, we can check neighbors.
+
+        // Construct a temporary sorted list of days
+        const tempDays = [...s.assignedDays, day].sort((a,b) => a-b);
+
+        let streak = 0;
+        let maxStreak = 0;
+        let prev = -1;
+
+        for (const d of tempDays) {
+            if (d === prev + 1) {
+                streak++;
+            } else {
+                streak = 1;
+            }
+            if (streak > s.maxConsecutive) return false;
+            maxStreak = Math.max(maxStreak, streak);
+            prev = d;
+        }
+
+        return maxStreak <= s.maxConsecutive;
     };
 
-    // Initialize Assignments Structure
-    staffNames.forEach(n => {
-        if(!shifts[n]) shifts[n] = {};
-        if(!shifts[n].assignments) shifts[n].assignments = {};
+    // Helper: Count staff on a day for a shift type
+    const countStaff = (day, shiftType, typeFilter = null) => {
+        return staffObjects.filter(s =>
+            s.shiftType === shiftType &&
+            s.assignedDays.includes(day) &&
+            (!typeFilter || s.type === typeFilter)
+        ).length;
+    };
+
+    const countTotalStaff = (day, shiftType) => {
+        return staffObjects.filter(s => s.shiftType === shiftType && s.assignedDays.includes(day)).length;
+    };
+
+    // Helper: Has Responsible on day
+    const hasResponsibleOnDay = (day, shiftType) => {
+        return staffObjects.some(s =>
+            s.shiftType === shiftType &&
+            s.assignedDays.includes(day) &&
+            isResponsible(s)
+        );
+    };
+
+    const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
+
+    // --- Phase 1: Employee Baseline (Min 4 + Responsible) ---
+    // Target: 4 Employees per shift type. Must include 1 Responsible.
+
+    ['A', 'B'].forEach(st => {
+        days.forEach(d => {
+            // 1. Ensure Responsible
+            if (!hasResponsibleOnDay(d, st)) {
+                const candidates = staffObjects.filter(s =>
+                    s.shiftType === st &&
+                    s.type === 'employee' &&
+                    isResponsible(s) &&
+                    !s.assignedDays.includes(d) &&
+                    canWork(s, d)
+                );
+
+                if (candidates.length > 0) {
+                    // Pick one (random or specific strategy?)
+                    // Pick one with lowest current assignment count to balance
+                    candidates.sort((a,b) => a.assignedDays.length - b.assignedDays.length);
+                    const best = candidates[0];
+                    best.assignedDays.push(d);
+                }
+            }
+
+            // 2. Ensure Min 4 Employees
+            let currentEmpCount = countStaff(d, st, 'employee');
+            if (currentEmpCount < 4) {
+                const candidates = staffObjects.filter(s =>
+                    s.shiftType === st &&
+                    s.type === 'employee' &&
+                    !s.assignedDays.includes(d) &&
+                    canWork(s, d)
+                );
+
+                // Sort by assignment count (leveling)
+                candidates.sort((a,b) => a.assignedDays.length - b.assignedDays.length);
+
+                for (const cand of candidates) {
+                    if (currentEmpCount >= 4) break;
+                    cand.assignedDays.push(d);
+                    currentEmpCount++;
+                }
+            }
+        });
     });
 
-    for (let d = 1; d <= daysInMonth; d++) {
-        const reqCount = getRequired(d);
-        const daysRemaining = daysInMonth - d + 1;
+    // --- Phase 2: Employee Contract Fill (Leveling) ---
+    // Fill remaining contract days for employees
+    // Prioritize days with lowest *employee* count
 
-        // Helper: Urgency Calculation
-        const getUrgency = (s) => {
-            const needed = s.contractDays - s.assignedCount;
-            if(needed <= 0) return 0;
-            return needed / daysRemaining;
-        };
+    // Iterative filling:
+    // Repeat until no assignments occur in a full pass
+    let changed = true;
+    while (changed) {
+        changed = false;
+        const needy = staffObjects.filter(s => s.type === 'employee' && s.assignedDays.length < s.contractDays);
+        // Sort: Prioritize those furthest from goal
+        needy.sort((a,b) => (a.contractDays - a.assignedDays.length) - (b.contractDays - b.assignedDays.length)).reverse();
 
-        // Helper: Future Prediction Check
-        // Returns true if adding today does NOT violate the "Max 5 Consecutive" rule
-        // considering future requests.
-        const checkFutureConsecutive = (s) => {
-            let current = consecutiveWork[s.name]; // Consecutive days leading up to today
-            // If today (1 day) + current > 5, it's already bad, but usually current <= 5.
-            // We need to check if adding today triggers a chain > 5.
+        for (const emp of needy) {
+            const validDays = days.filter(d => !emp.assignedDays.includes(d) && canWork(emp, d));
+            if (validDays.length === 0) continue;
 
-            let future = 0;
-            let checkDay = d + 1;
-            while (s.requests.work.includes(checkDay)) {
-                future++;
-                checkDay++;
-            }
+            // Sort days by employee count
+            validDays.sort((d1, d2) => countStaff(d1, emp.shiftType, 'employee') - countStaff(d2, emp.shiftType, 'employee'));
 
-            return (current + 1 + future) <= 5;
-        };
-
-        // Separate processing for A and B groups
-        ['A', 'B'].forEach(type => {
-            // Get candidates: Staff of this type, NOT requested OFF
-            const candidates = staffObjects.filter(s => s.shiftType === type && !s.requests.off.includes(d));
-            let working = [];
-
-            // --- Step 1: Work Requests (Unconditional) ---
-            const step1 = candidates.filter(s => s.requests.work.includes(d));
-            step1.forEach(s => { if(!working.includes(s)) working.push(s); });
-
-            // --- Step 2: Critical Urgency >= 1.0 (Absolute Adoption) ---
-            // Ignore Consecutive Rules, Ignore Future Prediction, Ignore Capacity
-            const step2 = candidates.filter(s => {
-                if (working.includes(s)) return false;
-                return getUrgency(s) >= 1.0;
-            });
-            step2.forEach(s => working.push(s));
-
-            // --- Step 3 & 4: Adjustment (Safe Zone) ---
-            // Filter: Urgency < 1.0 (implicitly, since >= 1.0 are taken)
-            // Check: Future Prediction
-            let pool = candidates.filter(s => !working.includes(s));
-
-            // Apply Future Prediction Filter
-            // "NGの場合: 今日は休ませて連勤を回避する" -> Remove from pool
-            pool = pool.filter(s => checkFutureConsecutive(s));
-
-            // Sort by Urgency (High -> Low)
-            shuffleArray(pool); // Randomize ties
-            pool.sort((a,b) => getUrgency(b) - getUrgency(a));
-
-            // Fill
-            for (const s of pool) {
-                const urgency = getUrgency(s);
-                // Condition to add:
-                // 1. Capacity not reached
-                // 2. OR Capacity reached but Urgency >= 0.85 (Overflow)
-
-                if (working.length < reqCount) {
-                    working.push(s);
-                } else if (urgency >= 0.85) {
-                    working.push(s);
-                }
-                // Else: Do not add (Skip)
-            }
-
-            // --- Commit & Role Assignment ---
-
-            // 1. Update Tracking (Assigned Count, Consecutive Work)
-            working.forEach(s => {
-                s.assignedCount++;
-                consecutiveWork[s.name]++;
-            });
-
-            // Reset consecutive for those not working in this group
-            const allInGroup = staffObjects.filter(s => s.shiftType === type);
-            allInGroup.forEach(s => {
-                if (!working.includes(s)) {
-                    consecutiveWork[s.name] = 0;
-                }
-            });
-
-            // 2. Assign Roles
-            let unassigned = [...working];
-            const assignedRoles = {};
-
-            const assignRole = (roleName, filterFn, sortFn) => {
-                let cands = unassigned.filter(filterFn);
-                if (cands.length === 0) return;
-                shuffleArray(cands);
-                cands.sort((a,b) => {
-                    const countA = a.roleCounts[roleName];
-                    const countB = b.roleCounts[roleName];
-                    if (countA !== countB) return countA - countB;
-                    if (sortFn) return sortFn(a,b);
-                    return 0;
-                });
-                const p = cands[0];
-                assignedRoles[p.name] = roleName;
-                p.roleCounts[roleName]++;
-                unassigned = unassigned.filter(x => x !== p);
-            };
-
-            assignRole(ROLES.MONEY, (s) => s.allowedRoles.includes('money_main'));
-            assignRole(ROLES.SUB, (s) => s.allowedRoles.includes('hall_resp'));
-            assignRole(ROLES.WAREHOUSE, (s) => s.allowedRoles.includes('warehouse'));
-            assignRole(ROLES.HALL, (s) => (s.type === 'byte' || (s.type === 'employee' && s.rank === '一般')));
-
-            // 3. Update Firestore Data Structure
-            allInGroup.forEach(s => {
-                if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
-
-                if (s.requests.off.includes(d)) {
-                    shifts[s.name].assignments[d] = '公休';
-                } else if (working.includes(s)) {
-                    const r = assignedRoles[s.name];
-                    shifts[s.name].assignments[d] = r || '出勤';
-                } else {
-                     delete shifts[s.name].assignments[d];
-                }
-            });
-        });
+            // Assign one
+            emp.assignedDays.push(validDays[0]);
+            changed = true;
+        }
     }
 
+
+    // --- Phase 3: Alba Baseline (Min Total 9) ---
+    // Target: Total 9 staff per shift type.
+    const TARGET_TOTAL = 9; // Prompt says "9-11".
+
+    ['A', 'B'].forEach(st => {
+        days.forEach(d => {
+            let currentTotal = countTotalStaff(d, st);
+            if (currentTotal < TARGET_TOTAL) {
+                const candidates = staffObjects.filter(s =>
+                    s.shiftType === st &&
+                    s.type === 'byte' &&
+                    !s.assignedDays.includes(d) &&
+                    canWork(s, d)
+                );
+
+                // Sort candidates: Those who need shifts most (Contract - Assigned) descending
+                candidates.sort((a,b) => (a.contractDays - a.assignedDays.length) - (b.contractDays - b.assignedDays.length)).reverse();
+
+                for (const cand of candidates) {
+                    if (currentTotal >= TARGET_TOTAL) break;
+                    cand.assignedDays.push(d);
+                    currentTotal++;
+                }
+            }
+        });
+    });
+
+    // --- Phase 4: Alba Contract Fill (Overload Allowed) ---
+    // Fill remaining Alba contract days regardless of max limit.
+    // Leveling by total count.
+
+    changed = true;
+    while (changed) {
+        changed = false;
+        const needy = staffObjects.filter(s => s.type === 'byte' && s.assignedDays.length < s.contractDays);
+
+        for (const alba of needy) {
+            const validDays = days.filter(d => !alba.assignedDays.includes(d) && canWork(alba, d));
+            if (validDays.length === 0) continue;
+
+            // Sort days by TOTAL count (fill lowest populated days first)
+            validDays.sort((d1, d2) => countTotalStaff(d1, alba.shiftType) - countTotalStaff(d2, alba.shiftType));
+
+            alba.assignedDays.push(validDays[0]);
+            changed = true;
+        }
+    }
+
+    // --- Finalize & Assign Roles ---
+    // We have assignedDays. Now need to assign Roles (Money, Sub, Warehouse, Hall)
+    // Only for the assigned days.
+
+    staffObjects.forEach(s => {
+        s.assignedDays.forEach(d => {
+            if (!shifts[s.name].assignments[d]) { // Don't overwrite if it was a request (though we cleared non-request)
+                 // Placeholder, roles assigned below
+            }
+        });
+    });
+
+    // Role assignment loop per day per shift type
+    ['A', 'B'].forEach(st => {
+        days.forEach(d => {
+            const workers = staffObjects.filter(s => s.shiftType === st && s.assignedDays.includes(d));
+            let unassigned = [...workers];
+
+            // Helper to assign specific role
+            const assign = (roleKey, filterFn) => {
+                const candidates = unassigned.filter(filterFn);
+                if (candidates.length === 0) return;
+
+                // Sort candidates to balance roles?
+                // Sort by who has done this role LEAST
+                candidates.sort((a,b) => a.roleCounts[roleKey] - b.roleCounts[roleKey]);
+
+                const picked = candidates[0];
+                shifts[picked.name].assignments[d] = roleKey;
+                picked.roleCounts[roleKey]++;
+                unassigned = unassigned.filter(u => u !== picked);
+            };
+
+            // Priority: Money > Sub > Warehouse > Hall (default)
+            assign(ROLES.MONEY, s => s.allowedRoles.includes('money_main'));
+            assign(ROLES.SUB, s => s.allowedRoles.includes('hall_resp')); // "Hall Resp" usually maps to Sub/Leader role in this context? Old code used hall_resp for Sub.
+            assign(ROLES.WAREHOUSE, s => s.allowedRoles.includes('warehouse'));
+
+            // Rest get Hall or just '出勤' (implied Hall)
+            // Old code assigned 'ホ' to Hall.
+            unassigned.forEach(s => {
+                shifts[s.name].assignments[d] = '出勤';
+            });
+
+            // Explicitly set '公休' for OFF requests for clarity in Admin View
+            const offStaff = staffObjects.filter(s => s.shiftType === st && s.requests.off.includes(d));
+            offStaff.forEach(s => {
+                shifts[s.name].assignments[d] = '公休';
+            });
+        });
+    });
+
+    // Save
     const docId = `${Y}-${String(M).padStart(2,'0')}`;
     const docRef = doc(db, "shift_submissions", docId);
     try {
         await setDoc(docRef, shifts, { merge: true });
-        showToast("シフト自動作成完了！");
+        showToast("シフト自動作成完了！ (パズル方式)");
         renderShiftAdminTable();
     } catch(e) {
         alert("自動作成保存失敗: " + e.message);
