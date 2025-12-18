@@ -20,8 +20,6 @@ export function initDeadlines() {
 }
 
 // Function to update staff lists in existing deadlines (called from tasks.js after master fetch)
-// (Logic moved to the bottom implementation of updateDeadlineStaffLists)
-
 let latestDeadlineSnapshot = null;
 
 function subscribeDeadlines() {

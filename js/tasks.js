@@ -38,7 +38,7 @@ export function fetchMasterData() {
                 window.masterStaffList = masterStaffList;
                 if (window.renderMemberRaceBoard) window.renderMemberRaceBoard(); // Re-render member board if active
 
-                // Fix for Deadlines sync issue: update lists when staff data is loaded
+                // Update deadline checklists when staff data is loaded
                 updateDeadlineStaffLists();
             }
             staffLoaded = true;
