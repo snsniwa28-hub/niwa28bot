@@ -725,9 +725,10 @@ export function renderShiftAdminTable() {
                          } else {
                              // Pattern 2: Without Role (e.g. '出勤')
                              const typeColor = currentType === 'A' ? 'text-amber-500' : 'text-indigo-500';
+                             const typeLabel = currentType === 'A' ? 'A早' : 'B遅';
                              cellContent = `
                                 <div class="flex items-center justify-center h-full">
-                                    <span class="${typeColor} font-black text-base">${currentType}</span>
+                                    <span class="${typeColor} font-bold text-[11px]">${typeLabel}</span>
                                 </div>
                              `;
                          }
@@ -1322,6 +1323,10 @@ async function generateAutoShift() {
 
     let staffObjects = staffNames.map(getS);
 
+    // Track consecutive work days
+    const consecutiveWork = {};
+    staffNames.forEach(n => consecutiveWork[n] = 0);
+
     const isSpecialDay = (d) => [2, 8, 12, 18, 22, 28].includes(d);
     const getRequired = (day) => {
         const date = new Date(Y, M - 1, day);
@@ -1332,9 +1337,7 @@ async function generateAutoShift() {
         return 9;
     };
 
-    const isViceChiefOrAbove = (rank) => ['マネージャー', '主任', '副主任'].includes(rank);
-
-    // Clear assignments
+    // Initialize Assignments Structure
     staffNames.forEach(n => {
         if(!shifts[n]) shifts[n] = {};
         if(!shifts[n].assignments) shifts[n].assignments = {};
@@ -1343,127 +1346,138 @@ async function generateAutoShift() {
     for (let d = 1; d <= daysInMonth; d++) {
         const reqCount = getRequired(d);
 
+        // Candidates: Filter out Request OFF
         const candidatesA = staffObjects.filter(s => s.shiftType === 'A' && !s.requests.off.includes(d));
         const candidatesB = staffObjects.filter(s => s.shiftType === 'B' && !s.requests.off.includes(d));
 
         const processShift = (candidates, label) => {
             let working = [];
+            const daysRemaining = daysInMonth - d + 1;
 
-            // Step 1: Force Include
-            const forced = candidates.filter(s => s.requests.work.includes(d));
-            forced.forEach(s => { if(!working.includes(s)) working.push(s); });
+            // Step 1: Priority S (Request Work) - Force Include
+            const priorityS = candidates.filter(s => s.requests.work.includes(d));
+            priorityS.forEach(s => { if(!working.includes(s)) working.push(s); });
 
-            // Step 2: Secure Contract Days (Ignore Capacity)
-            let pool = candidates.filter(s => !working.includes(s));
-
-            // Filter those who haven't met contract days
-            let needingDays = pool.filter(s => s.assignedCount < s.contractDays);
-
-            // Sort by deficit (descending: largest deficit first)
-            needingDays.sort((a,b) => {
-                const defA = a.contractDays - a.assignedCount;
-                const defB = b.contractDays - b.assignedCount;
-                return defB - defA;
+            // Step 2: Priority A (Critical Contract Status)
+            // Condition: daysRemaining <= (contractDays - assignedCount)
+            // Must work today or they fail contract
+            const priorityA = candidates.filter(s => {
+                if (working.includes(s)) return false;
+                const needed = s.contractDays - s.assignedCount;
+                return daysRemaining <= needed;
             });
+            priorityA.forEach(s => working.push(s));
 
-            // Add ALL of them (even if it exceeds reqCount)
-            needingDays.forEach(s => working.push(s));
-
-            // Step 3: Fill to Minimum Staffing (if count < reqCount)
+            // Step 3: Adjustment Slot (Fill to reqCount)
             if (working.length < reqCount) {
-                // Refresh pool (remove those just added)
-                pool = candidates.filter(s => !working.includes(s));
+                let pool = candidates.filter(s => !working.includes(s));
+                const slots = reqCount - working.length;
 
-                // Sort remaining by deficit (closest to target first)
+                // Filter: Consecutive Work Limit (Exclude if adding makes it 6+)
+                // If consecutiveWork is 5, today would be 6th.
+                pool = pool.filter(s => consecutiveWork[s.name] < 5);
+
+                // Sort: Unfinished Rate High -> Low
+                // Rate = (contract - assigned) / contract.
+                // Equivalent to (contract - assigned) / contract descending.
+                // Also shuffle first for tie-breaking.
+                shuffleArray(pool);
+
                 pool.sort((a,b) => {
-                    const defA = a.contractDays - a.assignedCount;
-                    const defB = b.contractDays - b.assignedCount;
-                    return defB - defA;
+                    const needA = Math.max(0, a.contractDays - a.assignedCount);
+                    const needB = Math.max(0, b.contractDays - b.assignedCount);
+
+                    // Avoid division by zero
+                    const rateA = a.contractDays > 0 ? (needA / a.contractDays) : 0;
+                    const rateB = b.contractDays > 0 ? (needB / b.contractDays) : 0;
+
+                    return rateB - rateA;
                 });
 
-                while (working.length < reqCount && pool.length > 0) {
-                    working.push(pool.shift());
-                }
+                // Pick top N
+                const chosen = pool.slice(0, slots);
+                chosen.forEach(s => working.push(s));
             }
 
-            // Step 4: Assign Roles (New Logic)
-            // Roles: 金(1), サ(1), 倉(1), ホ(1)
-            // Priority: Min role count
+            // --- Commit & Role Assignment ---
 
+            // 1. Update Tracking (Assigned Count, Consecutive Work)
+            working.forEach(s => {
+                s.assignedCount++;
+                consecutiveWork[s.name]++;
+            });
+
+            // Reset consecutive for those not working
+            candidates.forEach(s => {
+                if (!working.includes(s)) consecutiveWork[s.name] = 0;
+            });
+
+            // 2. Assign Roles
             let unassigned = [...working];
             const assignedRoles = {};
 
             const assignRole = (roleName, filterFn, sortFn) => {
                 let cands = unassigned.filter(filterFn);
                 if (cands.length === 0) return;
-
-                // Shuffle first to randomize order for equal priorities
                 shuffleArray(cands);
-
-                // Sort candidates
                 cands.sort((a,b) => {
-                    // Priority 1: Role Count (Equalization)
                     const countA = a.roleCounts[roleName];
                     const countB = b.roleCounts[roleName];
                     if (countA !== countB) return countA - countB;
-
-                    // Priority 2: Custom Sort (e.g. Priority for Hall)
                     if (sortFn) return sortFn(a,b);
-
                     return 0;
                 });
-
                 const p = cands[0];
                 assignedRoles[p.name] = roleName;
                 p.roleCounts[roleName]++;
                 unassigned = unassigned.filter(x => x !== p);
             };
 
-            // 1. 金 (Money) - Checks 'money_main'
             assignRole(ROLES.MONEY, (s) => s.allowedRoles.includes('money_main'));
-
-            // 2. サブ (Sub) - Checks 'hall_resp'
             assignRole(ROLES.SUB, (s) => s.allowedRoles.includes('hall_resp'));
-
-            // 3. 倉庫 (Warehouse) - Checks 'warehouse'
             assignRole(ROLES.WAREHOUSE, (s) => s.allowedRoles.includes('warehouse'));
+            assignRole(ROLES.HALL, (s) => (s.type === 'byte' || (s.type === 'employee' && s.rank === '一般')));
 
-            // 4. ホ (Hall Leader)
-            // Target: Employee(General) OR All Alba
-            // Priority: Alba & General Employee
-            assignRole(ROLES.HALL, (s) => {
-                if (s.type === 'employee' && s.rank === '一般') return true;
-                if (s.type === 'byte') return true;
-                return false;
-            }, (a,b) => {
-                // Priority logic if counts are equal?
-                // "Prioritize Alba and General Employee" is implicitly handled by filtering
-                // since we filter for them.
-                // If we allowed others, we would sort them down.
-                return 0;
-            });
-
-            // Remainder: Blank (No Assignment)
-            // But mark "Off" for those not working
-            const notWorking = candidates.filter(s => !working.includes(s));
-
-            // Commit
+            // 3. Update Firestore Data Structure
+            // Working Staff
             working.forEach(s => {
-                s.assignedCount++;
+                if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
                 const r = assignedRoles[s.name];
-                if (r) {
-                    if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
-                    shifts[s.name].assignments[d] = r;
-                } else {
-                    // Working but no role -> '出勤'
-                    if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
-                    shifts[s.name].assignments[d] = '出勤';
-                }
+                if (r) shifts[s.name].assignments[d] = r;
+                else shifts[s.name].assignments[d] = '出勤';
             });
 
-            notWorking.forEach(s => {
-                 if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
-                 shifts[s.name].assignments[d] = '公休';
+            // Not Working Staff
+            // If excluded due to Request Off -> '公休'
+            // If just not selected -> Remove assignment (Adjusted Off)
+            // Note: candidates array excludes Request Off people.
+            // So everyone in `candidates` who is NOT in `working` is Adjusted Off.
+            // Those with Request Off are not in `candidates`, we must handle them separately or ensure they are marked.
+            // Actually, `candidates` is `staffObjects.filter(...)`.
+            // We should iterate over ALL staff of this shift type to handle '公休'.
+
+            const allInGroup = staffObjects.filter(s => s.shiftType === label);
+
+            allInGroup.forEach(s => {
+                if (!shifts[s.name].assignments) shifts[s.name].assignments = {};
+
+                if (s.requests.off.includes(d)) {
+                    // Explicitly Requested Off
+                    shifts[s.name].assignments[d] = '公休';
+                    consecutiveWork[s.name] = 0; // Reset consecutive just in case
+                } else {
+                    // Not requested off
+                    if (working.includes(s)) {
+                        // Already handled above
+                    } else {
+                        // Adjusted Off
+                        if (shifts[s.name].assignments[d]) {
+                             delete shifts[s.name].assignments[d];
+                        }
+                        // Note: Consecutive reset for candidates was done above,
+                        // but repeating for safety if `allInGroup` covers more (it covers request-off people too).
+                    }
+                }
             });
         };
 
