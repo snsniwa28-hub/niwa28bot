@@ -840,6 +840,13 @@ export async function importFromShift(fullAutoMode) {
     if (!currentDate) return alert("日付が選択されていません");
     if (!confirm('現在の入力内容は上書きされますがよろしいですか？')) return;
 
+    // Check master data availability
+    const master = window.masterStaffList || masterStaffList;
+    if (!master || !master.staff_details) {
+        alert("スタッフマスタが読み込まれていません。少し待ってから再試行してください。");
+        return;
+    }
+
     const [y, m, d] = currentDate.split('-');
     const dayNum = parseInt(d).toString(); // "05" -> "5"
     const docId = `${y}-${m}`;
@@ -868,8 +875,8 @@ export async function importFromShift(fullAutoMode) {
                     let type = 'A';
                     if (s.monthly_settings && s.monthly_settings.shift_type) {
                         type = s.monthly_settings.shift_type;
-                    } else if (masterStaffList.staff_details && masterStaffList.staff_details[name]) {
-                        type = masterStaffList.staff_details[name].basic_shift || 'A';
+                    } else if (master.staff_details && master.staff_details[name]) {
+                        type = master.staff_details[name].basic_shift || 'A';
                     }
                     shiftTypes[name] = type;
                 }
@@ -895,11 +902,11 @@ export async function importFromShift(fullAutoMode) {
 
         // Sort lists (Simple helper)
         const getSortIdx = (n) => {
-            let i = masterStaffList.employees.indexOf(n);
+            let i = master.employees.indexOf(n);
             if(i!==-1) return i;
-            i = masterStaffList.alba_early.indexOf(n);
+            i = master.alba_early.indexOf(n);
             if(i!==-1) return i + 1000;
-            i = masterStaffList.alba_late.indexOf(n);
+            i = master.alba_late.indexOf(n);
             if(i!==-1) return i + 2000;
             return 9999;
         };

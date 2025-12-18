@@ -10,6 +10,7 @@ let shiftState = {
     shiftDataCache: {},
     isAdminMode: false,
     selectedDay: null,
+    adminSortMode: 'roster',
     staffDetails: {}, // Stores Rank, Type, ContractDays, etc.
     staffListLists: { employees: [], alba_early: [], alba_late: [] } // Sync with masters/staff_data
 };
@@ -162,6 +163,7 @@ export function createShiftModals() {
                             </div>
                         </div>
                         <div class="flex gap-2">
+                            <button id="btn-shift-toggle-mode" class="text-xs font-bold bg-slate-600 hover:bg-slate-500 px-3 py-1.5 rounded-lg border border-slate-400 text-white">📂 名簿順</button>
                             <button id="btn-open-staff-master" class="text-xs font-bold bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg border border-indigo-400">👥 スタッフ管理</button>
                             <button id="btn-clear-shift" class="text-xs font-bold bg-slate-600 hover:bg-slate-500 px-3 py-1.5 rounded-lg border border-slate-400 text-white">🔄 割り振りクリア</button>
                             <button id="btn-auto-create-shift" class="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg border border-emerald-400">⚡ 自動作成</button>
@@ -337,6 +339,10 @@ export function createShiftModals() {
     $('#btn-se-delete').onclick = deleteStaff;
     $('#btn-auto-create-shift').onclick = generateAutoShift;
     $('#btn-clear-shift').onclick = clearShiftAssignments;
+    $('#btn-shift-toggle-mode').onclick = () => {
+        shiftState.adminSortMode = shiftState.adminSortMode === 'roster' ? 'shift' : 'roster';
+        renderShiftAdminTable();
+    };
 
     // --- Daily Remarks Input Listener ---
     const drInput = document.getElementById('shift-daily-remark-input');
@@ -346,7 +352,7 @@ export function createShiftModals() {
              const name = shiftState.selectedStaff;
 
              // Ensure structure exists
-             if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { off_days: [], work_days: [], remarks: "", daily_remarks: {} };
+             if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { off_days: [], work_days: [], assignments: {} };
              if (!shiftState.shiftDataCache[name].daily_remarks) shiftState.shiftDataCache[name].daily_remarks = {};
 
              const val = drInput.value;
@@ -601,6 +607,18 @@ export function renderShiftAdminTable() {
     document.getElementById('shift-admin-title').textContent = `${y}年 ${m}月`;
     const daysInMonth = new Date(y, m, 0).getDate();
 
+    // Sort Mode Handling
+    const sortMode = shiftState.adminSortMode || 'roster';
+
+    // Update Button Appearance
+    const toggleBtn = document.getElementById('btn-shift-toggle-mode');
+    if(toggleBtn) {
+        toggleBtn.textContent = sortMode === 'roster' ? "📂 名簿順" : "⚡ シフト別";
+        toggleBtn.className = sortMode === 'roster'
+            ? "text-xs font-bold bg-slate-600 hover:bg-slate-500 px-3 py-1.5 rounded-lg border border-slate-400 text-white"
+            : "text-xs font-bold bg-amber-600 hover:bg-amber-500 px-3 py-1.5 rounded-lg border border-amber-400 text-white";
+    }
+
     const headerRow = document.getElementById('shift-admin-header-row');
     while (headerRow.children.length > 1) headerRow.removeChild(headerRow.lastChild);
     for(let d=1; d<=daysInMonth; d++) {
@@ -717,9 +735,56 @@ export function renderShiftAdminTable() {
         });
     };
 
-    createSection("▼ 社員", shiftState.staffListLists.employees, "bg-indigo-100 text-indigo-800");
-    createSection("▼ 早番アルバイト", shiftState.staffListLists.alba_early, "bg-teal-100 text-teal-800");
-    createSection("▼ 遅番アルバイト", shiftState.staffListLists.alba_late, "bg-purple-100 text-purple-800");
+    if (sortMode === 'roster') {
+        createSection("▼ 社員", shiftState.staffListLists.employees, "bg-indigo-100 text-indigo-800");
+        createSection("▼ 早番アルバイト", shiftState.staffListLists.alba_early, "bg-teal-100 text-teal-800");
+        createSection("▼ 遅番アルバイト", shiftState.staffListLists.alba_late, "bg-purple-100 text-purple-800");
+    } else {
+        // Shift Mode
+        const allNames = [
+            ...shiftState.staffListLists.employees,
+            ...shiftState.staffListLists.alba_early,
+            ...shiftState.staffListLists.alba_late
+        ];
+
+        const listA = [];
+        const listB = [];
+
+        allNames.forEach(name => {
+            const data = shiftState.shiftDataCache[name] || {};
+            const details = shiftState.staffDetails[name] || {};
+            const monthlySettings = (data.monthly_settings) || {};
+
+            const type = monthlySettings.shift_type || details.basic_shift || 'A';
+            if(type === 'A') listA.push(name);
+            else listB.push(name);
+        });
+
+        // Custom Sort for Mixed List (Rank > Name, Employee priority in rank check)
+        const mixedSort = (list) => {
+             return list.sort((a,b) => {
+                 const da = shiftState.staffDetails[a] || {};
+                 const db = shiftState.staffDetails[b] || {};
+
+                 const typeA = da.type || 'byte';
+                 const typeB = db.type || 'byte';
+
+                 // Rank Priority
+                 const ra = da.rank || (typeA === 'employee' ? '一般' : 'レギュラー');
+                 const rb = db.rank || (typeB === 'employee' ? '一般' : 'レギュラー');
+
+                 const pa = getRankPriority(ra, typeA);
+                 const pb = getRankPriority(rb, typeB);
+
+                 if(pa !== pb) return pa - pb;
+
+                 return a.localeCompare(b, 'ja');
+             });
+        };
+
+        createSection("▼ A番 (早番) チーム", mixedSort(listA), "bg-amber-100 text-amber-800");
+        createSection("▼ B番 (遅番) チーム", mixedSort(listB), "bg-indigo-100 text-indigo-800");
+    }
 }
 
 async function toggleStaffShiftType(name, currentType) {
