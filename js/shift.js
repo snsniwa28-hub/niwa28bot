@@ -304,6 +304,27 @@ export function createShiftModals() {
         </div>
     </div>
 
+    <!-- Daily Target Edit Modal -->
+    <div id="daily-target-modal" class="modal-overlay hidden" style="z-index: 90;">
+        <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl">
+            <h3 class="font-bold text-slate-800 text-lg mb-4" id="daily-target-title">定員設定</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-500">早番 (A) 定員</label>
+                    <input type="number" id="target-a-input" class="w-full border border-slate-200 rounded-lg p-2 text-sm font-bold" min="0">
+                </div>
+                 <div>
+                    <label class="text-xs font-bold text-slate-500">遅番 (B) 定員</label>
+                    <input type="number" id="target-b-input" class="w-full border border-slate-200 rounded-lg p-2 text-sm font-bold" min="0">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="document.getElementById('daily-target-modal').classList.add('hidden')" class="flex-1 py-2 bg-slate-100 text-slate-500 font-bold rounded-lg text-xs">キャンセル</button>
+                <button id="btn-save-daily-target" class="flex-1 py-2 bg-indigo-600 text-white font-bold rounded-lg text-xs shadow-lg shadow-indigo-200">保存</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Admin Note Modal -->
     <div id="admin-note-modal" class="modal-overlay hidden" style="z-index: 70;">
         <div class="modal-content p-6 w-full max-w-md max-h-[90vh] flex flex-col">
@@ -350,6 +371,7 @@ export function createShiftModals() {
         shiftState.adminSortMode = shiftState.adminSortMode === 'roster' ? 'shift' : 'roster';
         renderShiftAdminTable();
     };
+    $('#btn-save-daily-target').onclick = saveDailyTarget;
 
     // --- Daily Remarks Input Listener ---
     const drInput = document.getElementById('shift-daily-remark-input');
@@ -821,6 +843,67 @@ export function renderShiftAdminTable() {
         createSection("▼ A番 (早番) チーム", mixedSort(listA), "bg-amber-100 text-amber-800");
         createSection("▼ B番 (遅番) チーム", mixedSort(listB), "bg-indigo-100 text-indigo-800");
     }
+
+    // --- Summary Row ---
+    const trSum = document.createElement('tr');
+    trSum.innerHTML = `<td class="sticky left-0 z-10 p-2 font-bold text-xs bg-slate-200 border-b border-r border-slate-300">集計</td>`;
+
+    // Retrieve Targets
+    const dailyTargets = shiftState.shiftDataCache._daily_targets || {};
+
+    for(let d=1; d<=daysInMonth; d++) {
+        // Targets
+        const t = dailyTargets[d] || { A: 9, B: 9 };
+        const targetA = t.A !== undefined ? t.A : 9;
+        const targetB = t.B !== undefined ? t.B : 9;
+
+        // Count Actuals (Only Working Assignments)
+        let countA = 0;
+        let countB = 0;
+
+        const allStaff = Object.keys(shiftState.shiftDataCache);
+        allStaff.forEach(name => {
+             // Skip _daily_targets key if it accidentally got into list (it shouldn't if keys came from cache object directly, but checking)
+             if(name === '_daily_targets') return;
+
+             const data = shiftState.shiftDataCache[name];
+             if(!data.assignments || !data.assignments[d]) return;
+
+             const assign = data.assignments[d];
+             if(assign === '公休') return; // Exclude OFF
+
+             // Determine Shift Type
+             const details = shiftState.staffDetails[name] || {};
+             const mSettings = data.monthly_settings || {};
+             const sType = mSettings.shift_type || details.basic_shift || 'A';
+
+             if(sType === 'A') countA++;
+             else countB++;
+        });
+
+        const td = document.createElement('td');
+        td.className = "text-xs border-b border-r border-slate-200 text-center cursor-pointer hover:bg-slate-50 transition";
+        td.onclick = () => openDailyTargetModal(d);
+
+        // Render
+        const styleA = countA < targetA ? 'text-rose-500 font-bold' : 'text-slate-600';
+        const styleB = countB < targetB ? 'text-rose-500 font-bold' : 'text-slate-600';
+
+        td.innerHTML = `
+            <div class="flex flex-col gap-0.5">
+                <div class="bg-amber-50 rounded px-1">
+                    <span class="text-[9px] text-amber-700 font-bold">A:</span>
+                    <span class="${styleA}">${countA}</span><span class="text-[9px] text-slate-400">/${targetA}</span>
+                </div>
+                <div class="bg-indigo-50 rounded px-1">
+                    <span class="text-[9px] text-indigo-700 font-bold">B:</span>
+                    <span class="${styleB}">${countB}</span><span class="text-[9px] text-slate-400">/${targetB}</span>
+                </div>
+            </div>
+        `;
+        trSum.appendChild(td);
+    }
+    tbody.appendChild(trSum);
 }
 
 async function toggleStaffShiftType(name, currentType) {
@@ -1486,12 +1569,18 @@ async function generateAutoShift() {
     }
 
 
-    // --- Phase 3: Alba Baseline (Min Total 9) ---
-    // Target: Total 9 staff per shift type.
-    const TARGET_TOTAL = 9; // Prompt says "9-11".
+    // --- Phase 3: Alba Baseline (Min Total Dynamic) ---
+    // Target: Total X staff per shift type (Dynamic).
+
+    const dailyTargets = shiftState.shiftDataCache._daily_targets || {};
 
     ['A', 'B'].forEach(st => {
         days.forEach(d => {
+            // Get Target for this day/shift
+            const t = dailyTargets[d] || { A: 9, B: 9 };
+            const val = st === 'A' ? t.A : t.B;
+            const TARGET_TOTAL = val !== undefined ? val : 9;
+
             let currentTotal = countTotalStaff(d, st);
             if (currentTotal < TARGET_TOTAL) {
                 const candidates = staffObjects.filter(s =>
@@ -1700,6 +1789,42 @@ async function clearShiftAssignments() {
     }
 }
 
+// --- Daily Target Editing ---
+
+function openDailyTargetModal(day) {
+    if (!shiftState.isAdminMode) return;
+    shiftState.selectedDay = day;
+    document.getElementById('daily-target-title').textContent = `${shiftState.currentMonth}/${day} 定員設定`;
+    document.getElementById('daily-target-modal').classList.remove('hidden');
+
+    const targets = shiftState.shiftDataCache._daily_targets || {};
+    const dayTargets = targets[day] || { A: 9, B: 9 };
+
+    document.getElementById('target-a-input').value = dayTargets.A !== undefined ? dayTargets.A : 9;
+    document.getElementById('target-b-input').value = dayTargets.B !== undefined ? dayTargets.B : 9;
+}
+
+async function saveDailyTarget() {
+    const day = shiftState.selectedDay;
+    const targetA = parseInt(document.getElementById('target-a-input').value) || 0;
+    const targetB = parseInt(document.getElementById('target-b-input').value) || 0;
+
+    if (!shiftState.shiftDataCache._daily_targets) shiftState.shiftDataCache._daily_targets = {};
+    shiftState.shiftDataCache._daily_targets[day] = { A: targetA, B: targetB };
+
+    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+    const docRef = doc(db, "shift_submissions", docId);
+
+    try {
+        await setDoc(docRef, { _daily_targets: shiftState.shiftDataCache._daily_targets }, { merge: true });
+        document.getElementById('daily-target-modal').classList.add('hidden');
+        showToast("定員を保存しました");
+        renderShiftAdminTable();
+    } catch(e) {
+        alert("保存失敗: " + e.message);
+    }
+}
+
 // Global Exports
 window.showActionSelectModal = showActionSelectModal;
 window.closeShiftActionModal = closeShiftActionModal;
@@ -1711,3 +1836,5 @@ window.updateRankOptions = updateRankOptions;
 window.moveStaffUp = moveStaffUp;
 window.moveStaffDown = moveStaffDown;
 window.resetStaffSort = resetStaffSort;
+window.openDailyTargetModal = openDailyTargetModal;
+window.saveDailyTarget = saveDailyTarget;
