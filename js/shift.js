@@ -753,7 +753,7 @@ export function renderShiftAdminTable() {
                     <span class="leading-tight ${hasAnyRemark ? 'text-indigo-600' : ''}">${name} ${hasAnyRemark ? '📝' : ''}</span>
                     <button class="w-5 h-5 rounded flex items-center justify-center font-bold text-[9px] ${currentType==='A'?'bg-slate-50 text-slate-400':'bg-slate-800 text-white'} toggle-type-btn" data-name="${name}" data-type="${currentType}">${currentType}</button>
                 </div>
-                <span class="text-[9px] text-slate-300 font-normal leading-none block mt-0.5">連:${details.max_consecutive_days||5}</span>
+                <span class="text-[9px] text-slate-300 font-normal leading-none block mt-0.5">連:${details.max_consecutive_days||5} / 契:${details.contract_days||20}</span>
             `;
             // Toggle type button handles its own click via stopPropagation
             nameSpan.querySelector('.toggle-type-btn').onclick = (e) => { e.stopPropagation(); toggleStaffShiftType(name, currentType); };
@@ -1367,45 +1367,274 @@ window.showActionSelectModal = showActionSelectModal;
 window.closeShiftActionModal = closeShiftActionModal;
 window.clearShiftAssignments = clearShiftAssignments;
 window.generateAutoShift = generateAutoShift;
-window.updateRankOptions = () => {};
-window.resetStaffSort = async () => {};
+
+// --- Rank Options Logic ---
+window.updateRankOptions = () => {
+    const type = document.getElementById('se-type').value;
+    const rankSelect = document.getElementById('se-rank');
+    rankSelect.innerHTML = '';
+    const options = type === 'employee' ? RANKS.EMPLOYEE : RANKS.BYTE;
+    options.forEach(r => {
+        const op = document.createElement('option');
+        op.value = r;
+        op.textContent = r;
+        rankSelect.appendChild(op);
+    });
+};
+
+// --- Staff Sort Reset ---
+window.resetStaffSort = async () => {
+    if(!confirm("現在の並び順を役職・ランク順にリセットしますか？")) return;
+    showLoading();
+
+    // Sort Helper
+    const sortList = (list, isEmployee) => {
+        const ranks = isEmployee ? RANKS.EMPLOYEE : RANKS.BYTE;
+        return list.sort((a,b) => {
+            const dA = shiftState.staffDetails[a] || {};
+            const dB = shiftState.staffDetails[b] || {};
+            const rA = dA.rank || '一般';
+            const rB = dB.rank || 'レギュラー';
+            const iA = ranks.indexOf(rA);
+            const iB = ranks.indexOf(rB);
+            if(iA !== iB) return iA - iB; // Lower index is higher rank
+            return a.localeCompare(b);
+        });
+    };
+
+    shiftState.staffListLists.employees = sortList(shiftState.staffListLists.employees, true);
+    shiftState.staffListLists.alba_early = sortList(shiftState.staffListLists.alba_early, false);
+    shiftState.staffListLists.alba_late = sortList(shiftState.staffListLists.alba_late, false);
+
+    await saveStaffOrder();
+    renderStaffMasterList();
+    renderShiftAdminTable();
+    hideLoading();
+    showToast("並び順をリセットしました");
+};
+
 window.openStaffMasterModal = () => {
     renderStaffMasterList();
     document.getElementById('staff-master-modal').classList.remove('hidden');
 };
+
 window.openStaffEditModal = (name) => {
-    document.getElementById('staff-edit-modal').classList.remove('hidden');
+    const modal = document.getElementById('staff-edit-modal');
+    modal.classList.remove('hidden');
     document.getElementById('staff-edit-title').textContent = name ? "スタッフ編集" : "追加";
-    document.getElementById('se-name').value = name || "";
+
+    const nameInput = document.getElementById('se-name');
+    nameInput.value = name || "";
+    nameInput.setAttribute('data-original-name', name || "");
+
+    const details = (name ? shiftState.staffDetails[name] : {}) || {};
+
+    // Set Fields
+    document.getElementById('se-type').value = details.type || 'byte';
+    document.getElementById('se-basic-shift').value = details.basic_shift || 'A';
+    document.getElementById('se-contract-days').value = details.contract_days || 20;
+    document.getElementById('se-max-consecutive').value = details.max_consecutive_days || 5;
+
+    // Update Ranks based on type, then select
+    window.updateRankOptions();
+    if(details.rank) document.getElementById('se-rank').value = details.rank;
+
+    // Checkboxes
+    const allowed = details.allowed_roles || [];
+    document.getElementById('se-allow-money-main').checked = allowed.includes('money_main');
+    document.getElementById('se-allow-money-sub').checked = allowed.includes('money_sub');
+    document.getElementById('se-allow-warehouse').checked = allowed.includes('warehouse');
+    document.getElementById('se-allow-hall-resp').checked = allowed.includes('hall_resp');
 };
+
+// --- Staff List Rendering with Reorder ---
+window.moveStaff = (listKey, index, direction) => {
+    const list = shiftState.staffListLists[listKey];
+    if (!list) return;
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= list.length) return;
+
+    // Swap
+    [list[index], list[targetIndex]] = [list[targetIndex], list[index]];
+
+    // Save Immediate
+    saveStaffOrder().then(() => {
+        renderStaffMasterList();
+        renderShiftAdminTable(); // Reflect order in matrix
+    });
+};
+
+async function saveStaffOrder() {
+    const docRef = doc(db, 'masters', 'staff_data');
+    try {
+        await setDoc(docRef, {
+            employees: shiftState.staffListLists.employees,
+            alba_early: shiftState.staffListLists.alba_early,
+            alba_late: shiftState.staffListLists.alba_late
+        }, { merge: true });
+    } catch(e) {
+        console.error("Order Save Error", e);
+        showToast("順序保存エラー");
+    }
+}
 
 function renderStaffMasterList() {
     const listContainer = document.getElementById('staff-master-list');
     listContainer.innerHTML = '';
 
-    const createItem = (name, type) => {
+    const createItem = (name, type, listKey, index, total) => {
         const details = shiftState.staffDetails[name] || {};
         const div = document.createElement('div');
-        div.className = "flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm";
+        div.className = "flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm mb-2";
+
+        // Up/Down buttons
+        const isFirst = index === 0;
+        const isLast = index === total - 1;
+        const upDisabled = isFirst ? 'opacity-30 cursor-not-allowed' : 'hover:bg-slate-200';
+        const downDisabled = isLast ? 'opacity-30 cursor-not-allowed' : 'hover:bg-slate-200';
+
         div.innerHTML = `
             <div class="flex items-center gap-3">
+                <div class="flex flex-col gap-1">
+                    <button class="w-6 h-6 rounded flex items-center justify-center bg-slate-100 text-slate-500 font-bold text-xs ${upDisabled}" onclick="window.moveStaff('${listKey}', ${index}, -1)">↑</button>
+                    <button class="w-6 h-6 rounded flex items-center justify-center bg-slate-100 text-slate-500 font-bold text-xs ${downDisabled}" onclick="window.moveStaff('${listKey}', ${index}, 1)">↓</button>
+                </div>
                 <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm">👤</div>
                 <div>
                     <div class="font-bold text-slate-700 text-sm">${name}</div>
                     <div class="text-[10px] text-slate-400 font-bold">${type === 'employee' ? '社員' : 'アルバイト'} / ${details.rank || '-'}</div>
                 </div>
             </div>
-            <button class="px-3 py-1.5 bg-slate-50 text-slate-500 font-bold text-xs rounded-lg hover:bg-slate-100 border border-slate-200 transition edit-staff-btn" data-name="${name}">編集</button>
+            <button class="px-3 py-1.5 bg-slate-50 text-slate-500 font-bold text-xs rounded-lg hover:bg-slate-100 border border-slate-200 transition edit-staff-btn">編集</button>
         `;
         div.querySelector('.edit-staff-btn').onclick = () => openStaffEditModal(name);
         listContainer.appendChild(div);
     };
 
-    shiftState.staffListLists.employees.forEach(name => createItem(name, 'employee'));
-    [...shiftState.staffListLists.alba_early, ...shiftState.staffListLists.alba_late].forEach(name => createItem(name, 'byte'));
+    const renderGroup = (key, typeLabel) => {
+        const list = shiftState.staffListLists[key];
+        const header = document.createElement('div');
+        header.className = "text-xs font-bold text-slate-400 mt-4 mb-2 ml-1 uppercase tracking-widest";
+        header.textContent = typeLabel;
+        listContainer.appendChild(header);
+        list.forEach((name, i) => createItem(name, key==='employees'?'employee':'byte', key, i, list.length));
+    };
+
+    renderGroup('employees', 'Employee (社員)');
+    renderGroup('alba_early', 'Part-time (早番)');
+    renderGroup('alba_late', 'Part-time (遅番)');
 }
-async function saveStaffDetails() {}
-async function deleteStaff() {}
+
+async function saveStaffDetails() {
+    const oldName = document.getElementById('se-name').getAttribute('data-original-name');
+    const newName = document.getElementById('se-name').value.trim();
+    if(!newName) return alert("名前を入力してください");
+
+    // Gather data
+    const type = document.getElementById('se-type').value; // 'employee' or 'byte'
+    const basicShift = document.getElementById('se-basic-shift').value; // 'A' or 'B'
+    const rank = document.getElementById('se-rank').value;
+    const contractDays = parseInt(document.getElementById('se-contract-days').value) || 0;
+    const maxConsecutive = parseInt(document.getElementById('se-max-consecutive').value) || 5;
+
+    const allowedRoles = [];
+    if(document.getElementById('se-allow-money-main').checked) allowedRoles.push('money_main');
+    if(document.getElementById('se-allow-money-sub').checked) allowedRoles.push('money_sub');
+    if(document.getElementById('se-allow-warehouse').checked) allowedRoles.push('warehouse');
+    if(document.getElementById('se-allow-hall-resp').checked) allowedRoles.push('hall_resp');
+
+    const newDetails = {
+        rank,
+        type,
+        basic_shift: basicShift,
+        contract_days: contractDays,
+        max_consecutive_days: maxConsecutive,
+        allowed_roles: allowedRoles
+    };
+
+    // Determine target list
+    let targetListKey = 'employees';
+    if(type === 'byte') {
+        targetListKey = basicShift === 'A' ? 'alba_early' : 'alba_late';
+    }
+
+    showLoading();
+
+    // Update State
+    // 1. Details
+    if (oldName && oldName !== newName) {
+        delete shiftState.staffDetails[oldName];
+    }
+    shiftState.staffDetails[newName] = newDetails;
+
+    // 2. Lists
+    let oldListKey = null;
+    let oldIndex = -1;
+    ['employees', 'alba_early', 'alba_late'].forEach(k => {
+        const idx = shiftState.staffListLists[k].indexOf(oldName);
+        if(idx !== -1) {
+            oldListKey = k;
+            oldIndex = idx;
+        }
+    });
+
+    if (oldListKey === targetListKey) {
+        if (oldName !== newName && oldIndex !== -1) {
+            shiftState.staffListLists[targetListKey][oldIndex] = newName;
+        }
+    } else {
+        if (oldListKey && oldIndex !== -1) {
+            shiftState.staffListLists[oldListKey].splice(oldIndex, 1);
+        }
+        shiftState.staffListLists[targetListKey].push(newName);
+    }
+
+    // Save
+    try {
+        await setDoc(doc(db, 'masters', 'staff_data'), {
+            employees: shiftState.staffListLists.employees,
+            alba_early: shiftState.staffListLists.alba_early,
+            alba_late: shiftState.staffListLists.alba_late,
+            staff_details: shiftState.staffDetails
+        });
+        showToast("保存しました");
+        document.getElementById('staff-edit-modal').classList.add('hidden');
+        renderStaffMasterList();
+        renderShiftAdminTable(); // refresh matrix
+    } catch(e) {
+        alert("保存エラー: " + e.message);
+    }
+    hideLoading();
+}
+
+async function deleteStaff() {
+    const name = document.getElementById('se-name').getAttribute('data-original-name');
+    if(!name) return;
+    if(!confirm(`スタッフ「${name}」を削除しますか？\nこの操作は取り消せません。`)) return;
+
+    showLoading();
+
+    delete shiftState.staffDetails[name];
+    ['employees', 'alba_early', 'alba_late'].forEach(k => {
+        shiftState.staffListLists[k] = shiftState.staffListLists[k].filter(n => n !== name);
+    });
+
+    try {
+        await setDoc(doc(db, 'masters', 'staff_data'), {
+            employees: shiftState.staffListLists.employees,
+            alba_early: shiftState.staffListLists.alba_early,
+            alba_late: shiftState.staffListLists.alba_late,
+            staff_details: shiftState.staffDetails
+        });
+        showToast("削除しました");
+        document.getElementById('staff-edit-modal').classList.add('hidden');
+        renderStaffMasterList();
+        renderShiftAdminTable();
+    } catch(e) {
+        alert("削除エラー: " + e.message);
+    }
+    hideLoading();
+}
 
 window.openDailyTargetModal = (day) => {
     shiftState.selectedDay = day;
