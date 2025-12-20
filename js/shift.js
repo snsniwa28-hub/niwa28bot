@@ -1589,6 +1589,19 @@ async function generateAutoShift() {
         });
     });
 
+    // --- Finalize: Fill ALL remaining empty slots with '公休' ---
+    // This ensures unaccepted work requests and empty slots show as system off (/)
+    staffNames.forEach(name => {
+        if (!shifts[name]) shifts[name] = {};
+        if (!shifts[name].assignments) shifts[name].assignments = {};
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            if (!shifts[name].assignments[d]) {
+                shifts[name].assignments[d] = '公休';
+            }
+        }
+    });
+
     // Save
     const docId = `${Y}-${String(M).padStart(2,'0')}`;
     const docRef = doc(db, "shift_submissions", docId);
