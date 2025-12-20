@@ -413,6 +413,41 @@ function setupShiftEventListeners() {
     $('#btn-se-save').onclick = saveStaffDetails;
     $('#btn-se-delete').onclick = deleteStaff;
     $('#btn-save-daily-target').onclick = saveDailyTarget;
+
+    // Event Delegation for Shift Admin Table
+    const adminBody = document.getElementById('shift-admin-body');
+    if(adminBody) {
+        adminBody.onclick = (e) => {
+            const td = e.target.closest('td');
+            if(!td) return;
+            // Handle Staff Name Click (Note)
+            if(td.dataset.type === 'name-cell') {
+                const name = td.dataset.name;
+                const remarks = td.dataset.remarks;
+                const dailyRemarks = td.dataset.dailyRemarks ? JSON.parse(decodeURIComponent(td.dataset.dailyRemarks)) : {};
+                showAdminNoteModal(name, remarks, dailyRemarks);
+                return;
+            }
+            // Handle Shift Cell Click
+            if(td.dataset.type === 'shift-cell') {
+                const day = parseInt(td.dataset.day);
+                const name = td.dataset.name;
+                const status = td.dataset.status;
+                if(name && day) {
+                    shiftState.selectedStaff = name;
+                    showActionSelectModal(day, status);
+                }
+                return;
+            }
+            // Handle Daily Target Cell Click (Footer)
+            if(td.dataset.type === 'target-cell') {
+                const day = parseInt(td.dataset.day);
+                if(day) openDailyTargetModal(day);
+                return;
+            }
+        };
+    }
+
     document.querySelectorAll('.action-btn-role').forEach(btn => {
         btn.onclick = () => {
             const role = btn.dataset.role;
@@ -720,8 +755,17 @@ export function renderShiftAdminTable() {
                 </div>
                 <span class="text-[9px] text-slate-300 font-normal leading-none block mt-0.5">連:${details.max_consecutive_days||5}</span>
             `;
+            // Toggle type button handles its own click via stopPropagation
             nameSpan.querySelector('.toggle-type-btn').onclick = (e) => { e.stopPropagation(); toggleStaffShiftType(name, currentType); };
-            if(hasAnyRemark) nameSpan.onclick = () => showAdminNoteModal(name, data.remarks, data.daily_remarks);
+
+            // Setup data attributes for delegation
+            if(hasAnyRemark) {
+                tdName.dataset.type = 'name-cell';
+                tdName.dataset.name = name;
+                tdName.dataset.remarks = data.remarks || "";
+                tdName.dataset.dailyRemarks = encodeURIComponent(JSON.stringify(data.daily_remarks || {}));
+                tdName.style.cursor = "pointer";
+            }
 
             tdName.appendChild(nameSpan);
             tr.appendChild(tdName);
@@ -765,10 +809,13 @@ export function renderShiftAdminTable() {
 
                 td.className = `border-b border-r border-slate-200 text-center cursor-pointer transition relative ${bgCell}`;
                 td.innerHTML = cellContent;
-                td.onclick = () => {
-                     shiftState.selectedStaff = name;
-                     showActionSelectModal(d, assignment || (isOffReq ? '公休希望' : isWorkReq ? '出勤希望' : '未設定'));
-                };
+
+                // Data Attributes for Event Delegation
+                td.dataset.type = 'shift-cell';
+                td.dataset.day = d;
+                td.dataset.name = name;
+                td.dataset.status = assignment || (isOffReq ? '公休希望' : isWorkReq ? '出勤希望' : '未設定');
+
                 tr.appendChild(td);
             }
             tbody.appendChild(tr);
@@ -790,6 +837,85 @@ export function renderShiftAdminTable() {
         createSection("▼ A番 (早番)", listA, "bg-amber-100 text-amber-800");
         createSection("▼ B番 (遅番)", listB, "bg-indigo-100 text-indigo-800");
     }
+
+    // --- Footer Rows (Actuals & Targets) ---
+    const allNames = [...shiftState.staffListLists.employees, ...shiftState.staffListLists.alba_early, ...shiftState.staffListLists.alba_late];
+    const dailyTargets = shiftState.shiftDataCache._daily_targets || {};
+
+    // Calculate Actuals
+    const actualA = {};
+    const actualB = {};
+    for(let d=1; d<=daysInMonth; d++) {
+        actualA[d] = 0;
+        actualB[d] = 0;
+    }
+
+    allNames.forEach(name => {
+        const data = shiftState.shiftDataCache[name] || {};
+        const assignments = data.assignments || {};
+        const shiftType = (data.monthly_settings?.shift_type) || (shiftState.staffDetails[name]?.basic_shift) || 'A';
+
+        for(let d=1; d<=daysInMonth; d++) {
+            const role = assignments[d];
+            if(role && role !== '公休') {
+                if(shiftType === 'A') actualA[d]++;
+                else actualB[d]++;
+            }
+        }
+    });
+
+    // Create Footer Rows Helper
+    const createFooterRow = (title, type, counts, targets, isTargetRow = false) => {
+        const tr = document.createElement('tr');
+        const tdTitle = document.createElement('td');
+        tdTitle.className = "sticky left-0 z-20 bg-slate-100 p-2 border-b border-r border-slate-300 font-bold text-xs text-slate-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]";
+        tdTitle.textContent = title;
+        tr.appendChild(tdTitle);
+
+        for(let d=1; d<=daysInMonth; d++) {
+            const td = document.createElement('td');
+            const val = counts[d] || 0;
+            const target = (targets[d] && targets[d][type]) !== undefined ? targets[d][type] : 9; // Default 9
+
+            let colorClass = "text-slate-600";
+            if (val < target) colorClass = "text-rose-600 font-black";
+            else if (val > target) colorClass = "text-blue-600";
+
+            td.className = "border-b border-r border-slate-200 text-center font-bold text-xs p-1";
+
+            if (isTargetRow) {
+                 td.className += " cursor-pointer hover:bg-slate-100 bg-slate-50";
+                 td.innerHTML = `<span class="text-slate-400 text-[10px]">(${target})</span>`;
+                 // Data Attributes for delegation
+                 td.dataset.type = 'target-cell';
+                 td.dataset.day = d;
+            } else {
+                 td.innerHTML = `<span class="${colorClass}">${val}</span>`;
+            }
+            tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+    };
+
+    // Render Actuals
+    createFooterRow("実績 (A番)", 'A', actualA, dailyTargets);
+    createFooterRow("実績 (B番)", 'B', actualB, dailyTargets);
+
+    // Render Targets (Combined row for editing)
+    const trTarget = document.createElement('tr');
+    trTarget.innerHTML = `<td class="sticky left-0 z-20 bg-slate-800 text-white p-2 border-b border-r border-slate-600 font-bold text-xs shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">定員設定 (A/B)</td>`;
+    for(let d=1; d<=daysInMonth; d++) {
+        const td = document.createElement('td');
+        const t = dailyTargets[d] || {};
+        const ta = t.A !== undefined ? t.A : 9;
+        const tb = t.B !== undefined ? t.B : 9;
+        td.className = "border-b border-r border-slate-200 text-center font-bold text-xs p-1 cursor-pointer hover:bg-indigo-50 bg-slate-50 transition";
+        td.innerHTML = `<span class="text-slate-500">${ta}</span> / <span class="text-slate-500">${tb}</span>`;
+        td.dataset.type = 'target-cell';
+        td.dataset.day = d;
+        trTarget.appendChild(td);
+    }
+    tbody.appendChild(trTarget);
 }
 
 function renderAdminMobileList() {
@@ -1243,15 +1369,75 @@ window.clearShiftAssignments = clearShiftAssignments;
 window.generateAutoShift = generateAutoShift;
 window.updateRankOptions = () => {};
 window.resetStaffSort = async () => {};
-window.openStaffMasterModal = () => document.getElementById('staff-master-modal').classList.remove('hidden');
+window.openStaffMasterModal = () => {
+    renderStaffMasterList();
+    document.getElementById('staff-master-modal').classList.remove('hidden');
+};
 window.openStaffEditModal = (name) => {
     document.getElementById('staff-edit-modal').classList.remove('hidden');
     document.getElementById('staff-edit-title').textContent = name ? "スタッフ編集" : "追加";
     document.getElementById('se-name').value = name || "";
 };
+
+function renderStaffMasterList() {
+    const listContainer = document.getElementById('staff-master-list');
+    listContainer.innerHTML = '';
+
+    const createItem = (name, type) => {
+        const details = shiftState.staffDetails[name] || {};
+        const div = document.createElement('div');
+        div.className = "flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm";
+        div.innerHTML = `
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm">👤</div>
+                <div>
+                    <div class="font-bold text-slate-700 text-sm">${name}</div>
+                    <div class="text-[10px] text-slate-400 font-bold">${type === 'employee' ? '社員' : 'アルバイト'} / ${details.rank || '-'}</div>
+                </div>
+            </div>
+            <button class="px-3 py-1.5 bg-slate-50 text-slate-500 font-bold text-xs rounded-lg hover:bg-slate-100 border border-slate-200 transition edit-staff-btn" data-name="${name}">編集</button>
+        `;
+        div.querySelector('.edit-staff-btn').onclick = () => openStaffEditModal(name);
+        listContainer.appendChild(div);
+    };
+
+    shiftState.staffListLists.employees.forEach(name => createItem(name, 'employee'));
+    [...shiftState.staffListLists.alba_early, ...shiftState.staffListLists.alba_late].forEach(name => createItem(name, 'byte'));
+}
 async function saveStaffDetails() {}
 async function deleteStaff() {}
-window.saveDailyTarget = async () => { };
+
+window.openDailyTargetModal = (day) => {
+    shiftState.selectedDay = day;
+    document.getElementById('daily-target-title').textContent = `${shiftState.currentMonth}/${day} 定員設定`;
+    const targets = shiftState.shiftDataCache._daily_targets || {};
+    const t = targets[day] || {};
+    document.getElementById('target-a-input').value = t.A !== undefined ? t.A : 9;
+    document.getElementById('target-b-input').value = t.B !== undefined ? t.B : 9;
+    document.getElementById('daily-target-modal').classList.remove('hidden');
+};
+
+window.saveDailyTarget = async () => {
+    const day = shiftState.selectedDay;
+    if(!day) return;
+    const valA = parseInt(document.getElementById('target-a-input').value) || 0;
+    const valB = parseInt(document.getElementById('target-b-input').value) || 0;
+
+    if (!shiftState.shiftDataCache._daily_targets) shiftState.shiftDataCache._daily_targets = {};
+    shiftState.shiftDataCache._daily_targets[day] = { A: valA, B: valB };
+
+    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+    const docRef = doc(db, "shift_submissions", docId);
+    try {
+        await setDoc(docRef, { _daily_targets: shiftState.shiftDataCache._daily_targets }, { merge: true });
+        showToast("定員を保存しました");
+        document.getElementById('daily-target-modal').classList.add('hidden');
+        renderShiftAdminTable();
+    } catch(e) {
+        alert("保存失敗: " + e.message);
+    }
+};
+
 export function showAdminNoteModal(name, monthlyNote, dailyNotes) {
     const modal = document.getElementById('admin-note-modal');
     document.getElementById('admin-note-staff-name').textContent = name;
