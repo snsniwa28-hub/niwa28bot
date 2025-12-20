@@ -746,8 +746,7 @@ export function renderShiftAdminTable() {
                         cellContent = '<span class="text-blue-300 font-bold text-[10px]">(出)</span>';
                     } else {
                         // Empty cell -> show faint A/B
-                        const typeLabel = currentType === 'A' ? 'A早' : 'B遅';
-                        cellContent = `<span class="text-slate-200 text-[9px]">${typeLabel}</span>`;
+                        cellContent = ``;
                     }
                 }
 
