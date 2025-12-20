@@ -54,7 +54,7 @@ export function renderInfoSections() {
                     <h4 class="font-bold text-slate-800 text-lg group-hover:text-blue-600 transition-colors">エヴァ & 話題の新台</h4>
                     <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">4円パチンコ</span>
                 </div>
-                <p class="text-sm text-slate-600 font-medium leading-relaxed pl-3">
+                <p class="text-sm text-slate-600 font-medium leading-relaxed pl-3 text-pretty">
                     平日・週末ともにエヴァ推奨。話題の新台「暴凶星」「アズールレーン」も動くのでしっかり案内を実施！
                 </p>
             </div>
@@ -66,7 +66,7 @@ export function renderInfoSections() {
                     <h4 class="font-bold text-slate-800 text-lg group-hover:text-purple-600 transition-colors">金曜時差 & バラエティ</h4>
                     <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">時差開放</span>
                 </div>
-                <p class="text-sm text-slate-600 font-medium leading-relaxed pl-3">
+                <p class="text-sm text-slate-600 font-medium leading-relaxed pl-3 text-pretty">
                     金曜時差は継続。増台した「ブルロ」「炎炎」がメイン。週末は炎炎2・からくり2・リゼロ2など選り取り見取り感を演出。
                 </p>
             </div>
@@ -78,7 +78,7 @@ export function renderInfoSections() {
                     <h4 class="font-bold text-slate-800 text-lg group-hover:text-yellow-600 transition-colors">海物語配置変更 & エヴァ17</h4>
                     <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">1円パチンコ</span>
                 </div>
-                <p class="text-sm text-slate-600 font-medium leading-relaxed pl-3">
+                <p class="text-sm text-slate-600 font-medium leading-relaxed pl-3 text-pretty">
                     入口最前列を「海物語」に変更し盛況感UP。スマパチ増台。1円「エヴァ17」導入に伴い週末から販促強化で期待感を作ります。
                 </p>
             </div>
@@ -105,9 +105,12 @@ export function renderInfoSections() {
                     <span class="bg-indigo-100 text-indigo-700 text-xs font-black px-2 py-1 rounded">8日 (日)</span>
                     <span class="text-xs font-bold text-slate-400">八潮上空 / 来店</span>
                 </div>
-                <p class="text-sm text-slate-700 font-bold leading-relaxed">
-                    【八潮上空 × おすしさん夜来店】<br>
-                    周年月間初回の上空！喰種筆頭にメイン機種を。夜稼働も強化。※9日は競合周年のため新装告知を徹底。
+                <p class="text-sm text-slate-700 font-bold leading-relaxed text-pretty">
+                    【八潮上空 × おすしさん夜来店】
+                </p>
+                <p class="text-sm text-slate-600 mt-1 text-pretty">
+                    周年月間初回の上空！喰種筆頭にメイン機種を。夜稼働も強化。
+                    <span class="block mt-1 text-xs text-slate-400">※9日は競合周年のため新装告知を徹底。</span>
                 </p>
             </div>
 
@@ -117,8 +120,10 @@ export function renderInfoSections() {
                     <span class="bg-indigo-100 text-indigo-700 text-xs font-black px-2 py-1 rounded">9日 (月)</span>
                     <span class="text-xs font-bold text-slate-400">新装開店 / 来店</span>
                 </div>
-                <p class="text-sm text-slate-700 font-bold leading-relaxed">
-                    【新装開店 × 七咲ななさん夜来店】<br>
+                <p class="text-sm text-slate-700 font-bold leading-relaxed text-pretty">
+                    【新装開店 × 七咲ななさん夜来店】
+                </p>
+                <p class="text-sm text-slate-600 mt-1 text-pretty">
                     暴凶星・アズレン・化物語導入！競合周年に負けず、期待感の高い新台をアピール。
                 </p>
             </div>
@@ -130,7 +135,9 @@ export function renderInfoSections() {
                     <span class="text-xs font-bold text-slate-400">通常営業</span>
                 </div>
                 <p class="text-sm text-slate-700 font-bold leading-relaxed">
-                    【耐える期間】<br>
+                    【耐える期間】
+                </p>
+                 <p class="text-sm text-slate-600 mt-1 text-pretty">
                     イベント無し。新台と喰種を埋めつつ、平日はジャグラーで常連様を囲い込み再遊技を促進。
                 </p>
             </div>
@@ -141,8 +148,10 @@ export function renderInfoSections() {
                     <span class="bg-indigo-100 text-indigo-700 text-xs font-black px-2 py-1 rounded">12日 (木)</span>
                     <span class="text-xs font-bold text-slate-400">八潮上空 / BASHtv</span>
                 </div>
-                <p class="text-sm text-slate-700 font-bold leading-relaxed">
-                    【八潮上空 × よっしー＆烏丸シュウジ × おにくさん】<br>
+                <p class="text-sm text-slate-700 font-bold leading-relaxed text-pretty">
+                    【八潮上空 × よっしー＆烏丸シュウジ × おにくさん】
+                </p>
+                 <p class="text-sm text-slate-600 mt-1 text-pretty">
                     BASHtv恒例来店！最優先は東京喰種。夜はおにくさん＝サミー系＆モンハンへ誘導。
                 </p>
             </div>
@@ -154,7 +163,9 @@ export function renderInfoSections() {
                     <span class="text-xs font-bold text-slate-400">来店イベント</span>
                 </div>
                 <p class="text-sm text-slate-700 font-bold leading-relaxed">
-                    【マッティさん来店】<br>
+                    【マッティさん来店】
+                </p>
+                 <p class="text-sm text-slate-600 mt-1 text-pretty">
                     出玉期待度大。メインから少数台までチャンスあり。翌日「for埼玉」の告知＋出玉アピールを徹底。
                 </p>
             </div>
@@ -166,7 +177,9 @@ export function renderInfoSections() {
                     <span class="text-xs font-bold text-slate-400">スロパチ / 週末</span>
                 </div>
                 <p class="text-sm text-slate-700 font-bold leading-relaxed">
-                    【スロパチ for 埼玉】<br>
+                    【スロパチ for 埼玉】
+                </p>
+                 <p class="text-sm text-slate-600 mt-1 text-pretty">
                     ジャグラーは「列」か「全体」を意識。並びでの出玉感も演出。常連様へ周年への期待感を醸成。
                 </p>
             </div>
@@ -176,7 +189,7 @@ export function renderInfoSections() {
                 <span class="text-xl">⚠️</span>
                 <div>
                     <h4 class="text-xs font-black text-red-700 uppercase tracking-widest mb-1">IMPORTANT NOTICE</h4>
-                    <p class="text-sm font-bold text-red-800 leading-snug">
+                    <p class="text-sm font-bold text-red-800 leading-snug text-pretty">
                         W周年月間表記NGにより、真の周年日は「12/27」となります。お客様への案内ミスなきよう注意！
                     </p>
                 </div>
@@ -240,7 +253,7 @@ export function renderInfoSections() {
                 </div>
             </div>
 
-            <!-- WEEKLY ACTIONS (Restored) -->
+            <!-- WEEKLY ACTIONS -->
             <div class="space-y-4 px-1">
                 <!-- Week 1-2 -->
                 <div class="flex gap-4 items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
@@ -250,7 +263,7 @@ export function renderInfoSections() {
                             <span class="bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded">第1〜2週</span>
                             <span class="text-xs font-bold text-slate-500">導入・助走</span>
                         </div>
-                        <p class="text-xs text-slate-700 font-bold leading-relaxed">
+                        <p class="text-xs text-slate-700 font-bold leading-relaxed text-pretty">
                             エヴァ17・バジリスクなどの話題機導入で集客のベースを作る期間。
                         </p>
                     </div>
@@ -263,7 +276,7 @@ export function renderInfoSections() {
                             <span class="bg-red-100 text-red-700 text-[10px] font-black px-2 py-0.5 rounded">第3週</span>
                             <span class="text-xs font-bold text-slate-500">本番・展開</span>
                         </div>
-                        <p class="text-xs text-slate-700 font-bold leading-relaxed">
+                        <p class="text-xs text-slate-700 font-bold leading-relaxed text-pretty">
                             12/27 周年本番！最大級の出玉と演出で地域No.1の稼働を目指す。
                         </p>
                     </div>
@@ -276,24 +289,30 @@ export function renderInfoSections() {
                             <span class="bg-purple-100 text-purple-700 text-[10px] font-black px-2 py-0.5 rounded">第4週</span>
                             <span class="text-xs font-bold text-slate-500">クライマックス</span>
                         </div>
-                        <p class="text-xs text-slate-700 font-bold leading-relaxed">
+                        <p class="text-xs text-slate-700 font-bold leading-relaxed text-pretty">
                             年末年始営業へ突入。総力戦で2023年を締めくくり、良いスタートダッシュを。
                         </p>
                     </div>
                 </div>
             </div>
 
-            <!-- STAFF MISSION (Text Only) -->
+            <!-- STAFF MISSION -->
             <div class="bg-indigo-900 rounded-xl p-5 text-white shadow-lg border border-indigo-800">
                 <h4 class="text-center font-black text-yellow-400 tracking-widest border-b border-indigo-700 pb-2 mb-4 text-sm">STAFF MISSION</h4>
                 <div class="space-y-4">
                     <div class="flex items-start gap-3">
                          <span class="bg-white text-indigo-900 text-[10px] font-bold px-2 py-0.5 rounded shrink-0 mt-0.5">早番</span>
-                         <p class="font-bold text-sm leading-snug">「新台・オススメ」で稼働を作る。<br><span class="text-indigo-300 text-xs font-medium">お客様への積極的なお声がけを！</span></p>
+                         <div>
+                             <p class="font-bold text-sm leading-snug">「新台・オススメ」で稼働を作る。</p>
+                             <p class="text-indigo-300 text-xs font-medium mt-0.5">お客様への積極的なお声がけを！</p>
+                         </div>
                     </div>
                     <div class="flex items-start gap-3">
                          <span class="bg-slate-700 text-white text-[10px] font-bold px-2 py-0.5 rounded shrink-0 mt-0.5">遅番</span>
-                         <p class="font-bold text-sm leading-snug">「翌日・特日告知」で朝の並びを作る。<br><span class="text-indigo-300 text-xs font-medium">退店時のお客様へアピール！</span></p>
+                         <div>
+                            <p class="font-bold text-sm leading-snug">「翌日・特日告知」で朝の並びを作る。</p>
+                            <p class="text-indigo-300 text-xs font-medium mt-0.5">退店時のお客様へアピール！</p>
+                         </div>
                     </div>
                 </div>
             </div>
