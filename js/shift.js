@@ -15,7 +15,9 @@ let shiftState = {
     staffDetails: {},
     staffListLists: { employees: [], alba_early: [], alba_late: [] },
     historyStack: [],
-    earlyWarehouseMode: false // New Switch State
+    earlyWarehouseMode: false,
+    adjustmentMode: false, // Smart Adjustment Mode
+    prevMonthCache: null
 };
 
 const RANKS = {
@@ -160,6 +162,11 @@ export function createShiftModals() {
                     </div>
                     <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
                          <label class="flex items-center gap-2 text-xs font-bold bg-slate-700 px-3 py-2 rounded-lg border border-slate-600 cursor-pointer select-none">
+                            <input type="checkbox" id="chk-adjustment-mode" class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-600 bg-slate-600 border-slate-500">
+                            <span>調整モード</span>
+                         </label>
+                         <div class="h-6 w-px bg-slate-600 mx-1"></div>
+                         <label class="flex items-center gap-2 text-xs font-bold bg-slate-700 px-3 py-2 rounded-lg border border-slate-600 cursor-pointer select-none">
                             <input type="checkbox" id="chk-early-warehouse-auto" class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-600 bg-slate-600 border-slate-500">
                             <span>早番倉庫お任せ</span>
                          </label>
@@ -201,6 +208,18 @@ export function createShiftModals() {
                         <span>⚡</span> AI 自動作成
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADJUSTMENT CANDIDATE MODAL -->
+    <div id="adjustment-candidate-modal" class="modal-overlay hidden" style="z-index: 90;">
+        <div class="modal-content p-6 w-full max-w-lg bg-white rounded-2xl shadow-xl max-h-[90vh] flex flex-col">
+            <h3 class="font-bold text-slate-800 text-lg mb-2">代わりのスタッフを提案</h3>
+            <p class="text-xs text-slate-500 mb-4">ルール違反（連勤超過・サンドイッチ等）にならないスタッフのみ表示しています。</p>
+            <div id="adjustment-candidate-list" class="flex-1 overflow-y-auto space-y-2 pr-2"></div>
+            <div class="mt-4 flex justify-end">
+                <button onclick="document.getElementById('adjustment-candidate-modal').classList.add('hidden')" class="px-4 py-2 bg-slate-100 text-slate-500 font-bold rounded-lg text-xs">キャンセル</button>
             </div>
         </div>
     </div>
@@ -445,6 +464,10 @@ function setupShiftEventListeners() {
     $('#btn-se-delete').onclick = deleteStaff;
     $('#btn-save-daily-target').onclick = saveDailyTarget;
     $('#chk-early-warehouse-auto').onchange = (e) => { shiftState.earlyWarehouseMode = e.target.checked; };
+    $('#chk-adjustment-mode').onchange = (e) => {
+        shiftState.adjustmentMode = e.target.checked;
+        if(shiftState.adjustmentMode && !shiftState.prevMonthCache) loadPrevMonthData();
+    };
 
     // Event Delegation for Shift Admin Table
     const adminBody = document.getElementById('shift-admin-body');
@@ -564,7 +587,31 @@ export async function loadAllShiftData() {
         console.error("Shift Load Error:", e);
         shiftState.shiftDataCache = {};
     }
+    // Clear prev month cache when loading new data
+    shiftState.prevMonthCache = null;
     hideLoading();
+}
+
+// Helper: Load Prev Month Data if needed
+async function loadPrevMonthData() {
+    const d = new Date(shiftState.currentYear, shiftState.currentMonth - 1, 0);
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const docId = `${y}-${String(m).padStart(2,'0')}`;
+    shiftState.prevMonthCache = { daysCount: d.getDate(), assignments: {} };
+    try {
+        const snap = await getDoc(doc(db, "shift_submissions", docId));
+        if (snap.exists()) {
+            const data = snap.data();
+            Object.keys(data).forEach(k => {
+                if (data[k] && data[k].assignments) {
+                    shiftState.prevMonthCache.assignments[k] = data[k].assignments;
+                }
+            });
+        }
+    } catch(e) {
+        console.warn("Prev month load fail", e);
+    }
 }
 
 export function switchShiftView(viewName) {
@@ -1066,15 +1113,37 @@ export function closeShiftActionModal() {
 
 function handleActionPanelClick(role) {
     if (shiftState.isAdminMode) {
-        if (role === 'clear') {
+        if (role === 'clear' || role === '公休') {
              const day = shiftState.selectedDay;
              const name = shiftState.selectedStaff;
-             if(shiftState.shiftDataCache[name]) {
-                 delete shiftState.shiftDataCache[name].assignments[day];
-                 delete shiftState.shiftDataCache[name].daily_remarks[day];
+
+             // Capture state before vacating
+             let vacatedRole = null;
+             if(shiftState.shiftDataCache[name] && shiftState.shiftDataCache[name].assignments) {
+                 vacatedRole = shiftState.shiftDataCache[name].assignments[day];
              }
+
+             // Perform vacate
+             if(shiftState.shiftDataCache[name]) {
+                 if (role === 'clear') {
+                     delete shiftState.shiftDataCache[name].assignments[day];
+                     delete shiftState.shiftDataCache[name].daily_remarks[day];
+                 } else {
+                     shiftState.shiftDataCache[name].assignments[day] = '公休';
+                 }
+             }
+
              updateViewAfterAction();
              closeShiftActionModal();
+
+             // ADJUSTMENT LOGIC: Suggest Replacement
+             if (shiftState.adjustmentMode && vacatedRole && vacatedRole !== '公休') {
+                 // Try to determine what kind of replacement is needed
+                 // If role is specific (e.g., 'warehouse'), find same.
+                 // If role is generic 'A'/'B' based, suggest same type.
+                 proposeReplacement(day, vacatedRole, name);
+             }
+
         } else {
             setAdminRole(role);
             closeShiftActionModal();
@@ -1194,6 +1263,217 @@ async function toggleStaffShiftType(name, currentType) {
     await saveShiftToFirestore(name);
     renderShiftAdminTable();
 }
+
+// --- ADJUSTMENT LOGIC ---
+
+async function proposeReplacement(day, vacatedRole, vacatedStaffName) {
+    // 1. Identify Target Shift Type & Role
+    // If vacatedRole was specific (e.g., 'warehouse'), we want 'warehouse'.
+    // If vacatedRole was 'A早' or similar, we just want someone for 'A'.
+    // We should also look at the vacated staff's Shift Type (A or B) to recommend same type if possible.
+
+    const staffData = shiftState.shiftDataCache[vacatedStaffName] || {};
+    const staffDetails = shiftState.staffDetails[vacatedStaffName] || {};
+    const vacatedType = staffData.monthly_settings?.shift_type || staffDetails.basic_shift || 'A';
+
+    // Role to Assign: if it's a special role, keep it. Else use default placeholder or generic.
+    let targetRole = vacatedRole;
+    if (vacatedRole === 'A早' || vacatedRole === 'B遅' || vacatedRole === 'ホ') {
+        // Just generic assignment needed.
+        targetRole = 'ホ'; // Default to Hall
+    }
+
+    // 2. Filter Candidates
+    const candidates = [];
+    const allNames = [...shiftState.staffListLists.employees, ...shiftState.staffListLists.alba_early, ...shiftState.staffListLists.alba_late];
+
+    // Ensure prev month data is loaded
+    if (!shiftState.prevMonthCache) {
+        await loadPrevMonthData();
+    }
+
+    allNames.forEach(name => {
+        if (name === vacatedStaffName) return; // Skip self
+
+        // Check if already working
+        const sData = shiftState.shiftDataCache[name] || {};
+        const assignments = sData.assignments || {};
+        if (assignments[day] && assignments[day] !== '公休') return; // Already working
+
+        // Check Shift Type Match (Soft preference, or strict?)
+        // Requirement says "Substitute". Usually implies same shift type.
+        // Let's enforce Shift Type matching for simplicity and safety,
+        // UNLESS the user explicitly wants to cross-assign (which this auto-logic might not guess).
+        // Let's stick to: Match Shift Type (A for A, B for B).
+        const sDetails = shiftState.staffDetails[name] || {};
+        const sType = sData.monthly_settings?.shift_type || sDetails.basic_shift || 'A';
+        if (sType !== vacatedType) return;
+
+        // Validation Checks (Rules)
+        const validation = validateAssignment(name, day);
+        if (!validation.isValid) return;
+
+        // Check Role Capability
+        if (targetRole !== 'ホ' && targetRole !== 'A早' && targetRole !== 'B遅') {
+            // It's a special role
+            const allowed = sDetails.allowed_roles || [];
+            let requiredSkill = null;
+            if (targetRole.includes('金')) requiredSkill = 'money_main'; // or sub
+            if (targetRole.includes('副')) requiredSkill = 'money_sub';
+            if (targetRole.includes('倉庫')) requiredSkill = 'warehouse';
+            if (targetRole.includes('責')) requiredSkill = 'hall_resp';
+
+            if (requiredSkill && !allowed.includes(requiredSkill)) return;
+        }
+
+        candidates.push({ name, type: sType, currentCount: Object.values(assignments).filter(r=>r!=='公休').length });
+    });
+
+    // 3. Sort Candidates (Less busy first)
+    candidates.sort((a,b) => a.currentCount - b.currentCount);
+
+    // 4. Show Modal
+    const listEl = document.getElementById('adjustment-candidate-list');
+    listEl.innerHTML = '';
+    if (candidates.length === 0) {
+        listEl.innerHTML = '<p class="text-sm text-rose-500 font-bold">条件を満たす候補者が見つかりませんでした。</p>';
+    } else {
+        candidates.forEach(c => {
+            const div = document.createElement('div');
+            div.className = "flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-emerald-50 hover:border-emerald-200 cursor-pointer transition";
+            div.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <span class="text-lg">👤</span>
+                    <div>
+                        <div class="font-bold text-slate-800">${c.name}</div>
+                        <div class="text-[10px] text-slate-500">現在: ${c.currentCount}日出勤</div>
+                    </div>
+                </div>
+                <button class="px-3 py-1.5 bg-emerald-500 text-white font-bold text-xs rounded-lg shadow hover:bg-emerald-600">交代</button>
+            `;
+            div.onclick = async () => {
+                if(!confirm(`${c.name} さんに「${targetRole}」を割り当てますか？`)) return;
+
+                // Assign
+                if (!shiftState.shiftDataCache[c.name]) shiftState.shiftDataCache[c.name] = {};
+                if (!shiftState.shiftDataCache[c.name].assignments) shiftState.shiftDataCache[c.name].assignments = {};
+
+                shiftState.shiftDataCache[c.name].assignments[day] = targetRole;
+
+                // Save
+                await saveShiftToFirestore(c.name);
+
+                document.getElementById('adjustment-candidate-modal').classList.add('hidden');
+                renderShiftAdminTable();
+                showToast(`${c.name} さんを割り当てました`);
+            };
+            listEl.appendChild(div);
+        });
+    }
+
+    document.getElementById('adjustment-candidate-modal').classList.remove('hidden');
+}
+
+function validateAssignment(name, day) {
+    const sData = shiftState.shiftDataCache[name] || {};
+    const sDetails = shiftState.staffDetails[name] || {};
+    const requests = sData.shift_requests || {};
+    const assignments = sData.assignments || {};
+
+    // 1. Off Request
+    if (sData.off_days && sData.off_days.includes(day)) {
+        return { isValid: false, reason: "Off Request" };
+    }
+
+    // Helper to check work status (uses prev month cache)
+    const checkWork = (d) => {
+        if (d <= 0) {
+            if (!shiftState.prevMonthCache) return false; // Fail safe
+            const daysCount = shiftState.prevMonthCache.daysCount;
+            const targetDay = daysCount + d; // e.g. 0 -> last day, -1 -> day before last
+            // Wait, d=0 should be last day?
+            // In generateAutoShift, I used: d=day-i.
+            // Here, logic: if day=1, day-1=0. 0 means Last Day of prev month.
+            // shiftState.prevMonthCache.assignments[name][targetDay]
+            const pmAssigns = shiftState.prevMonthCache.assignments[name];
+            if (!pmAssigns) return false;
+            const role = pmAssigns[targetDay];
+            return role && role !== '公休';
+        }
+        return assignments[d] && assignments[d] !== '公休';
+    };
+
+    // 2. Consecutive Days
+    const maxConsecutive = sDetails.max_consecutive_days || 5;
+    let currentSeq = 1; // Including proposed day
+    // Back
+    let b = day - 1;
+    while(checkWork(b)) {
+        currentSeq++;
+        b--;
+        if(day - b > 30) break;
+    }
+    // Forward
+    let f = day + 1;
+    while(checkWork(f)) {
+        currentSeq++;
+        f++;
+    }
+    if (currentSeq > maxConsecutive) return { isValid: false, reason: "Consecutive Limit" };
+
+    // 3. Sandwich Check
+    // Rule: [Streak >= Max] [Off (day-1)] [Candidate (day)] -> NG
+    if (!checkWork(day - 1)) {
+        // Gap at day-1. Check streak ending at day-2
+        let prevStreak = 0;
+        let k = day - 2;
+        while(checkWork(k)) {
+            prevStreak++;
+            k--;
+            if((day-2)-k > 30) break;
+        }
+        if(prevStreak >= maxConsecutive) return { isValid: false, reason: "Sandwich Rule" };
+    }
+
+    // 4. Interval (Late -> Early)
+    // Need to know shift type of assignments.
+    // For simplicity in interactive mode, we rely on Monthly/Master settings for Type.
+    const myType = sData.monthly_settings?.shift_type || sDetails.basic_shift || 'A';
+    // If I am Type A, and I worked yesterday (Late/B), that's bad.
+    // But usually staff is fixed A or B.
+    // The only risk is if I am 'A', and yesterday I was assigned 'B' role?
+    // Or if I am 'A' and yesterday I worked, and yesterday was 'B'?
+    // The detailed check is complex without role metadata.
+    // Let's assume standard behavior:
+    // If I am 'A', check if yesterday's assignment implies 'B'.
+    // If yesterday was 'B' (Late), and today is 'A' (Early), NG.
+
+    // Check Day-1
+    if (checkWork(day-1)) {
+        // Get yesterday's role
+        let yesterdayRole = null;
+        if (day - 1 <= 0) {
+             const pd = shiftState.prevMonthCache.daysCount + (day - 1);
+             yesterdayRole = shiftState.prevMonthCache.assignments[name]?.[pd];
+        } else {
+             yesterdayRole = assignments[day-1];
+        }
+
+        if (yesterdayRole) {
+            // Guess type of yesterday
+            let yType = myType; // Default
+            if (yesterdayRole.includes('遅') || yesterdayRole.includes('B')) yType = 'B';
+
+            // Guess type of today (proposed)
+            let tType = myType;
+
+            if (yType === 'B' && tType === 'A') return { isValid: false, reason: "Interval Rule" };
+        }
+    }
+
+    return { isValid: true };
+}
+
 
 // --- NEW AUTO SHIFT LOGIC (AI) ---
 async function generateAutoShift() {
