@@ -767,11 +767,14 @@ export function renderShiftAdminTable() {
     const tbody = document.getElementById('shift-admin-body');
     tbody.innerHTML = '';
 
+    // Performance Optimization: Use DocumentFragment
+    const fragment = document.createDocumentFragment();
+
     const createSection = (title, list, bgClass) => {
         if(!list || list.length === 0) return;
         const trTitle = document.createElement('tr');
         trTitle.innerHTML = `<td class="sticky left-0 z-20 p-2 font-bold text-xs ${bgClass} border-b border-r border-slate-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" colspan="${daysInMonth+1}">${title}</td>`;
-        tbody.appendChild(trTitle);
+        fragment.appendChild(trTitle);
 
         list.forEach(name => {
             const tr = document.createElement('tr');
@@ -829,20 +832,34 @@ export function renderShiftAdminTable() {
                          else { bgCell = 'bg-white hover:bg-slate-100'; cellContent = '<span class="text-slate-300 font-bold text-[10px] select-none">/</span>'; }
                     } else {
                          let roleColor = 'text-slate-800';
-                         if(assignment.includes('金メ')) { bgCell = 'bg-yellow-50'; roleColor = 'text-yellow-600'; }
-                         else if(assignment.includes('金サブ')) { bgCell = 'bg-amber-50'; roleColor = 'text-amber-600'; }
-                         else if(assignment.includes('ホ責')) { bgCell = 'bg-orange-50'; roleColor = 'text-orange-600'; }
-                         else if(assignment.includes('倉庫')) { bgCell = 'bg-blue-50'; roleColor = 'text-blue-600'; }
-                         else if(assignment === 'A早' || assignment === 'B遅') { bgCell = 'bg-slate-100'; roleColor = 'text-slate-600'; }
-                         else { bgCell = 'bg-white'; }
 
-                         const typeLabel = currentType === 'A' ? 'A早' : 'B遅';
-                         cellContent = `
-                            <div class="flex flex-col items-center justify-center leading-none -mt-0.5">
-                                <span class="text-[7px] text-slate-300 font-normal transform scale-90">${typeLabel}</span>
-                                <span class="${roleColor} font-bold text-[10px] -mt-px">${assignment}</span>
-                            </div>
-                         `;
+                         // Check for special roles
+                         const isSpecial = assignment.includes('金メ') || assignment.includes('金サブ') || assignment.includes('ホ責') || assignment.includes('倉庫');
+
+                         if (isSpecial) {
+                             if(assignment.includes('金メ')) { bgCell = 'bg-yellow-50'; roleColor = 'text-yellow-600'; }
+                             else if(assignment.includes('金サブ')) { bgCell = 'bg-amber-50'; roleColor = 'text-amber-600'; }
+                             else if(assignment.includes('ホ責')) { bgCell = 'bg-orange-50'; roleColor = 'text-orange-600'; }
+                             else if(assignment.includes('倉庫')) { bgCell = 'bg-blue-50'; roleColor = 'text-blue-600'; }
+
+                             const typeLabel = currentType === 'A' ? 'A早' : 'B遅';
+                             cellContent = `
+                                <div class="flex flex-col items-center justify-center leading-none -mt-0.5">
+                                    <span class="text-[7px] text-slate-300 font-normal transform scale-90">${typeLabel}</span>
+                                    <span class="${roleColor} font-bold text-[10px] -mt-px">${assignment}</span>
+                                </div>
+                             `;
+                         } else {
+                             // Plain Shift (No specific role, or generic like 'ホ', '早番', 'A早', etc.)
+                             // Force simplified style
+                             bgCell = 'bg-white';
+                             const displayLabel = currentType === 'A' ? 'A出勤' : 'B出勤';
+                             cellContent = `
+                                <div class="flex flex-col items-center justify-center leading-none -mt-0.5">
+                                    <span class="text-slate-600 font-bold text-[10px] -mt-px">${displayLabel}</span>
+                                </div>
+                             `;
+                         }
 
                          // WARNING: Forced assignment on holiday request
                          if(isOffReq) {
@@ -871,7 +888,7 @@ export function renderShiftAdminTable() {
 
                 tr.appendChild(td);
             }
-            tbody.appendChild(tr);
+            fragment.appendChild(tr);
         });
     };
 
@@ -946,7 +963,7 @@ export function renderShiftAdminTable() {
             }
             tr.appendChild(td);
         }
-        tbody.appendChild(tr);
+        fragment.appendChild(tr);
     };
 
     createFooterRow("実績 (A番)", 'A', actualA, dailyTargets);
@@ -965,7 +982,10 @@ export function renderShiftAdminTable() {
         td.dataset.day = d;
         trTarget.appendChild(td);
     }
-    tbody.appendChild(trTarget);
+    fragment.appendChild(trTarget);
+
+    // Append the entire fragment to the table body
+    tbody.appendChild(fragment);
 }
 
 function renderAdminMobileList() {
@@ -1334,6 +1354,9 @@ async function generateAutoShift() {
                  });
                  for (const c of candidates) {
                      if (count >= 4) break;
+                     // Strict Contract Limit Check
+                     if (c.assignedDays.length >= c.contractDays) continue;
+
                      c.assignedDays.push(d);
                      count++;
                  }
@@ -1350,6 +1373,9 @@ async function generateAutoShift() {
         needy.sort((a,b) => (a.contractDays - a.assignedDays.length) - (b.contractDays - b.assignedDays.length)).reverse(); // Most needy first
 
         for (const emp of needy) {
+             // Double check contract limit
+             if (emp.assignedDays.length >= emp.contractDays) continue;
+
              // Find best day
              // 1. Work Request
              let validDays = days.filter(d => emp.requests.work.includes(d) && canAssign(emp, d));
@@ -1400,6 +1426,9 @@ async function generateAutoShift() {
 
                  for(const c of candidates) {
                      if (current >= target) break;
+                     // Strict Contract Limit Check
+                     if (c.assignedDays.length >= c.contractDays) continue;
+
                      c.assignedDays.push(d);
                      current++;
                  }
