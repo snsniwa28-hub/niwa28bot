@@ -184,8 +184,8 @@ export function createShiftModals() {
                         <table class="w-full border-collapse whitespace-nowrap text-sm">
                             <thead class="sticky top-0 z-30 bg-slate-100 text-slate-600 font-bold shadow-sm">
                                 <tr id="shift-admin-header-row">
-                                    <th class="sticky left-0 z-40 bg-slate-100 p-2 border-b border-r border-slate-300 min-w-[140px] text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                                        名前 <span class="text-[10px] font-normal text-slate-400 ml-1">ランク/連/契/実</span>
+                                    <th class="sticky left-0 z-40 bg-slate-100 p-1 md:p-2 border-b border-r border-slate-300 w-20 md:w-auto md:min-w-[140px] text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                        名前 <span class="text-[10px] font-normal text-slate-400 ml-1 hidden md:inline">ランク/連/契/実</span>
                                     </th>
                                 </tr>
                             </thead>
@@ -771,7 +771,7 @@ export function renderShiftAdminTable() {
     const daysInMonth = new Date(y, m, 0).getDate();
     const holidays = getHolidays(y, m);
     const isMobile = window.innerWidth < 768;
-    const isListView = isMobile || shiftState.viewMode === 'list';
+    const isListView = shiftState.viewMode === 'list'; // UPDATED: Allow table view on mobile
     const toggleBtn = document.getElementById('btn-shift-toggle-mode');
     toggleBtn.textContent = shiftState.adminSortMode === 'roster' ? "📂 名簿順" : "⚡ シフト別";
     const undoBtn = document.getElementById('btn-undo-action');
@@ -795,7 +795,8 @@ export function renderShiftAdminTable() {
         const dayOfWeek = new Date(y, m-1, d).getDay();
         const isHoliday = holidays.includes(d);
         const color = (dayOfWeek===0 || isHoliday) ?'text-rose-500':dayOfWeek===6?'text-blue-500':'text-slate-600';
-        th.className = `p-2 border-b border-r border-slate-200 min-w-[30px] text-center ${color} font-num`;
+        // UPDATED: Compact header styles for mobile
+        th.className = `p-1 md:p-2 border-b border-r border-slate-200 min-w-[24px] md:min-w-[30px] text-center ${color} font-num text-[10px] md:text-xs`;
         th.textContent = d;
         headerRow.appendChild(th);
     }
@@ -809,7 +810,8 @@ export function renderShiftAdminTable() {
     const createSection = (title, list, bgClass) => {
         if(!list || list.length === 0) return;
         const trTitle = document.createElement('tr');
-        trTitle.innerHTML = `<td class="sticky left-0 z-20 p-2 font-bold text-xs ${bgClass} border-b border-r border-slate-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" colspan="${daysInMonth+1}">${title}</td>`;
+        // UPDATED: Section title spans full width with correct padding
+        trTitle.innerHTML = `<td class="sticky left-0 z-20 p-1 md:p-2 font-bold text-[10px] md:text-xs ${bgClass} border-b border-r border-slate-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-left pl-2" colspan="${daysInMonth+1}">${title}</td>`;
         fragment.appendChild(trTitle);
 
         list.forEach(name => {
@@ -824,17 +826,29 @@ export function renderShiftAdminTable() {
             const actualCount = Object.values(data.assignments || {}).filter(r => r !== '公休').length;
 
             const tdName = document.createElement('td');
-            tdName.className = "sticky left-0 z-20 bg-white p-2 border-b border-r border-slate-300 font-bold text-slate-700 text-xs truncate max-w-[150px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]";
+            // UPDATED: Name cell layout (narrow on mobile)
+            tdName.className = "sticky left-0 z-20 bg-white p-1 md:p-2 border-b border-r border-slate-300 font-bold text-slate-700 text-[10px] md:text-xs truncate w-20 md:w-auto md:min-w-[140px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]";
 
             const nameSpan = document.createElement('div');
-            nameSpan.className = "flex flex-col mb-1";
+            nameSpan.className = "flex flex-col md:mb-1 justify-center h-full"; // Centered vertically
+
+            // UPDATED: Details hidden on mobile
+            const detailsHtml = `
+                <span class="text-[9px] text-slate-300 font-normal leading-none mt-0.5 hidden md:block">
+                    連:${details.max_consecutive_days||5} / 契:${details.contract_days||20} / <span class="text-slate-500 font-bold">実:${actualCount}</span>
+                </span>
+            `;
+
+            // UPDATED: Name cell inner HTML structure
             nameSpan.innerHTML = `
-                <div class="flex items-center justify-between">
-                    <span class="leading-tight ${hasAnyRemark ? 'text-indigo-600' : ''}">${name} ${hasAnyRemark ? '📝' : ''}</span>
-                    <button class="w-5 h-5 rounded flex items-center justify-center font-bold text-[9px] ${currentType==='A'?'bg-slate-50 text-slate-400':'bg-slate-800 text-white'} toggle-type-btn" data-name="${name}" data-type="${currentType}">${currentType}</button>
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-1">
+                    <span class="leading-tight truncate ${hasAnyRemark ? 'text-indigo-600' : ''}">${name} ${hasAnyRemark ? '<span class="md:hidden">📝</span>' : (hasAnyRemark ? '📝' : '')}</span>
+                    <button class="w-4 h-4 md:w-5 md:h-5 rounded flex items-center justify-center font-bold text-[8px] md:text-[9px] ${currentType==='A'?'bg-slate-50 text-slate-400':'bg-slate-800 text-white'} toggle-type-btn shrink-0" data-name="${name}" data-type="${currentType}">${currentType}</button>
                 </div>
-                ${renderRoleBadges(details.allowed_roles)}
-                <span class="text-[9px] text-slate-300 font-normal leading-none block mt-0.5">連:${details.max_consecutive_days||5} / 契:${details.contract_days||20} / <span class="text-slate-500 font-bold">実:${actualCount}</span></span>
+                <div class="scale-90 origin-left mt-0.5 md:mt-1">
+                    ${renderRoleBadges(details.allowed_roles)}
+                </div>
+                ${detailsHtml}
             `;
             // Toggle type button handles its own click via stopPropagation
             nameSpan.querySelector('.toggle-type-btn').onclick = (e) => { e.stopPropagation(); toggleStaffShiftType(name, currentType); };
@@ -880,10 +894,11 @@ export function renderShiftAdminTable() {
                              else if(assignment.includes('倉庫')) { bgCell = 'bg-blue-50'; roleColor = 'text-blue-600'; }
 
                              const typeLabel = currentType === 'A' ? 'A早' : 'B遅';
+                             // UPDATED: Shift cell text size
                              cellContent = `
-                                <div class="flex flex-col items-center justify-center leading-none -mt-0.5">
-                                    <span class="text-[7px] text-slate-300 font-normal transform scale-90">${typeLabel}</span>
-                                    <span class="${roleColor} font-bold text-[10px] -mt-px">${assignment}</span>
+                                <div class="flex flex-col items-center justify-center leading-none">
+                                    <span class="text-[6px] md:text-[7px] text-slate-300 font-normal transform scale-90 mb-px">${typeLabel}</span>
+                                    <span class="${roleColor} font-bold text-[9px] md:text-[10px] leading-none">${assignment}</span>
                                 </div>
                              `;
                          } else {
@@ -891,9 +906,10 @@ export function renderShiftAdminTable() {
                              // Force simplified style
                              bgCell = 'bg-white';
                              const displayLabel = currentType === 'A' ? 'A出勤' : 'B出勤';
+                             // UPDATED: Shift cell text size
                              cellContent = `
-                                <div class="flex flex-col items-center justify-center leading-none -mt-0.5">
-                                    <span class="text-slate-600 font-bold text-[10px] -mt-px">${displayLabel}</span>
+                                <div class="flex flex-col items-center justify-center leading-none">
+                                    <span class="text-slate-600 font-bold text-[9px] md:text-[10px] leading-none">${displayLabel}</span>
                                 </div>
                              `;
                          }
@@ -914,7 +930,8 @@ export function renderShiftAdminTable() {
 
                 if (dailyRemark) cellContent += `<span class="absolute top-0 right-0 text-[8px] text-yellow-600">●</span>`;
 
-                td.className = `border-b border-r border-slate-200 text-center cursor-pointer transition relative ${bgCell}`;
+                // UPDATED: Cell padding
+                td.className = `border-b border-r border-slate-200 text-center cursor-pointer transition relative ${bgCell} p-0.5 md:p-1 h-8 md:h-auto align-middle`;
                 td.innerHTML = cellContent;
 
                 // Data Attributes for Event Delegation
@@ -975,7 +992,8 @@ export function renderShiftAdminTable() {
     const createFooterRow = (title, type, counts, targets, isTargetRow = false) => {
         const tr = document.createElement('tr');
         const tdTitle = document.createElement('td');
-        tdTitle.className = "sticky left-0 z-20 bg-slate-100 p-2 border-b border-r border-slate-300 font-bold text-xs text-slate-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]";
+        // UPDATED: Footer title cell matching name column style
+        tdTitle.className = "sticky left-0 z-20 bg-slate-100 p-1 md:p-2 border-b border-r border-slate-300 font-bold text-[10px] md:text-xs text-slate-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-20 md:w-auto md:min-w-[140px] truncate";
         tdTitle.textContent = title;
         tr.appendChild(tdTitle);
 
@@ -988,11 +1006,12 @@ export function renderShiftAdminTable() {
             if (val < target) colorClass = "text-rose-600 font-black";
             else if (val > target) colorClass = "text-blue-600";
 
-            td.className = "border-b border-r border-slate-200 text-center font-bold text-xs p-1";
+            // UPDATED: Footer cell padding/style
+            td.className = "border-b border-r border-slate-200 text-center font-bold text-[10px] md:text-xs p-0.5 md:p-1 h-8 md:h-auto align-middle";
 
             if (isTargetRow) {
                  td.className += " cursor-pointer hover:bg-slate-100 bg-slate-50";
-                 td.innerHTML = `<span class="text-slate-400 text-[10px]">(${target})</span>`;
+                 td.innerHTML = `<span class="text-slate-400 text-[9px] md:text-[10px]">(${target})</span>`;
                  td.dataset.type = 'target-cell';
                  td.dataset.day = d;
             } else {
@@ -1007,13 +1026,15 @@ export function renderShiftAdminTable() {
     createFooterRow("実績 (B番)", 'B', actualB, dailyTargets);
 
     const trTarget = document.createElement('tr');
-    trTarget.innerHTML = `<td class="sticky left-0 z-20 bg-slate-800 text-white p-2 border-b border-r border-slate-600 font-bold text-xs shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">定員設定 (A/B)</td>`;
+    // UPDATED: Target row title cell
+    trTarget.innerHTML = `<td class="sticky left-0 z-20 bg-slate-800 text-white p-1 md:p-2 border-b border-r border-slate-600 font-bold text-[10px] md:text-xs shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-20 md:w-auto md:min-w-[140px] truncate">定員設定 (A/B)</td>`;
     for(let d=1; d<=daysInMonth; d++) {
         const td = document.createElement('td');
         const t = dailyTargets[d] || {};
         const ta = t.A !== undefined ? t.A : 9;
         const tb = t.B !== undefined ? t.B : 9;
-        td.className = "border-b border-r border-slate-200 text-center font-bold text-xs p-1 cursor-pointer hover:bg-indigo-50 bg-slate-50 transition";
+        // UPDATED: Target cell styling
+        td.className = "border-b border-r border-slate-200 text-center font-bold text-[10px] md:text-xs p-0.5 md:p-1 h-8 md:h-auto align-middle cursor-pointer hover:bg-indigo-50 bg-slate-50 transition";
         td.innerHTML = `<span class="text-slate-500">${ta}</span> / <span class="text-slate-500">${tb}</span>`;
         td.dataset.type = 'target-cell';
         td.dataset.day = d;
