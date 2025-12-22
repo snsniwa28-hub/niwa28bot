@@ -1314,7 +1314,7 @@ async function prepareShiftAnalysisContext(year, month, currentShiftData, staffD
 
 // --- SHARED HELPER: CHECK ASSIGNMENT CONSTRAINT ---
 // Can we assign 'day' to 'staff'?
-function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, strictContractMode = false) {
+function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, strictContractMode = false, isAdjustmentMode = false) {
     // Helper: Check Work Status (Current & History)
     const checkWork = (s, d) => {
         if (d <= 0) return !!s.history[d];
@@ -1322,7 +1322,7 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
     };
 
     // 0. Strict Contract Enforcement (Highest Priority)
-    if (!strictContractMode && staff.assignedDays.length >= staff.contractDays) return false;
+    if (!strictContractMode && !isAdjustmentMode && staff.assignedDays.length >= staff.contractDays) return false;
 
     // 1. Strict Interval (Absolute): No Late -> Early
     if (day > 1) {
@@ -1700,7 +1700,7 @@ async function openAdjustmentCandidateModal(day, currentStaffName, currentRole) 
 
         // Check Constraints (Sandwich, Consecutive, etc.)
         // We pass strictContractMode = false, because we want to see VALID candidates.
-        return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, false);
+        return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, false, true);
     });
 
     // 3. Render Modal
