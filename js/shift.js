@@ -1210,6 +1210,30 @@ async function generateAutoShift() {
     const details = shiftState.staffDetails;
     const dailyTargets = shiftState.shiftDataCache._daily_targets || {};
 
+    // --- PRE-CALC: PREV MONTH DATA (For Cross-Month & Sandwich) ---
+    const prevDate = new Date(Y, M - 1, 0); // Last day of prev month
+    const prevY = prevDate.getFullYear();
+    const prevM = prevDate.getMonth() + 1;
+    const prevDaysCount = prevDate.getDate();
+    const prevDocId = `${prevY}-${String(prevM).padStart(2,'0')}`;
+    let prevMonthAssignments = {};
+
+    try {
+        const docRef = doc(db, "shift_submissions", prevDocId);
+        const snap = await getDoc(docRef);
+        if(snap.exists()) {
+             const data = snap.data();
+             // Extract assignments
+             Object.keys(data).forEach(key => {
+                 if (data[key] && data[key].assignments) {
+                     prevMonthAssignments[key] = data[key].assignments;
+                 }
+             });
+        }
+    } catch(e) {
+        console.warn("Could not fetch previous month data:", e);
+    }
+
     // Prepare Staff Objects
     const staffNames = [
         ...shiftState.staffListLists.employees,
@@ -1221,6 +1245,22 @@ async function generateAutoShift() {
         const d = details[name] || {};
         const s = shifts[name] || {};
         const m = s.monthly_settings || {};
+
+        // Build History (Last 7 days of prev month)
+        // Map: -1 = Last Day, -2 = Day before...
+        const history = {};
+        const prevAssigns = prevMonthAssignments[name] || {};
+        for(let i=0; i<7; i++) {
+            const dayNum = prevDaysCount - i;
+            // Key 0 is Prev Month Last Day (to align with logic day-1 when day=1)
+            // Wait, my logic below uses `day - 1`. If day=1, day-1=0.
+            // So I should map `prevDaysCount` to 0. `prevDaysCount - 1` to -1.
+            const offset = -i;
+            const dVal = prevDaysCount - i;
+            const role = prevAssigns[dVal];
+            history[offset] = (role && role !== '公休');
+        }
+
         return {
             name,
             rank: d.rank || '一般',
@@ -1235,6 +1275,7 @@ async function generateAutoShift() {
                 types: s.shift_requests || {} // {day: 'early'|'late'|'any'}
             },
             assignedDays: [], // List of day numbers
+            history, // NEW
             roleCounts: {
                 [ROLES.MONEY]: 0,
                 [ROLES.MONEY_SUB]: 0,
@@ -1257,28 +1298,25 @@ async function generateAutoShift() {
     // Helper: Is Responsible?
     const isResponsible = (s) => s.allowedRoles.includes('money_main');
 
+    // Helper: Check Work Status (Current & History)
+    // d can be negative or 0 (prev month), or positive (current month)
+    const checkWork = (staff, d) => {
+        if (d <= 0) {
+            // Check history
+            // history key 0 is prevDaysCount.
+            return !!staff.history[d];
+        }
+        return staff.assignedDays.includes(d);
+    };
+
     // Helper: Can Assign?
     const canAssign = (staff, day, strictContractMode = false) => {
         // 0. Strict Contract Enforcement (Highest Priority)
-        if (staff.assignedDays.length >= staff.contractDays) return false;
+        if (!strictContractMode && staff.assignedDays.length >= staff.contractDays) return false;
 
         // 1. Strict Interval (Absolute): No Late -> Early
-        // Determine prev day shift type
         if (day > 1) {
-            const prevAssign = shifts[staff.name].assignments[day - 1];
-            // Since we assign sequentially day by day in some logics or random order...
-            // Wait, we assign DAYs first in this logic, then Roles.
-            // But to check interval, we need to know if the previous DAY was assigned.
-            // And if so, what "Shift Type" it implies.
-            // The logic assumes staff works their `shiftType` mostly.
-
-            // However, the rule says: "Prev day Late (B) -> Next day Early (A) is FORBIDDEN".
-            // Since we haven't assigned roles yet, we rely on the intended shift type for the day.
-            // Intended Shift Type:
-            // If request 'late' -> Late.
-            // If request 'early' -> Early.
-            // Else -> staff.shiftType.
-
+            // Check current month prev day assignment
             if (staff.assignedDays.includes(day - 1)) {
                  let prevEffective = staff.shiftType;
                  if (staff.requests.types[day-1] === 'early') prevEffective = 'A';
@@ -1290,6 +1328,17 @@ async function generateAutoShift() {
 
                  if (prevEffective === 'B' && currentEffective === 'A') return false;
             }
+        } else if (day === 1) {
+             // Check prev month last day role
+             const lastRole = prevMonthAssignments[staff.name]?.[prevDaysCount];
+             if (lastRole && (lastRole.includes('遅') || lastRole.includes('B'))) {
+                 // Prev was Late.
+                 let currentEffective = staff.shiftType;
+                 if (staff.requests.types[day] === 'early') currentEffective = 'A';
+                 if (staff.requests.types[day] === 'late') currentEffective = 'B';
+
+                 if (currentEffective === 'A') return false; // Block Late->Early across month
+             }
         }
 
         // 2. Off Days Check
@@ -1297,19 +1346,42 @@ async function generateAutoShift() {
              if (staff.requests.off.includes(day)) return false;
         }
 
-        // 3. Consecutive Days
-        const tempDays = [...staff.assignedDays, day].sort((a,b) => a-b);
-        let streak = 0;
-        let maxStreak = 0;
-        let prev = -1;
-        for (const d of tempDays) {
-            if (d === prev + 1) { streak++; } else { streak = 1; }
-            if (streak > staff.maxConsecutive) return false;
-            maxStreak = Math.max(maxStreak, streak);
-            prev = d;
+        // 3. Consecutive Days (UPDATED for Cross-Month)
+        // Check streak including `day`
+        let currentSeq = 1;
+        // Scan Backwards
+        let b = day - 1;
+        while(checkWork(staff, b)) {
+            currentSeq++;
+            b--;
+            // Safety break for infinite loop (unlikely with limited history)
+            if (day - b > 30) break;
+        }
+        // Scan Forwards (Current month only)
+        let f = day + 1;
+        while(checkWork(staff, f)) {
+            currentSeq++;
+            f++;
         }
 
-        // 4. Already assigned
+        if (currentSeq > staff.maxConsecutive) return false;
+
+        // 4. Sandwich Check (NEW)
+        // Rule: [MaxStreak] [Off] [Candidate] -> NG
+        // Check if day-1 is Off
+        if (!checkWork(staff, day - 1)) {
+            // day-1 is a Gap. Check streak ending at day-2.
+            let prevStreak = 0;
+            let k = day - 2;
+            while (checkWork(staff, k)) {
+                prevStreak++;
+                k--;
+                if ((day - 2) - k > 30) break;
+            }
+            if (prevStreak >= staff.maxConsecutive) return false;
+        }
+
+        // 5. Already assigned
         if (staff.assignedDays.includes(day)) return false;
 
         return true;
