@@ -632,9 +632,14 @@ export function renderShiftStaffList() {
         if(!c) return;
         c.innerHTML = '';
         list.forEach(name => {
+            const details = shiftState.staffDetails[name] || {};
             const btn = document.createElement('button');
             btn.className = "bg-white border-2 border-slate-100 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 font-bold py-4 px-2 rounded-2xl text-sm transition-all shadow-sm active:scale-95 flex flex-col items-center justify-center gap-1";
-            btn.innerHTML = `<span class="text-2xl opacity-50">👤</span><span>${name}</span>`;
+            btn.innerHTML = `
+                <span class="text-2xl opacity-50">👤</span>
+                <span>${name}</span>
+                ${renderRoleBadges(details.allowed_roles)}
+            `;
             btn.onclick = () => selectShiftStaff(name);
             c.appendChild(btn);
         });
@@ -790,12 +795,45 @@ export function renderShiftAdminTable() {
 
     const headerRow = document.getElementById('shift-admin-header-row');
     while (headerRow.children.length > 1) headerRow.removeChild(headerRow.lastChild);
+
+    // ★Fix: Manager Absence Check (Pre-scan)
+    const dangerDays = [];
+    const responsibleRoles = ['マネージャー', '主任', 'チーフ', 'リーダー'];
+    const allStaffNames = [...shiftState.staffListLists.employees, ...shiftState.staffListLists.alba_early, ...shiftState.staffListLists.alba_late];
+
+    for(let d=1; d<=daysInMonth; d++) {
+        let hasResponsible = false;
+        for(const name of allStaffNames) {
+            const data = shiftState.shiftDataCache[name] || {};
+            const assignment = data.assignments ? data.assignments[d] : null;
+            if(assignment && assignment !== '公休') {
+                const details = shiftState.staffDetails[name] || {};
+                const allowed = details.allowed_roles || [];
+                const rank = details.rank || '';
+                // Responsible if: Allowed Money Main OR High Rank
+                if (allowed.includes('money_main') || responsibleRoles.includes(rank)) {
+                    hasResponsible = true;
+                    break;
+                }
+            }
+        }
+        if(!hasResponsible) dangerDays.push(d);
+    }
+
     for(let d=1; d<=daysInMonth; d++) {
         const th = document.createElement('th');
         const dayOfWeek = new Date(y, m-1, d).getDay();
         const isHoliday = holidays.includes(d);
-        const color = (dayOfWeek===0 || isHoliday) ?'text-rose-500':dayOfWeek===6?'text-blue-500':'text-slate-600';
-        th.className = `p-2 border-b border-r border-slate-200 min-w-[30px] text-center ${color} font-num`;
+        let color = (dayOfWeek===0 || isHoliday) ?'text-rose-500':dayOfWeek===6?'text-blue-500':'text-slate-600';
+        let bg = 'bg-slate-100';
+
+        // Highlight Danger Days
+        if (dangerDays.includes(d)) {
+            bg = 'bg-rose-500';
+            color = 'text-white';
+        }
+
+        th.className = `p-2 border-b border-r border-slate-200 min-w-[30px] text-center ${color} ${bg} font-num`;
         th.textContent = d;
         headerRow.appendChild(th);
     }
@@ -1042,7 +1080,10 @@ function renderAdminMobileList() {
                 <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-lg">👤</div>
                 <div>
                     <h4 class="font-bold text-slate-800">${name}</h4>
-                    <span class="text-xs text-slate-400 font-bold">${details.rank || '-'}</span>
+                    <div class="flex flex-col">
+                        <span class="text-xs text-slate-400 font-bold">${details.rank || '-'}</span>
+                        ${renderRoleBadges(details.allowed_roles)}
+                    </div>
                 </div>
             </div>
             <div class="text-right">
@@ -1322,7 +1363,8 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
     };
 
     // 0. Strict Contract Enforcement (Highest Priority)
-    if (!strictContractMode && !isAdjustmentMode && staff.assignedDays.length >= staff.contractDays) return false;
+    // ★Fix: Hard Limit (Absolute limit even in strict mode, unless manual adjustment)
+    if (!isAdjustmentMode && staff.assignedDays.length >= staff.contractDays) return false;
 
     // 1. Strict Interval (Absolute): No Late -> Early
     if (day > 1) {
@@ -1407,6 +1449,25 @@ async function generateAutoShift() {
         // 1. Prepare Context (Reusing Shared Logic)
         const context = await prepareShiftAnalysisContext(Y, M, shifts, shiftState.staffDetails, shiftState.staffListLists);
         const { staffObjects, daysInMonth, prevMonthAssignments, prevDaysCount } = context;
+
+        // ★Fix: Pre-calculation & Invalidate Off Requests for Contract Shortage
+        staffObjects.forEach(s => {
+            const maxAvailable = daysInMonth - s.requests.off.length;
+            if (maxAvailable < s.contractDays) {
+                const deficit = s.contractDays - maxAvailable;
+                if (deficit > 0) {
+                    // Remove 'deficit' amount of off days from the END of the list
+                    // (To minimize impact, or maybe maximize? Random is fine, simple slice is consistent)
+                    if (s.requests.off.length >= deficit) {
+                         // Keep the first (length - deficit) requests
+                         // e.g. off=[1,2,3], deficit=1 -> keep [1,2]
+                         s.requests.off = s.requests.off.slice(0, s.requests.off.length - deficit);
+                    } else {
+                         s.requests.off = [];
+                    }
+                }
+            }
+        });
 
         // Clear assignments for simulation
         staffObjects.forEach(s => {
