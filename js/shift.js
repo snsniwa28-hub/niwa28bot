@@ -1,7 +1,7 @@
 import { db } from './firebase.js';
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { showPasswordModal, closePasswordModal, showToast } from './ui.js';
-import { $ } from './utils.js';
+import { $, getHolidays } from './utils.js';
 
 let shiftState = {
     currentYear: new Date().getFullYear(),
@@ -10,14 +10,14 @@ let shiftState = {
     shiftDataCache: {},
     isAdminMode: false,
     selectedDay: null,
-    adminSortMode: 'roster', // 'roster' or 'shift'
-    viewMode: 'table', // 'table' or 'list' (for mobile)
+    adminSortMode: 'roster',
+    viewMode: 'table',
     staffDetails: {},
     staffListLists: { employees: [], alba_early: [], alba_late: [] },
-    historyStack: [] // For Undo
+    historyStack: [],
+    earlyWarehouseMode: false // New Switch State
 };
 
-// --- Definitions ---
 const RANKS = {
     EMPLOYEE: ['マネージャー', '主任', '副主任', '一般'],
     BYTE: ['チーフ', 'リーダー', 'コア', 'レギュラー']
@@ -29,10 +29,11 @@ const ROLES = {
     HALL_RESP: 'ホ責',
     WAREHOUSE: '倉庫',
     HALL: 'ホ',
-    OFF: '公休'
+    OFF: '公休',
+    GENERIC_A: 'A早',
+    GENERIC_B: 'B遅'
 };
 
-// --- Loading Helper ---
 function showLoading() {
     let el = document.getElementById('shift-loading-overlay');
     if(!el) {
@@ -50,7 +51,7 @@ function hideLoading() {
     if(el) el.classList.add('hidden');
 }
 
-// --- DOM Injection & Initialization ---
+// --- DOM Injection ---
 
 export function injectShiftButton() {
     const card = document.getElementById('shiftEntryCard');
@@ -109,7 +110,8 @@ export function createShiftModals() {
                     <button id="shift-prev-month" class="p-2 hover:bg-slate-50 rounded-lg text-slate-400 font-bold transition">◀</button>
                     <div class="text-center">
                         <h4 id="shift-cal-title" class="text-lg font-black text-slate-800 font-num"></h4>
-                        <span id="shift-staff-name" class="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full mt-1 inline-block"></span>
+                        <div id="shift-cal-stats" class="text-xs font-bold text-slate-500 mt-1"></div>
+                        <span id="shift-staff-name" class="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full mt-1 inline-block hidden"></span>
                     </div>
                     <button id="shift-next-month" class="p-2 hover:bg-slate-50 rounded-lg text-slate-400 font-bold transition">▶</button>
                 </div>
@@ -146,9 +148,12 @@ export function createShiftModals() {
                          </div>
                     </div>
                     <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                         <label class="flex items-center gap-2 text-xs font-bold bg-slate-700 px-3 py-2 rounded-lg border border-slate-600 cursor-pointer select-none">
+                            <input type="checkbox" id="chk-early-warehouse-auto" class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-600 bg-slate-600 border-slate-500">
+                            <span>早番倉庫お任せ</span>
+                         </label>
                          <button id="btn-undo-action" class="hidden flex items-center gap-1 text-xs font-bold bg-slate-600 hover:bg-slate-500 px-3 py-2 rounded-lg transition border border-slate-500">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
-                            元に戻す
                         </button>
                         <div class="h-6 w-px bg-slate-600 mx-1"></div>
                         <button id="btn-shift-toggle-mode" class="whitespace-nowrap text-xs font-bold bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg border border-slate-600">📂 名簿順</button>
@@ -163,7 +168,7 @@ export function createShiftModals() {
                             <thead class="sticky top-0 z-30 bg-slate-100 text-slate-600 font-bold shadow-sm">
                                 <tr id="shift-admin-header-row">
                                     <th class="sticky left-0 z-40 bg-slate-100 p-2 border-b border-r border-slate-300 min-w-[140px] text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                                        名前 <span class="text-[10px] font-normal text-slate-400 ml-1">ランク/連勤</span>
+                                        名前 <span class="text-[10px] font-normal text-slate-400 ml-1">ランク/連/契/実</span>
                                     </th>
                                 </tr>
                             </thead>
@@ -189,7 +194,7 @@ export function createShiftModals() {
         </div>
     </div>
 
-    <!-- NEW SHIFT ACTION PANEL -->
+    <!-- ACTION MODAL -->
     <div id="shift-action-modal" class="modal-overlay hidden" style="z-index: 70;">
         <div class="modal-content p-0 w-full max-w-[340px] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col">
             <div class="bg-slate-800 text-white p-5 text-center relative overflow-hidden">
@@ -198,14 +203,23 @@ export function createShiftModals() {
                 <div id="shift-action-status" class="inline-block px-4 py-1.5 rounded-full text-xs font-bold bg-slate-700/80 backdrop-blur-sm border border-slate-600 mt-1"></div>
             </div>
 
-            <div class="p-6 grid grid-cols-3 gap-3">
-                 <button class="action-btn-role flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition" data-role="公休">
-                    <span class="text-xl">🏖️</span>
-                    <span class="text-[10px] font-bold">公休</span>
+            <!-- User Request Buttons -->
+            <div id="user-req-buttons" class="p-6 grid grid-cols-2 gap-3">
+                 <button class="action-btn-role flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-orange-50 border border-orange-100 hover:bg-orange-100 hover:text-orange-700 transition" data-role="early">
+                    <span class="text-xl">☀️</span>
+                    <span class="text-[10px] font-bold">早番希望</span>
                 </button>
-                <button class="action-btn-role flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition" data-role="work_req">
+                <button class="action-btn-role flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-purple-50 border border-purple-100 hover:bg-purple-100 hover:text-purple-700 transition" data-role="late">
+                    <span class="text-xl">🌙</span>
+                    <span class="text-[10px] font-bold">遅番希望</span>
+                </button>
+                <button class="action-btn-role flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-blue-50 border border-blue-100 hover:bg-blue-100 hover:text-blue-700 transition col-span-2" data-role="any">
                     <span class="text-xl">🙋‍♂️</span>
-                    <span class="text-[10px] font-bold">出勤希望</span>
+                    <span class="text-[10px] font-bold">どちらでも可 (出勤希望)</span>
+                </button>
+                <button class="action-btn-role flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition" data-role="off">
+                    <span class="text-xl">🏖️</span>
+                    <span class="text-[10px] font-bold">公休 (休み)</span>
                 </button>
                 <button class="action-btn-role flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-200 transition" data-role="clear">
                     <span class="text-xl">🔄</span>
@@ -213,14 +227,22 @@ export function createShiftModals() {
                 </button>
             </div>
 
-            <div id="admin-role-grid" class="hidden px-6 pb-2 grid grid-cols-4 gap-2">
+            <!-- Admin Role Buttons -->
+            <div id="admin-role-grid" class="hidden px-6 pb-2 grid grid-cols-4 gap-2 mt-4">
+                 <button class="role-btn bg-slate-100 text-slate-600 border border-slate-200 font-bold py-2 rounded-lg text-[10px]" data-role="A早">A (早)</button>
+                 <button class="role-btn bg-slate-100 text-slate-600 border border-slate-200 font-bold py-2 rounded-lg text-[10px]" data-role="B遅">B (遅)</button>
+                 <button class="role-btn bg-rose-50 text-rose-600 border border-rose-200 font-bold py-2 rounded-lg text-[10px]" data-role="公休">公休</button>
+                 <button class="role-btn bg-slate-50 text-slate-400 border border-slate-200 font-bold py-2 rounded-lg text-[10px]" data-role="clear">クリア</button>
+
+                 <div class="col-span-4 h-px bg-slate-100 my-1"></div>
+
                  <button class="role-btn bg-yellow-50 text-yellow-700 border border-yellow-200 font-bold py-2 rounded-lg text-[10px]" data-role="金メ">金メ</button>
                  <button class="role-btn bg-amber-50 text-amber-700 border border-amber-200 font-bold py-2 rounded-lg text-[10px]" data-role="金サブ">金サブ</button>
                  <button class="role-btn bg-orange-50 text-orange-700 border border-orange-200 font-bold py-2 rounded-lg text-[10px]" data-role="ホ責">ホ責</button>
                  <button class="role-btn bg-blue-50 text-blue-700 border border-blue-200 font-bold py-2 rounded-lg text-[10px]" data-role="倉庫">倉庫</button>
             </div>
 
-            <div class="px-6 pb-4">
+            <div class="px-6 pb-4 pt-2">
                 <label class="block text-[10px] font-bold text-slate-400 mb-1 ml-1">備考 (入力で即時保存)</label>
                 <div class="relative">
                     <textarea id="shift-action-daily-input" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition" rows="2" placeholder="早退・遅刻予定など..."></textarea>
@@ -229,15 +251,13 @@ export function createShiftModals() {
             </div>
 
             <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                <button id="btn-action-prev" class="pr-4 pl-2 py-2 bg-white border border-slate-200 text-slate-500 rounded-xl text-xs font-bold hover:bg-slate-50 transition flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg> 前の日
+                </button>
                 <button onclick="closeShiftActionModal()" class="px-4 py-2 rounded-lg text-slate-400 font-bold text-xs hover:bg-slate-100 transition">閉じる</button>
-                <div class="flex items-center gap-2">
-                    <div id="admin-ab-toggle" class="hidden">
-                        <button id="btn-toggle-ab" class="px-3 py-1.5 bg-white border border-slate-200 shadow-sm text-slate-600 rounded-lg text-[10px] font-black hover:text-indigo-600 transition">A/B 切替</button>
-                    </div>
-                    <button id="btn-action-next" class="pl-4 pr-2 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition flex items-center gap-1">
-                        次の日 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                    </button>
-                </div>
+                <button id="btn-action-next" class="pl-4 pr-2 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition flex items-center gap-1">
+                    次の日 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                </button>
             </div>
         </div>
     </div>
@@ -413,6 +433,7 @@ function setupShiftEventListeners() {
     $('#btn-se-save').onclick = saveStaffDetails;
     $('#btn-se-delete').onclick = deleteStaff;
     $('#btn-save-daily-target').onclick = saveDailyTarget;
+    $('#chk-early-warehouse-auto').onchange = (e) => { shiftState.earlyWarehouseMode = e.target.checked; };
 
     // Event Delegation for Shift Admin Table
     const adminBody = document.getElementById('shift-admin-body');
@@ -450,17 +471,20 @@ function setupShiftEventListeners() {
 
     document.querySelectorAll('.action-btn-role').forEach(btn => {
         btn.onclick = () => {
-            const role = btn.dataset.role;
-            handleActionPanelClick(role);
+            handleActionPanelClick(btn.dataset.role);
         };
     });
     document.querySelectorAll('.role-btn').forEach(btn => {
         btn.onclick = () => {
-            handleActionPanelClick(btn.dataset.role);
+            const role = btn.dataset.role;
+            if (role === 'clear') handleActionPanelClick('clear');
+            else if (role === '公休') handleActionPanelClick('公休');
+            else setAdminRole(role);
         };
     });
-    $('#btn-action-next').onclick = moveToNextDay;
-    $('#btn-toggle-ab').onclick = toggleShiftAB;
+    $('#btn-action-next').onclick = () => moveDay(1);
+    $('#btn-action-prev').onclick = () => moveDay(-1);
+
     const drInput = document.getElementById('shift-action-daily-input');
     if(drInput) {
         drInput.oninput = () => {
@@ -597,14 +621,21 @@ export function renderShiftCalendar() {
     container.innerHTML = '';
     const firstDay = new Date(y, m - 1, 1).getDay();
     const daysInMonth = new Date(y, m, 0).getDate();
+    const holidays = getHolidays(y, m);
 
     if (!shiftState.shiftDataCache[shiftState.selectedStaff]) {
-        shiftState.shiftDataCache[shiftState.selectedStaff] = { off_days: [], work_days: [], assignments: {} };
+        shiftState.shiftDataCache[shiftState.selectedStaff] = { off_days: [], work_days: [], assignments: {}, shift_requests: {} };
     }
     const staffData = shiftState.shiftDataCache[shiftState.selectedStaff];
     const offDays = staffData.off_days || [];
     const workDays = staffData.work_days || [];
     const assignments = staffData.assignments || {};
+    const requests = staffData.shift_requests || {};
+    const details = shiftState.staffDetails[shiftState.selectedStaff] || {};
+
+    // Progress Stats
+    const statsDiv = document.getElementById('shift-cal-stats');
+    if(statsDiv) statsDiv.textContent = `提出: ${workDays.length} / 目標: ${details.contract_days || 20}`;
 
     document.getElementById('shift-remarks-input').value = staffData.remarks || "";
 
@@ -639,13 +670,16 @@ export function renderShiftCalendar() {
     for (let d = 1; d <= daysInMonth; d++) {
         const isOff = offDays.includes(d);
         const isWork = workDays.includes(d);
+        const reqType = requests[d] || 'any'; // 'early', 'late', 'any'
         const assignedRole = assignments[d];
         const isSelected = d === shiftState.selectedDay;
         const dateObj = new Date(y, m - 1, d);
         const dayOfWeek = dateObj.getDay();
+        const isHoliday = holidays.includes(d);
+
         let numColor = "text-slate-700";
-        if (dayOfWeek === 0) numColor = "text-rose-500";
-        if (dayOfWeek === 6) numColor = "text-blue-500";
+        if (dayOfWeek === 0 || isHoliday) numColor = "text-rose-500";
+        else if (dayOfWeek === 6) numColor = "text-blue-500";
 
         let bgClass = 'bg-white hover:bg-emerald-50';
         let label = '';
@@ -671,9 +705,10 @@ export function renderShiftCalendar() {
                 statusText = '希望休';
             } else if (isWork) {
                 numColor = "text-white";
-                bgClass = "bg-blue-400 opacity-80";
-                label = '<span class="text-[10px] text-white font-bold leading-none mt-1">出勤希</span>';
-                statusText = '出勤希望';
+                // Color based on request type
+                if(reqType === 'early') { bgClass = "bg-orange-400 opacity-80"; label = '<span class="text-[10px] text-white font-bold leading-none mt-1">早番希</span>'; statusText = '早番希望'; }
+                else if(reqType === 'late') { bgClass = "bg-purple-500 opacity-80"; label = '<span class="text-[10px] text-white font-bold leading-none mt-1">遅番希</span>'; statusText = '遅番希望'; }
+                else { bgClass = "bg-blue-400 opacity-80"; label = '<span class="text-[10px] text-white font-bold leading-none mt-1">出勤希</span>'; statusText = '出勤希望'; }
             }
         }
 
@@ -698,6 +733,7 @@ export function renderShiftAdminTable() {
     const m = shiftState.currentMonth;
     document.getElementById('shift-admin-title').textContent = `${y}年 ${m}月`;
     const daysInMonth = new Date(y, m, 0).getDate();
+    const holidays = getHolidays(y, m);
     const isMobile = window.innerWidth < 768;
     const isListView = isMobile || shiftState.viewMode === 'list';
     const toggleBtn = document.getElementById('btn-shift-toggle-mode');
@@ -721,7 +757,8 @@ export function renderShiftAdminTable() {
     for(let d=1; d<=daysInMonth; d++) {
         const th = document.createElement('th');
         const dayOfWeek = new Date(y, m-1, d).getDay();
-        const color = dayOfWeek===0?'text-rose-500':dayOfWeek===6?'text-blue-500':'text-slate-600';
+        const isHoliday = holidays.includes(d);
+        const color = (dayOfWeek===0 || isHoliday) ?'text-rose-500':dayOfWeek===6?'text-blue-500':'text-slate-600';
         th.className = `p-2 border-b border-r border-slate-200 min-w-[30px] text-center ${color} font-num`;
         th.textContent = d;
         headerRow.appendChild(th);
@@ -743,6 +780,10 @@ export function renderShiftAdminTable() {
             const monthlySettings = (data.monthly_settings) || {};
             const currentType = monthlySettings.shift_type || details.basic_shift || 'A';
             const hasAnyRemark = (data.remarks && data.remarks.trim() !== "") || (data.daily_remarks && Object.keys(data.daily_remarks).length > 0);
+
+            // Calculate Actual Assigned Count
+            const actualCount = Object.values(data.assignments || {}).filter(r => r !== '公休').length;
+
             const tdName = document.createElement('td');
             tdName.className = "sticky left-0 z-20 bg-white p-2 border-b border-r border-slate-300 font-bold text-slate-700 text-xs truncate max-w-[150px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]";
 
@@ -753,7 +794,7 @@ export function renderShiftAdminTable() {
                     <span class="leading-tight ${hasAnyRemark ? 'text-indigo-600' : ''}">${name} ${hasAnyRemark ? '📝' : ''}</span>
                     <button class="w-5 h-5 rounded flex items-center justify-center font-bold text-[9px] ${currentType==='A'?'bg-slate-50 text-slate-400':'bg-slate-800 text-white'} toggle-type-btn" data-name="${name}" data-type="${currentType}">${currentType}</button>
                 </div>
-                <span class="text-[9px] text-slate-300 font-normal leading-none block mt-0.5">連:${details.max_consecutive_days||5} / 契:${details.contract_days||20}</span>
+                <span class="text-[9px] text-slate-300 font-normal leading-none block mt-0.5">連:${details.max_consecutive_days||5} / 契:${details.contract_days||20} / <span class="text-slate-500 font-bold">実:${actualCount}</span></span>
             `;
             // Toggle type button handles its own click via stopPropagation
             nameSpan.querySelector('.toggle-type-btn').onclick = (e) => { e.stopPropagation(); toggleStaffShiftType(name, currentType); };
@@ -774,6 +815,8 @@ export function renderShiftAdminTable() {
                 const td = document.createElement('td');
                 const isOffReq = data.off_days && data.off_days.includes(d);
                 const isWorkReq = data.work_days && data.work_days.includes(d);
+                const requests = data.shift_requests || {};
+                const reqType = requests[d] || 'any';
                 const assignment = (data.assignments && data.assignments[d]) || null;
                 const dailyRemark = data.daily_remarks && data.daily_remarks[d];
 
@@ -790,6 +833,7 @@ export function renderShiftAdminTable() {
                          else if(assignment.includes('金サブ')) { bgCell = 'bg-amber-50'; roleColor = 'text-amber-600'; }
                          else if(assignment.includes('ホ責')) { bgCell = 'bg-orange-50'; roleColor = 'text-orange-600'; }
                          else if(assignment.includes('倉庫')) { bgCell = 'bg-blue-50'; roleColor = 'text-blue-600'; }
+                         else if(assignment === 'A早' || assignment === 'B遅') { bgCell = 'bg-slate-100'; roleColor = 'text-slate-600'; }
                          else { bgCell = 'bg-white'; }
 
                          const typeLabel = currentType === 'A' ? 'A早' : 'B遅';
@@ -799,10 +843,19 @@ export function renderShiftAdminTable() {
                                 <span class="${roleColor} font-bold text-[10px] -mt-px">${assignment}</span>
                             </div>
                          `;
+
+                         // WARNING: Forced assignment on holiday request
+                         if(isOffReq) {
+                            bgCell += ' ring-2 ring-inset ring-rose-500 bg-rose-50';
+                         }
                     }
                 } else {
                     if (isOffReq) { bgCell = 'bg-rose-50 hover:bg-rose-100'; cellContent = '<span class="text-rose-500 font-bold text-[10px] select-none">(休)</span>'; }
-                    else if (isWorkReq) { bgCell = 'bg-slate-50 hover:bg-slate-100'; cellContent = '<span class="text-blue-300 font-bold text-[10px]">(出)</span>'; }
+                    else if (isWorkReq) {
+                        if(reqType === 'early') { bgCell = 'bg-orange-50 hover:bg-orange-100'; cellContent = '<span class="text-orange-400 font-bold text-[10px]">(早)</span>'; }
+                        else if(reqType === 'late') { bgCell = 'bg-purple-50 hover:bg-purple-100'; cellContent = '<span class="text-purple-400 font-bold text-[10px]">(遅)</span>'; }
+                        else { bgCell = 'bg-slate-50 hover:bg-slate-100'; cellContent = '<span class="text-blue-300 font-bold text-[10px]">(出)</span>'; }
+                    }
                 }
 
                 if (dailyRemark) cellContent += `<span class="absolute top-0 right-0 text-[8px] text-yellow-600">●</span>`;
@@ -814,7 +867,7 @@ export function renderShiftAdminTable() {
                 td.dataset.type = 'shift-cell';
                 td.dataset.day = d;
                 td.dataset.name = name;
-                td.dataset.status = assignment || (isOffReq ? '公休希望' : isWorkReq ? '出勤希望' : '未設定');
+                td.dataset.status = assignment || (isOffReq ? '公休希望' : isWorkReq ? (reqType==='early'?'早番希望':reqType==='late'?'遅番希望':'出勤希望') : '未設定');
 
                 tr.appendChild(td);
             }
@@ -875,7 +928,7 @@ export function renderShiftAdminTable() {
         for(let d=1; d<=daysInMonth; d++) {
             const td = document.createElement('td');
             const val = counts[d] || 0;
-            const target = (targets[d] && targets[d][type]) !== undefined ? targets[d][type] : 9; // Default 9
+            const target = (targets[d] && targets[d][type]) !== undefined ? targets[d][type] : 9;
 
             let colorClass = "text-slate-600";
             if (val < target) colorClass = "text-rose-600 font-black";
@@ -886,7 +939,6 @@ export function renderShiftAdminTable() {
             if (isTargetRow) {
                  td.className += " cursor-pointer hover:bg-slate-100 bg-slate-50";
                  td.innerHTML = `<span class="text-slate-400 text-[10px]">(${target})</span>`;
-                 // Data Attributes for delegation
                  td.dataset.type = 'target-cell';
                  td.dataset.day = d;
             } else {
@@ -897,11 +949,9 @@ export function renderShiftAdminTable() {
         tbody.appendChild(tr);
     };
 
-    // Render Actuals
     createFooterRow("実績 (A番)", 'A', actualA, dailyTargets);
     createFooterRow("実績 (B番)", 'B', actualB, dailyTargets);
 
-    // Render Targets (Combined row for editing)
     const trTarget = document.createElement('tr');
     trTarget.innerHTML = `<td class="sticky left-0 z-20 bg-slate-800 text-white p-2 border-b border-r border-slate-600 font-bold text-xs shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">定員設定 (A/B)</td>`;
     for(let d=1; d<=daysInMonth; d++) {
@@ -964,15 +1014,14 @@ export function showActionSelectModal(day, currentStatusText) {
     document.getElementById('shift-action-modal').classList.remove('hidden');
 
     const adminRoles = document.getElementById('admin-role-grid');
-    const adminToggle = document.getElementById('admin-ab-toggle');
+    const userReqButtons = document.getElementById('user-req-buttons');
+
     if (shiftState.isAdminMode) {
+        userReqButtons.classList.add('hidden');
         adminRoles.classList.remove('hidden');
-        adminToggle.classList.remove('hidden');
-        const type = (staffData.monthly_settings?.shift_type) || (shiftState.staffDetails[name]?.basic_shift) || 'A';
-        document.getElementById('btn-toggle-ab').textContent = `${type}番 (切替)`;
     } else {
+        userReqButtons.classList.remove('hidden');
         adminRoles.classList.add('hidden');
-        adminToggle.classList.add('hidden');
     }
 }
 
@@ -984,27 +1033,55 @@ export function closeShiftActionModal() {
 }
 
 function handleActionPanelClick(role) {
+    if (shiftState.isAdminMode) {
+        if (role === 'clear') {
+             const day = shiftState.selectedDay;
+             const name = shiftState.selectedStaff;
+             if(shiftState.shiftDataCache[name]) {
+                 delete shiftState.shiftDataCache[name].assignments[day];
+                 delete shiftState.shiftDataCache[name].daily_remarks[day];
+             }
+             updateViewAfterAction();
+             closeShiftActionModal();
+        } else {
+            setAdminRole(role);
+            closeShiftActionModal();
+        }
+    } else {
+        // User Mode
+        updateShiftRequest(role); // 'early', 'late', 'any', 'off', 'clear'
+        closeShiftActionModal();
+    }
+}
+
+function updateShiftRequest(type) {
     const day = shiftState.selectedDay;
     const name = shiftState.selectedStaff;
-    if (role === 'work_req') {
-        toggleShiftRequest(day, 'work');
-    } else if (role === 'clear') {
-        if (!shiftState.shiftDataCache[name]) return;
-        if (shiftState.isAdminMode) {
-             delete shiftState.shiftDataCache[name].assignments[day];
-             delete shiftState.shiftDataCache[name].daily_remarks[day];
-        } else {
-             shiftState.shiftDataCache[name].work_days = shiftState.shiftDataCache[name].work_days.filter(d => d !== day);
-             shiftState.shiftDataCache[name].off_days = shiftState.shiftDataCache[name].off_days.filter(d => d !== day);
-        }
-        updateViewAfterAction();
-    } else if (role === '公休') {
-        if(shiftState.isAdminMode) setAdminRole('公休');
-        else toggleShiftRequest(day, 'off');
+    if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { off_days: [], work_days: [], assignments: {}, shift_requests: {} };
+    const data = shiftState.shiftDataCache[name];
+    if (!data.shift_requests) data.shift_requests = {};
+
+    let offList = data.off_days || [];
+    let workList = data.work_days || [];
+
+    if (type === 'clear') {
+        offList = offList.filter(d => d !== day);
+        workList = workList.filter(d => d !== day);
+        delete data.shift_requests[day];
+    } else if (type === 'off') {
+        if(!offList.includes(day)) offList.push(day);
+        workList = workList.filter(d => d !== day);
+        delete data.shift_requests[day];
     } else {
-        if(shiftState.isAdminMode) setAdminRole(role);
+        // work (early, late, any)
+        if(!workList.includes(day)) workList.push(day);
+        offList = offList.filter(d => d !== day);
+        data.shift_requests[day] = type;
     }
-    closeShiftActionModal();
+
+    data.off_days = offList;
+    data.work_days = workList;
+    updateViewAfterAction();
 }
 
 function updateViewAfterAction() {
@@ -1026,47 +1103,29 @@ async function setAdminRole(role) {
     updateViewAfterAction();
 }
 
-async function toggleShiftRequest(day, type) {
-    const name = shiftState.selectedStaff;
-    if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { off_days: [], work_days: [], assignments: {} };
-    let offList = shiftState.shiftDataCache[name].off_days || [];
-    let workList = shiftState.shiftDataCache[name].work_days || [];
-    if (type === 'off') {
-        if (offList.includes(day)) offList = offList.filter(d => d !== day);
-        else { offList.push(day); workList = workList.filter(d => d !== day); }
-    } else if (type === 'work') {
-        if (workList.includes(day)) workList = workList.filter(d => d !== day);
-        else { workList.push(day); offList = offList.filter(d => d !== day); }
-    }
-    shiftState.shiftDataCache[name].off_days = offList;
-    shiftState.shiftDataCache[name].work_days = workList;
-    updateViewAfterAction();
-}
-
-function moveToNextDay() {
+function moveDay(delta) {
     if(!shiftState.selectedDay) return;
-    const nextDay = shiftState.selectedDay + 1;
+    const nextDay = shiftState.selectedDay + delta;
     const daysInMonth = new Date(shiftState.currentYear, shiftState.currentMonth, 0).getDate();
+    if (nextDay < 1 || nextDay > daysInMonth) { showToast("月外の日付です"); return; }
+
     closeShiftActionModal();
-    if (nextDay > daysInMonth) { showToast("月の最終日です"); return; }
     setTimeout(() => {
         const name = shiftState.selectedStaff;
         const data = shiftState.shiftDataCache[name] || {};
         const isOff = data.off_days?.includes(nextDay);
         const isWork = data.work_days?.includes(nextDay);
+        const req = data.shift_requests?.[nextDay] || 'any';
         const assign = data.assignments?.[nextDay];
-        const status = assign || (isOff ? '公休希望' : isWork ? '出勤希望' : '未設定');
+
+        let status = assign;
+        if(!status) {
+            if(isOff) status = '公休希望';
+            else if(isWork) status = req === 'early' ? '早番希望' : req === 'late' ? '遅番希望' : '出勤希望';
+            else status = '未設定';
+        }
         showActionSelectModal(nextDay, status);
     }, 200);
-}
-
-function toggleShiftAB() {
-    const name = shiftState.selectedStaff;
-    const data = shiftState.shiftDataCache[name] || {};
-    const current = (data.monthly_settings?.shift_type) || (shiftState.staffDetails[name]?.basic_shift) || 'A';
-    toggleStaffShiftType(name, current);
-    const newType = current === 'A' ? 'B' : 'A';
-    document.getElementById('btn-toggle-ab').textContent = `${newType}番 (切替)`;
 }
 
 function pushHistory() {
@@ -1104,7 +1163,7 @@ async function toggleStaffShiftType(name, currentType) {
     renderShiftAdminTable();
 }
 
-// --- Restore Full Auto Shift Logic ---
+// --- NEW AUTO SHIFT LOGIC (AI) ---
 async function generateAutoShift() {
     if(!confirm(`${shiftState.currentYear}年${shiftState.currentMonth}月のシフトを自動作成します。\n既存の確定済みシフトは上書きされます（希望休などは保持）。\nよろしいですか？`)) return;
 
@@ -1114,9 +1173,12 @@ async function generateAutoShift() {
     const Y = shiftState.currentYear;
     const M = shiftState.currentMonth;
     const daysInMonth = new Date(Y, M, 0).getDate();
-
+    const holidays = getHolidays(Y, M);
     const shifts = shiftState.shiftDataCache;
     const details = shiftState.staffDetails;
+    const dailyTargets = shiftState.shiftDataCache._daily_targets || {};
+
+    // Prepare Staff Objects
     const staffNames = [
         ...shiftState.staffListLists.employees,
         ...shiftState.staffListLists.alba_early,
@@ -1130,16 +1192,17 @@ async function generateAutoShift() {
         return {
             name,
             rank: d.rank || '一般',
-            type: d.type || 'byte',
+            type: d.type || 'byte', // 'employee' or 'byte'
             contractDays: d.contract_days || 20,
             maxConsecutive: d.max_consecutive_days || 5,
             allowedRoles: d.allowed_roles || [],
             shiftType: m.shift_type || d.basic_shift || 'A',
             requests: {
                 work: s.work_days || [],
-                off: s.off_days || []
+                off: s.off_days || [],
+                types: s.shift_requests || {} // {day: 'early'|'late'|'any'}
             },
-            assignedDays: [],
+            assignedDays: [], // List of day numbers
             roleCounts: {
                 [ROLES.MONEY]: 0,
                 [ROLES.MONEY_SUB]: 0,
@@ -1151,160 +1214,290 @@ async function generateAutoShift() {
     };
 
     let staffObjects = staffNames.map(getS);
+    const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
 
-    // Clear existing
+    // Reset Assignments in Memory
     staffObjects.forEach(s => {
         if(!shifts[s.name]) shifts[s.name] = {};
         shifts[s.name].assignments = {};
-        s.requests.work.forEach(d => {
-            if (!s.requests.off.includes(d)) {
-                s.assignedDays.push(d);
-            }
-        });
     });
 
+    // Helper: Is Responsible?
     const isResponsible = (s) => s.allowedRoles.includes('money_main');
-    const canWork = (s, day) => {
-        if (s.requests.off.includes(day)) return false;
-        if (s.assignedDays.includes(day)) return true;
-        const tempDays = [...s.assignedDays, day].sort((a,b) => a-b);
+
+    // Helper: Can Assign?
+    const canAssign = (staff, day, strictContractMode = false) => {
+        // 1. Strict Interval (Absolute): No Late -> Early
+        // Determine prev day shift type
+        if (day > 1) {
+            const prevAssign = shifts[staff.name].assignments[day - 1];
+            // Since we assign sequentially day by day in some logics or random order...
+            // Wait, we assign DAYs first in this logic, then Roles.
+            // But to check interval, we need to know if the previous DAY was assigned.
+            // And if so, what "Shift Type" it implies.
+            // The logic assumes staff works their `shiftType` mostly.
+
+            // However, the rule says: "Prev day Late (B) -> Next day Early (A) is FORBIDDEN".
+            // Since we haven't assigned roles yet, we rely on the intended shift type for the day.
+            // Intended Shift Type:
+            // If request 'late' -> Late.
+            // If request 'early' -> Early.
+            // Else -> staff.shiftType.
+
+            if (staff.assignedDays.includes(day - 1)) {
+                 let prevEffective = staff.shiftType;
+                 if (staff.requests.types[day-1] === 'early') prevEffective = 'A';
+                 if (staff.requests.types[day-1] === 'late') prevEffective = 'B';
+
+                 let currentEffective = staff.shiftType;
+                 if (staff.requests.types[day] === 'early') currentEffective = 'A';
+                 if (staff.requests.types[day] === 'late') currentEffective = 'B';
+
+                 if (prevEffective === 'B' && currentEffective === 'A') return false;
+            }
+        }
+
+        // 2. Off Days Check
+        if (!strictContractMode) {
+             if (staff.requests.off.includes(day)) return false;
+        }
+
+        // 3. Consecutive Days
+        const tempDays = [...staff.assignedDays, day].sort((a,b) => a-b);
         let streak = 0;
         let maxStreak = 0;
         let prev = -1;
         for (const d of tempDays) {
             if (d === prev + 1) { streak++; } else { streak = 1; }
-            if (streak > s.maxConsecutive) return false;
+            if (streak > staff.maxConsecutive) return false;
             maxStreak = Math.max(maxStreak, streak);
             prev = d;
         }
-        return maxStreak <= s.maxConsecutive;
+
+        // 4. Already assigned
+        if (staff.assignedDays.includes(day)) return false;
+
+        return true;
     };
 
-    const countStaff = (day, shiftType, typeFilter = null) => {
-        return staffObjects.filter(s =>
-            s.shiftType === shiftType &&
-            s.assignedDays.includes(day) &&
-            (!typeFilter || s.type === typeFilter)
-        ).length;
-    };
-    const countTotalStaff = (day, shiftType) => {
-        return staffObjects.filter(s => s.shiftType === shiftType && s.assignedDays.includes(day)).length;
-    };
-    const hasResponsibleOnDay = (day, shiftType) => {
-        return staffObjects.some(s =>
-            s.shiftType === shiftType &&
-            s.assignedDays.includes(day) &&
-            isResponsible(s)
-        );
+    // Helper: Get Target for Day
+    const getTarget = (day, type) => {
+        // Default: Weekday=9, Holiday/Sat/Sun=10
+        const date = new Date(Y, M - 1, day);
+        const dayOfWeek = date.getDay();
+        const isHol = holidays.includes(day);
+        const defaultTarget = (dayOfWeek === 0 || dayOfWeek === 6 || isHol) ? 10 : 9;
+
+        const t = dailyTargets[day] || {};
+        const saved = type === 'A' ? t.A : t.B;
+        return saved !== undefined ? saved : defaultTarget;
     };
 
-    const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
-
-    // Phase 1: Employee Baseline
+    // --- PHASE 1: Employee Baseline (Ensure Responsibility) ---
+    // Rule: At least 1 Responsible (Money Main) per shift (A/B)
     ['A', 'B'].forEach(st => {
         days.forEach(d => {
-            if (!hasResponsibleOnDay(d, st)) {
+            // Check if we have a responsible person
+            const assignedResp = staffObjects.some(s =>
+                s.shiftType === st && s.type === 'employee' && isResponsible(s) && s.assignedDays.includes(d)
+            );
+            if (!assignedResp) {
+                // Find candidates
                 const candidates = staffObjects.filter(s =>
-                    s.shiftType === st && s.type === 'employee' && isResponsible(s) && !s.assignedDays.includes(d) && canWork(s, d)
+                    s.shiftType === st && s.type === 'employee' && isResponsible(s) && canAssign(s, d)
                 );
-                if (candidates.length > 0) {
-                    candidates.sort((a,b) => a.assignedDays.length - b.assignedDays.length);
-                    candidates[0].assignedDays.push(d);
-                }
-            }
-            let currentEmpCount = countStaff(d, st, 'employee');
-            if (currentEmpCount < 4) {
-                const candidates = staffObjects.filter(s =>
-                    s.shiftType === st && s.type === 'employee' && !s.assignedDays.includes(d) && canWork(s, d)
-                );
-                candidates.sort((a,b) => a.assignedDays.length - b.assignedDays.length);
-                for (const cand of candidates) {
-                    if (currentEmpCount >= 4) break;
-                    cand.assignedDays.push(d);
-                    currentEmpCount++;
-                }
+                // Prioritize Work Requests
+                candidates.sort((a,b) => {
+                    const reqA = a.requests.work.includes(d) ? 1 : 0;
+                    const reqB = b.requests.work.includes(d) ? 1 : 0;
+                    return reqB - reqA;
+                });
+                if (candidates.length > 0) candidates[0].assignedDays.push(d);
             }
         });
     });
 
-    // Phase 2: Employee Contract Fill
+    // --- PHASE 2: Fill Employees to Baseline (Approx 4) ---
+    ['A', 'B'].forEach(st => {
+        days.forEach(d => {
+            let count = staffObjects.filter(s => s.shiftType === st && s.type === 'employee' && s.assignedDays.includes(d)).length;
+            if (count < 4) {
+                 const candidates = staffObjects.filter(s =>
+                    s.shiftType === st && s.type === 'employee' && canAssign(s, d)
+                );
+                 // Sort: Request > Low Assign Count
+                 candidates.sort((a,b) => {
+                     const reqA = a.requests.work.includes(d) ? 1 : 0;
+                     const reqB = b.requests.work.includes(d) ? 1 : 0;
+                     if (reqA !== reqB) return reqB - reqA;
+                     return a.assignedDays.length - b.assignedDays.length;
+                 });
+                 for (const c of candidates) {
+                     if (count >= 4) break;
+                     c.assignedDays.push(d);
+                     count++;
+                 }
+            }
+        });
+    });
+
+    // --- PHASE 3: Employee Contract Fill (Normal) ---
+    // Try to fill up to contract days using Work Requests then Empty slots
     let changed = true;
-    while (changed) {
+    while(changed) {
         changed = false;
         const needy = staffObjects.filter(s => s.type === 'employee' && s.assignedDays.length < s.contractDays);
-        needy.sort((a,b) => (a.contractDays - a.assignedDays.length) - (b.contractDays - b.assignedDays.length)).reverse();
+        needy.sort((a,b) => (a.contractDays - a.assignedDays.length) - (b.contractDays - b.assignedDays.length)).reverse(); // Most needy first
+
         for (const emp of needy) {
-            const validDays = days.filter(d => !emp.assignedDays.includes(d) && canWork(emp, d));
-            if (validDays.length === 0) continue;
-            validDays.sort((d1, d2) => countStaff(d1, emp.shiftType, 'employee') - countStaff(d2, emp.shiftType, 'employee'));
-            emp.assignedDays.push(validDays[0]);
-            changed = true;
+             // Find best day
+             // 1. Work Request
+             let validDays = days.filter(d => emp.requests.work.includes(d) && canAssign(emp, d));
+             if (validDays.length === 0) {
+                 // 2. Empty (Non-Off)
+                 validDays = days.filter(d => !emp.requests.work.includes(d) && canAssign(emp, d));
+             }
+
+             if (validDays.length > 0) {
+                 // Pick day with lowest staffing relative to target
+                 validDays.sort((d1, d2) => {
+                     const t1 = getTarget(d1, emp.shiftType);
+                     const c1 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d1)).length;
+                     const fill1 = c1 / t1;
+
+                     const t2 = getTarget(d2, emp.shiftType);
+                     const c2 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d2)).length;
+                     const fill2 = c2 / t2;
+
+                     return fill1 - fill2;
+                 });
+                 emp.assignedDays.push(validDays[0]);
+                 changed = true;
+             }
         }
     }
 
-    // Phase 3: Alba Baseline
-    const dailyTargets = shiftState.shiftDataCache._daily_targets || {};
+    // --- PHASE 4: Alba Fill (Target based) ---
     ['A', 'B'].forEach(st => {
         days.forEach(d => {
-            const t = dailyTargets[d] || { A: 9, B: 9 };
-            const TARGET_TOTAL = st === 'A' ? (t.A !== undefined ? t.A : 9) : (t.B !== undefined ? t.B : 9);
-            let currentTotal = countTotalStaff(d, st);
-            if (currentTotal < TARGET_TOTAL) {
-                const candidates = staffObjects.filter(s =>
-                    s.shiftType === st && s.type === 'byte' && !s.assignedDays.includes(d) && canWork(s, d)
+            const target = getTarget(d, st);
+            let current = staffObjects.filter(s => s.shiftType === st && s.assignedDays.includes(d)).length;
+
+            if (current < target) {
+                 const candidates = staffObjects.filter(s =>
+                    s.shiftType === st && s.type === 'byte' && canAssign(s, d)
                 );
-                candidates.sort((a,b) => (a.contractDays - a.assignedDays.length) - (b.contractDays - b.assignedDays.length)).reverse();
-                for (const cand of candidates) {
-                    if (currentTotal >= TARGET_TOTAL) break;
-                    cand.assignedDays.push(d);
-                    currentTotal++;
-                }
+                 // Sort: Work Request > Needs Days (Contract)
+                 candidates.sort((a,b) => {
+                     const reqA = a.requests.work.includes(d) ? 1 : 0;
+                     const reqB = b.requests.work.includes(d) ? 1 : 0;
+                     if(reqA !== reqB) return reqB - reqA;
+
+                     const needA = a.contractDays - a.assignedDays.length;
+                     const needB = b.contractDays - b.assignedDays.length;
+                     return needB - needA;
+                 });
+
+                 for(const c of candidates) {
+                     if (current >= target) break;
+                     c.assignedDays.push(d);
+                     current++;
+                 }
             }
         });
     });
 
-    // Phase 4: Alba Contract Fill
+    // --- PHASE 5: Alba Contract Fill (Force) ---
     changed = true;
-    while (changed) {
+    while(changed) {
         changed = false;
         const needy = staffObjects.filter(s => s.type === 'byte' && s.assignedDays.length < s.contractDays);
-        for (const alba of needy) {
-            const validDays = days.filter(d => !alba.assignedDays.includes(d) && canWork(alba, d));
-            if (validDays.length === 0) continue;
-            validDays.sort((d1, d2) => countTotalStaff(d1, alba.shiftType) - countTotalStaff(d2, alba.shiftType));
-            alba.assignedDays.push(validDays[0]);
-            changed = true;
+        for(const alba of needy) {
+            const validDays = days.filter(d => canAssign(alba, d)); // Still respects Off requests
+             if (validDays.length > 0) {
+                 validDays.sort((d1, d2) => {
+                     const c1 = staffObjects.filter(s => s.shiftType === alba.shiftType && s.assignedDays.includes(d1)).length;
+                     const c2 = staffObjects.filter(s => s.shiftType === alba.shiftType && s.assignedDays.includes(d2)).length;
+                     return c1 - c2;
+                 });
+                 alba.assignedDays.push(validDays[0]);
+                 changed = true;
+             }
         }
     }
 
-    // Finalize Roles
+    // --- PHASE 6: STRICT CONTRACT ENFORCEMENT (Employees Only) ---
+    // If employee < contractDays, FORCE ASSIGN even on Off Days (Warning will be shown in UI)
+    const needyEmployees = staffObjects.filter(s => s.type === 'employee' && s.assignedDays.length < s.contractDays);
+    for (const emp of needyEmployees) {
+        while (emp.assignedDays.length < emp.contractDays) {
+            // Find days we can assign ignoring OFF requests
+            // But still MUST respect Interval and MaxConsecutive
+            const candidates = days.filter(d => canAssign(emp, d, true)); // strictContractMode = true
+
+            if (candidates.length === 0) break; // Impossible physically
+
+            // Sort by lowest staffing
+             candidates.sort((d1, d2) => {
+                 const c1 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d1)).length;
+                 const c2 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d2)).length;
+                 return c1 - c2;
+             });
+
+             emp.assignedDays.push(candidates[0]);
+        }
+    }
+
+    // --- PHASE 7: Role Assignment ---
     ['A', 'B'].forEach(st => {
         days.forEach(d => {
             const workers = staffObjects.filter(s => s.shiftType === st && s.assignedDays.includes(d));
             let unassigned = [...workers];
+
+            // Helper to assign role
             const assign = (roleKey, filterFn) => {
                 const candidates = unassigned.filter(filterFn);
                 if (candidates.length === 0) return;
+                // Balancing logic: assign to person with least count of this role
                 candidates.sort((a,b) => a.roleCounts[roleKey] - b.roleCounts[roleKey]);
                 const picked = candidates[0];
                 shifts[picked.name].assignments[d] = roleKey;
                 picked.roleCounts[roleKey]++;
                 unassigned = unassigned.filter(u => u !== picked);
             };
+
+            // 1. Money Main
             assign(ROLES.MONEY, s => s.allowedRoles.includes('money_main'));
+
+            // 2. Money Sub
             assign(ROLES.MONEY_SUB, s => s.allowedRoles.includes('money_sub'));
+
+            // 3. Hall Resp
             assign(ROLES.HALL_RESP, s => s.allowedRoles.includes('hall_resp'));
-            assign(ROLES.WAREHOUSE, s => s.allowedRoles.includes('warehouse'));
-            unassigned.forEach(s => {
-                shifts[s.name].assignments[d] = '出勤';
+
+            // 4. Warehouse
+            // Constraint: Early Warehouse Auto Mode
+            // If mode is ON, Early Employees (A) are EXCLUDED from Warehouse
+            assign(ROLES.WAREHOUSE, s => {
+                if (!s.allowedRoles.includes('warehouse')) return false;
+                if (shiftState.earlyWarehouseMode && s.type === 'employee' && s.shiftType === 'A') return false;
+                return true;
             });
-            const offStaff = staffObjects.filter(s => s.shiftType === st && s.requests.off.includes(d));
+
+            // 5. Others -> Hall or Generic
+            unassigned.forEach(s => {
+                shifts[s.name].assignments[d] = 'ホ'; // Default Hall
+            });
+
+            // Mark Off days
+            const offStaff = staffObjects.filter(s => s.shiftType === st && !s.assignedDays.includes(d));
             offStaff.forEach(s => {
                 shifts[s.name].assignments[d] = '公休';
             });
         });
     });
 
+    // Cleanup and Save
     staffNames.forEach(name => {
         if (!shifts[name]) shifts[name] = {};
         if (!shifts[name].assignments) shifts[name].assignments = {};
@@ -1319,7 +1512,7 @@ async function generateAutoShift() {
     const docRef = doc(db, "shift_submissions", docId);
     try {
         await setDoc(docRef, shifts, { merge: true });
-        showToast("シフト自動作成完了！ (パズル方式)");
+        showToast("AIシフト自動作成完了！ (厳格モード)");
         renderShiftAdminTable();
     } catch(e) {
         alert("自動作成保存失敗: " + e.message);
