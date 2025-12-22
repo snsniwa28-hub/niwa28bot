@@ -653,181 +653,71 @@ export async function autoAssignTasks(sec, listType) {
         });
 
         const fixedNames = [
-            staffList.fixed_money_count,
-            staffList.fixed_open_warehouse,
-            staffList.fixed_open_counter,
-            staffList.fixed_money_collect,
-            staffList.fixed_warehouses,
-            staffList.fixed_counters
+            staffList.fixed_money_count, staffList.fixed_open_warehouse, staffList.fixed_open_counter,
+            staffList.fixed_money_collect, staffList.fixed_warehouses, staffList.fixed_counters
         ].filter(n => n);
 
+        // --- 既存の割り振りロジック (変更なし) ---
         if (isOpen) {
-            // === 社員の割り振り ===
             const freeEmployees = employees.filter(s => !fixedNames.includes(s.name));
-
-            // 7時台のリレー割り振り
-            const empTasks = [
-                { t: "販促確認", s: '07:00', e: '07:30' },
-                { t: "外販出し、新聞、岡持", s: '07:30', e: '07:45' },
-                { t: "P台チェック(社員)", s: '07:45', e: '08:15' }
-            ];
-
+            const empTasks = [{ t: "販促確認", s: '07:00', e: '07:30' }, { t: "外販出し、新聞、岡持", s: '07:30', e: '07:45' }, { t: "P台チェック(社員)", s: '07:45', e: '08:15' }];
             let empIndex = 0;
-            if (freeEmployees.length > 0) {
-                empTasks.forEach(task => {
-                    const staff = freeEmployees[empIndex % freeEmployees.length];
-                    assign(staff, task.t, task.s, task.e);
-                    empIndex++;
-                });
-            }
+            if (freeEmployees.length > 0) { empTasks.forEach(task => { const staff = freeEmployees[empIndex % freeEmployees.length]; assign(staff, task.t, task.s, task.e); empIndex++; }); }
+            employees.forEach(s => { if (!checkOverlap(s.tasks, '09:00', '09:15')) assign(s, '朝礼', '09:00', '09:15'); });
 
-            // 全員共通: 朝礼
-            employees.forEach(s => {
-                if (!checkOverlap(s.tasks, '09:00', '09:15')) assign(s, '朝礼', '09:00', '09:15');
-            });
-
-            // === 抽選班の割り振り (厳格な人数制限) ===
             let isWeekend = false;
-            try {
-                const [y, m, d] = currentDate.split('-').map(Number);
-                const dayObj = new Date(y, m - 1, d);
-                const dayNum = dayObj.getDay();
-                isWeekend = (dayNum === 0 || dayNum === 6);
-            } catch(e) {}
-            const lotteryLimit = isWeekend ? 3 : 2;
-            let currentLotteryCount = 0;
+            try { const [y, m, d] = currentDate.split('-').map(Number); const dayObj = new Date(y, m - 1, d); const dayNum = dayObj.getDay(); isWeekend = (dayNum === 0 || dayNum === 6); } catch(e) {}
+            const lotteryLimit = isWeekend ? 3 : 2; let currentLotteryCount = 0;
+            const freeAlbas = albas.filter(s => !fixedNames.includes(s.name)); let albaIdx = 0;
+            for (let i = 0; i < lotteryLimit; i++) { if (albaIdx < freeAlbas.length) { const s = freeAlbas[albaIdx]; assign(s, '朝礼', '09:00', '09:15'); assign(s, '抽選（準備、片付け）', '09:15', '10:00'); currentLotteryCount++; albaIdx++; } }
+            if (currentLotteryCount < lotteryLimit) { const needed = lotteryLimit - currentLotteryCount; let assignedEmp = 0; for (let i = 0; i < freeEmployees.length; i++) { if (assignedEmp >= needed) break; const s = freeEmployees[(empIndex + i) % freeEmployees.length]; if (!checkOverlap(s.tasks, '09:15', '10:00')) { assign(s, '抽選（準備、片付け）', '09:15', '10:00'); assignedEmp++; currentLotteryCount++; } } }
 
-            const freeAlbas = albas.filter(s => !fixedNames.includes(s.name));
-            let albaIdx = 0;
-
-            // ① アルバイトから優先的に抽選班を確保
-            for (let i = 0; i < lotteryLimit; i++) {
-                if (albaIdx < freeAlbas.length) {
-                    const s = freeAlbas[albaIdx];
-                    assign(s, '朝礼', '09:00', '09:15');
-                    assign(s, '抽選（準備、片付け）', '09:15', '10:00');
-                    currentLotteryCount++;
-                    albaIdx++; // このバイトは抽選班として消費
-                }
-            }
-
-            // ② アルバイトだけで足りない場合のみ、社員を補充
-            if (currentLotteryCount < lotteryLimit) {
-                const needed = lotteryLimit - currentLotteryCount;
-                let assignedEmp = 0;
-                // ランダム性を出すため、さっきリレーで使った次の人から探す
-                for (let i = 0; i < freeEmployees.length; i++) {
-                    if (assignedEmp >= needed) break;
-                    const s = freeEmployees[(empIndex + i) % freeEmployees.length];
-                    if (!checkOverlap(s.tasks, '09:15', '10:00')) {
-                        assign(s, '抽選（準備、片付け）', '09:15', '10:00');
-                        assignedEmp++;
-                        currentLotteryCount++;
-                    }
-                }
-            }
-
-            // === 残りのアルバイト作業班の割り振り ===
-            // パターン: S台(30) -> ローラー(30) -> 環境(15)+清掃(15) -> 環境(15)+清掃(15)...
-            let jobType = 0; // 0:S台, 1:ローラー, 2+:環境+清掃
-
-            while (albaIdx < freeAlbas.length) {
-                const s = freeAlbas[albaIdx];
-                assign(s, '朝礼', '09:00', '09:15');
-
-                if (jobType === 0) {
-                    // S台担当
-                    assign(s, 'S台チェック(アルバイト)', '09:15', '09:45');
-                } else if (jobType === 1) {
-                    // ローラー担当
-                    assign(s, 'ローラー交換', '09:15', '09:45');
-                } else {
-                    // 環境＆清掃担当
-                    assign(s, '環境整備・5M', '09:15', '09:30');
-                    assign(s, '島上・イーゼル清掃', '09:30', '09:45');
-                }
-
-                albaIdx++;
-                jobType++;
-            }
-
+            let jobType = 0;
+            while (albaIdx < freeAlbas.length) { const s = freeAlbas[albaIdx]; assign(s, '朝礼', '09:00', '09:15'); if (jobType === 0) assign(s, 'S台チェック(アルバイト)', '09:15', '09:45'); else if (jobType === 1) assign(s, 'ローラー交換', '09:15', '09:45'); else { assign(s, '環境整備・5M', '09:15', '09:30'); assign(s, '島上・イーゼル清掃', '09:30', '09:45'); } albaIdx++; jobType++; }
         } else {
-            // === CLOSE LOGIC ===
             let pEmp = null, pAlba = null;
             const sortedEmps = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
             const sortedAlbas = [...albas].sort((a,b) => a.tasks.length - b.tasks.length);
-            for (const e of sortedEmps) {
-                if (!fixedNames.includes(e.name) && !checkOverlap(e.tasks, '23:00', '23:15')) { pEmp = e; break; }
-            }
-            for (const a of sortedAlbas) {
-                if (!fixedNames.includes(a.name) && !checkOverlap(a.tasks, '23:00', '23:15')) { pAlba = a; break; }
-            }
-            if (pEmp && pAlba) {
-                assign(pEmp, '立駐（社員）', '23:00', '23:15');
-                assign(pAlba, '立駐（アルバイト）', '23:00', '23:15');
-                fixedNames.push(pEmp.name, pAlba.name);
-            }
-            // 社員タスク
-            ['施錠・工具箱チェック'].forEach(t => {
-                const sorted = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
-                for (const s of sorted) {
-                    if (fixedNames.includes(s.name)) continue;
-                    if (assign(s, t, '22:45', '23:00')) break;
-                }
-            });
-            ['引継ぎ・事務所清掃'].forEach(t => {
-                const sorted = [...employees].sort((a,b) => a.tasks.length - b.tasks.length);
-                for (const s of sorted) {
-                    if (fixedNames.includes(s.name)) continue;
-                    if (assign(s, t, '23:15', '23:30')) break;
-                }
-            });
-            // バイトタスク
-            ['飲み残し・フラッグ確認', '島上清掃・カード補充'].forEach(t => {
-                const sorted = [...albas].sort((a,b) => a.tasks.length - b.tasks.length);
-                for (const s of sorted) {
-                    if (fixedNames.includes(s.name)) continue;
-                    if (assign(s, t, '22:45', '23:00')) break;
-                    if (assign(s, t, '23:00', '23:15')) break;
-                }
-            });
-            // 固定漏れ
-            if (!staffList.fixed_money_collect) {
-                const c = employees.sort((a,b)=>a.tasks.length-b.tasks.length).find(s => !checkOverlap(s.tasks, '22:45', '23:15'));
-                if(c) assign(c, '金銭回収', '22:45', '23:15');
-            }
-            if (!staffList.fixed_warehouses) {
-                const c = allStaff.sort((a,b)=>a.tasks.length-b.tasks.length).find(s => !checkOverlap(s.tasks, '22:45', '23:15'));
-                if(c) assign(c, '倉庫整理', '22:45', '23:15');
-            }
+            for (const e of sortedEmps) { if (!fixedNames.includes(e.name) && !checkOverlap(e.tasks, '23:00', '23:15')) { pEmp = e; break; } }
+            for (const a of sortedAlbas) { if (!fixedNames.includes(a.name) && !checkOverlap(a.tasks, '23:00', '23:15')) { pAlba = a; break; } }
+            if (pEmp && pAlba) { assign(pEmp, '立駐（社員）', '23:00', '23:15'); assign(pAlba, '立駐（アルバイト）', '23:00', '23:15'); fixedNames.push(pEmp.name, pAlba.name); }
+            ['施錠・工具箱チェック'].forEach(t => { const sorted = [...employees].sort((a,b) => a.tasks.length - b.tasks.length); for (const s of sorted) { if (fixedNames.includes(s.name)) continue; if (assign(s, t, '22:45', '23:00')) break; } });
+            ['引継ぎ・事務所清掃'].forEach(t => { const sorted = [...employees].sort((a,b) => a.tasks.length - b.tasks.length); for (const s of sorted) { if (fixedNames.includes(s.name)) continue; if (assign(s, t, '23:15', '23:30')) break; } });
+            ['飲み残し・フラッグ確認', '島上清掃・カード補充'].forEach(t => { const sorted = [...albas].sort((a,b) => a.tasks.length - b.tasks.length); for (const s of sorted) { if (fixedNames.includes(s.name)) continue; if (assign(s, t, '22:45', '23:00')) break; if (assign(s, t, '23:00', '23:15')) break; } });
+            if (!staffList.fixed_money_collect) { const c = employees.sort((a,b)=>a.tasks.length-b.tasks.length).find(s => !checkOverlap(s.tasks, '22:45', '23:15')); if(c) assign(c, '金銭回収', '22:45', '23:15'); }
+            if (!staffList.fixed_warehouses) { const c = allStaff.sort((a,b)=>a.tasks.length-b.tasks.length).find(s => !checkOverlap(s.tasks, '22:45', '23:15')); if(c) assign(c, '倉庫整理', '22:45', '23:15'); }
         }
 
-        // === Fill Free Time (隙間埋め) ===
+        // Fill Free Time
         const slots = isOpen ? openTimeSlots : closeTimeSlots;
         allStaff.forEach(s => {
             const isEmployee = masterStaffList.employees.includes(s.name);
-
-            for (let i = 0; i < slots.length - 1; i++) {
-                const st = slots[i]; const et = slots[i+1];
-                if (isOpen && st < '09:00') {
-                    if (!isEmployee) continue;
-                }
-                if (!checkOverlap(s.tasks, st, et)) assign(s, '個人業務、自由時間', st, et);
-            }
+            for (let i = 0; i < slots.length - 1; i++) { const st = slots[i]; const et = slots[i+1]; if (isOpen && st < '09:00') { if (!isEmployee) continue; } if (!checkOverlap(s.tasks, st, et)) assign(s, '個人業務、自由時間', st, et); }
             s.tasks.sort((a, b) => a.start.localeCompare(b.start));
             const merged = [];
-            s.tasks.forEach(t => {
-                if (merged.length === 0) { merged.push(t); return; }
-                const last = merged[merged.length - 1];
-                if (last.task === t.task && last.task === '個人業務、自由時間' && last.end === t.start) {
-                    last.end = t.end;
-                } else { merged.push(t); }
-            });
+            s.tasks.forEach(t => { if (merged.length === 0) { merged.push(t); return; } const last = merged[merged.length - 1]; if (last.task === t.task && last.task === '個人業務、自由時間' && last.end === t.start) { last.end = t.end; } else { merged.push(t); } });
             s.tasks = merged;
         });
+        // ----------------------------------------
 
-        saveStaffListToFirestore();
+        // ★Fix: 割り振り漏れチェック (Validation)
+        let warningMessages = [];
+        const checkList = isOpen ? ['朝礼', '抽選（準備、片付け）'] : ['金銭回収', '倉庫整理', '立駐（社員）'];
+
+        checkList.forEach(taskName => {
+            const assigned = allStaff.some(s => s && s.tasks && s.tasks.some(t => t.task === taskName));
+            if (!assigned) warningMessages.push(`・${taskName}`);
+        });
+
+        await saveStaffListToFirestore();
         refreshCurrentView();
+
+        if (warningMessages.length > 0) {
+            alert(`⚠️ 以下の重要タスクを割り振れませんでした。\nスタッフの空き時間が不足している可能性があります。\n手動で割り振ってください。\n\n${warningMessages.join('\n')}`);
+        } else {
+            showToast("自動で割り振りました！");
+        }
+
     } catch(e) {
         console.error(e);
         alert("割り振り処理中にエラーが発生しました: " + e.message);

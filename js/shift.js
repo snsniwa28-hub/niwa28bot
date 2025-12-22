@@ -1681,26 +1681,23 @@ async function openAdjustmentCandidateModal(day, currentStaffName, currentRole) 
 
     // Identify target details
     const targetStaffObj = staffObjects.find(s => s.name === currentStaffName);
-    const shiftType = targetStaffObj ? targetStaffObj.shiftType : 'A'; // Default to A if not found
+
+    // ★Fix: データ不整合時のガード処理を追加 (Null Safety)
+    if (!targetStaffObj) {
+        console.error(`Staff not found: ${currentStaffName}`);
+        alert("エラー: 選択されたスタッフのマスタデータが見つかりません。");
+        hideLoading();
+        return;
+    }
+
+    const shiftType = targetStaffObj.shiftType || 'A'; // Default to A if not found
 
     // 2. Filter Candidates
     const candidates = staffObjects.filter(staff => {
-        // Exclude self
         if (staff.name === currentStaffName) return false;
-
-        // Exclude if already assigned on that day
         if (staff.assignedDays.includes(day)) return false;
-
-        // Exclude if shift type mismatch (A replaces A, B replaces B)
-        // Strictly speaking, we could allow cross-shift replacement if configured,
-        // but for safety let's stick to same group replacement as per user context usually implies.
-        // Actually, the request didn't specify strict shift type matching, but it makes sense.
-        // Let's enforce Shift Type match to be safe.
         if (staff.shiftType !== shiftType) return false;
-
-        // Check Constraints (Sandwich, Consecutive, etc.)
-        // We pass strictContractMode = false, because we want to see VALID candidates.
-        return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, false, true);
+        return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, false);
     });
 
     // 3. Render Modal
@@ -1713,8 +1710,6 @@ async function openAdjustmentCandidateModal(day, currentStaffName, currentRole) 
     if (candidates.length === 0) {
         listContainer.innerHTML = '<p class="text-sm text-center text-slate-400 py-4">条件を満たす候補者はいません</p>';
     } else {
-        // Sort candidates? Maybe by "Least Assigned" or "Contract fulfillment"?
-        // Let's sort by "Days Remaining to Contract" descending (Needy first)
         candidates.sort((a,b) => {
             const remA = a.contractDays - a.assignedDays.length;
             const remB = b.contractDays - b.assignedDays.length;
@@ -1725,7 +1720,6 @@ async function openAdjustmentCandidateModal(day, currentStaffName, currentRole) 
             const div = document.createElement('div');
             div.className = "flex items-center justify-between p-3 bg-slate-50 hover:bg-indigo-50 rounded-xl border border-slate-100 cursor-pointer transition";
             div.onclick = () => executeAdjustmentReplacement(day, currentStaffName, c.name, currentRole);
-
             const rem = c.contractDays - c.assignedDays.length;
 
             div.innerHTML = `
@@ -1986,9 +1980,9 @@ async function saveStaffDetails() {
     const newName = document.getElementById('se-name').value.trim();
     if(!newName) return alert("名前を入力してください");
 
-    // Gather data
-    const type = document.getElementById('se-type').value; // 'employee' or 'byte'
-    const basicShift = document.getElementById('se-basic-shift').value; // 'A' or 'B'
+    // Gather data from form
+    const type = document.getElementById('se-type').value;
+    const basicShift = document.getElementById('se-basic-shift').value;
     const rank = document.getElementById('se-rank').value;
     const contractDays = parseInt(document.getElementById('se-contract-days').value) || 0;
     const maxConsecutive = parseInt(document.getElementById('se-max-consecutive').value) || 5;
@@ -2000,15 +1994,12 @@ async function saveStaffDetails() {
     if(document.getElementById('se-allow-hall-resp').checked) allowedRoles.push('hall_resp');
 
     const newDetails = {
-        rank,
-        type,
-        basic_shift: basicShift,
+        rank, type, basic_shift: basicShift,
         contract_days: contractDays,
         max_consecutive_days: maxConsecutive,
         allowed_roles: allowedRoles
     };
 
-    // Determine target list
     let targetListKey = 'employees';
     if(type === 'byte') {
         targetListKey = basicShift === 'A' ? 'alba_early' : 'alba_late';
@@ -2016,22 +2007,23 @@ async function saveStaffDetails() {
 
     showLoading();
 
-    // Update State
-    // 1. Details
+    // 1. Update State (Details & Shift Cache)
     if (oldName && oldName !== newName) {
         delete shiftState.staffDetails[oldName];
+        // ★Fix: シフト表の名前キーも移行
+        if (shiftState.shiftDataCache[oldName]) {
+            shiftState.shiftDataCache[newName] = shiftState.shiftDataCache[oldName];
+            delete shiftState.shiftDataCache[oldName];
+        }
     }
     shiftState.staffDetails[newName] = newDetails;
 
-    // 2. Lists
+    // 2. Update Lists
     let oldListKey = null;
     let oldIndex = -1;
     ['employees', 'alba_early', 'alba_late'].forEach(k => {
         const idx = shiftState.staffListLists[k].indexOf(oldName);
-        if(idx !== -1) {
-            oldListKey = k;
-            oldIndex = idx;
-        }
+        if(idx !== -1) { oldListKey = k; oldIndex = idx; }
     });
 
     if (oldListKey === targetListKey) {
@@ -2047,16 +2039,26 @@ async function saveStaffDetails() {
 
     // Save
     try {
+        // マスタ保存
         await setDoc(doc(db, 'masters', 'staff_data'), {
             employees: shiftState.staffListLists.employees,
             alba_early: shiftState.staffListLists.alba_early,
             alba_late: shiftState.staffListLists.alba_late,
             staff_details: shiftState.staffDetails
         });
+
+        // ★Fix: 名前の変更があった場合、当月のシフトデータも更新
+        // 古い名前を消すため、merge: true を使わずにドキュメント全体を上書きする
+        if (oldName && oldName !== newName) {
+            const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+            const docRef = doc(db, "shift_submissions", docId);
+            await setDoc(docRef, shiftState.shiftDataCache); // Overwrite to remove old key
+        }
+
         showToast("保存しました");
         document.getElementById('staff-edit-modal').classList.add('hidden');
         renderStaffMasterList();
-        renderShiftAdminTable(); // refresh matrix
+        renderShiftAdminTable();
     } catch(e) {
         alert("保存エラー: " + e.message);
     }
