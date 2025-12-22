@@ -1396,271 +1396,277 @@ async function generateAutoShift() {
     pushHistory();
     showLoading();
 
-    const Y = shiftState.currentYear;
-    const M = shiftState.currentMonth;
-    const holidays = getHolidays(Y, M);
-    const shifts = shiftState.shiftDataCache;
-    const dailyTargets = shiftState.shiftDataCache._daily_targets || {};
+    try {
+        const Y = shiftState.currentYear;
+        const M = shiftState.currentMonth;
+        // Import getHolidays locally if it's not globally available in scope, assume imported at top
+        const holidays = getHolidays(Y, M);
+        const shifts = shiftState.shiftDataCache;
+        const dailyTargets = shiftState.shiftDataCache._daily_targets || {};
 
-    // 1. Prepare Context (Reusing Shared Logic)
-    // IMPORTANT: For Auto Shift, we need to reset 'assignedDays' from current data,
-    // because we are rebuilding from scratch.
-    // The shared helper builds assignedDays from current data.
-    // We will clear it after fetching.
-    const context = await prepareShiftAnalysisContext(Y, M, shifts, shiftState.staffDetails, shiftState.staffListLists);
-    const { staffObjects, daysInMonth, prevMonthAssignments, prevDaysCount } = context;
+        // 1. Prepare Context (Reusing Shared Logic)
+        const context = await prepareShiftAnalysisContext(Y, M, shifts, shiftState.staffDetails, shiftState.staffListLists);
+        const { staffObjects, daysInMonth, prevMonthAssignments, prevDaysCount } = context;
 
-    // Clear assignments for simulation
-    staffObjects.forEach(s => {
-        s.assignedDays = [];
-        if(!shifts[s.name]) shifts[s.name] = {};
-        shifts[s.name].assignments = {};
-    });
-
-    const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
-
-    // Wrapper for shared constraint check
-    const canAssign = (staff, day, strictContractMode = false) => {
-        return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, strictContractMode);
-    };
-
-    // Helper: Is Responsible?
-    const isResponsible = (s) => s.allowedRoles.includes('money_main');
-
-    // Helper: Get Target for Day
-    const getTarget = (day, type) => {
-        // Default: Weekday=9, Holiday/Sat/Sun=10
-        const date = new Date(Y, M - 1, day);
-        const dayOfWeek = date.getDay();
-        const isHol = holidays.includes(day);
-        const defaultTarget = (dayOfWeek === 0 || dayOfWeek === 6 || isHol) ? 10 : 9;
-
-        const t = dailyTargets[day] || {};
-        const saved = type === 'A' ? t.A : t.B;
-        return saved !== undefined ? saved : defaultTarget;
-    };
-
-    // --- PHASE 1: Employee Baseline (Ensure Responsibility) ---
-    ['A', 'B'].forEach(st => {
-        days.forEach(d => {
-            const assignedResp = staffObjects.some(s =>
-                s.shiftType === st && s.type === 'employee' && isResponsible(s) && s.assignedDays.includes(d)
-            );
-            if (!assignedResp) {
-                const candidates = staffObjects.filter(s =>
-                    s.shiftType === st && s.type === 'employee' && isResponsible(s) && canAssign(s, d)
-                );
-                candidates.sort((a,b) => {
-                    const reqA = a.requests.work.includes(d) ? 1 : 0;
-                    const reqB = b.requests.work.includes(d) ? 1 : 0;
-                    return reqB - reqA;
-                });
-                if (candidates.length > 0) candidates[0].assignedDays.push(d);
-            }
+        // Clear assignments for simulation
+        staffObjects.forEach(s => {
+            s.assignedDays = [];
+            if(!shifts[s.name]) shifts[s.name] = {};
+            shifts[s.name].assignments = {};
         });
-    });
 
-    // --- PHASE 2: Fill Employees to Baseline (Approx 4) ---
-    ['A', 'B'].forEach(st => {
-        days.forEach(d => {
-            let count = staffObjects.filter(s => s.shiftType === st && s.type === 'employee' && s.assignedDays.includes(d)).length;
-            if (count < 4) {
-                 const candidates = staffObjects.filter(s =>
-                    s.shiftType === st && s.type === 'employee' && canAssign(s, d)
+        const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
+
+        // Wrapper for shared constraint check
+        const canAssign = (staff, day, strictContractMode = false) => {
+            return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, strictContractMode);
+        };
+
+        // Helper: Is Responsible?
+        const isResponsible = (s) => s.allowedRoles.includes('money_main');
+
+        // Helper: Get Target for Day
+        const getTarget = (day, type) => {
+            const date = new Date(Y, M - 1, day);
+            const dayOfWeek = date.getDay();
+            const isHol = holidays.includes(day);
+            const defaultTarget = (dayOfWeek === 0 || dayOfWeek === 6 || isHol) ? 10 : 9;
+
+            const t = dailyTargets[day] || {};
+            const saved = type === 'A' ? t.A : t.B;
+            return saved !== undefined ? saved : defaultTarget;
+        };
+
+        // --- PHASE 1: Employee Baseline (Ensure Responsibility) ---
+        ['A', 'B'].forEach(st => {
+            days.forEach(d => {
+                const assignedResp = staffObjects.some(s =>
+                    s.shiftType === st && s.type === 'employee' && isResponsible(s) && s.assignedDays.includes(d)
                 );
-                 candidates.sort((a,b) => {
-                     const reqA = a.requests.work.includes(d) ? 1 : 0;
-                     const reqB = b.requests.work.includes(d) ? 1 : 0;
-                     if (reqA !== reqB) return reqB - reqA;
-                     return a.assignedDays.length - b.assignedDays.length;
-                 });
-                 for (const c of candidates) {
-                     if (count >= 4) break;
-                     if (c.assignedDays.length >= c.contractDays) continue;
-                     c.assignedDays.push(d);
-                     count++;
+                if (!assignedResp) {
+                    const candidates = staffObjects.filter(s =>
+                        s.shiftType === st && s.type === 'employee' && isResponsible(s) && canAssign(s, d)
+                    );
+                    candidates.sort((a,b) => {
+                        const reqA = a.requests.work.includes(d) ? 1 : 0;
+                        const reqB = b.requests.work.includes(d) ? 1 : 0;
+                        return reqB - reqA;
+                    });
+                    if (candidates.length > 0) candidates[0].assignedDays.push(d);
+                }
+            });
+        });
+
+        // --- PHASE 2: Fill Employees to Baseline (Approx 4) ---
+        ['A', 'B'].forEach(st => {
+            days.forEach(d => {
+                let count = staffObjects.filter(s => s.shiftType === st && s.type === 'employee' && s.assignedDays.includes(d)).length;
+                if (count < 4) {
+                     const candidates = staffObjects.filter(s =>
+                        s.shiftType === st && s.type === 'employee' && canAssign(s, d)
+                    );
+                     candidates.sort((a,b) => {
+                         const reqA = a.requests.work.includes(d) ? 1 : 0;
+                         const reqB = b.requests.work.includes(d) ? 1 : 0;
+                         if (reqA !== reqB) return reqB - reqA;
+                         return a.assignedDays.length - b.assignedDays.length;
+                     });
+                     for (const c of candidates) {
+                         if (count >= 4) break;
+                         if (c.assignedDays.length >= c.contractDays) continue;
+                         c.assignedDays.push(d);
+                         count++;
+                     }
+                }
+            });
+        });
+
+        // --- PHASE 3: Employee Contract Fill (Normal) ---
+        let changed = true;
+        while(changed) {
+            changed = false;
+            const needy = staffObjects.filter(s => s.type === 'employee' && s.assignedDays.length < s.contractDays);
+            needy.sort((a,b) => (a.contractDays - a.assignedDays.length) - (b.contractDays - b.assignedDays.length)).reverse();
+
+            for (const emp of needy) {
+                 if (emp.assignedDays.length >= emp.contractDays) continue;
+                 let validDays = days.filter(d => emp.requests.work.includes(d) && canAssign(emp, d));
+                 if (validDays.length === 0) {
+                     validDays = days.filter(d => !emp.requests.work.includes(d) && canAssign(emp, d));
+                 }
+                 if (validDays.length > 0) {
+                     validDays.sort((d1, d2) => {
+                         const t1 = getTarget(d1, emp.shiftType);
+                         const c1 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d1)).length;
+                         const fill1 = c1 / t1;
+                         const t2 = getTarget(d2, emp.shiftType);
+                         const c2 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d2)).length;
+                         const fill2 = c2 / t2;
+                         return fill1 - fill2;
+                     });
+                     emp.assignedDays.push(validDays[0]);
+                     changed = true;
                  }
             }
-        });
-    });
-
-    // --- PHASE 3: Employee Contract Fill (Normal) ---
-    let changed = true;
-    while(changed) {
-        changed = false;
-        const needy = staffObjects.filter(s => s.type === 'employee' && s.assignedDays.length < s.contractDays);
-        needy.sort((a,b) => (a.contractDays - a.assignedDays.length) - (b.contractDays - b.assignedDays.length)).reverse();
-
-        for (const emp of needy) {
-             if (emp.assignedDays.length >= emp.contractDays) continue;
-             let validDays = days.filter(d => emp.requests.work.includes(d) && canAssign(emp, d));
-             if (validDays.length === 0) {
-                 validDays = days.filter(d => !emp.requests.work.includes(d) && canAssign(emp, d));
-             }
-             if (validDays.length > 0) {
-                 validDays.sort((d1, d2) => {
-                     const t1 = getTarget(d1, emp.shiftType);
-                     const c1 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d1)).length;
-                     const fill1 = c1 / t1;
-                     const t2 = getTarget(d2, emp.shiftType);
-                     const c2 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d2)).length;
-                     const fill2 = c2 / t2;
-                     return fill1 - fill2;
-                 });
-                 emp.assignedDays.push(validDays[0]);
-                 changed = true;
-             }
         }
-    }
 
-    // --- PHASE 4: Alba Fill (Target based) ---
-    ['A', 'B'].forEach(st => {
-        days.forEach(d => {
-            const target = getTarget(d, st);
-            let current = staffObjects.filter(s => s.shiftType === st && s.assignedDays.includes(d)).length;
+        // --- PHASE 4: Alba Fill (Target based) ---
+        ['A', 'B'].forEach(st => {
+            days.forEach(d => {
+                const target = getTarget(d, st);
+                let current = staffObjects.filter(s => s.shiftType === st && s.assignedDays.includes(d)).length;
 
-            if (current < target) {
-                 const candidates = staffObjects.filter(s =>
-                    s.shiftType === st && s.type === 'byte' && canAssign(s, d)
-                );
-                 candidates.sort((a,b) => {
-                     const reqA = a.requests.work.includes(d) ? 1 : 0;
-                     const reqB = b.requests.work.includes(d) ? 1 : 0;
-                     if(reqA !== reqB) return reqB - reqA;
-                     const needA = a.contractDays - a.assignedDays.length;
-                     const needB = b.contractDays - b.assignedDays.length;
-                     return needB - needA;
-                 });
-                 for(const c of candidates) {
-                     if (current >= target) break;
-                     if (c.assignedDays.length >= c.contractDays) continue;
-                     c.assignedDays.push(d);
-                     current++;
+                if (current < target) {
+                     const candidates = staffObjects.filter(s =>
+                        s.shiftType === st && s.type === 'byte' && canAssign(s, d)
+                    );
+                     candidates.sort((a,b) => {
+                         const reqA = a.requests.work.includes(d) ? 1 : 0;
+                         const reqB = b.requests.work.includes(d) ? 1 : 0;
+                         if(reqA !== reqB) return reqB - reqA;
+                         const needA = a.contractDays - a.assignedDays.length;
+                         const needB = b.contractDays - b.assignedDays.length;
+                         return needB - needA;
+                     });
+                     for(const c of candidates) {
+                         if (current >= target) break;
+                         if (c.assignedDays.length >= c.contractDays) continue;
+                         c.assignedDays.push(d);
+                         current++;
+                     }
+                }
+            });
+        });
+
+        // --- PHASE 5: Alba Contract Fill (Force) ---
+        changed = true;
+        while(changed) {
+            changed = false;
+            const needy = staffObjects.filter(s => s.type === 'byte' && s.assignedDays.length < s.contractDays);
+            for(const alba of needy) {
+                const validDays = days.filter(d => canAssign(alba, d));
+                 if (validDays.length > 0) {
+                     validDays.sort((d1, d2) => {
+                         const c1 = staffObjects.filter(s => s.shiftType === alba.shiftType && s.assignedDays.includes(d1)).length;
+                         const c2 = staffObjects.filter(s => s.shiftType === alba.shiftType && s.assignedDays.includes(d2)).length;
+                         return c1 - c2;
+                     });
+                     alba.assignedDays.push(validDays[0]);
+                     changed = true;
                  }
             }
-        });
-    });
+        }
 
-    // --- PHASE 5: Alba Contract Fill (Force) ---
-    changed = true;
-    while(changed) {
-        changed = false;
-        const needy = staffObjects.filter(s => s.type === 'byte' && s.assignedDays.length < s.contractDays);
-        for(const alba of needy) {
-            const validDays = days.filter(d => canAssign(alba, d));
-             if (validDays.length > 0) {
-                 validDays.sort((d1, d2) => {
-                     const c1 = staffObjects.filter(s => s.shiftType === alba.shiftType && s.assignedDays.includes(d1)).length;
-                     const c2 = staffObjects.filter(s => s.shiftType === alba.shiftType && s.assignedDays.includes(d2)).length;
+        // --- PHASE 6: STRICT CONTRACT ENFORCEMENT (Employees Only) ---
+        const needyEmployees = staffObjects.filter(s => s.type === 'employee' && s.assignedDays.length < s.contractDays);
+        for (const emp of needyEmployees) {
+            while (emp.assignedDays.length < emp.contractDays) {
+                const candidates = days.filter(d => canAssign(emp, d, true)); // strictContractMode = true
+                if (candidates.length === 0) break;
+                 candidates.sort((d1, d2) => {
+                     const c1 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d1)).length;
+                     const c2 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d2)).length;
                      return c1 - c2;
                  });
-                 alba.assignedDays.push(validDays[0]);
-                 changed = true;
-             }
-        }
-    }
-
-    // --- PHASE 6: STRICT CONTRACT ENFORCEMENT (Employees Only) ---
-    const needyEmployees = staffObjects.filter(s => s.type === 'employee' && s.assignedDays.length < s.contractDays);
-    for (const emp of needyEmployees) {
-        while (emp.assignedDays.length < emp.contractDays) {
-            const candidates = days.filter(d => canAssign(emp, d, true)); // strictContractMode = true
-            if (candidates.length === 0) break;
-             candidates.sort((d1, d2) => {
-                 const c1 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d1)).length;
-                 const c2 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d2)).length;
-                 return c1 - c2;
-             });
-             emp.assignedDays.push(candidates[0]);
-        }
-    }
-
-    // --- PHASE 7: Role Assignment ---
-    ['A', 'B'].forEach(st => {
-        days.forEach(d => {
-            const workers = staffObjects.filter(s => s.shiftType === st && s.assignedDays.includes(d));
-            let unassigned = [...workers];
-
-            // Helper to assign role
-            const assign = (roleKey, filterFn) => {
-                const candidates = unassigned.filter(filterFn);
-                if (candidates.length === 0) return;
-                candidates.sort((a,b) => a.roleCounts[roleKey] - b.roleCounts[roleKey]);
-                const picked = candidates[0];
-                shifts[picked.name].assignments[d] = roleKey;
-                picked.roleCounts[roleKey]++;
-                unassigned = unassigned.filter(u => u !== picked);
-            };
-
-            // 1. Money Main
-            assign(ROLES.MONEY, s => s.allowedRoles.includes('money_main'));
-
-            // 2. Money Sub
-            assign(ROLES.MONEY_SUB, s => s.allowedRoles.includes('money_sub'));
-
-            // 3. Hall Resp
-            assign(ROLES.HALL_RESP, s => s.allowedRoles.includes('hall_resp'));
-
-            // 4. Warehouse
-            assign(ROLES.WAREHOUSE, s => {
-                if (!s.allowedRoles.includes('warehouse')) return false;
-                if (shiftState.earlyWarehouseMode && s.type === 'employee' && s.shiftType === 'A') return false;
-                return true;
-            });
-
-            // 5. Others -> Hall or Generic
-            unassigned.forEach(s => {
-                shifts[s.name].assignments[d] = 'ホ';
-            });
-
-            // Mark Off days
-            const offStaff = staffObjects.filter(s => s.shiftType === st && !s.assignedDays.includes(d));
-            offStaff.forEach(s => {
-                shifts[s.name].assignments[d] = '公休';
-            });
-        });
-    });
-
-    // Cleanup and Save
-    staffNames.forEach(name => {
-        if (!shifts[name]) shifts[name] = {};
-        if (!shifts[name].assignments) shifts[name].assignments = {};
-        for (let d = 1; d <= daysInMonth; d++) {
-            if (!shifts[name].assignments[d]) {
-                shifts[name].assignments[d] = '公休';
+                 emp.assignedDays.push(candidates[0]);
             }
         }
-    });
 
-    // --- Post-Generation Check ---
-    const missingResponsibility = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-         ['A', 'B'].forEach(type => {
-             const hasResponsible = staffObjects.some(s =>
-                 s.shiftType === type &&
-                 s.assignedDays.includes(d) &&
-                 s.allowedRoles.includes('money_main')
-             );
-             if (!hasResponsible) {
-                 missingResponsibility.push(`・${d}日 (${type === 'A' ? '早番' : '遅番'})`);
-             }
-         });
-    }
+        // --- PHASE 7: Role Assignment ---
+        ['A', 'B'].forEach(st => {
+            days.forEach(d => {
+                const workers = staffObjects.filter(s => s.shiftType === st && s.assignedDays.includes(d));
+                let unassigned = [...workers];
 
-    if (missingResponsibility.length > 0) {
-        alert(`⚠️ 以下の日程で責任者（金銭メイン）が不足しています。手動で調整してください。\n\n${missingResponsibility.join('\n')}`);
-    }
+                // Helper to assign role
+                const assign = (roleKey, filterFn) => {
+                    const candidates = unassigned.filter(filterFn);
+                    if (candidates.length === 0) return;
+                    candidates.sort((a,b) => a.roleCounts[roleKey] - b.roleCounts[roleKey]);
+                    const picked = candidates[0];
+                    shifts[picked.name].assignments[d] = roleKey;
+                    picked.roleCounts[roleKey]++;
+                    unassigned = unassigned.filter(u => u !== picked);
+                };
 
-    const docId = `${Y}-${String(M).padStart(2,'0')}`;
-    const docRef = doc(db, "shift_submissions", docId);
-    try {
+                // 1. Money Main
+                assign(ROLES.MONEY, s => s.allowedRoles.includes('money_main'));
+
+                // 2. Money Sub
+                assign(ROLES.MONEY_SUB, s => s.allowedRoles.includes('money_sub'));
+
+                // 3. Hall Resp
+                assign(ROLES.HALL_RESP, s => s.allowedRoles.includes('hall_resp'));
+
+                // 4. Warehouse
+                assign(ROLES.WAREHOUSE, s => {
+                    if (!s.allowedRoles.includes('warehouse')) return false;
+                    if (shiftState.earlyWarehouseMode && s.type === 'employee' && s.shiftType === 'A') return false;
+                    return true;
+                });
+
+                // 5. Others -> Hall or Generic
+                unassigned.forEach(s => {
+                    shifts[s.name].assignments[d] = 'ホ';
+                });
+
+                // Mark Off days
+                const offStaff = staffObjects.filter(s => s.shiftType === st && !s.assignedDays.includes(d));
+                offStaff.forEach(s => {
+                    shifts[s.name].assignments[d] = '公休';
+                });
+            });
+        });
+
+        // Cleanup and Save
+        const staffNames = [
+            ...shiftState.staffListLists.employees,
+            ...shiftState.staffListLists.alba_early,
+            ...shiftState.staffListLists.alba_late
+        ];
+
+        staffNames.forEach(name => {
+            if (!shifts[name]) shifts[name] = {};
+            if (!shifts[name].assignments) shifts[name].assignments = {};
+            for (let d = 1; d <= daysInMonth; d++) {
+                if (!shifts[name].assignments[d]) {
+                    shifts[name].assignments[d] = '公休';
+                }
+            }
+        });
+
+        // --- Post-Generation Check ---
+        const missingResponsibility = [];
+        for (let d = 1; d <= daysInMonth; d++) {
+             ['A', 'B'].forEach(type => {
+                 const hasResponsible = staffObjects.some(s =>
+                     s.shiftType === type &&
+                     s.assignedDays.includes(d) &&
+                     s.allowedRoles.includes('money_main')
+                 );
+                 if (!hasResponsible) {
+                     missingResponsibility.push(`・${d}日 (${type === 'A' ? '早番' : '遅番'})`);
+                 }
+             });
+        }
+
+        if (missingResponsibility.length > 0) {
+            alert(`⚠️ 以下の日程で責任者（金銭メイン）が不足しています。手動で調整してください。\n\n${missingResponsibility.join('\n')}`);
+        }
+
+        const docId = `${Y}-${String(M).padStart(2,'0')}`;
+        const docRef = doc(db, "shift_submissions", docId);
+
         await setDoc(docRef, shifts, { merge: true });
         showToast("AIシフト自動作成完了！ (厳格モード)");
         renderShiftAdminTable();
+
     } catch(e) {
-        alert("自動作成保存失敗: " + e.message);
+        console.error("Auto Generation Error:", e);
+        alert("自動作成中にエラーが発生しました:\n" + e.message);
+    } finally {
+        hideLoading();
     }
-    hideLoading();
 }
 
 // --- NEW FEATURE: ADJUSTMENT CANDIDATE SEARCH ---
