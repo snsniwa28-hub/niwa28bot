@@ -34,6 +34,17 @@ const ROLES = {
     GENERIC_B: 'B遅'
 };
 
+const renderRoleBadges = (roles) => {
+    if (!roles || !roles.length) return '';
+    let html = '<div class="flex flex-wrap gap-0.5 mt-1">';
+    if (roles.includes('money_main')) html += '<span class="px-1 py-0.5 rounded text-[9px] font-bold bg-yellow-100 text-yellow-800 leading-none">金</span>';
+    if (roles.includes('money_sub')) html += '<span class="px-1 py-0.5 rounded text-[9px] font-bold bg-orange-100 text-orange-800 leading-none">副</span>';
+    if (roles.includes('warehouse')) html += '<span class="px-1 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 leading-none">倉</span>';
+    if (roles.includes('hall_resp')) html += '<span class="px-1 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-800 leading-none">責</span>';
+    html += '</div>';
+    return html;
+};
+
 function showLoading() {
     let el = document.getElementById('shift-loading-overlay');
     if(!el) {
@@ -797,6 +808,7 @@ export function renderShiftAdminTable() {
                     <span class="leading-tight ${hasAnyRemark ? 'text-indigo-600' : ''}">${name} ${hasAnyRemark ? '📝' : ''}</span>
                     <button class="w-5 h-5 rounded flex items-center justify-center font-bold text-[9px] ${currentType==='A'?'bg-slate-50 text-slate-400':'bg-slate-800 text-white'} toggle-type-btn" data-name="${name}" data-type="${currentType}">${currentType}</button>
                 </div>
+                ${renderRoleBadges(details.allowed_roles)}
                 <span class="text-[9px] text-slate-300 font-normal leading-none block mt-0.5">連:${details.max_consecutive_days||5} / 契:${details.contract_days||20} / <span class="text-slate-500 font-bold">実:${actualCount}</span></span>
             `;
             // Toggle type button handles its own click via stopPropagation
@@ -1247,6 +1259,9 @@ async function generateAutoShift() {
 
     // Helper: Can Assign?
     const canAssign = (staff, day, strictContractMode = false) => {
+        // 0. Strict Contract Enforcement (Highest Priority)
+        if (staff.assignedDays.length >= staff.contractDays) return false;
+
         // 1. Strict Interval (Absolute): No Late -> Early
         // Determine prev day shift type
         if (day > 1) {
@@ -1537,6 +1552,26 @@ async function generateAutoShift() {
         }
     });
 
+    // --- Post-Generation Check: Responsibility Coverage ---
+    const missingResponsibility = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+         ['A', 'B'].forEach(type => {
+             // Find if any staff with money_main skill is assigned to this day & type
+             const hasResponsible = staffObjects.some(s =>
+                 s.shiftType === type &&
+                 s.assignedDays.includes(d) &&
+                 s.allowedRoles.includes('money_main')
+             );
+             if (!hasResponsible) {
+                 missingResponsibility.push(`・${d}日 (${type === 'A' ? '早番' : '遅番'})`);
+             }
+         });
+    }
+
+    if (missingResponsibility.length > 0) {
+        alert(`⚠️ 以下の日程で責任者（金銭メイン）が不足しています。手動で調整してください。\n\n${missingResponsibility.join('\n')}`);
+    }
+
     const docId = `${Y}-${String(M).padStart(2,'0')}`;
     const docRef = doc(db, "shift_submissions", docId);
     try {
@@ -1725,6 +1760,7 @@ function renderStaffMasterList() {
                 <div>
                     <div class="font-bold text-slate-700 text-sm">${name}</div>
                     <div class="text-[10px] text-slate-400 font-bold">${type === 'employee' ? '社員' : 'アルバイト'} / ${details.rank || '-'}</div>
+                    ${renderRoleBadges(details.allowed_roles)}
                 </div>
             </div>
             <button class="px-3 py-1.5 bg-slate-50 text-slate-500 font-bold text-xs rounded-lg hover:bg-slate-100 border border-slate-200 transition edit-staff-btn">編集</button>
