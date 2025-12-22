@@ -15,7 +15,9 @@ let shiftState = {
     staffDetails: {},
     staffListLists: { employees: [], alba_early: [], alba_late: [] },
     historyStack: [],
-    earlyWarehouseMode: false // New Switch State
+    earlyWarehouseMode: false,
+    adjustmentMode: false, // New Switch State
+    prevMonthCache: null
 };
 
 const RANKS = {
@@ -160,6 +162,10 @@ export function createShiftModals() {
                     </div>
                     <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
                          <label class="flex items-center gap-2 text-xs font-bold bg-slate-700 px-3 py-2 rounded-lg border border-slate-600 cursor-pointer select-none">
+                            <input type="checkbox" id="chk-adjustment-mode" class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-600 bg-slate-600 border-slate-500">
+                            <span>調整モード</span>
+                         </label>
+                         <label class="flex items-center gap-2 text-xs font-bold bg-slate-700 px-3 py-2 rounded-lg border border-slate-600 cursor-pointer select-none">
                             <input type="checkbox" id="chk-early-warehouse-auto" class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-600 bg-slate-600 border-slate-500">
                             <span>早番倉庫お任せ</span>
                          </label>
@@ -269,6 +275,18 @@ export function createShiftModals() {
                 <button id="btn-action-next" class="pl-4 pr-2 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition flex items-center gap-1">
                     次の日 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADJUSTMENT CANDIDATE MODAL -->
+    <div id="adjustment-candidate-modal" class="modal-overlay hidden" style="z-index: 80;">
+        <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-xl flex flex-col max-h-[80vh]">
+            <h3 class="font-bold text-slate-800 text-lg mb-2">代わりのスタッフを選択</h3>
+            <p id="adj-modal-desc" class="text-xs text-slate-400 font-bold mb-4"></p>
+            <div id="adj-candidate-list" class="flex-1 overflow-y-auto space-y-2 pr-2"></div>
+            <div class="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+                <button onclick="document.getElementById('adjustment-candidate-modal').classList.add('hidden')" class="px-4 py-2 bg-slate-100 text-slate-500 font-bold rounded-lg text-xs">キャンセル</button>
             </div>
         </div>
     </div>
@@ -445,6 +463,7 @@ function setupShiftEventListeners() {
     $('#btn-se-delete').onclick = deleteStaff;
     $('#btn-save-daily-target').onclick = saveDailyTarget;
     $('#chk-early-warehouse-auto').onchange = (e) => { shiftState.earlyWarehouseMode = e.target.checked; };
+    $('#chk-adjustment-mode').onchange = (e) => { shiftState.adjustmentMode = e.target.checked; };
 
     // Event Delegation for Shift Admin Table
     const adminBody = document.getElementById('shift-admin-body');
@@ -466,8 +485,13 @@ function setupShiftEventListeners() {
                 const name = td.dataset.name;
                 const status = td.dataset.status;
                 if(name && day) {
-                    shiftState.selectedStaff = name;
-                    showActionSelectModal(day, status);
+                    if (shiftState.adjustmentMode && status && status !== '公休' && status !== '未設定' && !status.includes('希望')) {
+                        // In adjustment mode, clicking an assigned slot triggers candidate search
+                        openAdjustmentCandidateModal(day, name, status);
+                    } else {
+                        shiftState.selectedStaff = name;
+                        showActionSelectModal(day, status);
+                    }
                 }
                 return;
             }
@@ -564,6 +588,7 @@ export async function loadAllShiftData() {
         console.error("Shift Load Error:", e);
         shiftState.shiftDataCache = {};
     }
+    shiftState.prevMonthCache = null; // Invalidate cache on new load
     hideLoading();
 }
 
@@ -1195,6 +1220,175 @@ async function toggleStaffShiftType(name, currentType) {
     renderShiftAdminTable();
 }
 
+// --- SHARED HELPER: PREPARE SHIFT ANALYSIS CONTEXT ---
+// Used by both Auto Generator and Smart Adjustment Mode
+async function prepareShiftAnalysisContext(year, month, currentShiftData, staffDetails, staffLists) {
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    // Fetch Previous Month Data (Cached if possible)
+    let prevMonthAssignments = shiftState.prevMonthCache;
+    if (!prevMonthAssignments) {
+        prevMonthAssignments = {};
+        const prevDate = new Date(year, month - 1, 0);
+        const prevY = prevDate.getFullYear();
+        const prevM = prevDate.getMonth() + 1;
+        const prevDocId = `${prevY}-${String(prevM).padStart(2,'0')}`;
+        try {
+            const docRef = doc(db, "shift_submissions", prevDocId);
+            const snap = await getDoc(docRef);
+            if(snap.exists()) {
+                const data = snap.data();
+                Object.keys(data).forEach(key => {
+                    if (data[key] && data[key].assignments) {
+                        prevMonthAssignments[key] = data[key].assignments;
+                    }
+                });
+            }
+        } catch(e) {
+            console.warn("Could not fetch prev month data", e);
+        }
+        shiftState.prevMonthCache = prevMonthAssignments; // Update Cache
+    }
+
+    const prevDate = new Date(year, month - 1, 0);
+    const prevDaysCount = prevDate.getDate();
+
+    // Prepare Staff Objects
+    const staffNames = [
+        ...staffLists.employees,
+        ...staffLists.alba_early,
+        ...staffLists.alba_late
+    ];
+
+    const staffObjects = staffNames.map(name => {
+        const d = staffDetails[name] || {};
+        const s = currentShiftData[name] || {};
+        const m = s.monthly_settings || {};
+        const assignments = s.assignments || {};
+
+        // Build History (Last 7 days of prev month)
+        const history = {};
+        const prevAssigns = prevMonthAssignments[name] || {};
+        for(let i=0; i<7; i++) {
+            const offset = -i; // 0, -1, -2... (0 = prev last day)
+            const dVal = prevDaysCount - i;
+            const role = prevAssigns[dVal];
+            history[offset] = (role && role !== '公休');
+        }
+
+        // Build assignedDays array from current assignments
+        const assignedDays = [];
+        for(let day=1; day<=daysInMonth; day++) {
+            if (assignments[day] && assignments[day] !== '公休') {
+                assignedDays.push(day);
+            }
+        }
+
+        return {
+            name,
+            rank: d.rank || '一般',
+            type: d.type || 'byte',
+            contractDays: d.contract_days || 20,
+            maxConsecutive: d.max_consecutive_days || 5,
+            allowedRoles: d.allowed_roles || [],
+            shiftType: m.shift_type || d.basic_shift || 'A',
+            requests: {
+                work: s.work_days || [],
+                off: s.off_days || [],
+                types: s.shift_requests || {}
+            },
+            assignedDays: assignedDays,
+            history,
+            roleCounts: {
+                [ROLES.MONEY]: 0,
+                [ROLES.MONEY_SUB]: 0,
+                [ROLES.HALL_RESP]: 0,
+                [ROLES.WAREHOUSE]: 0,
+                [ROLES.HALL]: 0
+            }
+        };
+    });
+
+    return { staffObjects, daysInMonth, prevMonthAssignments, prevDaysCount };
+}
+
+// --- SHARED HELPER: CHECK ASSIGNMENT CONSTRAINT ---
+// Can we assign 'day' to 'staff'?
+function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, strictContractMode = false) {
+    // Helper: Check Work Status (Current & History)
+    const checkWork = (s, d) => {
+        if (d <= 0) return !!s.history[d];
+        return s.assignedDays.includes(d);
+    };
+
+    // 0. Strict Contract Enforcement (Highest Priority)
+    if (!strictContractMode && staff.assignedDays.length >= staff.contractDays) return false;
+
+    // 1. Strict Interval (Absolute): No Late -> Early
+    if (day > 1) {
+        if (staff.assignedDays.includes(day - 1)) {
+                let prevEffective = staff.shiftType;
+                if (staff.requests.types[day-1] === 'early') prevEffective = 'A';
+                if (staff.requests.types[day-1] === 'late') prevEffective = 'B';
+
+                let currentEffective = staff.shiftType;
+                if (staff.requests.types[day] === 'early') currentEffective = 'A';
+                if (staff.requests.types[day] === 'late') currentEffective = 'B';
+
+                if (prevEffective === 'B' && currentEffective === 'A') return false;
+        }
+    } else if (day === 1) {
+            const lastRole = prevMonthAssignments[staff.name]?.[prevDaysCount];
+            if (lastRole && (lastRole.includes('遅') || lastRole.includes('B'))) {
+                let currentEffective = staff.shiftType;
+                if (staff.requests.types[day] === 'early') currentEffective = 'A';
+                if (staff.requests.types[day] === 'late') currentEffective = 'B';
+                if (currentEffective === 'A') return false;
+            }
+    }
+
+    // 2. Off Days Check
+    if (!strictContractMode) {
+            if (staff.requests.off.includes(day)) return false;
+    }
+
+    // 3. Consecutive Days (UPDATED for Cross-Month)
+    let currentSeq = 1;
+    // Scan Backwards
+    let b = day - 1;
+    while(checkWork(staff, b)) {
+        currentSeq++;
+        b--;
+        if (day - b > 30) break;
+    }
+    // Scan Forwards
+    let f = day + 1;
+    while(checkWork(staff, f)) {
+        currentSeq++;
+        f++;
+    }
+
+    if (currentSeq > staff.maxConsecutive) return false;
+
+    // 4. Sandwich Check
+    if (!checkWork(staff, day - 1)) {
+        // day-1 is a Gap. Check streak ending at day-2.
+        let prevStreak = 0;
+        let k = day - 2;
+        while (checkWork(staff, k)) {
+            prevStreak++;
+            k--;
+            if ((day - 2) - k > 30) break;
+        }
+        if (prevStreak >= staff.maxConsecutive) return false;
+    }
+
+    // 5. Already assigned
+    if (staff.assignedDays.includes(day)) return false;
+
+    return true;
+}
+
 // --- NEW AUTO SHIFT LOGIC (AI) ---
 async function generateAutoShift() {
     if(!confirm(`${shiftState.currentYear}年${shiftState.currentMonth}月のシフトを自動作成します。\n既存の確定済みシフトは上書きされます（希望休などは保持）。\nよろしいですか？`)) return;
@@ -1204,188 +1398,34 @@ async function generateAutoShift() {
 
     const Y = shiftState.currentYear;
     const M = shiftState.currentMonth;
-    const daysInMonth = new Date(Y, M, 0).getDate();
     const holidays = getHolidays(Y, M);
     const shifts = shiftState.shiftDataCache;
-    const details = shiftState.staffDetails;
     const dailyTargets = shiftState.shiftDataCache._daily_targets || {};
 
-    // --- PRE-CALC: PREV MONTH DATA (For Cross-Month & Sandwich) ---
-    const prevDate = new Date(Y, M - 1, 0); // Last day of prev month
-    const prevY = prevDate.getFullYear();
-    const prevM = prevDate.getMonth() + 1;
-    const prevDaysCount = prevDate.getDate();
-    const prevDocId = `${prevY}-${String(prevM).padStart(2,'0')}`;
-    let prevMonthAssignments = {};
+    // 1. Prepare Context (Reusing Shared Logic)
+    // IMPORTANT: For Auto Shift, we need to reset 'assignedDays' from current data,
+    // because we are rebuilding from scratch.
+    // The shared helper builds assignedDays from current data.
+    // We will clear it after fetching.
+    const context = await prepareShiftAnalysisContext(Y, M, shifts, shiftState.staffDetails, shiftState.staffListLists);
+    const { staffObjects, daysInMonth, prevMonthAssignments, prevDaysCount } = context;
 
-    try {
-        const docRef = doc(db, "shift_submissions", prevDocId);
-        const snap = await getDoc(docRef);
-        if(snap.exists()) {
-             const data = snap.data();
-             // Extract assignments
-             Object.keys(data).forEach(key => {
-                 if (data[key] && data[key].assignments) {
-                     prevMonthAssignments[key] = data[key].assignments;
-                 }
-             });
-        }
-    } catch(e) {
-        console.warn("Could not fetch previous month data:", e);
-    }
-
-    // Prepare Staff Objects
-    const staffNames = [
-        ...shiftState.staffListLists.employees,
-        ...shiftState.staffListLists.alba_early,
-        ...shiftState.staffListLists.alba_late
-    ];
-
-    const getS = (name) => {
-        const d = details[name] || {};
-        const s = shifts[name] || {};
-        const m = s.monthly_settings || {};
-
-        // Build History (Last 7 days of prev month)
-        // Map: -1 = Last Day, -2 = Day before...
-        const history = {};
-        const prevAssigns = prevMonthAssignments[name] || {};
-        for(let i=0; i<7; i++) {
-            const dayNum = prevDaysCount - i;
-            // Key 0 is Prev Month Last Day (to align with logic day-1 when day=1)
-            // Wait, my logic below uses `day - 1`. If day=1, day-1=0.
-            // So I should map `prevDaysCount` to 0. `prevDaysCount - 1` to -1.
-            const offset = -i;
-            const dVal = prevDaysCount - i;
-            const role = prevAssigns[dVal];
-            history[offset] = (role && role !== '公休');
-        }
-
-        return {
-            name,
-            rank: d.rank || '一般',
-            type: d.type || 'byte', // 'employee' or 'byte'
-            contractDays: d.contract_days || 20,
-            maxConsecutive: d.max_consecutive_days || 5,
-            allowedRoles: d.allowed_roles || [],
-            shiftType: m.shift_type || d.basic_shift || 'A',
-            requests: {
-                work: s.work_days || [],
-                off: s.off_days || [],
-                types: s.shift_requests || {} // {day: 'early'|'late'|'any'}
-            },
-            assignedDays: [], // List of day numbers
-            history, // NEW
-            roleCounts: {
-                [ROLES.MONEY]: 0,
-                [ROLES.MONEY_SUB]: 0,
-                [ROLES.HALL_RESP]: 0,
-                [ROLES.WAREHOUSE]: 0,
-                [ROLES.HALL]: 0
-            }
-        };
-    };
-
-    let staffObjects = staffNames.map(getS);
-    const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
-
-    // Reset Assignments in Memory
+    // Clear assignments for simulation
     staffObjects.forEach(s => {
+        s.assignedDays = [];
         if(!shifts[s.name]) shifts[s.name] = {};
         shifts[s.name].assignments = {};
     });
 
+    const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
+
+    // Wrapper for shared constraint check
+    const canAssign = (staff, day, strictContractMode = false) => {
+        return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, strictContractMode);
+    };
+
     // Helper: Is Responsible?
     const isResponsible = (s) => s.allowedRoles.includes('money_main');
-
-    // Helper: Check Work Status (Current & History)
-    // d can be negative or 0 (prev month), or positive (current month)
-    const checkWork = (staff, d) => {
-        if (d <= 0) {
-            // Check history
-            // history key 0 is prevDaysCount.
-            return !!staff.history[d];
-        }
-        return staff.assignedDays.includes(d);
-    };
-
-    // Helper: Can Assign?
-    const canAssign = (staff, day, strictContractMode = false) => {
-        // 0. Strict Contract Enforcement (Highest Priority)
-        if (!strictContractMode && staff.assignedDays.length >= staff.contractDays) return false;
-
-        // 1. Strict Interval (Absolute): No Late -> Early
-        if (day > 1) {
-            // Check current month prev day assignment
-            if (staff.assignedDays.includes(day - 1)) {
-                 let prevEffective = staff.shiftType;
-                 if (staff.requests.types[day-1] === 'early') prevEffective = 'A';
-                 if (staff.requests.types[day-1] === 'late') prevEffective = 'B';
-
-                 let currentEffective = staff.shiftType;
-                 if (staff.requests.types[day] === 'early') currentEffective = 'A';
-                 if (staff.requests.types[day] === 'late') currentEffective = 'B';
-
-                 if (prevEffective === 'B' && currentEffective === 'A') return false;
-            }
-        } else if (day === 1) {
-             // Check prev month last day role
-             const lastRole = prevMonthAssignments[staff.name]?.[prevDaysCount];
-             if (lastRole && (lastRole.includes('遅') || lastRole.includes('B'))) {
-                 // Prev was Late.
-                 let currentEffective = staff.shiftType;
-                 if (staff.requests.types[day] === 'early') currentEffective = 'A';
-                 if (staff.requests.types[day] === 'late') currentEffective = 'B';
-
-                 if (currentEffective === 'A') return false; // Block Late->Early across month
-             }
-        }
-
-        // 2. Off Days Check
-        if (!strictContractMode) {
-             if (staff.requests.off.includes(day)) return false;
-        }
-
-        // 3. Consecutive Days (UPDATED for Cross-Month)
-        // Check streak including `day`
-        let currentSeq = 1;
-        // Scan Backwards
-        let b = day - 1;
-        while(checkWork(staff, b)) {
-            currentSeq++;
-            b--;
-            // Safety break for infinite loop (unlikely with limited history)
-            if (day - b > 30) break;
-        }
-        // Scan Forwards (Current month only)
-        let f = day + 1;
-        while(checkWork(staff, f)) {
-            currentSeq++;
-            f++;
-        }
-
-        if (currentSeq > staff.maxConsecutive) return false;
-
-        // 4. Sandwich Check (NEW)
-        // Rule: [MaxStreak] [Off] [Candidate] -> NG
-        // Check if day-1 is Off
-        if (!checkWork(staff, day - 1)) {
-            // day-1 is a Gap. Check streak ending at day-2.
-            let prevStreak = 0;
-            let k = day - 2;
-            while (checkWork(staff, k)) {
-                prevStreak++;
-                k--;
-                if ((day - 2) - k > 30) break;
-            }
-            if (prevStreak >= staff.maxConsecutive) return false;
-        }
-
-        // 5. Already assigned
-        if (staff.assignedDays.includes(day)) return false;
-
-        return true;
-    };
 
     // Helper: Get Target for Day
     const getTarget = (day, type) => {
@@ -1401,19 +1441,15 @@ async function generateAutoShift() {
     };
 
     // --- PHASE 1: Employee Baseline (Ensure Responsibility) ---
-    // Rule: At least 1 Responsible (Money Main) per shift (A/B)
     ['A', 'B'].forEach(st => {
         days.forEach(d => {
-            // Check if we have a responsible person
             const assignedResp = staffObjects.some(s =>
                 s.shiftType === st && s.type === 'employee' && isResponsible(s) && s.assignedDays.includes(d)
             );
             if (!assignedResp) {
-                // Find candidates
                 const candidates = staffObjects.filter(s =>
                     s.shiftType === st && s.type === 'employee' && isResponsible(s) && canAssign(s, d)
                 );
-                // Prioritize Work Requests
                 candidates.sort((a,b) => {
                     const reqA = a.requests.work.includes(d) ? 1 : 0;
                     const reqB = b.requests.work.includes(d) ? 1 : 0;
@@ -1432,7 +1468,6 @@ async function generateAutoShift() {
                  const candidates = staffObjects.filter(s =>
                     s.shiftType === st && s.type === 'employee' && canAssign(s, d)
                 );
-                 // Sort: Request > Low Assign Count
                  candidates.sort((a,b) => {
                      const reqA = a.requests.work.includes(d) ? 1 : 0;
                      const reqB = b.requests.work.includes(d) ? 1 : 0;
@@ -1441,9 +1476,7 @@ async function generateAutoShift() {
                  });
                  for (const c of candidates) {
                      if (count >= 4) break;
-                     // Strict Contract Limit Check
                      if (c.assignedDays.length >= c.contractDays) continue;
-
                      c.assignedDays.push(d);
                      count++;
                  }
@@ -1452,36 +1485,26 @@ async function generateAutoShift() {
     });
 
     // --- PHASE 3: Employee Contract Fill (Normal) ---
-    // Try to fill up to contract days using Work Requests then Empty slots
     let changed = true;
     while(changed) {
         changed = false;
         const needy = staffObjects.filter(s => s.type === 'employee' && s.assignedDays.length < s.contractDays);
-        needy.sort((a,b) => (a.contractDays - a.assignedDays.length) - (b.contractDays - b.assignedDays.length)).reverse(); // Most needy first
+        needy.sort((a,b) => (a.contractDays - a.assignedDays.length) - (b.contractDays - b.assignedDays.length)).reverse();
 
         for (const emp of needy) {
-             // Double check contract limit
              if (emp.assignedDays.length >= emp.contractDays) continue;
-
-             // Find best day
-             // 1. Work Request
              let validDays = days.filter(d => emp.requests.work.includes(d) && canAssign(emp, d));
              if (validDays.length === 0) {
-                 // 2. Empty (Non-Off)
                  validDays = days.filter(d => !emp.requests.work.includes(d) && canAssign(emp, d));
              }
-
              if (validDays.length > 0) {
-                 // Pick day with lowest staffing relative to target
                  validDays.sort((d1, d2) => {
                      const t1 = getTarget(d1, emp.shiftType);
                      const c1 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d1)).length;
                      const fill1 = c1 / t1;
-
                      const t2 = getTarget(d2, emp.shiftType);
                      const c2 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d2)).length;
                      const fill2 = c2 / t2;
-
                      return fill1 - fill2;
                  });
                  emp.assignedDays.push(validDays[0]);
@@ -1500,22 +1523,17 @@ async function generateAutoShift() {
                  const candidates = staffObjects.filter(s =>
                     s.shiftType === st && s.type === 'byte' && canAssign(s, d)
                 );
-                 // Sort: Work Request > Needs Days (Contract)
                  candidates.sort((a,b) => {
                      const reqA = a.requests.work.includes(d) ? 1 : 0;
                      const reqB = b.requests.work.includes(d) ? 1 : 0;
                      if(reqA !== reqB) return reqB - reqA;
-
                      const needA = a.contractDays - a.assignedDays.length;
                      const needB = b.contractDays - b.assignedDays.length;
                      return needB - needA;
                  });
-
                  for(const c of candidates) {
                      if (current >= target) break;
-                     // Strict Contract Limit Check
                      if (c.assignedDays.length >= c.contractDays) continue;
-
                      c.assignedDays.push(d);
                      current++;
                  }
@@ -1529,7 +1547,7 @@ async function generateAutoShift() {
         changed = false;
         const needy = staffObjects.filter(s => s.type === 'byte' && s.assignedDays.length < s.contractDays);
         for(const alba of needy) {
-            const validDays = days.filter(d => canAssign(alba, d)); // Still respects Off requests
+            const validDays = days.filter(d => canAssign(alba, d));
              if (validDays.length > 0) {
                  validDays.sort((d1, d2) => {
                      const c1 = staffObjects.filter(s => s.shiftType === alba.shiftType && s.assignedDays.includes(d1)).length;
@@ -1543,23 +1561,16 @@ async function generateAutoShift() {
     }
 
     // --- PHASE 6: STRICT CONTRACT ENFORCEMENT (Employees Only) ---
-    // If employee < contractDays, FORCE ASSIGN even on Off Days (Warning will be shown in UI)
     const needyEmployees = staffObjects.filter(s => s.type === 'employee' && s.assignedDays.length < s.contractDays);
     for (const emp of needyEmployees) {
         while (emp.assignedDays.length < emp.contractDays) {
-            // Find days we can assign ignoring OFF requests
-            // But still MUST respect Interval and MaxConsecutive
             const candidates = days.filter(d => canAssign(emp, d, true)); // strictContractMode = true
-
-            if (candidates.length === 0) break; // Impossible physically
-
-            // Sort by lowest staffing
+            if (candidates.length === 0) break;
              candidates.sort((d1, d2) => {
                  const c1 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d1)).length;
                  const c2 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d2)).length;
                  return c1 - c2;
              });
-
              emp.assignedDays.push(candidates[0]);
         }
     }
@@ -1574,7 +1585,6 @@ async function generateAutoShift() {
             const assign = (roleKey, filterFn) => {
                 const candidates = unassigned.filter(filterFn);
                 if (candidates.length === 0) return;
-                // Balancing logic: assign to person with least count of this role
                 candidates.sort((a,b) => a.roleCounts[roleKey] - b.roleCounts[roleKey]);
                 const picked = candidates[0];
                 shifts[picked.name].assignments[d] = roleKey;
@@ -1592,8 +1602,6 @@ async function generateAutoShift() {
             assign(ROLES.HALL_RESP, s => s.allowedRoles.includes('hall_resp'));
 
             // 4. Warehouse
-            // Constraint: Early Warehouse Auto Mode
-            // If mode is ON, Early Employees (A) are EXCLUDED from Warehouse
             assign(ROLES.WAREHOUSE, s => {
                 if (!s.allowedRoles.includes('warehouse')) return false;
                 if (shiftState.earlyWarehouseMode && s.type === 'employee' && s.shiftType === 'A') return false;
@@ -1602,7 +1610,7 @@ async function generateAutoShift() {
 
             // 5. Others -> Hall or Generic
             unassigned.forEach(s => {
-                shifts[s.name].assignments[d] = 'ホ'; // Default Hall
+                shifts[s.name].assignments[d] = 'ホ';
             });
 
             // Mark Off days
@@ -1624,11 +1632,10 @@ async function generateAutoShift() {
         }
     });
 
-    // --- Post-Generation Check: Responsibility Coverage ---
+    // --- Post-Generation Check ---
     const missingResponsibility = [];
     for (let d = 1; d <= daysInMonth; d++) {
          ['A', 'B'].forEach(type => {
-             // Find if any staff with money_main skill is assigned to this day & type
              const hasResponsible = staffObjects.some(s =>
                  s.shiftType === type &&
                  s.assignedDays.includes(d) &&
@@ -1654,6 +1661,119 @@ async function generateAutoShift() {
         alert("自動作成保存失敗: " + e.message);
     }
     hideLoading();
+}
+
+// --- NEW FEATURE: ADJUSTMENT CANDIDATE SEARCH ---
+async function openAdjustmentCandidateModal(day, currentStaffName, currentRole) {
+    showLoading();
+
+    // 1. Prepare Data
+    const Y = shiftState.currentYear;
+    const M = shiftState.currentMonth;
+    const context = await prepareShiftAnalysisContext(Y, M, shiftState.shiftDataCache, shiftState.staffDetails, shiftState.staffListLists);
+    const { staffObjects, prevMonthAssignments, prevDaysCount } = context;
+
+    // Identify target details
+    const targetStaffObj = staffObjects.find(s => s.name === currentStaffName);
+    const shiftType = targetStaffObj ? targetStaffObj.shiftType : 'A'; // Default to A if not found
+
+    // 2. Filter Candidates
+    const candidates = staffObjects.filter(staff => {
+        // Exclude self
+        if (staff.name === currentStaffName) return false;
+
+        // Exclude if already assigned on that day
+        if (staff.assignedDays.includes(day)) return false;
+
+        // Exclude if shift type mismatch (A replaces A, B replaces B)
+        // Strictly speaking, we could allow cross-shift replacement if configured,
+        // but for safety let's stick to same group replacement as per user context usually implies.
+        // Actually, the request didn't specify strict shift type matching, but it makes sense.
+        // Let's enforce Shift Type match to be safe.
+        if (staff.shiftType !== shiftType) return false;
+
+        // Check Constraints (Sandwich, Consecutive, etc.)
+        // We pass strictContractMode = false, because we want to see VALID candidates.
+        return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, false);
+    });
+
+    // 3. Render Modal
+    const modalDesc = document.getElementById('adj-modal-desc');
+    modalDesc.textContent = `${M}/${day} (${shiftType}番) ${currentStaffName} さんの代わりを選択してください`;
+
+    const listContainer = document.getElementById('adj-candidate-list');
+    listContainer.innerHTML = '';
+
+    if (candidates.length === 0) {
+        listContainer.innerHTML = '<p class="text-sm text-center text-slate-400 py-4">条件を満たす候補者はいません</p>';
+    } else {
+        // Sort candidates? Maybe by "Least Assigned" or "Contract fulfillment"?
+        // Let's sort by "Days Remaining to Contract" descending (Needy first)
+        candidates.sort((a,b) => {
+            const remA = a.contractDays - a.assignedDays.length;
+            const remB = b.contractDays - b.assignedDays.length;
+            return remB - remA;
+        });
+
+        candidates.forEach(c => {
+            const div = document.createElement('div');
+            div.className = "flex items-center justify-between p-3 bg-slate-50 hover:bg-indigo-50 rounded-xl border border-slate-100 cursor-pointer transition";
+            div.onclick = () => executeAdjustmentReplacement(day, currentStaffName, c.name, currentRole);
+
+            const rem = c.contractDays - c.assignedDays.length;
+
+            div.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-sm shadow-sm">👤</div>
+                    <div>
+                        <div class="font-bold text-slate-700 text-sm">${c.name}</div>
+                        <div class="text-[10px] text-slate-400 font-bold">${c.rank} / 残り枠:${rem}</div>
+                    </div>
+                </div>
+                <button class="px-3 py-1.5 bg-indigo-600 text-white font-bold text-xs rounded-lg shadow-sm hover:bg-indigo-700">交代</button>
+            `;
+            listContainer.appendChild(div);
+        });
+    }
+
+    document.getElementById('adjustment-candidate-modal').classList.remove('hidden');
+    hideLoading();
+}
+
+async function executeAdjustmentReplacement(day, oldStaff, newStaff, role) {
+    if(!confirm(`${oldStaff} さんを ${newStaff} さんに交代しますか？\n(${oldStaff}さんは公休になります)`)) return;
+
+    pushHistory();
+
+    // Update Old Staff -> Off
+    if (!shiftState.shiftDataCache[oldStaff].assignments) shiftState.shiftDataCache[oldStaff].assignments = {};
+    shiftState.shiftDataCache[oldStaff].assignments[day] = '公休';
+
+    // Update New Staff -> Assigned (Inherit Role or ShiftType Default)
+    // If the role was a special role (like '金メ'), transfer it?
+    // The prompt says "Vacancy -> Suggest Replacement".
+    // Usually replacements take the same burden.
+    if (!shiftState.shiftDataCache[newStaff]) shiftState.shiftDataCache[newStaff] = { assignments: {} };
+    if (!shiftState.shiftDataCache[newStaff].assignments) shiftState.shiftDataCache[newStaff].assignments = {};
+
+    shiftState.shiftDataCache[newStaff].assignments[day] = role; // Transfer the role
+
+    // Save
+    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+    const docRef = doc(db, "shift_submissions", docId);
+
+    const update = {};
+    update[oldStaff] = shiftState.shiftDataCache[oldStaff];
+    update[newStaff] = shiftState.shiftDataCache[newStaff];
+
+    try {
+        await setDoc(docRef, update, { merge: true });
+        showToast(`${newStaff} さんに交代しました`);
+        document.getElementById('adjustment-candidate-modal').classList.add('hidden');
+        renderShiftAdminTable();
+    } catch(e) {
+        alert("保存エラー: " + e.message);
+    }
 }
 
 async function clearShiftAssignments() {
