@@ -1717,8 +1717,13 @@ async function openAdjustmentCandidateModal(day, currentStaffName, currentRole) 
     const candidates = staffObjects.filter(staff => {
         if (staff.name === currentStaffName) return false;
         if (staff.assignedDays.includes(day)) return false;
+
+        // シフトタイプ(A/B)が違う人は候補に出さない（ここは維持）
         if (staff.shiftType !== shiftType) return false;
-        return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, false);
+
+        // 【修正】第6引数に true を渡し、「調整モードである」ことを伝えます。
+        // これにより、checkAssignmentConstraint 内で契約日数のチェックがスキップされます。
+        return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, false, true);
     });
 
     // 3. Render Modal
