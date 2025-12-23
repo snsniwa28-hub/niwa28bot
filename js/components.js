@@ -333,18 +333,6 @@ export function renderModals() {
     if (!container) return;
 
     container.innerHTML = `
-    <div id="internalSharedModal" class="modal-overlay hidden">
-        <div class="modal-content w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
-            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                <h3 class="font-bold text-xl text-slate-800">📋 社内共有・戦略</h3>
-                <button onclick="closeInternalSharedModal()" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-            </div>
-            <div id="internalSharedModalBody" class="p-6 overflow-y-auto bg-slate-50"></div>
-        </div>
-    </div>
-
     <div id="operations-modal" class="modal-overlay hidden">
         <div class="modal-content p-6 max-w-lg">
             <h3 class="text-lg font-black text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-4">
