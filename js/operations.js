@@ -33,12 +33,16 @@ export function renderOperationsBoard() {
     const defaultTarget = TARGET_DATA_DEC[dayNum] || { t15: 0, t19: 0 };
 
     const t = todayOpData || {};
+    const y = yesterdayOpData || {}; // Yesterday's data
 
+    // Targets & Actuals
     const expected15 = (t.target_total_15 !== undefined && t.target_total_15 !== null) ? t.target_total_15 : defaultTarget.t15;
     const daily15 = (t.today_target_total_15 !== undefined && t.today_target_total_15 !== null) ? t.today_target_total_15 : null;
+    const effTarget15 = daily15 !== null ? daily15 : expected15;
 
-    // Fixed: Added missing definition for expected19
     const expected19 = (t.target_total_19 !== undefined && t.target_total_19 !== null) ? t.target_total_19 : defaultTarget.t19;
+    const daily19 = (t.today_target_total_19 !== undefined && t.today_target_total_19 !== null) ? t.today_target_total_19 : null;
+    const effTarget19 = daily19 !== null ? daily19 : expected19;
 
     const calcTotal = (d, time) => {
         if (!d) return null;
@@ -51,53 +55,71 @@ export function renderOperationsBoard() {
 
     const today15 = calcTotal(t, '15');
     const today19 = calcTotal(t, '19');
+    const yester19 = calcTotal(y, '19'); // Yesterday 19:00
+
+    // Achievement Rate (19:00)
+    let achievementRate = 0;
+    if (effTarget19 > 0 && today19 !== null) {
+        achievementRate = Math.min(Math.round((today19 / effTarget19) * 100), 100);
+    }
 
     let html = `
-    <div class="group bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-6 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between relative overflow-hidden">
+    <div class="bg-white rounded-3xl border border-slate-100 shadow-lg shadow-indigo-900/5 p-4 sm:p-6 w-full flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
 
-        <div class="flex justify-between items-start mb-4">
-            <div class="bg-blue-50 text-blue-600 p-3.5 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
-                <span class="text-xl font-black">📊</span>
-            </div>
-            <div class="flex gap-1">
-                <button id="btn-monthly-cal" class="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition" title="月間推移">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                </button>
-                <button id="btn-op-input" class="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition" title="入力">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                </button>
-            </div>
+        <!-- Header / Actions -->
+        <div class="absolute top-4 right-4 flex gap-2 z-10">
+             <button id="btn-monthly-cal" class="bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <span>月間推移</span>
+            </button>
+            <button id="btn-op-input" class="bg-indigo-600 text-white hover:bg-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-lg shadow-indigo-200">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                <span>入力</span>
+            </button>
         </div>
 
-        <div class="space-y-4">
-            <div class="relative z-10">
-                <div class="flex items-baseline justify-between mb-1">
-                    <span class="text-xs font-bold text-slate-400">19:00 現在</span>
-                    <span class="text-[10px] font-bold text-slate-300">目標: ${expected19}</span>
-                </div>
-                <div class="flex items-end gap-2">
-                    <span class="text-3xl font-black text-slate-800 tracking-tight leading-none">${today19 !== null ? today19 : '<span class="text-slate-200">-</span>'}</span>
-                    <span class="text-sm font-bold text-slate-400 mb-1">名</span>
-                </div>
-                <div class="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
-                    <div class="bg-blue-500 h-full rounded-full" style="width: ${today19 ? Math.min((today19/expected19)*100, 100) : 0}%"></div>
+        <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-6 items-end">
+            <!-- 1. Yesterday Result -->
+            <div class="relative pl-3 border-l-4 border-slate-200">
+                <p class="text-[10px] font-bold text-slate-400 mb-1">昨日実績 (19時)</p>
+                <div class="flex items-baseline gap-1">
+                    <span class="text-2xl font-black text-slate-600">${yester19 !== null ? yester19 : '-'}</span>
+                    <span class="text-xs font-bold text-slate-400">名</span>
                 </div>
             </div>
 
-            <div class="pt-3 border-t border-slate-100">
-                <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold text-slate-400">15:00</span>
-                    <div class="flex items-center gap-2">
-                        <span class="text-lg font-black text-slate-600">${today15 !== null ? today15 : '-'}</span>
-                        <span class="text-[10px] text-slate-300">/ ${expected15}</span>
-                    </div>
+            <!-- 2. Today Target -->
+            <div class="relative pl-3 border-l-4 border-indigo-200">
+                <p class="text-[10px] font-bold text-indigo-400 mb-1">本日目標 (19時)</p>
+                <div class="flex items-baseline gap-1">
+                    <span class="text-2xl font-black text-indigo-900">${effTarget19}</span>
+                    <span class="text-xs font-bold text-indigo-300">名</span>
                 </div>
             </div>
-        </div>
 
-        <div class="mt-4">
-            <h2 class="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">稼働実績</h2>
-            <p class="text-slate-400 text-xs font-bold mt-1">リアルタイム集計</p>
+            <!-- 3. Today 15:00 -->
+            <div class="relative pl-3 border-l-4 border-slate-200">
+                <p class="text-[10px] font-bold text-slate-400 mb-1">本日 15:00</p>
+                <div class="flex items-baseline gap-1">
+                    <span class="text-2xl font-black text-slate-700">${today15 !== null ? today15 : '-'}</span>
+                    <span class="text-xs font-bold text-slate-400">/ ${effTarget15}</span>
+                </div>
+            </div>
+
+            <!-- 4. Today 19:00 (Main) -->
+            <div class="col-span-1 md:col-span-1">
+                 <div class="flex justify-between items-end mb-1">
+                    <p class="text-[10px] font-bold text-slate-400">本日 19:00</p>
+                    <span class="text-xs font-bold text-indigo-500">${achievementRate}%</span>
+                </div>
+                <div class="flex items-baseline gap-1 mb-2">
+                    <span class="text-4xl font-black text-slate-800 tracking-tight leading-none">${today19 !== null ? today19 : '-'}</span>
+                    <span class="text-sm font-bold text-slate-400">/ ${effTarget19}</span>
+                </div>
+                 <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div class="bg-gradient-to-r from-indigo-500 to-indigo-400 h-full rounded-full transition-all duration-1000" style="width: ${achievementRate}%"></div>
+                </div>
+            </div>
         </div>
     </div>
     `;

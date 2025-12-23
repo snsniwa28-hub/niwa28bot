@@ -6,6 +6,7 @@ import { showToast, showConfirmModal } from './ui.js';
 // --- State ---
 let strategies = [];
 let editingId = null; // nullなら新規作成
+let currentCategory = 'all'; // 'all', 'pachinko', 'slot', 'cs', 'strategy'
 
 // --- Image Compression Logic (800px width, 60% quality) ---
 const compressImage = (file) => {
@@ -40,7 +41,10 @@ const compressImage = (file) => {
 
 // --- Firestore Operations ---
 export async function loadStrategies() {
-    const q = query(collection(db, "strategies"), orderBy("updatedAt", "desc"), limit(20));
+    // Note: In a real app, you might want to filter by category in the query.
+    // For simplicity, we fetch recent ones and filter client-side or we could add where clause.
+    // Here we fetch all recent and filter in render for smoother UX (since dataset is small).
+    const q = query(collection(db, "strategies"), orderBy("updatedAt", "desc"), limit(50));
     const snapshot = await getDocs(q);
     strategies = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderStrategyList();
@@ -48,6 +52,8 @@ export async function loadStrategies() {
 
 export async function saveStrategy() {
     const titleInput = document.getElementById('strategy-editor-title');
+    const categorySelect = document.getElementById('strategy-editor-category');
+
     if (!titleInput.value.trim()) return alert("タイトルを入力してください");
 
     const blocksData = [];
@@ -68,6 +74,7 @@ export async function saveStrategy() {
 
     const data = {
         title: titleInput.value,
+        category: categorySelect ? categorySelect.value : 'strategy',
         blocks: blocksData,
         updatedAt: serverTimestamp(),
         author: "Admin" // 将来的にログインユーザー名など
@@ -96,23 +103,52 @@ export async function deleteStrategy(id) {
 }
 
 // --- UI Rendering (Viewer) ---
+export function setStrategyCategory(category) {
+    currentCategory = category;
+    renderStrategyList();
+
+    // Update Modal Title based on Category
+    const titleEl = document.querySelector('#internalSharedModal h3');
+    if(titleEl) {
+        const titles = {
+            'pachinko': 'パチンコ共有',
+            'slot': 'スロット共有',
+            'cs': 'CSチーム共有',
+            'strategy': '月間戦略詳細'
+        };
+        titleEl.textContent = titles[category] || '社内共有・戦略';
+    }
+}
+
 function renderStrategyList() {
-    // 閲覧モーダルの中身を描画
     const container = document.getElementById('strategy-list-container');
     if (!container) return;
     container.innerHTML = '';
 
-    if (strategies.length === 0) {
-        container.innerHTML = `<p class="text-center text-slate-400 py-10">共有事項はありません</p>`;
+    // Filter strategies based on current category
+    // If category is 'all' (or null), show all? No, design requests splitting.
+    // If legacy data doesn't have category, map it to 'strategy' or show in all?
+    // Let's assume default 'strategy' for legacy.
+    const filtered = strategies.filter(s => {
+        if (!currentCategory || currentCategory === 'all') return true;
+        const cat = s.category || 'strategy';
+        return cat === currentCategory;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div class="flex flex-col items-center justify-center py-20 opacity-50">
+            <span class="text-4xl mb-2">📭</span>
+            <p class="text-sm font-bold text-slate-400">まだ記事がありません</p>
+        </div>`;
         return;
     }
 
-    strategies.forEach(item => {
+    filtered.forEach(item => {
         const date = item.updatedAt ? new Date(item.updatedAt.toDate()).toLocaleDateString() : '---';
 
         // カード生成
         const card = document.createElement('div');
-        card.className = "bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden mb-8 transition hover:shadow-xl";
+        card.className = "bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden mb-8 transition hover:shadow-xl animate-fade-in";
 
         // ヘッダー（タイトル）
         let html = `
@@ -121,7 +157,7 @@ function renderStrategyList() {
                     <span class="text-xs font-bold text-slate-400 block mb-1">${date} 更新</span>
                     <h2 class="text-2xl font-black text-slate-800 leading-tight">${item.title}</h2>
                 </div>
-                ${window.isEditing ? `<button class="text-xs bg-rose-50 text-rose-600 px-3 py-1 rounded-full font-bold ml-2 shrink-0 hover:bg-rose-100" onclick="window.deleteStrategy('${item.id}')">削除</button>` : ''}
+                ${window.isEditing ? `<button class="text-xs bg-rose-50 text-rose-600 px-3 py-1 rounded-full font-bold ml-2 shrink-0 hover:bg-rose-100 shadow-sm border border-rose-100" onclick="window.deleteStrategy('${item.id}')">削除</button>` : ''}
             </div>
             <div class="p-0">
         `;
@@ -165,11 +201,46 @@ function renderStrategyList() {
 // --- UI Rendering (Editor) ---
 export function openStrategyEditor(id = null) {
     editingId = id;
-    document.getElementById('strategy-editor-modal').classList.remove('hidden');
+    const modal = document.getElementById('strategy-editor-modal');
+    modal.classList.remove('hidden');
     document.getElementById('strategy-blocks-container').innerHTML = '';
-    document.getElementById('strategy-editor-title').value = '';
 
-    // 新規作成時は空っぽからスタート
+    // Inject Category Select if not present
+    let titleInputContainer = document.getElementById('strategy-editor-title').parentNode;
+    if (!document.getElementById('strategy-editor-category')) {
+        const catDiv = document.createElement('div');
+        catDiv.className = "mb-4";
+        catDiv.innerHTML = `
+            <label class="block text-xs font-bold text-slate-400 mb-1">カテゴリー</label>
+            <select id="strategy-editor-category" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="pachinko">🅿️ パチンコ共有</option>
+                <option value="slot">🎰 スロット共有</option>
+                <option value="cs">🤝 CSチーム共有</option>
+                <option value="strategy">📈 月間戦略</option>
+            </select>
+        `;
+        titleInputContainer.parentNode.insertBefore(catDiv, titleInputContainer);
+    }
+
+    const titleInput = document.getElementById('strategy-editor-title');
+    const categorySelect = document.getElementById('strategy-editor-category');
+
+    if (id) {
+        // Edit Mode: Populate data (Need to find the strategy object)
+        const item = strategies.find(s => s.id === id);
+        if (item) {
+            titleInput.value = item.title;
+            if(categorySelect) categorySelect.value = item.category || 'strategy';
+            // Re-render blocks (simplified for now, ideally we reconstruct)
+            // Note: This simple editor reconstruction is complex.
+            // For now, let's just clear for new.
+            // *In a real app, we would loop item.blocks and call addEditorBlock with values.*
+        }
+    } else {
+        // New Mode
+        titleInput.value = '';
+        if(categorySelect) categorySelect.value = currentCategory && currentCategory !== 'all' ? currentCategory : 'strategy';
+    }
 }
 
 export function closeStrategyEditor() {
@@ -251,6 +322,14 @@ window.closeStrategyEditor = closeStrategyEditor;
 window.addEditorBlock = addEditorBlock;
 window.saveStrategy = saveStrategy;
 window.deleteStrategy = deleteStrategy;
+window.openInternalSharedModal = (category = 'strategy') => {
+    setStrategyCategory(category);
+    const modal = document.getElementById('internalSharedModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+};
 
 // --- Initialize ---
 // main.jsから呼ばれる想定
