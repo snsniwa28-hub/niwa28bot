@@ -39,8 +39,12 @@ export function renderToday() {
 
 function updateNewOpeningCard() {
     // 2. New Machine Info Card in Dashboard
-    const cardLink = document.querySelector('a[href="#new-opening-section"]');
+    const cardLink = document.getElementById('newOpeningCard');
     if (!cardLink) return;
+
+    const iconContainer = cardLink.querySelector('.bg-indigo-50'); // Icon background wrapper
+    const title = cardLink.querySelector('h2');
+    const sub = cardLink.querySelector('p');
 
     if (!newOpeningData || newOpeningData.length === 0) {
         // Disable
@@ -48,20 +52,39 @@ function updateNewOpeningCard() {
         cardLink.classList.remove('bg-white', 'hover:-translate-y-1', 'hover:shadow-xl', 'cursor-pointer');
         cardLink.removeAttribute('href');
 
-        const title = cardLink.querySelector('h2');
         if (title) {
             title.textContent = "情報は現在ありません";
             title.classList.remove('group-hover:text-indigo-600');
             title.classList.add('text-slate-400');
         }
 
-        const sub = cardLink.querySelector('p');
         if (sub) sub.textContent = "Coming Soon...";
+
+        // Icon styles (Indigo -> Gray)
+        if (iconContainer) {
+            iconContainer.classList.remove('bg-indigo-50', 'text-indigo-600', 'group-hover:bg-indigo-600');
+            iconContainer.classList.add('bg-slate-100', 'text-slate-400');
+        }
+
     } else {
-        // Enable (Reset to original state if needed, though usually page reload handles this)
+        // Enable (Reset to original state)
         cardLink.classList.remove('opacity-50', 'pointer-events-none', 'bg-slate-50');
         cardLink.classList.add('bg-white', 'hover:-translate-y-1', 'hover:shadow-xl', 'cursor-pointer');
         cardLink.setAttribute('href', '#new-opening-section');
+
+        if (title) {
+            title.textContent = "新装開店";
+            title.classList.add('group-hover:text-indigo-600');
+            title.classList.remove('text-slate-400');
+        }
+
+        if (sub) sub.textContent = "最新機種情報";
+
+        // Icon styles restore
+        if (iconContainer) {
+            iconContainer.classList.add('bg-indigo-50', 'text-indigo-600', 'group-hover:bg-indigo-600');
+            iconContainer.classList.remove('bg-slate-100', 'text-slate-400');
+        }
     }
 }
 

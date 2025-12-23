@@ -97,8 +97,6 @@ export async function deleteStrategy(id) {
         await deleteDoc(doc(db, "strategies", id));
         showToast("削除しました");
         loadStrategies();
-        // もし閲覧モードで開いていた場合は閉じる
-        document.getElementById('internalSharedModal').classList.add('hidden');
     });
 }
 
@@ -133,7 +131,13 @@ export function setStrategyCategory(category) {
     }
     if(iconEl) iconEl.textContent = c.icon;
 
-    // Create button text update if needed, though "+" is generic enough.
+    // Apply header background color if specific category
+    // Note: The previous code was resetting it to white. We want to apply custom bg if needed, or keep white.
+    // Requirement says: "Header change: ... and theme color (text color, etc.)".
+    // It doesn't explicitly demand background color change for the header itself, but keeping it white is clean.
+    // However, if we want to match the theme:
+    // if(header) header.className = `p-4 border-b border-slate-200 flex justify-between items-center shrink-0 z-10 shadow-sm ${c.bg}`;
+    // But let's stick to text color which is already handled above. The user instructions said "theme color (text color etc)".
 }
 
 function renderStrategyList() {
@@ -241,14 +245,46 @@ export function openStrategyEditor(id = null) {
     const categorySelect = document.getElementById('strategy-editor-category');
 
     // Handle Category Locking
+    const label = document.querySelector('label[for="strategy-editor-category"]');
+    if (label) label.textContent = "カテゴリー"; // Reset label
+
     if (currentCategory && currentCategory !== 'all' && !id) {
         // Create new in specific category -> Lock it
         categorySelect.value = currentCategory;
         categorySelect.disabled = true;
         categorySelect.classList.add('opacity-50', 'cursor-not-allowed');
+
+        // Show visual indicator
+        if (label) {
+            label.innerHTML = `カテゴリー <span class="text-rose-500 font-black ml-1">(固定)</span>`;
+        }
+
+        // Also show "Current Category: [Name] (Fixed)" in a more prominent way if needed,
+        // but the disabled select + label change is usually sufficient.
+        // The requirement says: "Show 'Current Category: XX (Fixed)' on the editor".
+        // Let's add a text element if the select is disabled to be very clear.
+        let fixedInfo = document.getElementById('strategy-category-fixed-info');
+        if (!fixedInfo) {
+            fixedInfo = document.createElement('p');
+            fixedInfo.id = 'strategy-category-fixed-info';
+            fixedInfo.className = "text-sm font-bold text-indigo-600 mt-1";
+            categorySelect.parentNode.appendChild(fixedInfo);
+        }
+        const catNames = {
+            'pachinko': 'パチンコ共有',
+            'slot': 'スロット共有',
+            'cs': 'CSチーム共有',
+            'strategy': '月間戦略'
+        };
+        fixedInfo.textContent = `現在のカテゴリ：${catNames[currentCategory] || currentCategory} (固定)`;
+        fixedInfo.classList.remove('hidden');
+
     } else {
         categorySelect.disabled = false;
         categorySelect.classList.remove('opacity-50', 'cursor-not-allowed');
+
+        const fixedInfo = document.getElementById('strategy-category-fixed-info');
+        if (fixedInfo) fixedInfo.classList.add('hidden');
     }
 
     if (id) {
