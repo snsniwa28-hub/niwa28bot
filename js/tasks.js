@@ -820,15 +820,15 @@ export async function importFromShift(fullAutoMode) {
 }
 
 async function _importFromShiftInternal(fullAutoMode) {
-    // Check master data availability
+    // 1. マスタデータの読み込みチェック
     const master = window.masterStaffList || masterStaffList;
-    if (!master || !master.staff_details) {
-        alert("スタッフマスタが読み込まれていません。少し待ってから再試行してください。");
+    if (!master || !master.staff_details || Object.keys(master.staff_details).length === 0) {
+        alert("スタッフデータを読み込み中です。数秒待ってから再度実行してください。");
         return;
     }
 
     const [y, m, d] = currentDate.split('-');
-    const dayNum = parseInt(d).toString(); // "05" -> "5"
+    const dayNum = parseInt(d).toString();
     const docId = `${y}-${m}`;
 
     try {
@@ -841,46 +841,57 @@ async function _importFromShiftInternal(fullAutoMode) {
         }
 
         const shiftData = shiftSnap.data();
-        const assignments = {}; // name -> role
-        const shiftTypes = {}; // name -> 'A' | 'B'
+        const assignments = {};
+        const shiftTypes = {};
 
-        // Scan all staff in shift data
+        // 全スタッフのシフトを確認
         Object.keys(shiftData).forEach(name => {
             const s = shiftData[name];
             if (s.assignments && s.assignments[dayNum]) {
                 const role = s.assignments[dayNum];
                 if (role !== '公休') {
                     assignments[name] = role;
-                    // Determine Type
+
+                    // --- Shift Type 判定強化 ---
                     let type = 'A';
                     if (s.monthly_settings && s.monthly_settings.shift_type) {
                         type = s.monthly_settings.shift_type;
                     } else if (master.staff_details && master.staff_details[name]) {
                         type = master.staff_details[name].basic_shift || 'A';
                     }
+
+                    // バックアップ判定: 役割名に特定の文字が含まれていればB番(遅番)とみなす
+                    if (role.includes('遅') || role.includes('B') || role.includes('Close') || role.includes('金回') || role.includes('立駐')) {
+                        type = 'B';
+                    }
                     shiftTypes[name] = type;
                 }
             }
         });
 
-        // Reset Lists (Early/Late)
+        // リスト初期化
         const newEarly = [];
         const newLate = [];
-        // Note: Closing lists are NOT reset based on prompt instruction ("staffList.early... staffList.late... をリセット")
-        // But to prevent duplicates if someone moves from early/late to closing, we might want to be careful.
-        // However, standard usage seems to separate them. I'll stick to instructions.
         staffList.early = [];
         staffList.late = [];
 
-        // Populate Lists
+        // 除外する役職リスト
+        const EXCLUDED_RANKS = ['マネージャー', '主任', '副主任'];
+
+        // リストへの振り分け
         Object.keys(assignments).forEach(name => {
+            // 役職チェック: 除外対象ならリストに追加しない
+            const details = (master.staff_details && master.staff_details[name]) || {};
+            const rank = details.rank || '一般';
+            if (EXCLUDED_RANKS.includes(rank)) return;
+
             const type = shiftTypes[name];
             const staffObj = { name: name, tasks: [] };
             if (type === 'A') newEarly.push(staffObj);
             else newLate.push(staffObj);
         });
 
-        // Sort lists (Simple helper)
+        // 並び替えヘルパー
         const getSortIdx = (n) => {
             let i = master.employees.indexOf(n);
             if(i!==-1) return i;
@@ -896,15 +907,13 @@ async function _importFromShiftInternal(fullAutoMode) {
         staffList.early = newEarly;
         staffList.late = newLate;
 
-        // Full Auto Logic
+        // 全自動モード時の処理
         if (fullAutoMode) {
-             // Reset fixed roles
+             // 固定枠のリセット
              ['fixed_money_count','fixed_open_warehouse','fixed_open_counter',
               'fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(k => staffList[k] = "");
 
-             // Identify Roles
-             const fixedAssignments = {};
-
+             // 役割の判定（※ここはassignments全体を見るので、役職者も固定枠にはセットされる）
              Object.keys(assignments).forEach(name => {
                  const role = assignments[name];
                  const type = shiftTypes[name];
@@ -920,11 +929,9 @@ async function _importFromShiftInternal(fullAutoMode) {
                      if (isA) staffList.fixed_open_counter = name;
                      else staffList.fixed_counters = name;
                  }
-                 // 'Hall' ('ホ') is a general role and does not map to a specific fixed task field.
-                 // These staff will be available for auto-assignment.
              });
 
-             // Apply Fixed Tasks (Logic adapted from setFixed)
+             // 固定タスクの生成
              const defs={
                 'fixed_money_count': [
                     {t:'金銭業務',s:'07:00',e:'08:15'},
@@ -949,13 +956,14 @@ async function _importFromShiftInternal(fullAutoMode) {
             const applyTasks = (key) => {
                 const name = staffList[key];
                 if(!name) return;
-                // Find staff
+                // 一般・バイトのリストから探す
                 let p = staffList.early.find(s => s.name === name);
                 if (!p) p = staffList.late.find(s => s.name === name);
-                // Also check closing? If Late shift person assigned closing role?
                 if (!p) p = staffList.closing_employee.find(s => s.name === name);
                 if (!p) p = staffList.closing_alba.find(s => s.name === name);
 
+                // リストにいる場合のみタスクを追加
+                // (役職者はリストから除外されているため、ここで固定タスクが追加されなくても問題なしとする運用)
                 if (p) {
                     const tasksToAdd = defs[key];
                     if(tasksToAdd){
@@ -969,25 +977,11 @@ async function _importFromShiftInternal(fullAutoMode) {
 
             ['fixed_money_count','fixed_open_warehouse','fixed_open_counter',
              'fixed_money_collect','fixed_warehouses','fixed_counters'].forEach(k => applyTasks(k));
-
-             // Then trigger auto assign for the rest?
-             // Prompt says: "タスク生成まで行う" -> "役割判定、固定枠セット、タスク生成まで行う"
-             // Does it mean running the AI Auto Assign for EVERYONE?
-             // "セットされた固定役割に対して...タスクバーを自動生成する"
-             // It implies just the fixed tasks.
-             // But "AI Automatic Allocation" button does more (fills free time etc).
-             // Label: "全自動読み込み（タスク付）"
-             // Usually "Full Auto" implies running the solver.
-             // But the instructions specifically said:
-             // "セットされた固定役割に対して、setFixed 関数等のロジックでタスクバー（timeline tasks）を自動生成する。"
-             // It did NOT explicitly say "Run autoAssignTasks()".
-             // It said "Task generation for the fixed roles".
-             // So I will STOP at fixed tasks. The user can click AI Assign if they want more.
         }
 
         await saveStaffListToFirestore();
         refreshCurrentView();
-        showToast("シフトから取り込みました");
+        showToast("シフトから取り込みました（副主任以上を除外）");
 
     } catch(e) {
         console.error(e);
