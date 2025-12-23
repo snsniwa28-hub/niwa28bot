@@ -48,7 +48,13 @@ window.closeInternalSharedModal = function() {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
     }
+    // Also reset admin mode via Strategy module if needed, but Strategy.openInternalSharedModal(category) resets it to false.
+    // However, if we close it and reopen via user click, it resets.
+    // If we just hide it here, the state remains until reopened.
 };
+// Strategy Admin Auth
+window.openStrategyAdminAuth = Strategy.openStrategyAdminAuth;
+
 
 // Slideshow
 window.changeStrategySlide = changeStrategySlide;
@@ -153,15 +159,17 @@ window.checkPassword = function() {
         UI.closePasswordModal();
         const ctx = UI.getAuthContext();
         
+        // Handle Strategy Admin
+        if (ctx && ctx.startsWith('strategy_admin_')) {
+            const category = ctx.replace('strategy_admin_', '');
+            Strategy.openStrategyAdmin(category);
+            return;
+        }
+
         if (ctx === 'admin') {
             Tasks.activateAdminMode();
             Deadlines.activateDeadlineAdminMode();
-
-            // ★追加: 戦略共有の作成ボタンを表示
-            const sb = document.getElementById('btn-create-strategy');
-            if(sb) sb.classList.remove('hidden');
-            window.isEditing = true; // Strategy側で削除ボタンを出すフラグとして利用
-
+            // Removed global Strategy admin activation
         } else if (ctx === 'qsc') {
             QSC.activateQscEditMode();
         } else if (ctx === 'shift_admin') {

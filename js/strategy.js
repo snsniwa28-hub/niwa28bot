@@ -1,12 +1,13 @@
 
 import { db } from './firebase.js';
 import { collection, doc, setDoc, getDocs, deleteDoc, serverTimestamp, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { showToast, showConfirmModal } from './ui.js';
+import { showToast, showConfirmModal, showPasswordModal } from './ui.js';
 
 // --- State ---
 let strategies = [];
 let editingId = null; // nullなら新規作成
 let currentCategory = 'all'; // 'all', 'pachinko', 'slot', 'cs', 'strategy'
+let isStrategyAdmin = false;
 
 // --- Image Compression Logic (800px width, 60% quality) ---
 const compressImage = (file) => {
@@ -111,6 +112,7 @@ export function setStrategyCategory(category) {
     const titleEl = document.querySelector('#internalSharedModal h3');
     const iconEl = document.querySelector('#internalSharedModal span.text-2xl');
     const createBtn = document.getElementById('btn-create-strategy');
+    const createBtnMobile = document.getElementById('btn-create-strategy-mobile');
 
     // Reset basic styles
     if (header) header.className = "p-4 border-b border-slate-200 flex justify-between items-center shrink-0 z-10 shadow-sm bg-white";
@@ -131,13 +133,24 @@ export function setStrategyCategory(category) {
     }
     if(iconEl) iconEl.textContent = c.icon;
 
-    // Apply header background color if specific category
-    // Note: The previous code was resetting it to white. We want to apply custom bg if needed, or keep white.
-    // Requirement says: "Header change: ... and theme color (text color, etc.)".
-    // It doesn't explicitly demand background color change for the header itself, but keeping it white is clean.
-    // However, if we want to match the theme:
-    // if(header) header.className = `p-4 border-b border-slate-200 flex justify-between items-center shrink-0 z-10 shadow-sm ${c.bg}`;
-    // But let's stick to text color which is already handled above. The user instructions said "theme color (text color etc)".
+    // Show/Hide Add Button based on Admin Mode
+    if(createBtn) {
+        if (isStrategyAdmin) {
+            createBtn.classList.remove('hidden');
+            createBtn.classList.add('inline-flex'); // Ensure correct display
+        } else {
+            createBtn.classList.add('hidden');
+            createBtn.classList.remove('inline-flex');
+        }
+    }
+    if(createBtnMobile) {
+        if (isStrategyAdmin) {
+            createBtnMobile.classList.remove('hidden');
+            // It still has md:hidden, so on desktop it stays hidden. On mobile it appears.
+        } else {
+            createBtnMobile.classList.add('hidden');
+        }
+    }
 }
 
 function renderStrategyList() {
@@ -174,9 +187,12 @@ function renderStrategyList() {
                     <span class="text-xs font-bold text-slate-400 block mb-1">${date} 更新</span>
                     <h2 class="text-2xl font-black text-slate-800 leading-tight">${item.title}</h2>
                 </div>
-                <!-- Delete Button (Visible if isEditing is true OR just allow deletion since it's admin only access usually) -->
-                <!-- The requirement is to allow delete from the list. We'll use window.isEditing which is set in main.js on password success -->
-                ${window.isEditing ? `<button class="text-xs bg-rose-50 text-rose-600 px-3 py-1 rounded-full font-bold ml-2 shrink-0 hover:bg-rose-100 shadow-sm border border-rose-100 transition" onclick="window.deleteStrategy('${item.id}')">🗑️ 削除</button>` : ''}
+                ${isStrategyAdmin ? `
+                <div class="flex gap-2">
+                     <button class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold hover:bg-indigo-100 shadow-sm border border-indigo-100 transition" onclick="window.openStrategyEditor('${item.id}')">✏️ 編集</button>
+                     <button class="text-xs bg-rose-50 text-rose-600 px-3 py-1 rounded-full font-bold hover:bg-rose-100 shadow-sm border border-rose-100 transition" onclick="window.deleteStrategy('${item.id}')">🗑️ 削除</button>
+                </div>
+                ` : ''}
             </div>
             <div class="p-0">
         `;
@@ -388,7 +404,10 @@ window.closeStrategyEditor = closeStrategyEditor;
 window.addEditorBlock = addEditorBlock;
 window.saveStrategy = saveStrategy;
 window.deleteStrategy = deleteStrategy;
+
+// Updated Logic
 window.openInternalSharedModal = (category = 'strategy') => {
+    isStrategyAdmin = false; // Reset to User Mode
     setStrategyCategory(category);
     const modal = document.getElementById('internalSharedModal');
     if (modal) {
@@ -396,6 +415,20 @@ window.openInternalSharedModal = (category = 'strategy') => {
         modal.classList.add('flex');
     }
 };
+
+export function openStrategyAdmin(category) {
+    isStrategyAdmin = true; // Set Admin Mode
+    setStrategyCategory(category);
+    const modal = document.getElementById('internalSharedModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+export function openStrategyAdminAuth(category) {
+    showPasswordModal('strategy_admin_' + category);
+}
 
 // --- Initialize ---
 // main.jsから呼ばれる想定
@@ -405,4 +438,8 @@ export function initStrategy() {
     // 「管理者作成」ボタンのリスナーなどは、HTML側で onclick="openStrategyEditor()" するか、ここで設定
     const createBtn = document.getElementById('btn-create-strategy');
     if(createBtn) createBtn.onclick = () => openStrategyEditor();
+
+    // Mobile Listener
+    const createBtnMobile = document.getElementById('btn-create-strategy-mobile');
+    if(createBtnMobile) createBtnMobile.onclick = () => openStrategyEditor();
 }
