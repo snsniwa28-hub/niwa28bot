@@ -40,13 +40,7 @@ window.closeNewOpeningModal = Customer.closeNewOpeningModal;
 window.closeDetailModal = Customer.closeDetailModal;
 
 // Internal Shared Modal
-window.openInternalSharedModal = function() {
-    const modal = document.getElementById('internalSharedModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-    }
-};
+// window.openInternalSharedModal is defined in js/strategy.js to handle categories
 
 window.closeInternalSharedModal = function() {
     const modal = document.getElementById('internalSharedModal');

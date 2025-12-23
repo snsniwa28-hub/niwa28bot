@@ -107,17 +107,33 @@ export function setStrategyCategory(category) {
     currentCategory = category;
     renderStrategyList();
 
-    // Update Modal Title based on Category
+    // Update Modal Title & Styles based on Category
+    const modalContent = document.querySelector('#internalSharedModal .modal-content');
+    const header = document.querySelector('#internalSharedModal .modal-content > div:first-child');
     const titleEl = document.querySelector('#internalSharedModal h3');
+    const iconEl = document.querySelector('#internalSharedModal span.text-2xl');
+    const createBtn = document.getElementById('btn-create-strategy');
+
+    // Reset basic styles
+    if (header) header.className = "p-4 border-b border-slate-200 flex justify-between items-center shrink-0 z-10 shadow-sm bg-white";
+
+    const config = {
+        'pachinko': { title: 'パチンコ共有', icon: '🅿️', color: 'text-pink-600', bg: 'bg-pink-50' },
+        'slot': { title: 'スロット共有', icon: '🎰', color: 'text-purple-600', bg: 'bg-purple-50' },
+        'cs': { title: 'CSチーム共有', icon: '🤝', color: 'text-orange-600', bg: 'bg-orange-50' },
+        'strategy': { title: '月間戦略', icon: '📈', color: 'text-red-600', bg: 'bg-red-50' },
+        'all': { title: '社内共有・戦略', icon: '📋', color: 'text-slate-800', bg: 'bg-slate-50' }
+    };
+
+    const c = config[category] || config['all'];
+
     if(titleEl) {
-        const titles = {
-            'pachinko': 'パチンコ共有',
-            'slot': 'スロット共有',
-            'cs': 'CSチーム共有',
-            'strategy': '月間戦略詳細'
-        };
-        titleEl.textContent = titles[category] || '社内共有・戦略';
+        titleEl.textContent = c.title;
+        titleEl.className = `font-black text-lg ${c.color}`;
     }
+    if(iconEl) iconEl.textContent = c.icon;
+
+    // Create button text update if needed, though "+" is generic enough.
 }
 
 function renderStrategyList() {
@@ -126,9 +142,6 @@ function renderStrategyList() {
     container.innerHTML = '';
 
     // Filter strategies based on current category
-    // If category is 'all' (or null), show all? No, design requests splitting.
-    // If legacy data doesn't have category, map it to 'strategy' or show in all?
-    // Let's assume default 'strategy' for legacy.
     const filtered = strategies.filter(s => {
         if (!currentCategory || currentCategory === 'all') return true;
         const cat = s.category || 'strategy';
@@ -157,7 +170,9 @@ function renderStrategyList() {
                     <span class="text-xs font-bold text-slate-400 block mb-1">${date} 更新</span>
                     <h2 class="text-2xl font-black text-slate-800 leading-tight">${item.title}</h2>
                 </div>
-                ${window.isEditing ? `<button class="text-xs bg-rose-50 text-rose-600 px-3 py-1 rounded-full font-bold ml-2 shrink-0 hover:bg-rose-100 shadow-sm border border-rose-100" onclick="window.deleteStrategy('${item.id}')">削除</button>` : ''}
+                <!-- Delete Button (Visible if isEditing is true OR just allow deletion since it's admin only access usually) -->
+                <!-- The requirement is to allow delete from the list. We'll use window.isEditing which is set in main.js on password success -->
+                ${window.isEditing ? `<button class="text-xs bg-rose-50 text-rose-600 px-3 py-1 rounded-full font-bold ml-2 shrink-0 hover:bg-rose-100 shadow-sm border border-rose-100 transition" onclick="window.deleteStrategy('${item.id}')">🗑️ 削除</button>` : ''}
             </div>
             <div class="p-0">
         `;
@@ -225,21 +240,36 @@ export function openStrategyEditor(id = null) {
     const titleInput = document.getElementById('strategy-editor-title');
     const categorySelect = document.getElementById('strategy-editor-category');
 
+    // Handle Category Locking
+    if (currentCategory && currentCategory !== 'all' && !id) {
+        // Create new in specific category -> Lock it
+        categorySelect.value = currentCategory;
+        categorySelect.disabled = true;
+        categorySelect.classList.add('opacity-50', 'cursor-not-allowed');
+    } else {
+        categorySelect.disabled = false;
+        categorySelect.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+
     if (id) {
-        // Edit Mode: Populate data (Need to find the strategy object)
+        // Edit Mode
         const item = strategies.find(s => s.id === id);
         if (item) {
             titleInput.value = item.title;
             if(categorySelect) categorySelect.value = item.category || 'strategy';
-            // Re-render blocks (simplified for now, ideally we reconstruct)
-            // Note: This simple editor reconstruction is complex.
-            // For now, let's just clear for new.
-            // *In a real app, we would loop item.blocks and call addEditorBlock with values.*
+
+            // If editing, we typically allow category change unless strictly restricted.
+            // Requirement says "Create New... lock". Editing doesn't explicitly say lock, but safe to unlock.
+             categorySelect.disabled = false;
+             categorySelect.classList.remove('opacity-50', 'cursor-not-allowed');
+
+            // Re-render blocks logic (Partial implementation for demo)
+            // Note: This needs robust reconstruction in full app
         }
     } else {
         // New Mode
         titleInput.value = '';
-        if(categorySelect) categorySelect.value = currentCategory && currentCategory !== 'all' ? currentCategory : 'strategy';
+        // Category set above
     }
 }
 

@@ -44,8 +44,15 @@ export function renderOperationsBoard() {
     const daily19 = (t.today_target_total_19 !== undefined && t.today_target_total_19 !== null) ? t.today_target_total_19 : null;
     const effTarget19 = daily19 !== null ? daily19 : expected19;
 
+    // Logic Update: Prioritize "today_target_total_XX" (Actual Input) > "actual_total_XX" (Calculated/Saved)
+    // The field `today_target_total_XX` was previously used as "Daily Target" but is now "Confirmed Actual".
     const calcTotal = (d, time) => {
         if (!d) return null;
+        // If "Actual Input" (formerly daily target) exists, use it as the definitive actual.
+        if (d[`today_target_total_${time}`] !== undefined && d[`today_target_total_${time}`] !== null && d[`today_target_total_${time}`] !== "") {
+            return parseInt(d[`today_target_total_${time}`]);
+        }
+        // Fallback to breakdowns
         if (d[`actual_total_${time}`]) return d[`actual_total_${time}`];
         const p4 = parseInt(d[`actual_4p_${time}`]) || 0;
         const p1 = parseInt(d[`actual_1p_${time}`]) || 0;
@@ -55,6 +62,7 @@ export function renderOperationsBoard() {
 
     const today15 = calcTotal(t, '15');
     const today19 = calcTotal(t, '19');
+    const yester15 = calcTotal(y, '15'); // Yesterday 15:00
     const yester19 = calcTotal(y, '19'); // Yesterday 19:00
 
     // Achievement Rate (19:00)
@@ -69,7 +77,7 @@ export function renderOperationsBoard() {
         <!-- Header / Actions -->
         <div class="absolute top-4 right-4 flex gap-2 z-10">
              <button id="btn-monthly-cal" class="bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                 <span>月間推移</span>
             </button>
             <button id="btn-op-input" class="bg-indigo-600 text-white hover:bg-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-lg shadow-indigo-200">
@@ -78,26 +86,35 @@ export function renderOperationsBoard() {
             </button>
         </div>
 
-        <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-6 items-end">
-            <!-- 1. Yesterday Result -->
+        <div class="w-full grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
+            <!-- 1. Yesterday 15:00 -->
             <div class="relative pl-3 border-l-4 border-slate-200">
-                <p class="text-[10px] font-bold text-slate-400 mb-1">昨日実績 (19時)</p>
+                <p class="text-[10px] font-bold text-slate-400 mb-1">昨日実績 (15時)</p>
                 <div class="flex items-baseline gap-1">
-                    <span class="text-2xl font-black text-slate-600">${yester19 !== null ? yester19 : '-'}</span>
+                    <span class="text-xl font-black text-slate-500">${yester15 !== null ? yester15 : '-'}</span>
                     <span class="text-xs font-bold text-slate-400">名</span>
                 </div>
             </div>
 
-            <!-- 2. Today Target -->
+            <!-- 2. Yesterday 19:00 -->
+            <div class="relative pl-3 border-l-4 border-slate-200">
+                <p class="text-[10px] font-bold text-slate-400 mb-1">昨日実績 (19時)</p>
+                <div class="flex items-baseline gap-1">
+                    <span class="text-xl font-black text-slate-600">${yester19 !== null ? yester19 : '-'}</span>
+                    <span class="text-xs font-bold text-slate-400">名</span>
+                </div>
+            </div>
+
+            <!-- 3. Today Target -->
             <div class="relative pl-3 border-l-4 border-indigo-200">
-                <p class="text-[10px] font-bold text-indigo-400 mb-1">本日目標 (19時)</p>
+                <p class="text-[10px] font-bold text-indigo-400 mb-1">目標稼働 (19時)</p>
                 <div class="flex items-baseline gap-1">
                     <span class="text-2xl font-black text-indigo-900">${effTarget19}</span>
                     <span class="text-xs font-bold text-indigo-300">名</span>
                 </div>
             </div>
 
-            <!-- 3. Today 15:00 -->
+            <!-- 4. Today 15:00 -->
             <div class="relative pl-3 border-l-4 border-slate-200">
                 <p class="text-[10px] font-bold text-slate-400 mb-1">本日 15:00</p>
                 <div class="flex items-baseline gap-1">
@@ -106,8 +123,8 @@ export function renderOperationsBoard() {
                 </div>
             </div>
 
-            <!-- 4. Today 19:00 (Main) -->
-            <div class="col-span-1 md:col-span-1">
+            <!-- 5. Today 19:00 (Main) -->
+            <div class="col-span-2 md:col-span-1">
                  <div class="flex justify-between items-end mb-1">
                     <p class="text-[10px] font-bold text-slate-400">本日 19:00</p>
                     <span class="text-xs font-bold text-indigo-500">${achievementRate}%</span>
