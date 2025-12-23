@@ -870,10 +870,15 @@ async function _importFromShiftInternal(fullAutoMode) {
         });
 
         // リスト初期化
-        const newEarly = [];
-        const newLate = [];
+        const newEarly = [];        // Early Shift Employees
+        const newLate = [];         // Early Shift Albas
+        const newCloseEmp = [];     // Late Shift Employees
+        const newCloseAlba = [];    // Late Shift Albas
+
         staffList.early = [];
         staffList.late = [];
+        staffList.closing_employee = [];
+        staffList.closing_alba = [];
 
         // 除外する役職リスト
         const EXCLUDED_RANKS = ['マネージャー', '主任', '副主任'];
@@ -886,9 +891,16 @@ async function _importFromShiftInternal(fullAutoMode) {
             if (EXCLUDED_RANKS.includes(rank)) return;
 
             const type = shiftTypes[name];
+            const isEmp = master.employees.includes(name);
             const staffObj = { name: name, tasks: [] };
-            if (type === 'A') newEarly.push(staffObj);
-            else newLate.push(staffObj);
+
+            if (type === 'A') {
+                if (isEmp) newEarly.push(staffObj);
+                else newLate.push(staffObj);
+            } else {
+                if (isEmp) newCloseEmp.push(staffObj);
+                else newCloseAlba.push(staffObj);
+            }
         });
 
         // 並び替えヘルパー
@@ -901,11 +913,17 @@ async function _importFromShiftInternal(fullAutoMode) {
             if(i!==-1) return i + 2000;
             return 9999;
         };
-        newEarly.sort((a,b) => getSortIdx(a.name) - getSortIdx(b.name));
-        newLate.sort((a,b) => getSortIdx(a.name) - getSortIdx(b.name));
+
+        const sortFn = (a,b) => getSortIdx(a.name) - getSortIdx(b.name);
+        newEarly.sort(sortFn);
+        newLate.sort(sortFn);
+        newCloseEmp.sort(sortFn);
+        newCloseAlba.sort(sortFn);
 
         staffList.early = newEarly;
         staffList.late = newLate;
+        staffList.closing_employee = newCloseEmp;
+        staffList.closing_alba = newCloseAlba;
 
         // 全自動モード時の処理
         if (fullAutoMode) {
