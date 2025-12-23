@@ -109,6 +109,23 @@ window.renderMemberRaceBoard = MemberRace.renderMemberRaceBoard;
 // Tasks (Staff App)
 window.fetchMasterData = Tasks.fetchMasterData;
 window.handleDateChange = Tasks.handleDateChange;
+window.changeDate = function(offset) {
+    const picker = document.getElementById('date-picker');
+    if (!picker) return;
+    const currentVal = picker.value || window.getTodayDateString();
+    if (!currentVal) return;
+
+    const date = new Date(currentVal);
+    date.setDate(date.getDate() + offset);
+
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const newVal = `${y}-${m}-${d}`;
+
+    picker.value = newVal;
+    Tasks.handleDateChange(newVal);
+};
 window.refreshCurrentView = Tasks.refreshCurrentView;
 window.setupInitialView = Tasks.setupInitialView;
 window.saveStaffListToFirestore = Tasks.saveStaffListToFirestore;
