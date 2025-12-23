@@ -20,7 +20,6 @@ const deadlineUIState = {
 
 export function initDeadlines() {
     subscribeDeadlines();
-    setupDeadlineForm();
 }
 
 // Function to update staff lists in existing deadlines (called from tasks.js after master fetch)
@@ -205,20 +204,41 @@ function createDeadlineElement(id, data) {
     return container;
 }
 
-function setupDeadlineForm() {
-    const addBtn = document.getElementById('deadline-add-btn');
-    if (addBtn) {
-        addBtn.onclick = addDeadline;
-    }
-}
-
 export function activateDeadlineAdminMode() {
     editMode = true;
     updateEditModeUI();
-    const form = document.getElementById("deadline-add-form");
-    if (form) {
-        form.classList.remove("hidden");
+    const addBtn = document.getElementById("deadline-add-btn");
+    if (addBtn) {
+        addBtn.classList.remove("hidden");
     }
+}
+
+export function openDeadlineModal() {
+    const modal = document.getElementById("deadline-modal");
+    if (modal) {
+        modal.classList.remove("hidden");
+        // Set default date to today if empty
+        const dateInput = document.getElementById('deadline-date-input');
+        if (dateInput && !dateInput.value) {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth() + 1).padStart(2, '0');
+            const d = String(today.getDate()).padStart(2, '0');
+            dateInput.value = `${y}-${m}-${d}`;
+        }
+    }
+}
+
+export function closeDeadlineModal() {
+    const modal = document.getElementById("deadline-modal");
+    if (modal) {
+        modal.classList.add("hidden");
+    }
+    // Clear inputs
+    const contentInput = document.getElementById('deadline-content-input');
+    const priorityInput = document.getElementById('deadline-priority-input');
+    if (contentInput) contentInput.value = '';
+    if (priorityInput) priorityInput.checked = false;
 }
 
 function updateEditModeUI() {
@@ -232,7 +252,7 @@ function updateEditModeUI() {
     });
 }
 
-async function addDeadline() {
+export async function addDeadline() {
     const dateInput = document.getElementById('deadline-date-input');
     const contentInput = document.getElementById('deadline-content-input');
     const priorityInput = document.getElementById('deadline-priority-input'); // checkbox
@@ -260,10 +280,7 @@ async function addDeadline() {
             checks: {} // Initialize empty checks map
         });
 
-        // Reset inputs
-        contentInput.value = '';
-        priorityInput.checked = false;
-
+        closeDeadlineModal();
         showToast("お知らせを追加しました");
     } catch (e) {
         console.error("Error adding deadline:", e);

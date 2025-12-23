@@ -191,6 +191,11 @@ document.addEventListener("DOMContentLoaded", () => {
     Customer.fetchCustomerData();
     Deadlines.initDeadlines();
 
+    // Expose Deadlines modal functions
+    window.openDeadlineModal = Deadlines.openDeadlineModal;
+    window.closeDeadlineModal = Deadlines.closeDeadlineModal;
+    window.addDeadline = Deadlines.addDeadline;
+
     // ★追加: 戦略共有の初期化
     Strategy.initStrategy();
 

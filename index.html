@@ -209,30 +209,17 @@
                         <h2 class="text-sm font-bold text-slate-500 flex items-center gap-2">
                             <span>📅</span> 今月の期限物・お知らせ
                         </h2>
-                        <button onclick="showPasswordModal('admin')" class="text-slate-300 hover:text-slate-500 transition p-1">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button id="deadline-add-btn" onclick="openDeadlineModal()" class="hidden bg-indigo-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-md shadow-indigo-200 hover:bg-indigo-700 transition">
+                                ＋ 新規
+                            </button>
+                            <button onclick="showPasswordModal('admin')" class="text-slate-300 hover:text-slate-500 transition p-1">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            </button>
+                        </div>
                     </div>
                     <div class="p-4" id="deadlines-list">
                         <p class="text-slate-400 text-sm text-center py-2">読み込み中...</p>
-                    </div>
-                     <div id="deadline-add-form" class="hidden px-4 pb-4 pt-2 border-t border-slate-100 animate-fade-in">
-                        <h3 class="text-xs font-bold text-slate-400 mb-3">新規追加</h3>
-                        <div class="mb-3">
-                            <label class="block text-[10px] font-bold text-slate-400 mb-1">日付 (YYYY-MM-DD)</label>
-                            <input type="date" id="deadline-date-input" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
-                        </div>
-                        <div class="mb-3">
-                            <label class="block text-[10px] font-bold text-slate-400 mb-1">内容</label>
-                            <input type="text" id="deadline-content-input" placeholder="例: シフト提出期限" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" id="deadline-priority-input" class="w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500">
-                                <span class="text-xs font-bold text-rose-600">⚠️ 重要 (赤字にする)</span>
-                            </label>
-                            <button id="deadline-add-btn" class="bg-indigo-600 text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">追加する</button>
-                        </div>
                     </div>
                 </div>
             </section>
@@ -581,6 +568,37 @@
             <div class="flex gap-3 mt-6">
                 <button onclick="closeQscEditModal()" class="flex-1 py-2.5 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
                 <button onclick="saveQscEdit()" class="flex-1 py-2.5 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存する</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="remarks-modal" class="modal-overlay hidden"><div class="modal-content p-6"><h3 class="text-lg font-bold text-slate-800 mb-1" id="remarks-modal-task"></h3><p class="text-xs font-bold text-slate-400 mb-4" id="remarks-modal-time"></p><div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-slate-700 text-sm font-medium leading-relaxed mb-6" id="remarks-modal-text"></div><button onclick="closeRemarksModal()" class="w-full py-3 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">閉じる</button></div></div>
+
+    <!-- Deadline Add Modal -->
+    <div id="deadline-modal" class="modal-overlay hidden">
+        <div class="modal-content p-6 max-w-sm">
+            <h3 class="text-lg font-black text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-4">
+                <span class="text-2xl">📝</span> お知らせの追加
+            </h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">日付 (YYYY-MM-DD)</label>
+                    <input type="date" id="deadline-date-input" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">内容</label>
+                    <input type="text" id="deadline-content-input" placeholder="例: シフト提出期限" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-slate-50 transition">
+                        <input type="checkbox" id="deadline-priority-input" class="w-5 h-5 text-rose-600 rounded border-slate-300 focus:ring-rose-500">
+                        <span class="text-xs font-bold text-rose-600">⚠️ 重要フラグ (赤字で表示)</span>
+                    </label>
+                </div>
+            </div>
+            <div class="mt-8 flex gap-3">
+                <button onclick="closeDeadlineModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl">キャンセル</button>
+                <button onclick="addDeadline()" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700">追加する</button>
             </div>
         </div>
     </div>
