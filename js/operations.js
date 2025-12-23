@@ -2,13 +2,15 @@ import { db } from './firebase.js';
 import { collection, doc, onSnapshot, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { TARGET_DATA_DEC } from './config.js';
 import { $, getTodayDateString, getYesterdayDateString } from './utils.js';
-import { showToast } from './ui.js';
+import { showToast, openPopupWindow } from './ui.js';
 
 let todayOpData = null;
 let yesterdayOpData = null;
 let monthlyOpData = {};
 let editingOpDate = null;
 let returnToCalendar = false;
+let opInputPopup = null;
+let opCalendarPopup = null;
 
 export function subscribeOperations() {
     const todayStr = getTodayDateString();
@@ -160,33 +162,57 @@ export function renderOperationsBoard() {
 }
 
 export async function openMonthlyCalendar() {
-    const modal = $('#calendar-modal');
-    if (!modal) { alert("カレンダー画面が見つかりません"); return; }
-    modal.classList.remove('hidden');
+    if (opCalendarPopup && !opCalendarPopup.closed) {
+        opCalendarPopup.focus();
+        return;
+    }
+
+    // Set flag
     returnToCalendar = false;
 
-    const container = $('#calendar-grid-body');
-    if (container) container.innerHTML = '<p class="text-center py-10 text-slate-400">データ読込中...</p>';
+    const html = `
+    <div class="flex flex-col h-full bg-white">
+        <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-100 shrink-0 p-6">
+            <h3 class="text-xl font-black text-slate-800 flex items-center gap-2">
+                <span class="text-2xl">📅</span> 12月 月間稼働推移
+            </h3>
+        </div>
 
+        <div id="calendar-grid-body" class="flex-1 overflow-y-auto px-6 pb-6">
+            <p class="text-center py-10 text-slate-400">データ読込中...</p>
+        </div>
+    </div>
+    <script>
+        window.opener.UI_loadMonthlyData(window);
+    </script>
+    `;
+
+    opCalendarPopup = openPopupWindow('月間稼働推移', html, 900, 700);
+}
+
+// Handler called by calendar popup to load data
+window.UI_loadMonthlyData = async function(popupWin) {
     try {
         const snapshot = await getDocs(collection(db, "operations_data"));
         monthlyOpData = {};
         snapshot.forEach(doc => {
             monthlyOpData[doc.id] = doc.data();
         });
-        renderCalendarGrid();
+        renderCalendarGrid(popupWin);
     } catch (e) {
-        alert("データ読込に失敗しました: " + e.message);
+        if(popupWin && !popupWin.closed) popupWin.alert("データ読込に失敗しました: " + e.message);
     }
-}
+};
 
 export function closeMonthlyCalendar() {
-    $('#calendar-modal').classList.add('hidden');
+    if(opCalendarPopup) opCalendarPopup.close();
 }
 
-function renderCalendarGrid() {
-    const container = $('#calendar-grid-body');
+function renderCalendarGrid(popupWin) {
+    if (!popupWin || popupWin.closed) return;
+    const container = popupWin.document.getElementById('calendar-grid-body');
     if (!container) return;
+
     container.innerHTML = '';
 
     const year = 2025;
@@ -203,8 +229,8 @@ function renderCalendarGrid() {
         html += `<div></div>`;
     }
 
-    // Helper to add listener after html injection
-    const clickHandlers = [];
+    // Prepare data for click handlers
+    const clickData = [];
 
     for(let d=1; d<=daysInMonth; d++) {
         const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -246,23 +272,27 @@ function renderCalendarGrid() {
                 </div>
             </div>
         </div>`;
-        clickHandlers.push({ id: divId, date: dateStr });
+        clickData.push({ id: divId, date: dateStr });
     }
     html += `</div>`;
     container.innerHTML = html;
 
     // Attach listeners
-    clickHandlers.forEach(h => {
-        const el = document.getElementById(h.id);
-        if(el) el.onclick = () => openOpInput(h.date);
+    clickData.forEach(h => {
+        const el = popupWin.document.getElementById(h.id);
+        if(el) {
+            el.onclick = () => {
+                // Open Input Popup from Calendar Popup
+                openOpInput(h.date, true);
+            };
+        }
     });
 }
 
-export function openOpInput(dateStr) {
-    const calModal = $('#calendar-modal');
-    if (calModal && !calModal.classList.contains('hidden')) {
+export function openOpInput(dateStr, fromCalendar = false) {
+    if (fromCalendar) {
         returnToCalendar = true;
-        calModal.classList.add('hidden');
+        if(opCalendarPopup) opCalendarPopup.close();
     } else {
         returnToCalendar = false;
     }
@@ -272,7 +302,6 @@ export function openOpInput(dateStr) {
 
     const [y, m, d] = dateStr.split('-');
     const displayDate = `${m}/${d}`;
-    document.querySelector('#operations-modal h3').innerHTML = `<span class="text-2xl">📝</span> ${displayDate} の稼働入力`;
 
     let data = {};
     if (dateStr === getTodayDateString()) data = todayOpData || {};
@@ -282,42 +311,123 @@ export function openOpInput(dateStr) {
     const dayNum = parseInt(d);
     const defaultTarget = TARGET_DATA_DEC[dayNum] || { t15: 0, t19: 0 };
 
-    const setVal = (id, val, def) => $(`#${id}`).value = (val !== undefined && val !== null) ? val : def;
+    const val = (v, def) => (v !== undefined && v !== null) ? v : def;
 
-    setVal('in_target_15', data.target_total_15, defaultTarget.t15);
-    setVal('in_today_target_15', data.today_target_total_15, '');
-    setVal('in_4p_15', data.actual_4p_15, '');
-    setVal('in_1p_15', data.actual_1p_15, '');
-    setVal('in_20s_15', data.actual_20s_15, '');
+    // Prepare HTML with values pre-filled (easier than injecting script to populate)
+    // Note: We need to use `value="${val}"`
 
-    setVal('in_target_19', data.target_total_19, defaultTarget.t19);
-    setVal('in_today_target_19', data.today_target_total_19, '');
-    setVal('in_4p_19', data.actual_4p_19, '');
-    setVal('in_1p_19', data.actual_1p_19, '');
-    setVal('in_20s_19', data.actual_20s_19, '');
+    const html = `
+    <div class="flex flex-col h-full bg-white p-6">
+        <h3 class="text-lg font-black text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-4">
+            <span class="text-2xl">📝</span> ${displayDate} の稼働入力
+        </h3>
 
-    $('#operations-modal').classList.remove('hidden');
+        <div class="space-y-6 flex-1 overflow-y-auto px-1">
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div class="text-sm font-bold text-indigo-600 mb-3 flex items-center gap-2">
+                    <span class="w-2 h-4 bg-indigo-500 rounded-full"></span> 15:00 の数値
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="op-input-group">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">予想目標</label>
+                        <input type="number" id="in_target_15" value="${val(data.target_total_15, defaultTarget.t15)}" class="w-full bg-white border border-slate-200 rounded p-2 text-sm font-bold" placeholder="目標">
+                    </div>
+                    <div class="op-input-group">
+                        <label class="block text-xs font-bold text-indigo-600 mb-1">当日目標</label>
+                        <input type="number" id="in_today_target_15" value="${val(data.today_target_total_15, '')}" class="w-full bg-white border-2 border-indigo-200 focus:border-indigo-500 rounded p-2 text-sm font-bold" placeholder="当日決定">
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="op-input-group">
+                        <label class="block text-xs font-bold text-blue-500 mb-1">4円パチンコ</label>
+                        <input type="number" id="in_4p_15" value="${val(data.actual_4p_15, '')}" class="w-full bg-white border border-slate-200 rounded p-2 text-sm font-bold" placeholder="0">
+                    </div>
+                    <div class="op-input-group">
+                        <label class="block text-xs font-bold text-yellow-600 mb-1">1円パチンコ</label>
+                        <input type="number" id="in_1p_15" value="${val(data.actual_1p_15, '')}" class="w-full bg-white border border-slate-200 rounded p-2 text-sm font-bold" placeholder="0">
+                    </div>
+                    <div class="op-input-group">
+                        <label class="block text-xs font-bold text-emerald-600 mb-1">20円スロット</label>
+                        <input type="number" id="in_20s_15" value="${val(data.actual_20s_15, '')}" class="w-full bg-white border border-slate-200 rounded p-2 text-sm font-bold" placeholder="0">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div class="text-sm font-bold text-purple-600 mb-3 flex items-center gap-2">
+                    <span class="w-2 h-4 bg-purple-500 rounded-full"></span> 19:00 の数値
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="op-input-group">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">予想目標</label>
+                        <input type="number" id="in_target_19" value="${val(data.target_total_19, defaultTarget.t19)}" class="w-full bg-white border border-slate-200 rounded p-2 text-sm font-bold" placeholder="目標">
+                    </div>
+                    <div class="op-input-group">
+                        <label class="block text-xs font-bold text-indigo-600 mb-1">当日目標</label>
+                        <input type="number" id="in_today_target_19" value="${val(data.today_target_total_19, '')}" class="w-full bg-white border-2 border-indigo-200 focus:border-indigo-500 rounded p-2 text-sm font-bold" placeholder="当日決定">
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="op-input-group">
+                        <label class="block text-xs font-bold text-blue-500 mb-1">4円パチンコ</label>
+                        <input type="number" id="in_4p_19" value="${val(data.actual_4p_19, '')}" class="w-full bg-white border border-slate-200 rounded p-2 text-sm font-bold" placeholder="0">
+                    </div>
+                    <div class="op-input-group">
+                        <label class="block text-xs font-bold text-yellow-600 mb-1">1円パチンコ</label>
+                        <input type="number" id="in_1p_19" value="${val(data.actual_1p_19, '')}" class="w-full bg-white border border-slate-200 rounded p-2 text-sm font-bold" placeholder="0">
+                    </div>
+                    <div class="op-input-group">
+                        <label class="block text-xs font-bold text-emerald-600 mb-1">20円スロット</label>
+                        <input type="number" id="in_20s_19" value="${val(data.actual_20s_19, '')}" class="w-full bg-white border border-slate-200 rounded p-2 text-sm font-bold" placeholder="0">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 flex gap-3">
+            <button onclick="window.close()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl">キャンセル</button>
+            <button id="btn-save-op" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700">保存する</button>
+        </div>
+    </div>
+    <script>
+        document.getElementById('btn-save-op').onclick = function() {
+            const data = {
+                target_total_15: document.getElementById('in_target_15').value,
+                today_target_total_15: document.getElementById('in_today_target_15').value,
+                actual_4p_15: document.getElementById('in_4p_15').value,
+                actual_1p_15: document.getElementById('in_1p_15').value,
+                actual_20s_15: document.getElementById('in_20s_15').value,
+                target_total_19: document.getElementById('in_target_19').value,
+                today_target_total_19: document.getElementById('in_today_target_19').value,
+                actual_4p_19: document.getElementById('in_4p_19').value,
+                actual_1p_19: document.getElementById('in_1p_19').value,
+                actual_20s_19: document.getElementById('in_20s_19').value
+            };
+            window.opener.UI_saveOpData(data, window);
+        };
+    </script>
+    `;
+
+    opInputPopup = openPopupWindow('稼働入力', html, 500, 700);
 }
 
-export function closeOpInput() {
-    $('#operations-modal').classList.add('hidden');
+// Handler called by popup
+window.UI_saveOpData = async function(rawData, popupWin) {
+    const getVal = (v) => v ? parseInt(v) : null;
 
-    if (returnToCalendar) {
-        openMonthlyCalendar();
-        returnToCalendar = false;
-    }
-}
-
-export async function saveOpData() {
-    const getVal = (id) => { const v = $(`#${id}`).value; return v ? parseInt(v) : null; };
     const d = {
-        target_total_15: getVal('in_target_15'),
-        today_target_total_15: getVal('in_today_target_15'),
-        actual_4p_15: getVal('in_4p_15'), actual_1p_15: getVal('in_1p_15'), actual_20s_15: getVal('in_20s_15'),
-        target_total_19: getVal('in_target_19'),
-        today_target_total_19: getVal('in_today_target_19'),
-        actual_4p_19: getVal('in_4p_19'), actual_1p_19: getVal('in_1p_19'), actual_20s_19: getVal('in_20s_19'),
+        target_total_15: getVal(rawData.target_total_15),
+        today_target_total_15: getVal(rawData.today_target_total_15),
+        actual_4p_15: getVal(rawData.actual_4p_15),
+        actual_1p_15: getVal(rawData.actual_1p_15),
+        actual_20s_15: getVal(rawData.actual_20s_15),
+        target_total_19: getVal(rawData.target_total_19),
+        today_target_total_19: getVal(rawData.today_target_total_19),
+        actual_4p_19: getVal(rawData.actual_4p_19),
+        actual_1p_19: getVal(rawData.actual_1p_19),
+        actual_20s_19: getVal(rawData.actual_20s_19),
     };
+
     const sum15 = (d.actual_4p_15||0) + (d.actual_1p_15||0) + (d.actual_20s_15||0);
     const sum19 = (d.actual_4p_19||0) + (d.actual_1p_19||0) + (d.actual_20s_19||0);
     if (sum15 > 0) d.actual_total_15 = sum15;
@@ -327,7 +437,27 @@ export async function saveOpData() {
 
     try {
         await setDoc(doc(db, "operations_data", targetDate), d, { merge: true });
-        closeOpInput();
+        if(popupWin) popupWin.close();
+
         showToast("保存しました！");
-    } catch (e) { alert("保存失敗: " + e.message); }
+
+        if (returnToCalendar) {
+            openMonthlyCalendar();
+        }
+    } catch (e) {
+        if(popupWin) popupWin.alert("保存失敗: " + e.message);
+    }
+};
+
+export function closeOpInput() {
+    if(opInputPopup) opInputPopup.close();
+
+    if (returnToCalendar) {
+        openMonthlyCalendar();
+        returnToCalendar = false;
+    }
+}
+
+export async function saveOpData() {
+    // Deprecated DOM version
 }

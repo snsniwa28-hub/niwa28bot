@@ -38,19 +38,14 @@ window.closeDetailModal = Customer.closeDetailModal;
 
 // Internal Shared Modal
 window.openInternalSharedModal = function() {
-    const modal = document.getElementById('internalSharedModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-    }
+    // Redirect to Components implementation which uses window.open
+    import('./js/components.js').then(module => {
+        module.openInternalSharedModal();
+    });
 };
 
 window.closeInternalSharedModal = function() {
-    const modal = document.getElementById('internalSharedModal');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
+    // Deprecated in window mode, but kept for compatibility
 };
 
 // Slideshow
@@ -133,23 +128,28 @@ window.closeRemarksModal = Tasks.closeRemarksModal;
 
 // --- Main Initialization ---
 
+// Handler for Success Logic from Password Popup (exposed for ui.js to call)
+window.handlePasswordSuccess = function(ctx) {
+    if (ctx === 'admin') {
+        Tasks.activateAdminMode();
+        Deadlines.activateDeadlineAdminMode();
+    } else if (ctx === 'qsc') {
+        QSC.activateQscEditMode();
+    } else if (ctx === 'shift_admin') {
+        Shift.activateShiftAdminMode();
+    } else if (ctx === 'member_admin') {
+        MemberRace.showMemberTargetModal();
+    }
+};
+
+// Legacy Fallback (kept but deprecated, as UI.showPasswordModal now uses popup)
 window.checkPassword = function() {
     const input = document.getElementById('password-input');
-    if(input.value.trim().toLowerCase() === EDIT_PASSWORD) {
+    if(input && input.value.trim().toLowerCase() === EDIT_PASSWORD) {
         UI.closePasswordModal();
         const ctx = UI.getAuthContext();
-        
-        if (ctx === 'admin') {
-            Tasks.activateAdminMode();
-            Deadlines.activateDeadlineAdminMode();
-        } else if (ctx === 'qsc') {
-            QSC.activateQscEditMode();
-        } else if (ctx === 'shift_admin') {
-            Shift.activateShiftAdminMode();
-        } else if (ctx === 'member_admin') {
-            MemberRace.showMemberTargetModal();
-        }
-    } else {
+        window.handlePasswordSuccess(ctx);
+    } else if (input) {
         document.getElementById('password-error').classList.remove('hidden');
     }
 };
