@@ -10,7 +10,7 @@ import {
     updateDoc,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { showToast } from './ui.js';
+import { showToast, showConfirmModal } from './ui.js';
 
 let editMode = false;
 
@@ -250,12 +250,13 @@ async function toggleDeadlineCheck(id, name, isChecked) {
 }
 
 async function deleteDeadline(id) {
-    if (!confirm("このお知らせを削除しますか？")) return;
-    try {
-        await deleteDoc(doc(db, "deadlines", id));
-        showToast("削除しました");
-    } catch (e) {
-        console.error("Error deleting deadline:", e);
-        alert("削除に失敗しました");
-    }
+    showConfirmModal("削除確認", "このお知らせを削除しますか？", async () => {
+        try {
+            await deleteDoc(doc(db, "deadlines", id));
+            showToast("削除しました");
+        } catch (e) {
+            console.error("Error deleting deadline:", e);
+            alert("削除に失敗しました");
+        }
+    }, 'bg-rose-600');
 }

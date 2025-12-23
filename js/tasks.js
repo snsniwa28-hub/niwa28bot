@@ -2,7 +2,7 @@ import { db } from './firebase.js';
 import { doc, onSnapshot, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { TASKS_EMPLOYEE, TASKS_ALBA, MANUAL_TASK_LIST, DEFAULT_STAFF } from './config.js';
 import { $, $$, getTodayDateString, openTimeSlots, closeTimeSlots, openAlbaTimeSlots, openTimeIndexMap, closeTimeIndexMap, getTaskColorClass } from './utils.js';
-import { showToast, initModal, selectOptionUI, closeModal, showPasswordModal } from './ui.js';
+import { showToast, initModal, selectOptionUI, closeModal, showPasswordModal, showConfirmModal } from './ui.js';
 import { updateDeadlineStaffLists } from './deadlines.js';
 
 // --- State ---
@@ -728,8 +728,13 @@ export async function autoAssignTasks(sec, listType) {
 
 export async function importFromShift(fullAutoMode) {
     if (!currentDate) return alert("日付が選択されていません");
-    if (!confirm('現在の入力内容は上書きされますがよろしいですか？')) return;
 
+    showConfirmModal("インポート確認", '現在の入力内容は上書きされますがよろしいですか？', async () => {
+        await _importFromShiftInternal(fullAutoMode);
+    });
+}
+
+async function _importFromShiftInternal(fullAutoMode) {
     // Check master data availability
     const master = window.masterStaffList || masterStaffList;
     if (!master || !master.staff_details) {
