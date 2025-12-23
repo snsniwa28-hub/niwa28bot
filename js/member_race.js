@@ -1,13 +1,16 @@
 import { db } from './firebase.js';
 import { doc, onSnapshot, setDoc, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { MEMBER_TARGET } from './config.js';
-import { showPasswordModal, closePasswordModal, showToast } from './ui.js';
+import { showPasswordModal, closePasswordModal, showToast, openPopupWindow } from './ui.js';
 
 let memberData = { counts: {}, global_target: MEMBER_TARGET, individual_targets: {} };
 let currentTab = 'early'; // early, late, employee
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
 let unsubscribe = null;
+
+// Expose data to window for popups to access
+window.getMemberData = () => memberData;
 
 export function subscribeMemberRace() {
     if (unsubscribe) unsubscribe();
@@ -218,121 +221,132 @@ export function openMemberSettings() {
 }
 
 export function showMemberTargetModal() {
-    const modal = document.getElementById('member-target-modal');
-    document.getElementById('member-target-modal-month').textContent = `${currentYear}年${currentMonth}月`;
-
-    // Fill Global Target
-    document.getElementById('member-global-target-input').value = memberData.global_target || MEMBER_TARGET;
-
-    // Generate Staff List
-    const listContainer = document.getElementById('member-individual-target-list');
-    listContainer.innerHTML = '';
-
+    // Generate the list items HTML string for the popup
+    let listItemsHtml = '';
     if (window.masterStaffList) {
-        // Merge all lists for editing
         const allStaff = [
             ...(window.masterStaffList.employees || []),
             ...(window.masterStaffList.alba_early || []),
             ...(window.masterStaffList.alba_late || [])
         ];
-
-        // Remove duplicates if any
         const uniqueStaff = [...new Set(allStaff)];
 
         uniqueStaff.forEach(name => {
             const currentTarget = (memberData.individual_targets && memberData.individual_targets[name]) || 0;
-            const div = document.createElement('div');
-            div.className = "flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100";
-            div.innerHTML = `
-                <span class="text-sm font-bold text-slate-700">${name}</span>
-                <input type="number" data-name="${name}" class="member-ind-target-input w-20 bg-white border border-slate-200 rounded px-2 py-1 text-right text-sm font-bold" value="${currentTarget}" min="0">
+            listItemsHtml += `
+                <div class="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100">
+                    <span class="text-sm font-bold text-slate-700">${name}</span>
+                    <input type="number" data-name="${name}" class="member-ind-target-input w-20 bg-white border border-slate-200 rounded px-2 py-1 text-right text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" value="${currentTarget}" min="0">
+                </div>
             `;
-            listContainer.appendChild(div);
         });
     }
 
-    modal.classList.remove('hidden');
+    const html = `
+        <div class="flex flex-col h-full bg-white">
+            <div class="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-slate-800">目標設定 <span class="text-xs text-slate-400 ml-2">${currentYear}年${currentMonth}月</span></h3>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-slate-500 mb-2">店舗全体目標 (件)</label>
+                    <input type="number" id="member-global-target-input" value="${memberData.global_target || MEMBER_TARGET}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-lg font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-xs font-bold text-slate-500">個人目標設定</label>
+                        <span class="text-[10px] text-slate-400">※0は目標なし</span>
+                    </div>
+                    <div id="member-individual-target-list" class="space-y-2">
+                        ${listItemsHtml}
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-200 bg-slate-50 shrink-0">
+                <button id="btn-save-member-targets" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">設定を保存する</button>
+            </div>
+        </div>
+        <script>
+            document.getElementById('btn-save-member-targets').onclick = function() {
+                const globalTarget = document.getElementById('member-global-target-input').value;
+                const indInputs = document.querySelectorAll('.member-ind-target-input');
+                const targets = {};
+                indInputs.forEach(inp => {
+                    if(inp.value > 0) targets[inp.dataset.name] = inp.value;
+                });
+
+                window.opener.UI_saveMemberTargets(globalTarget, targets, window);
+            };
+        </script>
+    `;
+
+    openPopupWindow('目標設定', html, 500, 700);
 }
 
-export function closeMemberTargetModal() {
-    document.getElementById('member-target-modal').classList.add('hidden');
-}
-
-export async function saveMemberTargets() {
-    const globalTarget = parseInt(document.getElementById('member-global-target-input').value) || 0;
-    const indInputs = document.querySelectorAll('.member-ind-target-input');
-    const newIndTargets = {};
-
-    indInputs.forEach(input => {
-        const val = parseInt(input.value);
-        if (val > 0) {
-            newIndTargets[input.dataset.name] = val;
-        }
-    });
-
+// Global handler for the popup to call
+window.UI_saveMemberTargets = async function(globalTarget, individualTargets, popupWin) {
     const docId = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
     const docRef = doc(db, "member_acquisition", docId);
 
     try {
         await setDoc(docRef, {
-            global_target: globalTarget,
-            individual_targets: newIndTargets
+            global_target: parseInt(globalTarget) || 0,
+            individual_targets: individualTargets
         }, { merge: true });
 
         showToast("目標を保存しました");
-        closeMemberTargetModal();
+        if(popupWin) popupWin.close();
     } catch(e) {
         console.error("Save Target Error:", e);
         alert("保存に失敗しました");
     }
+};
+
+export function closeMemberTargetModal() {
+    // Deprecated for DOM, handled by popup close.
+}
+
+export function saveMemberTargets() {
+    // Deprecated for DOM usage
 }
 
 // --- Dynamic Modal for Single User Target Editing ---
-function ensureEditTargetModalExists() {
-    if (document.getElementById('editMemberTargetModal')) return;
 
-    // Inject Custom Modal HTML
-    const modalHtml = `
-    <div id="editMemberTargetModal" class="modal-overlay hidden" style="z-index: 90;">
-        <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-2xl transform transition-all">
-            <h3 class="text-lg font-bold text-slate-800 mb-4" id="editMemberTargetTitle">目標設定</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">個人目標数 (0=目標なし)</label>
-                    <input type="number" id="editMemberTargetInput" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-2xl font-black text-slate-700 text-center focus:ring-2 focus:ring-indigo-500 outline-none" min="0">
-                </div>
+export function editMemberTarget(name) {
+    window.currentEditingMember = name;
+    const currentTarget = (memberData.individual_targets && memberData.individual_targets[name]) || 0;
+
+    const html = `
+        <div class="flex flex-col h-full items-center justify-center p-6">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">${name}さんの目標設定</h3>
+            <div class="w-full mb-6">
+                <label class="block text-xs font-bold text-slate-500 mb-1">個人目標数 (0=目標なし)</label>
+                <input type="number" id="editMemberTargetInput" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-2xl font-black text-slate-700 text-center focus:ring-2 focus:ring-indigo-500 outline-none" min="0" value="${currentTarget}">
             </div>
-            <div class="flex gap-3 mt-6">
-                <button onclick="window.closeEditMemberTargetModal()" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
-                <button onclick="window.saveEditMemberTarget()" class="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存</button>
+            <div class="flex gap-3 w-full">
+                <button onclick="window.close()" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
+                <button id="btn-save-single" class="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存</button>
             </div>
         </div>
-    </div>
+        <script>
+            const input = document.getElementById('editMemberTargetInput');
+            setTimeout(() => input.select(), 100);
+
+            document.getElementById('btn-save-single').onclick = function() {
+                window.opener.UI_saveSingleMemberTarget('${name}', input.value, window);
+            };
+
+            input.onkeydown = (e) => {
+                if(e.key === 'Enter') document.getElementById('btn-save-single').click();
+            };
+        </script>
     `;
 
-    const container = document.createElement('div');
-    container.innerHTML = modalHtml;
-    // Prefer appending to modals container if exists
-    const modalContainer = document.getElementById('modals-container');
-    if (modalContainer) {
-        modalContainer.appendChild(container.firstElementChild);
-    } else {
-        document.body.appendChild(container.firstElementChild);
-    }
+    openPopupWindow(`${name} - 目標設定`, html, 400, 350);
 }
 
-// Exposed Functions for Modal Interactions
-window.closeEditMemberTargetModal = function() {
-    const modal = document.getElementById('editMemberTargetModal');
-    if (modal) modal.classList.add('hidden');
-}
-
-window.saveEditMemberTarget = async function() {
-    const name = window.currentEditingMember;
-    const input = document.getElementById('editMemberTargetInput');
-    if (!name || !input) return;
-
-    const newTarget = parseInt(input.value);
+window.UI_saveSingleMemberTarget = async function(name, value, popupWin) {
+    const newTarget = parseInt(value);
     if (isNaN(newTarget) || newTarget < 0) {
         alert("有効な数値を入力してください。");
         return;
@@ -350,28 +364,10 @@ window.saveEditMemberTarget = async function() {
 
         await setDoc(docRef, updatePayload, { merge: true });
         showToast(`${name}さんの目標を更新しました`);
-        window.closeEditMemberTargetModal();
+        if(popupWin) popupWin.close();
 
     } catch(e) {
         console.error("Edit Target Error:", e);
         alert("更新に失敗しました");
     }
-}
-
-export function editMemberTarget(name) {
-    ensureEditTargetModalExists();
-    window.currentEditingMember = name;
-
-    const currentTarget = (memberData.individual_targets && memberData.individual_targets[name]) || 0;
-
-    document.getElementById('editMemberTargetTitle').textContent = `${name}さんの目標設定`;
-    const input = document.getElementById('editMemberTargetInput');
-    input.value = currentTarget;
-
-    // Show modal
-    const modal = document.getElementById('editMemberTargetModal');
-    modal.classList.remove('hidden');
-
-    // Auto focus
-    setTimeout(() => input.select(), 100);
-}
+};
