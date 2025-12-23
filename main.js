@@ -7,6 +7,7 @@ import * as Shift from './js/shift.js';
 import * as Tasks from './js/tasks.js';
 import * as MemberRace from './js/member_race.js';
 import * as Deadlines from './js/deadlines.js';
+import * as Strategy from './js/strategy.js';
 import { renderModals, renderInfoSections, changeStrategySlide } from './js/components.js';
 import { getTodayDateString, getYesterdayDateString, getTaskColorClass } from './js/utils.js';
 import { EDIT_PASSWORD } from './js/config.js';
@@ -161,6 +162,12 @@ window.checkPassword = function() {
         if (ctx === 'admin') {
             Tasks.activateAdminMode();
             Deadlines.activateDeadlineAdminMode();
+
+            // ★追加: 戦略共有の作成ボタンを表示
+            const sb = document.getElementById('btn-create-strategy');
+            if(sb) sb.classList.remove('hidden');
+            window.isEditing = true; // Strategy側で削除ボタンを出すフラグとして利用
+
         } else if (ctx === 'qsc') {
             QSC.activateQscEditMode();
         } else if (ctx === 'shift_admin') {
@@ -181,6 +188,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // 1. Initial Data Load
     Customer.fetchCustomerData();
     Deadlines.initDeadlines();
+
+    // ★追加: 戦略共有の初期化
+    Strategy.initStrategy();
+
     QSC.subscribeQSC();
     Tasks.fetchMasterData().then(() => {
         MemberRace.subscribeMemberRace();
