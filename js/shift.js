@@ -18,7 +18,8 @@ let shiftState = {
     earlyWarehouseMode: false,
     adjustmentMode: false, // New Switch State
     prevMonthCache: null,
-    currentStaffTab: 'early'
+    currentStaffTab: 'early',
+    pendingAdjustment: null // ★追加: 調整実行待ちのデータを一時保持
 };
 
 const RANKS = {
@@ -481,6 +482,20 @@ export function createShiftModals() {
             </div>
         </div>
     </div>
+
+    <!-- ADJUSTMENT CONFIRM MODAL (New) -->
+    <div id="adjustment-confirm-modal" class="modal-overlay hidden" style="z-index: 110;">
+        <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl flex flex-col">
+            <h3 class="font-bold text-slate-800 text-lg mb-4">シフト交代の確認</h3>
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-6">
+                <p id="adj-confirm-msg" class="text-sm font-bold text-slate-700 leading-relaxed text-center"></p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="window.closeAdjustmentConfirmModal()" class="py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 transition">キャンセル</button>
+                <button id="btn-exec-adjustment" class="py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">実行する</button>
+            </div>
+        </div>
+    </div>
     `;
 
     document.body.insertAdjacentHTML('beforeend', html);
@@ -508,6 +523,10 @@ function setupShiftEventListeners() {
     $('#btn-mobile-clear').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); clearShiftAssignments(); };
     $('#btn-mobile-auto').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); generateAutoShift(); };
     $('#mobile-fab-menu').onclick = () => $('#mobile-admin-menu').classList.remove('hidden');
+
+    // ★追加: 調整実行ボタンのリスナー
+    $('#btn-exec-adjustment').onclick = finalizeAdjustmentReplacement;
+
     $('#btn-add-staff').onclick = () => openStaffEditModal(null);
     $('#btn-se-save').onclick = saveStaffDetails;
     $('#btn-se-delete').onclick = deleteStaff;
@@ -1825,7 +1844,10 @@ async function openAdjustmentCandidateModal(day, currentStaffName, currentRole) 
         candidates.forEach(c => {
             const div = document.createElement('div');
             div.className = "flex items-center justify-between p-3 bg-slate-50 hover:bg-indigo-50 rounded-xl border border-slate-100 cursor-pointer transition";
-            div.onclick = () => executeAdjustmentReplacement(day, currentStaffName, c.name, currentRole);
+
+            // ★変更: クリック時に executeAdjustmentReplacement ではなく confirmAdjustmentReplacement を呼ぶ
+            div.onclick = () => confirmAdjustmentReplacement(day, currentStaffName, c.name, currentRole);
+
             const rem = c.contractDays - c.assignedDays.length;
 
             div.innerHTML = `
@@ -1846,23 +1868,52 @@ async function openAdjustmentCandidateModal(day, currentStaffName, currentRole) 
     hideLoading();
 }
 
-async function executeAdjustmentReplacement(day, oldStaff, newStaff, role) {
-    if(!confirm(`${oldStaff} さんを ${newStaff} さんに交代しますか？\n(${oldStaff}さんは公休になります)`)) return;
+// ★追加: 確認モーダルを開く関数
+function confirmAdjustmentReplacement(day, oldStaff, newStaff, role) {
+    // 実行に必要な情報を一時保存
+    shiftState.pendingAdjustment = { day, oldStaff, newStaff, role };
 
+    // メッセージ生成
+    const msg = `
+        <span class="text-lg text-slate-800">${oldStaff}</span> さんを<br>
+        <span class="text-xl text-indigo-600 font-black">↓</span><br>
+        <span class="text-lg text-indigo-600 font-bold">${newStaff}</span> さんに交代しますか？
+        <br><br>
+        <span class="text-xs text-rose-500 font-normal">※ ${oldStaff} さんは「公休」に変更されます</span>
+    `;
+
+    document.getElementById('adj-confirm-msg').innerHTML = msg;
+    document.getElementById('adjustment-confirm-modal').classList.remove('hidden');
+}
+
+// ★追加: 確認モーダルを閉じる関数
+window.closeAdjustmentConfirmModal = () => {
+    document.getElementById('adjustment-confirm-modal').classList.add('hidden');
+    shiftState.pendingAdjustment = null;
+};
+
+// ★変更: 実行関数 (executeAdjustmentReplacement を置き換え)
+async function finalizeAdjustmentReplacement() {
+    if (!shiftState.pendingAdjustment) return;
+    const { day, oldStaff, newStaff, role } = shiftState.pendingAdjustment;
+
+    // モーダルを閉じる
+    window.closeAdjustmentConfirmModal();
+    // 候補選択モーダルも閉じる
+    document.getElementById('adjustment-candidate-modal').classList.add('hidden');
+
+    // 以下、元の executeAdjustmentReplacement のロジック (confirm削除済み)
     pushHistory();
 
     // Update Old Staff -> Off
     if (!shiftState.shiftDataCache[oldStaff].assignments) shiftState.shiftDataCache[oldStaff].assignments = {};
     shiftState.shiftDataCache[oldStaff].assignments[day] = '公休';
 
-    // Update New Staff -> Assigned (Inherit Role or ShiftType Default)
-    // If the role was a special role (like '金メ'), transfer it?
-    // The prompt says "Vacancy -> Suggest Replacement".
-    // Usually replacements take the same burden.
+    // Update New Staff -> Assigned
     if (!shiftState.shiftDataCache[newStaff]) shiftState.shiftDataCache[newStaff] = { assignments: {} };
     if (!shiftState.shiftDataCache[newStaff].assignments) shiftState.shiftDataCache[newStaff].assignments = {};
 
-    shiftState.shiftDataCache[newStaff].assignments[day] = role; // Transfer the role
+    shiftState.shiftDataCache[newStaff].assignments[day] = role;
 
     // Save
     const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
@@ -1875,11 +1926,10 @@ async function executeAdjustmentReplacement(day, oldStaff, newStaff, role) {
     try {
         await setDoc(docRef, update, { merge: true });
 
-        document.getElementById('adjustment-candidate-modal').classList.add('hidden');
         renderShiftAdminTable();
         showToast(`${newStaff} さんに交代しました`);
 
-        // ★追加: 代休提案モーダルを開く
+        // 代休提案モーダルを開く
         setTimeout(() => {
             showCompensatoryOffModal(newStaff);
         }, 500);
