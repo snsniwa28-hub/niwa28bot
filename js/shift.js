@@ -431,6 +431,27 @@ export function createShiftModals() {
             </div>
         </div>
     </div>
+
+    <!-- COMPENSATORY OFF MODAL -->
+    <div id="compensatory-off-modal" class="modal-overlay hidden" style="z-index: 90;">
+        <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-xl flex flex-col max-h-[80vh]">
+            <h3 class="font-bold text-slate-800 text-lg mb-2">代休の提案</h3>
+            <p id="comp-off-desc" class="text-xs text-slate-500 font-bold mb-4"></p>
+
+            <div class="bg-indigo-50 p-3 rounded-lg mb-4 text-xs text-indigo-800 font-bold flex items-start gap-2">
+                <span>💡</span>
+                <span>シフト交代で出勤が増えました。<br>人員に余裕がある日を代休（休み）にできます。</span>
+            </div>
+
+            <div id="comp-off-list" class="flex-1 overflow-y-auto space-y-2 pr-2 mb-4"></div>
+
+            <div class="pt-2 border-t border-slate-100">
+                <button onclick="closeCompensatoryModal()" class="w-full py-3 bg-slate-100 text-slate-500 font-bold rounded-xl text-xs hover:bg-slate-200 transition">
+                    今回は代休を設定しない（完了）
+                </button>
+            </div>
+        </div>
+    </div>
     `;
 
     document.body.insertAdjacentHTML('beforeend', html);
@@ -1794,9 +1815,16 @@ async function executeAdjustmentReplacement(day, oldStaff, newStaff, role) {
 
     try {
         await setDoc(docRef, update, { merge: true });
-        showToast(`${newStaff} さんに交代しました`);
+
         document.getElementById('adjustment-candidate-modal').classList.add('hidden');
         renderShiftAdminTable();
+        showToast(`${newStaff} さんに交代しました`);
+
+        // ★追加: 代休提案モーダルを開く
+        setTimeout(() => {
+            showCompensatoryOffModal(newStaff);
+        }, 500);
+
     } catch(e) {
         alert("保存エラー: " + e.message);
     }
@@ -2206,3 +2234,127 @@ async function saveAdminNote(name) {
 }
 window.closeAdminNoteModal = closeAdminNoteModal;
 window.showAdminNoteModal = showAdminNoteModal;
+
+// --- COMPENSATORY OFF SUGGESTION (NEW) ---
+async function showCompensatoryOffModal(staffName) {
+    showLoading();
+
+    const Y = shiftState.currentYear;
+    const M = shiftState.currentMonth;
+    const daysInMonth = new Date(Y, M, 0).getDate();
+    const holidays = getHolidays(Y, M);
+
+    // データ準備
+    const shifts = shiftState.shiftDataCache;
+    const targets = shifts._daily_targets || {};
+    const staffData = shifts[staffName] || {};
+    const assignments = staffData.assignments || {};
+    const details = shiftState.staffDetails[staffName] || {};
+    const staffShiftType = (staffData.monthly_settings?.shift_type) || details.basic_shift || 'A';
+
+    const listContainer = document.getElementById('comp-off-list');
+    listContainer.innerHTML = '';
+
+    document.getElementById('comp-off-desc').textContent = `${staffName} さんの出勤日一覧`;
+
+    // 候補日を算出
+    const candidates = [];
+
+    for(let d=1; d<=daysInMonth; d++) {
+        const role = assignments[d];
+        if(role && role !== '公休') {
+
+            // 1. その日の「同シフトタイプ」の人数をカウント
+            let count = 0;
+            const allNames = [...shiftState.staffListLists.employees, ...shiftState.staffListLists.alba_early, ...shiftState.staffListLists.alba_late];
+
+            allNames.forEach(n => {
+                const s = shifts[n] || {};
+                const r = s.assignments?.[d];
+                const type = (s.monthly_settings?.shift_type) || (shiftState.staffDetails[n]?.basic_shift) || 'A';
+
+                if(r && r !== '公休' && type === staffShiftType) {
+                    count++;
+                }
+            });
+
+            // 2. 定員チェック (自分が1人抜けた後でも、目標以上か？)
+            const targetObj = targets[d] || {};
+            const targetNum = (staffShiftType === 'A' ? targetObj.A : targetObj.B) || 9;
+            const isSafe = (count - 1) >= targetNum;
+
+            candidates.push({
+                day: d,
+                role: role,
+                isSafe: isSafe,
+                count: count,
+                target: targetNum
+            });
+        }
+    }
+
+    // 表示生成
+    if(candidates.length === 0) {
+        listContainer.innerHTML = '<p class="text-center text-slate-400 text-xs py-4">出勤日がありません</p>';
+    } else {
+        candidates.sort((a,b) => {
+            if (a.isSafe !== b.isSafe) return b.isSafe ? 1 : -1;
+            return 0;
+        });
+
+        candidates.forEach(c => {
+            const date = new Date(Y, M-1, c.day);
+            const dayName = ['日','月','火','水','木','金','土'][date.getDay()];
+            const isHol = holidays.includes(c.day) || date.getDay() === 0;
+            const color = isHol ? 'text-rose-500' : date.getDay() === 6 ? 'text-blue-500' : 'text-slate-700';
+
+            let borderClass = c.isSafe ? 'border-emerald-200' : 'border-orange-200';
+            let bgClass = c.isSafe ? 'bg-emerald-50 hover:bg-emerald-100' : 'bg-white hover:bg-orange-50';
+            let badge = c.isSafe
+                ? '<span class="text-[10px] bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded font-bold">推奨◎</span>'
+                : '<span class="text-[10px] bg-orange-50 text-orange-500 px-2 py-0.5 rounded font-bold border border-orange-100">人手不足△</span>';
+
+            const btn = document.createElement('button');
+            btn.className = `w-full flex items-center justify-between p-3 rounded-xl border ${borderClass} ${bgClass} mb-2 transition text-left group`;
+            btn.onclick = () => applyCompensatoryOff(staffName, c.day);
+
+            btn.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <span class="text-sm font-bold font-num w-8 text-center ${color}">${c.day}<span class="text-[10px] ml-0.5">(${dayName})</span></span>
+                    <div>
+                        <div class="text-xs font-bold text-slate-700">現在のシフト: ${c.role}</div>
+                        <div class="text-[10px] text-slate-400 group-hover:text-slate-500">
+                            現在 ${c.count}人 <span class="text-slate-300 mx-1">/</span> 目標 ${c.target}人
+                        </div>
+                    </div>
+                </div>
+                ${badge}
+            `;
+            listContainer.appendChild(btn);
+        });
+    }
+
+    document.getElementById('compensatory-off-modal').classList.remove('hidden');
+    hideLoading();
+}
+
+async function applyCompensatoryOff(name, day) {
+    if(!confirm(`${day}日を代休（公休）に変更しますか？`)) return;
+
+    // 公休に変更
+    shiftState.shiftDataCache[name].assignments[day] = '公休';
+
+    // 保存
+    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+    const docRef = doc(db, "shift_submissions", docId);
+
+    await setDoc(docRef, { [name]: shiftState.shiftDataCache[name] }, { merge: true });
+
+    showToast(`${day}日を代休に設定しました`);
+    document.getElementById('compensatory-off-modal').classList.add('hidden');
+    renderShiftAdminTable();
+}
+
+window.closeCompensatoryModal = () => {
+    document.getElementById('compensatory-off-modal').classList.add('hidden');
+};
