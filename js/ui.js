@@ -88,3 +88,51 @@ export function closeModal(modalId) {
     const el = $(`#${modalId}`);
     if(el) el.classList.add('hidden');
 }
+
+// --- Global Confirm Modal ---
+let confirmCallback = null;
+
+export function showConfirmModal(title, message, onConfirm, color = 'bg-indigo-600') {
+    // Inject HTML if not exists
+    if (!document.getElementById('global-confirm-modal')) {
+        const html = `
+        <div id="global-confirm-modal" class="modal-overlay hidden" style="z-index: 100;">
+            <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl flex flex-col">
+                <h3 id="global-confirm-title" class="font-bold text-slate-800 text-lg mb-2"></h3>
+                <p id="global-confirm-msg" class="text-sm font-bold text-slate-500 mb-6 leading-relaxed"></p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="window.closeConfirmModal()" class="py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 transition">キャンセル</button>
+                    <button id="global-confirm-ok" class="py-3 text-white font-bold rounded-xl shadow-lg transition">OK</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    const modal = document.getElementById('global-confirm-modal');
+    const titleEl = document.getElementById('global-confirm-title');
+    const msgEl = document.getElementById('global-confirm-msg');
+    const okBtn = document.getElementById('global-confirm-ok');
+
+    titleEl.textContent = title;
+    msgEl.innerHTML = message.replace(/\n/g, '<br>'); // Support newlines
+
+    // Reset Color
+    okBtn.className = `py-3 text-white font-bold rounded-xl shadow-lg transition ${color} hover:opacity-90`;
+
+    confirmCallback = onConfirm;
+
+    // Assign One-time Event
+    okBtn.onclick = () => {
+        if (confirmCallback) confirmCallback();
+        closeConfirmModal();
+    };
+
+    modal.classList.remove('hidden');
+}
+
+export function closeConfirmModal() {
+    const modal = document.getElementById('global-confirm-modal');
+    if(modal) modal.classList.add('hidden');
+    confirmCallback = null;
+}

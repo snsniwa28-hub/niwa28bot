@@ -1,6 +1,6 @@
 import { db } from './firebase.js';
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { showPasswordModal, closePasswordModal, showToast } from './ui.js';
+import { showPasswordModal, closePasswordModal, showToast, showConfirmModal } from './ui.js';
 import { $, getHolidays } from './utils.js';
 
 let shiftState = {
@@ -287,6 +287,31 @@ export function createShiftModals() {
             <div id="adj-candidate-list" class="flex-1 overflow-y-auto space-y-2 pr-2"></div>
             <div class="mt-4 pt-4 border-t border-slate-100 flex justify-end">
                 <button onclick="document.getElementById('adjustment-candidate-modal').classList.add('hidden')" class="px-4 py-2 bg-slate-100 text-slate-500 font-bold rounded-lg text-xs">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADJUSTMENT CONFIRM MODAL -->
+    <div id="adjustment-confirm-modal" class="modal-overlay hidden" style="z-index: 90;">
+        <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl flex flex-col items-center text-center">
+            <h3 class="font-bold text-slate-800 text-lg mb-2">スタッフ交代の確認</h3>
+            <p class="text-sm text-slate-500 font-bold mb-6">以下の内容で交代を実行しますか？</p>
+
+            <div class="flex items-center gap-3 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 w-full justify-center">
+                <div class="text-center">
+                    <div class="text-xs text-slate-400 font-bold mb-1">現在の担当</div>
+                    <div class="text-lg font-black text-slate-700" id="adj-confirm-old"></div>
+                </div>
+                <div class="text-slate-300 font-bold text-xl">➡</div>
+                 <div class="text-center">
+                    <div class="text-xs text-slate-400 font-bold mb-1">新しい担当</div>
+                    <div class="text-lg font-black text-indigo-600" id="adj-confirm-new"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 w-full">
+                <button onclick="document.getElementById('adjustment-confirm-modal').classList.add('hidden')" class="py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 transition">キャンセル</button>
+                <button id="btn-exec-adjustment" class="py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition">実行する</button>
             </div>
         </div>
     </div>
@@ -1482,8 +1507,14 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
 
 // --- NEW AUTO SHIFT LOGIC (AI) ---
 async function generateAutoShift() {
-    if(!confirm(`${shiftState.currentYear}年${shiftState.currentMonth}月のシフトを自動作成します。\n既存の確定済みシフトは上書きされます（希望休などは保持）。\nよろしいですか？`)) return;
+    showConfirmModal(
+        "AI自動作成",
+        `${shiftState.currentYear}年${shiftState.currentMonth}月のシフトを自動作成します。\n既存の確定済みシフトは上書きされます（希望休などは保持）。\nよろしいですか？`,
+        () => executeAutoShiftLogic()
+    );
+}
 
+async function executeAutoShiftLogic() {
     pushHistory();
     showLoading();
 
@@ -1825,7 +1856,7 @@ async function openAdjustmentCandidateModal(day, currentStaffName, currentRole) 
         candidates.forEach(c => {
             const div = document.createElement('div');
             div.className = "flex items-center justify-between p-3 bg-slate-50 hover:bg-indigo-50 rounded-xl border border-slate-100 cursor-pointer transition";
-            div.onclick = () => executeAdjustmentReplacement(day, currentStaffName, c.name, currentRole);
+            div.onclick = () => showAdjustmentConfirmModal(day, currentStaffName, c.name, currentRole);
             const rem = c.contractDays - c.assignedDays.length;
 
             div.innerHTML = `
@@ -1846,9 +1877,18 @@ async function openAdjustmentCandidateModal(day, currentStaffName, currentRole) 
     hideLoading();
 }
 
-async function executeAdjustmentReplacement(day, oldStaff, newStaff, role) {
-    if(!confirm(`${oldStaff} さんを ${newStaff} さんに交代しますか？\n(${oldStaff}さんは公休になります)`)) return;
+function showAdjustmentConfirmModal(day, oldStaff, newStaff, role) {
+    document.getElementById('adj-confirm-old').textContent = oldStaff;
+    document.getElementById('adj-confirm-new').textContent = newStaff;
 
+    const btn = document.getElementById('btn-exec-adjustment');
+    btn.onclick = () => finalizeAdjustmentReplacement(day, oldStaff, newStaff, role);
+
+    document.getElementById('adjustment-confirm-modal').classList.remove('hidden');
+}
+
+async function finalizeAdjustmentReplacement(day, oldStaff, newStaff, role) {
+    document.getElementById('adjustment-confirm-modal').classList.add('hidden');
     pushHistory();
 
     // Update Old Staff -> Off
@@ -1856,9 +1896,6 @@ async function executeAdjustmentReplacement(day, oldStaff, newStaff, role) {
     shiftState.shiftDataCache[oldStaff].assignments[day] = '公休';
 
     // Update New Staff -> Assigned (Inherit Role or ShiftType Default)
-    // If the role was a special role (like '金メ'), transfer it?
-    // The prompt says "Vacancy -> Suggest Replacement".
-    // Usually replacements take the same burden.
     if (!shiftState.shiftDataCache[newStaff]) shiftState.shiftDataCache[newStaff] = { assignments: {} };
     if (!shiftState.shiftDataCache[newStaff].assignments) shiftState.shiftDataCache[newStaff].assignments = {};
 
@@ -1890,17 +1927,18 @@ async function executeAdjustmentReplacement(day, oldStaff, newStaff, role) {
 }
 
 async function clearShiftAssignments() {
-    if(!confirm("割り振りを全てクリアしますか？")) return;
-    pushHistory();
-    Object.keys(shiftState.shiftDataCache).forEach(name => {
-        if(shiftState.shiftDataCache[name]) {
-            shiftState.shiftDataCache[name].assignments = {};
-        }
-    });
-    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
-    await setDoc(doc(db, "shift_submissions", docId), shiftState.shiftDataCache);
-    renderShiftAdminTable();
-    showToast("クリアしました");
+    showConfirmModal("割り振りクリア", "割り振りを全てクリアしますか？", async () => {
+        pushHistory();
+        Object.keys(shiftState.shiftDataCache).forEach(name => {
+            if(shiftState.shiftDataCache[name]) {
+                shiftState.shiftDataCache[name].assignments = {};
+            }
+        });
+        const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+        await setDoc(doc(db, "shift_submissions", docId), shiftState.shiftDataCache);
+        renderShiftAdminTable();
+        showToast("クリアしました");
+    }, 'bg-rose-600');
 }
 
 export async function saveShiftSubmission() {
@@ -1946,7 +1984,12 @@ window.updateRankOptions = () => {
 
 // --- Staff Sort Reset ---
 window.resetStaffSort = async () => {
-    if(!confirm("現在の並び順を役職・ランク順にリセットしますか？")) return;
+    showConfirmModal("並び順リセット", "現在の並び順を役職・ランク順にリセットしますか？", async () => {
+        _executeResetStaffSort();
+    });
+};
+
+async function _executeResetStaffSort() {
     showLoading();
 
     // Sort Helper
@@ -2181,8 +2224,13 @@ async function saveStaffDetails() {
 async function deleteStaff() {
     const name = document.getElementById('se-name').getAttribute('data-original-name');
     if(!name) return;
-    if(!confirm(`スタッフ「${name}」を削除しますか？\nこの操作は取り消せません。`)) return;
 
+    showConfirmModal("スタッフ削除", `スタッフ「${name}」を削除しますか？\nこの操作は取り消せません。`, async () => {
+        _executeDeleteStaff(name);
+    }, 'bg-rose-600');
+}
+
+async function _executeDeleteStaff(name) {
     showLoading();
 
     delete shiftState.staffDetails[name];
@@ -2398,20 +2446,20 @@ async function showCompensatoryOffModal(staffName) {
 }
 
 async function applyCompensatoryOff(name, day) {
-    if(!confirm(`${day}日を代休（公休）に変更しますか？`)) return;
+    showConfirmModal("代休設定", `${day}日を代休（公休）に変更しますか？`, async () => {
+        // 公休に変更
+        shiftState.shiftDataCache[name].assignments[day] = '公休';
 
-    // 公休に変更
-    shiftState.shiftDataCache[name].assignments[day] = '公休';
+        // 保存
+        const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+        const docRef = doc(db, "shift_submissions", docId);
 
-    // 保存
-    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
-    const docRef = doc(db, "shift_submissions", docId);
+        await setDoc(docRef, { [name]: shiftState.shiftDataCache[name] }, { merge: true });
 
-    await setDoc(docRef, { [name]: shiftState.shiftDataCache[name] }, { merge: true });
-
-    showToast(`${day}日を代休に設定しました`);
-    document.getElementById('compensatory-off-modal').classList.add('hidden');
-    renderShiftAdminTable();
+        showToast(`${day}日を代休に設定しました`);
+        document.getElementById('compensatory-off-modal').classList.add('hidden');
+        renderShiftAdminTable();
+    });
 }
 
 window.closeCompensatoryModal = () => {
