@@ -17,7 +17,8 @@ let shiftState = {
     historyStack: [],
     earlyWarehouseMode: false,
     adjustmentMode: false, // New Switch State
-    prevMonthCache: null
+    prevMonthCache: null,
+    currentStaffTab: 'early'
 };
 
 const RANKS = {
@@ -102,17 +103,16 @@ export function createShiftModals() {
                 <div class="max-w-4xl mx-auto">
                     <div class="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-slate-200 text-center">
                         <h3 class="font-black text-slate-700 text-xl sm:text-2xl mb-2">スタッフ選択</h3>
-                        <p class="text-slate-400 text-sm font-bold mb-8">ご自身の名前を選択してシフトを入力してください</p>
-                        <div class="space-y-8 text-left">
-                            <div>
-                                <h4 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">Employee</h4>
-                                <div id="shift-list-employees" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4"></div>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">Part-time</h4>
-                                <div id="shift-list-alba" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4"></div>
-                            </div>
+                        <p class="text-slate-400 text-sm font-bold mb-6">ご自身の名前を選択してシフトを入力してください</p>
+
+                        <!-- Tabs -->
+                        <div class="flex flex-wrap justify-center gap-2 mb-8">
+                            <button id="btn-tab-early" class="px-6 py-2 rounded-full bg-indigo-600 text-white font-bold text-sm shadow-md transition-all" onclick="window.switchStaffTab('early')">☀️ 早番 (Early)</button>
+                            <button id="btn-tab-late" class="px-6 py-2 rounded-full bg-white text-slate-500 font-bold text-sm border border-slate-200 hover:bg-slate-50 transition-all" onclick="window.switchStaffTab('late')">🌙 遅番 (Late)</button>
+                            <button id="btn-tab-employee" class="px-6 py-2 rounded-full bg-white text-slate-500 font-bold text-sm border border-slate-200 hover:bg-slate-50 transition-all" onclick="window.switchStaffTab('employee')">👔 社員 (Employee)</button>
                         </div>
+
+                        <div id="shift-staff-list-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 text-left"></div>
                     </div>
                 </div>
             </div>
@@ -452,6 +452,35 @@ export function createShiftModals() {
             </div>
         </div>
     </div>
+
+    <!-- AUTO SHIFT PREVIEW MODAL -->
+    <div id="auto-shift-preview-modal" class="modal-overlay hidden" style="z-index: 100;">
+        <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-xl flex flex-col">
+            <h3 class="font-bold text-slate-800 text-lg mb-2">AI 自動作成プレビュー</h3>
+            <p class="text-xs font-bold text-slate-400 mb-4">以下の内容でシフトを確定しますか？</p>
+
+            <div class="bg-slate-50 p-4 rounded-xl space-y-3 mb-6 border border-slate-100">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-bold text-slate-500">新規に埋まるシフト</span>
+                    <span class="text-lg font-black text-emerald-600" id="preview-filled-count">0</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-bold text-slate-500">変更対象スタッフ</span>
+                    <span class="text-lg font-black text-slate-700" id="preview-staff-count">0</span>
+                </div>
+            </div>
+
+            <div class="flex items-start gap-2 p-3 bg-amber-50 rounded-lg text-amber-700 text-xs font-bold mb-6">
+                <span class="text-lg">⚠️</span>
+                <span>確定すると、既存の割り振りが上書きされます。<br>（希望休や固定休は保持されます）</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="cancelAutoShift()" class="py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 transition">キャンセル</button>
+                <button onclick="finalizeAutoShift()" class="py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 hover:from-emerald-700 hover:to-teal-700 transition">確定して保存</button>
+            </div>
+        </div>
+    </div>
     `;
 
     document.body.insertAdjacentHTML('beforeend', html);
@@ -648,21 +677,41 @@ export function backToShiftList() {
 }
 
 export function renderShiftStaffList() {
-    const render = (cid, list) => {
-        const c = document.getElementById(cid);
-        if(!c) return;
-        c.innerHTML = '';
-        list.forEach(name => {
-            const btn = document.createElement('button');
-            btn.className = "bg-white border-2 border-slate-100 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 font-bold py-4 px-2 rounded-2xl text-sm transition-all shadow-sm active:scale-95 flex flex-col items-center justify-center gap-1";
-            btn.innerHTML = `<span class="text-2xl opacity-50">👤</span><span>${name}</span>`;
-            btn.onclick = () => selectShiftStaff(name);
-            c.appendChild(btn);
-        });
-    };
-    render('shift-list-employees', shiftState.staffListLists.employees);
-    render('shift-list-alba', [...shiftState.staffListLists.alba_early, ...shiftState.staffListLists.alba_late]);
+    const container = document.getElementById('shift-staff-list-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    let targetList = [];
+    if (shiftState.currentStaffTab === 'early') targetList = shiftState.staffListLists.alba_early;
+    else if (shiftState.currentStaffTab === 'late') targetList = shiftState.staffListLists.alba_late;
+    else if (shiftState.currentStaffTab === 'employee') targetList = shiftState.staffListLists.employees;
+
+    targetList.forEach(name => {
+        const btn = document.createElement('button');
+        btn.className = "bg-white border-2 border-slate-100 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 font-bold py-4 px-2 rounded-2xl text-sm transition-all shadow-sm active:scale-95 flex flex-col items-center justify-center gap-1";
+        btn.innerHTML = `<span class="text-2xl opacity-50">👤</span><span>${name}</span>`;
+        btn.onclick = () => selectShiftStaff(name);
+        container.appendChild(btn);
+    });
+
+    // Update Tab Styles
+    ['early', 'late', 'employee'].forEach(tab => {
+        const btn = document.getElementById(`btn-tab-${tab}`);
+        if(btn) {
+             if(tab === shiftState.currentStaffTab) {
+                 btn.className = "px-6 py-2 rounded-full bg-indigo-600 text-white font-bold text-sm shadow-md transition-all";
+             } else {
+                 btn.className = "px-6 py-2 rounded-full bg-white text-slate-500 font-bold text-sm border border-slate-200 hover:bg-slate-50 transition-all";
+             }
+        }
+    });
 }
+
+export function switchStaffTab(tab) {
+    shiftState.currentStaffTab = tab;
+    renderShiftStaffList();
+}
+window.switchStaffTab = switchStaffTab;
 
 export function selectShiftStaff(name) {
     shiftState.selectedStaff = name;
@@ -1696,12 +1745,22 @@ async function generateAutoShift() {
             alert(`⚠️ 以下の日程で責任者（金銭メイン）が不足しています。手動で調整してください。\n\n${missingResponsibility.join('\n')}`);
         }
 
-        const docId = `${Y}-${String(M).padStart(2,'0')}`;
-        const docRef = doc(db, "shift_submissions", docId);
+        // --- Calculate Stats for Preview ---
+        let filledCount = 0;
+        let staffSet = new Set();
+        Object.keys(shifts).forEach(name => {
+             // Compare with previous state (from history)
+             const prevData = shiftState.historyStack[shiftState.historyStack.length - 1][name] || { assignments: {} };
+             const currAssign = shifts[name].assignments || {};
+             Object.keys(currAssign).forEach(d => {
+                 if (currAssign[d] !== '公休' && prevData.assignments?.[d] !== currAssign[d]) {
+                     filledCount++;
+                     staffSet.add(name);
+                 }
+             });
+        });
 
-        await setDoc(docRef, shifts, { merge: true });
-        showToast("AIシフト自動作成完了！ (厳格モード)");
-        renderShiftAdminTable();
+        showAutoShiftPreviewModal(filledCount, staffSet.size);
 
     } catch(e) {
         console.error("Auto Generation Error:", e);
@@ -2358,3 +2417,37 @@ async function applyCompensatoryOff(name, day) {
 window.closeCompensatoryModal = () => {
     document.getElementById('compensatory-off-modal').classList.add('hidden');
 };
+
+window.showAutoShiftPreviewModal = (filled, staffCount) => {
+    document.getElementById('preview-filled-count').textContent = filled;
+    document.getElementById('preview-staff-count').textContent = staffCount + '名';
+    document.getElementById('auto-shift-preview-modal').classList.remove('hidden');
+};
+
+window.cancelAutoShift = () => {
+    document.getElementById('auto-shift-preview-modal').classList.add('hidden');
+    // Revert local changes from history without saving to DB (since we never saved)
+    if(shiftState.historyStack.length > 0) {
+        shiftState.shiftDataCache = shiftState.historyStack.pop();
+        // Hide Undo button if stack empty (it was pushed just for this op)
+        if(shiftState.historyStack.length === 0) document.getElementById('btn-undo-action').classList.add('hidden');
+        renderShiftAdminTable();
+    }
+};
+
+window.finalizeAutoShift = async () => {
+    showLoading();
+    try {
+        const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+        const docRef = doc(db, "shift_submissions", docId);
+        await setDoc(docRef, shiftState.shiftDataCache, { merge: true });
+        showToast("AIシフト自動作成完了！");
+        document.getElementById('auto-shift-preview-modal').classList.add('hidden');
+        renderShiftAdminTable();
+    } catch(e) {
+        alert("保存エラー: " + e.message);
+    } finally {
+        hideLoading();
+    }
+};
+window.activateShiftAdminMode = activateShiftAdminMode;

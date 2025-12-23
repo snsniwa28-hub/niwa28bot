@@ -223,3 +223,48 @@ document.addEventListener("DOMContentLoaded", () => {
     // Shift Button Setup (Static HTML)
     Shift.injectShiftButton();
 });
+
+window.filterTasks = (type) => {
+    // 1. Update Button Styles
+    const buttons = {
+        all: document.getElementById('filter-btn-all'),
+        employee: document.getElementById('filter-btn-employee'),
+        byte: document.getElementById('filter-btn-byte')
+    };
+
+    Object.keys(buttons).forEach(key => {
+        const btn = buttons[key];
+        if (btn) {
+            if (key === type) {
+                btn.className = "filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-slate-800 text-white shadow-sm transition-all";
+            } else {
+                btn.className = "filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 transition-all";
+            }
+        }
+    });
+
+    // 2. Toggle Visibility using Partial Matches
+    const toggle = (selector, show) => {
+        document.querySelectorAll(selector).forEach(el => {
+            if(show) el.classList.remove('hidden');
+            else el.classList.add('hidden');
+        });
+    };
+
+    const setVisibility = (isEmployee, isVisible) => {
+         const infix = isEmployee ? 'employee' : 'alba';
+         const selector = `[id*="summary-open-${infix}-container"], [id*="summary-close-${infix}-container"]`;
+         toggle(selector, isVisible);
+    };
+
+    if (type === 'all') {
+        setVisibility(true, true);  // Employee
+        setVisibility(false, true); // Byte
+    } else if (type === 'employee') {
+        setVisibility(true, true);
+        setVisibility(false, false);
+    } else if (type === 'byte') {
+        setVisibility(true, false);
+        setVisibility(false, true);
+    }
+};
