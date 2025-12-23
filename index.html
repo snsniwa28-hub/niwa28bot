@@ -53,91 +53,138 @@
                 </div>
             </section>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+            <!-- Operations Dashboard (Always Expanded) -->
+            <section id="operations-dashboard-section" class="mb-8 fade-in-up" style="animation-delay: 0.15s;">
+                <div id="operationsBoardContainer" class="w-full">
+                    <div class="bg-white rounded-3xl border border-slate-100 shadow-lg shadow-indigo-900/5 p-6 flex items-center justify-center min-h-[120px]">
+                        <p class="text-slate-400 text-xs font-bold animate-pulse">データ読み込み中...</p>
+                    </div>
+                </div>
+            </section>
 
-                <div id="operations-section" class="fade-in-up h-full" style="animation-delay: 0.2s;">
-                    <div id="operationsBoardContainer" class="h-full">
-                        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 h-full flex items-center justify-center">
-                            <p class="text-slate-400 text-xs font-bold animate-pulse">データ読み込み中...</p>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
+
+                <!-- 1. Today's Tasks (Staff Only) -->
+                <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.2s;">
+                    <div onclick="switchView('staff')" class="group cursor-pointer bg-slate-800 rounded-3xl shadow-lg shadow-slate-900/20 border border-slate-700 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 flex flex-col justify-between relative overflow-hidden aspect-square">
+                        <div class="absolute top-0 right-0 p-24 bg-white/5 rounded-full blur-2xl -mr-12 -mt-12 pointer-events-none"></div>
+
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="bg-slate-700/80 text-indigo-400 p-3 rounded-2xl backdrop-blur-sm group-hover:bg-indigo-500 group-hover:text-white transition-colors duration-300">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                            </div>
+                            <span class="bg-indigo-500/20 text-indigo-300 text-[8px] font-bold px-1.5 py-0.5 rounded-full border border-indigo-500/30">STAFF</span>
+                        </div>
+
+                        <div>
+                            <h2 class="text-sm sm:text-lg font-bold text-white mb-0.5 group-hover:text-indigo-300 transition-colors">本日のタスク</h2>
+                            <p class="text-slate-400 text-[10px] font-bold">業務進捗</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="fade-in-up h-full" style="animation-delay: 0.25s;">
-                    <div onclick="switchView('staff')" class="group cursor-pointer bg-slate-800 rounded-3xl shadow-lg shadow-slate-900/20 border border-slate-700 p-6 h-full hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 flex flex-col justify-between relative overflow-hidden">
-                        <div class="absolute top-0 right-0 p-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-
-                        <div class="flex justify-between items-start mb-6">
-                            <div class="bg-slate-700/80 text-indigo-400 p-3.5 rounded-2xl backdrop-blur-sm group-hover:bg-indigo-500 group-hover:text-white transition-colors duration-300">
-                                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                            </div>
-                            <span class="bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-2 py-1 rounded-full border border-indigo-500/30">STAFF ONLY</span>
-                        </div>
-
-                        <div>
-                            <h2 class="text-xl font-bold text-white mb-1 group-hover:text-indigo-300 transition-colors">本日のタスク</h2>
-                            <p class="text-slate-400 text-xs font-bold">業務進捗・スタッフ管理</p>
-                        </div>
-
-                        <div class="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0 transition-all duration-300 text-indigo-400">
-                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="fade-in-up h-full" style="animation-delay: 0.3s;">
-                    <a href="#new-opening-section" class="block group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-6 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between h-full">
-                        <div class="flex justify-between items-start mb-8">
-                            <div class="bg-indigo-50 text-indigo-600 p-3.5 rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
-                                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                <!-- 2. New Machine Info -->
+                <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.25s;">
+                    <a href="#new-opening-section" class="block group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="bg-indigo-50 text-indigo-600 p-3 rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
                             </div>
                         </div>
                         <div>
-                            <h2 class="text-xl font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">新装開店情報</h2>
-                            <p class="text-slate-400 text-xs font-bold mt-1">最新機種スペック・配置</p>
+                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">新装開店</h2>
+                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">最新機種情報</p>
                         </div>
                     </a>
                 </div>
 
-                <div class="fade-in-up h-full" style="animation-delay: 0.35s;">
-                    <div id="shiftEntryCard" class="group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-6 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between">
-                        <div class="flex justify-between items-start mb-8">
-                            <div class="bg-emerald-50 text-emerald-600 p-3.5 rounded-2xl group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
-                                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <!-- 3. Shift Management -->
+                <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.3s;">
+                    <div id="shiftEntryCard" class="group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="bg-emerald-50 text-emerald-600 p-3 rounded-2xl group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                             </div>
                         </div>
                         <div>
-                            <h2 class="text-xl font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">シフト提出・管理</h2>
-                            <p class="text-slate-400 text-xs font-bold mt-1">希望休・出勤確認</p>
+                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">シフト提出</h2>
+                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">出勤確認</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="fade-in-up h-full" style="animation-delay: 0.4s;">
-                    <div id="openQSCButton" class="group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-6 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between">
-                        <div class="flex justify-between items-start mb-8">
-                            <div class="bg-rose-50 text-rose-600 p-3.5 rounded-2xl group-hover:bg-rose-600 group-hover:text-white transition-colors duration-300">
-                                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                <!-- 4. QSC Check -->
+                <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.35s;">
+                    <div id="openQSCButton" class="group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="bg-rose-50 text-rose-600 p-3 rounded-2xl group-hover:bg-rose-600 group-hover:text-white transition-colors duration-300">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                             </div>
-                            <span id="qscUnfinishedCount" class="bg-rose-100 text-rose-600 text-[10px] font-bold px-2 py-1 rounded-full">読込中</span>
+                            <span id="qscUnfinishedCount" class="bg-rose-100 text-rose-600 text-[8px] font-bold px-1.5 py-0.5 rounded-full">読込中</span>
                         </div>
                         <div>
-                            <h2 class="text-xl font-bold text-slate-800 group-hover:text-rose-600 transition-colors">QSCチェック</h2>
-                            <p class="text-slate-400 text-xs font-bold mt-1">クオリティ管理・巡回</p>
+                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-rose-600 transition-colors">QSC</h2>
+                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">クオリティ管理</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="fade-in-up h-full" style="animation-delay: 0.45s;">
-                    <button onclick="openInternalSharedModal()" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-6 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between">
-                        <div class="flex justify-between items-start mb-8">
-                            <div class="bg-indigo-50 text-indigo-600 p-3.5 rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
-                                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                <!-- 5. Pachinko Shared -->
+                <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.4s;">
+                    <button onclick="openInternalSharedModal('pachinko')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="bg-pink-50 text-pink-600 p-3 rounded-2xl group-hover:bg-pink-600 group-hover:text-white transition-colors duration-300">
+                                <span class="text-xl font-black">🅿️</span>
                             </div>
                         </div>
                         <div>
-                            <h2 class="text-xl font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">社内共有・戦略</h2>
-                            <p class="text-slate-400 text-xs font-bold mt-1">月間目標・チーム共有</p>
+                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-pink-600 transition-colors">パチンコ共有</h2>
+                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">Team Sharing</p>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- 6. Slot Shared -->
+                <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.45s;">
+                    <button onclick="openInternalSharedModal('slot')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="bg-purple-50 text-purple-600 p-3 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-colors duration-300">
+                                <span class="text-xl font-black">🎰</span>
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-purple-600 transition-colors">スロット共有</h2>
+                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">Team Sharing</p>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- 7. CS Team Shared -->
+                <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.5s;">
+                    <button onclick="openInternalSharedModal('cs')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="bg-orange-50 text-orange-600 p-3 rounded-2xl group-hover:bg-orange-600 group-hover:text-white transition-colors duration-300">
+                                <span class="text-xl font-black">🤝</span>
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-orange-600 transition-colors">CSチーム共有</h2>
+                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">Customer Svc</p>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- 8. Monthly Strategy -->
+                <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.55s;">
+                    <button onclick="openInternalSharedModal('strategy')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="bg-red-50 text-red-600 p-3 rounded-2xl group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
+                                <span class="text-xl font-black">📈</span>
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-red-600 transition-colors">月間戦略</h2>
+                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">Monthly Goals</p>
                         </div>
                     </button>
                 </div>
