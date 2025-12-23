@@ -13,6 +13,10 @@ import {
 import { showToast, showConfirmModal } from './ui.js';
 
 let editMode = false;
+const deadlineUIState = {
+    expandedIds: new Set(),
+    activeTabs: {} // id -> 'employees' | 'early' | 'late'
+};
 
 export function initDeadlines() {
     subscribeDeadlines();
@@ -60,6 +64,8 @@ export function updateDeadlineStaffLists() {
 
 function createDeadlineElement(id, data) {
     const isHighPriority = data.priority === 'high';
+    const isExpanded = deadlineUIState.expandedIds.has(id);
+    const activeTab = deadlineUIState.activeTabs[id] || 'employees'; // default to employees
 
     const container = document.createElement('div');
     container.className = `rounded-xl border ${isHighPriority ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100'} mb-2 overflow-hidden transition-all duration-300`;
@@ -83,7 +89,6 @@ function createDeadlineElement(id, data) {
 
     leftPart.appendChild(dateSpan);
     leftPart.appendChild(contentSpan);
-
     mainRow.appendChild(leftPart);
 
     const actionContainer = document.createElement('div');
@@ -100,9 +105,12 @@ function createDeadlineElement(id, data) {
 
     const checklistId = `checklist-${id}`;
     checkToggleBtn.onclick = () => {
-        const cl = document.getElementById(checklistId);
-        if (cl) {
-            cl.classList.toggle('hidden');
+        if (deadlineUIState.expandedIds.has(id)) {
+            deadlineUIState.expandedIds.delete(id);
+            document.getElementById(checklistId).classList.add('hidden');
+        } else {
+            deadlineUIState.expandedIds.add(id);
+            document.getElementById(checklistId).classList.remove('hidden');
         }
     };
 
@@ -121,17 +129,43 @@ function createDeadlineElement(id, data) {
     // Checklist Container (Collapsible)
     const checklistDiv = document.createElement('div');
     checklistDiv.id = checklistId;
-    checklistDiv.className = "hidden bg-white border-t border-slate-100 p-4 animate-fade-in";
+    checklistDiv.className = `${isExpanded ? '' : 'hidden'} bg-white border-t border-slate-100 p-4 animate-fade-in`;
 
-    // Staff List Generation
+    // Tabs
+    const tabsContainer = document.createElement('div');
+    tabsContainer.className = "flex justify-center mb-4";
+    const tabWrapper = document.createElement('div');
+    tabWrapper.className = "bg-slate-100 p-1 rounded-xl flex gap-1";
+
+    const createTabBtn = (key, label) => {
+        const btn = document.createElement('button');
+        const isActive = activeTab === key;
+        btn.className = `px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isActive ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:bg-white/50'}`;
+        btn.textContent = label;
+        btn.onclick = () => {
+            deadlineUIState.activeTabs[id] = key;
+            renderDeadlinesList(); // Re-render to update list based on new tab
+        };
+        return btn;
+    };
+
+    tabWrapper.appendChild(createTabBtn('employees', '社員'));
+    tabWrapper.appendChild(createTabBtn('early', '早番'));
+    tabWrapper.appendChild(createTabBtn('late', '遅番'));
+    tabsContainer.appendChild(tabWrapper);
+    checklistDiv.appendChild(tabsContainer);
+
+    // Staff List Grid
+    const gridContainer = document.createElement('div');
+    gridContainer.id = `grid-${id}`;
+
     if (window.masterStaffList) {
-        const staffList = [
-            ...(window.masterStaffList.employees || []),
-            ...(window.masterStaffList.alba_early || []),
-            ...(window.masterStaffList.alba_late || [])
-        ];
+        let staffList = [];
+        if (activeTab === 'employees') staffList = window.masterStaffList.employees || [];
+        else if (activeTab === 'early') staffList = window.masterStaffList.alba_early || [];
+        else if (activeTab === 'late') staffList = window.masterStaffList.alba_late || [];
 
-        // Remove duplicates just in case
+        // Remove duplicates
         const uniqueStaff = [...new Set(staffList)];
 
         if (uniqueStaff.length > 0) {
@@ -157,14 +191,15 @@ function createDeadlineElement(id, data) {
                 label.appendChild(span);
                 grid.appendChild(label);
             });
-            checklistDiv.appendChild(grid);
+            gridContainer.appendChild(grid);
         } else {
-            checklistDiv.innerHTML = '<p class="text-xs text-slate-400 text-center">スタッフリストが読み込まれていません</p>';
+            gridContainer.innerHTML = '<p class="text-xs text-slate-400 text-center">該当するスタッフがいません</p>';
         }
     } else {
-        checklistDiv.innerHTML = '<p class="text-xs text-slate-400 text-center">スタッフリスト読み込み中...</p>';
+        gridContainer.innerHTML = '<p class="text-xs text-slate-400 text-center">スタッフリスト読み込み中...</p>';
     }
 
+    checklistDiv.appendChild(gridContainer);
     container.appendChild(checklistDiv);
 
     return container;

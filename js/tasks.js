@@ -441,13 +441,21 @@ export function openTimeSelect(k, s, t, f) {
     const isO = $('#tab-open').classList.contains('bg-white');
     const slots = isO ? openTimeSlots : closeTimeSlots;
     const mb = $('#select-modal-body');
+
+    // Grid container
+    const grid = document.createElement('div');
+    grid.className = "grid grid-cols-4 gap-2";
+    mb.innerHTML = ''; // Clear previous content
+
     slots.forEach(tm => {
         const div = document.createElement('div');
-        div.className = "select-modal-option";
+        // Compact styling for grid items
+        div.className = "bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 border border-slate-200 rounded-lg py-2 text-center text-xs font-bold text-slate-700 cursor-pointer transition-colors";
         div.textContent = tm;
         div.onclick = () => selectOption(tm, div);
-        mb.appendChild(div);
+        grid.appendChild(div);
     });
+    mb.appendChild(grid);
 }
 
 export function openTaskSelect(k, s, t) {
@@ -461,16 +469,74 @@ export function openTaskSelect(k, s, t) {
 function renderTaskOptions(list, showExpandButton) {
     const mb = $('#select-modal-body');
     mb.innerHTML = '';
-    list.forEach(taskName => {
-        const div = document.createElement('div');
-        div.className = "select-modal-option";
-        div.textContent = taskName;
-        const colorClass = getTaskColorClass(taskName);
-        div.innerHTML = `<div class="flex items-center gap-3"><span class="w-3 h-3 rounded-full border border-slate-200 ${colorClass.replace('task-bar', '')}"></span><span>${taskName}</span></div>`;
-        div.onclick = () => selectOption(taskName, div);
-        mb.appendChild(div);
-    });
-    if (showExpandButton) {
+
+    // Task Groups Definition
+    const TASK_GROUPS = {
+        '清掃': ['環境整備・5M', '島上・イーゼル清掃', 'ローラー交換', 'トイレ清掃', 'ゴミ回収', '灰皿交換', '喫煙所清掃', '外周清掃', '遊技台清掃', '島上清掃', '休憩室清掃'],
+        '接客・ホール': ['接客', 'ホール巡回', 'ランプ対応', '会員獲得', 'アンケート', '呼び出し対応'],
+        'カウンター': ['カウンター', '景品交換', '景品補充', '在庫確認'],
+        '金銭・管理': ['金銭業務', '金銭回収', '朝礼', '全体確認', '施錠・工具箱チェック', '引継ぎ・事務所清掃', '立駐（社員）', '立駐（アルバイト）'],
+        'その他': ['個人業務、自由時間', '休憩', '研修']
+    };
+
+    // If list is the full list (MANUAL_TASK_LIST), use categorization
+    if (!showExpandButton) {
+        // Group tasks
+        const grouped = {};
+        const unassigned = [];
+
+        list.forEach(task => {
+            let found = false;
+            for (const [group, members] of Object.entries(TASK_GROUPS)) {
+                if (members.includes(task) || members.some(m => task.includes(m))) {
+                    if (!grouped[group]) grouped[group] = [];
+                    grouped[group].push(task);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) unassigned.push(task);
+        });
+
+        const renderGroup = (title, items) => {
+            if (!items || items.length === 0) return;
+            const header = document.createElement('div');
+            header.className = "px-4 py-2 bg-slate-50 text-xs font-bold text-slate-500 mt-2 mb-1 rounded-md";
+            header.textContent = title;
+            mb.appendChild(header);
+
+            items.forEach(taskName => {
+                renderOption(taskName);
+            });
+        };
+
+        const renderOption = (taskName) => {
+            const div = document.createElement('div');
+            div.className = "select-modal-option";
+            const colorClass = getTaskColorClass(taskName);
+            div.innerHTML = `<div class="flex items-center gap-3"><span class="w-3 h-3 rounded-full border border-slate-200 ${colorClass.replace('task-bar', '')}"></span><span>${taskName}</span></div>`;
+            div.onclick = () => selectOption(taskName, div);
+            mb.appendChild(div);
+        };
+
+        Object.keys(TASK_GROUPS).forEach(group => {
+            renderGroup(group, grouped[group]);
+        });
+        if (unassigned.length > 0) {
+            renderGroup('その他・未分類', unassigned);
+        }
+
+    } else {
+        // Default View (Short List)
+        list.forEach(taskName => {
+            const div = document.createElement('div');
+            div.className = "select-modal-option";
+            const colorClass = getTaskColorClass(taskName);
+            div.innerHTML = `<div class="flex items-center gap-3"><span class="w-3 h-3 rounded-full border border-slate-200 ${colorClass.replace('task-bar', '')}"></span><span>${taskName}</span></div>`;
+            div.onclick = () => selectOption(taskName, div);
+            mb.appendChild(div);
+        });
+
         const btn = document.createElement('button');
         btn.className = "w-full py-3 mt-4 text-xs font-bold text-slate-400 border border-slate-200 rounded-lg hover:bg-slate-100";
         btn.textContent = "すべてのタスクを表示";
@@ -483,22 +549,41 @@ export function openFixedStaffSelect(k, type, title) {
     if(!isEditing) return;
     pendingModalState = { sectionKey: k, field: 'fixed_staff', candidatesType: type };
     initModal(title);
-    const candidates = (type.includes('early')||type.includes('open'))
-        ? [...masterStaffList.employees, ...masterStaffList.alba_early]
-        : [...masterStaffList.employees, ...masterStaffList.alba_late];
+
+    // Categorize
+    const isEarly = (type.includes('early')||type.includes('open'));
+    const employees = masterStaffList.employees || [];
+    const albas = isEarly ? (masterStaffList.alba_early || []) : (masterStaffList.alba_late || []);
+
     const mb = $('#select-modal-body');
-    const noneDiv = document.createElement('div');
-    noneDiv.className = "select-modal-option text-slate-400";
-    noneDiv.textContent = "指定なし";
-    noneDiv.onclick = () => { selectOption("", noneDiv); };
-    mb.appendChild(noneDiv);
-    candidates.forEach(n => {
+    mb.innerHTML = '';
+
+    const createOption = (name, isPlaceholder = false) => {
         const div = document.createElement('div');
-        div.className = "select-modal-option";
-        div.textContent = n;
-        div.onclick = () => selectOption(n, div);
-        mb.appendChild(div);
-    });
+        div.className = isPlaceholder ? "select-modal-option text-slate-400" : "select-modal-option";
+        div.textContent = name;
+        div.onclick = () => selectOption(isPlaceholder ? "" : name, div);
+        return div;
+    };
+
+    const createHeader = (text) => {
+        const div = document.createElement('div');
+        div.className = "px-4 py-2 bg-slate-50 text-xs font-bold text-slate-500 mt-2 mb-1 rounded-md";
+        div.textContent = text;
+        return div;
+    };
+
+    mb.appendChild(createOption("指定なし", true));
+
+    if (employees.length > 0) {
+        mb.appendChild(createHeader("社員"));
+        employees.forEach(n => mb.appendChild(createOption(n)));
+    }
+
+    if (albas.length > 0) {
+        mb.appendChild(createHeader("アルバイト"));
+        albas.forEach(n => mb.appendChild(createOption(n)));
+    }
 }
 
 export function setFixed(k, n, type) {
