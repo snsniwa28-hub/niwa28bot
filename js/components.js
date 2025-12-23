@@ -346,12 +346,12 @@ export function renderModals() {
                     </div>
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div class="op-input-group">
-                            <label>予想目標</label>
+                            <label>目標稼働</label>
                             <input type="number" id="in_target_15" class="op-input" placeholder="目標">
                         </div>
                         <div class="op-input-group">
-                            <label class="text-indigo-600 font-bold">当日目標</label>
-                            <input type="number" id="in_today_target_15" class="op-input border-indigo-200 focus:border-indigo-500" placeholder="当日決定">
+                            <label class="text-indigo-600 font-bold">実際稼働</label>
+                            <input type="number" id="in_today_target_15" class="op-input border-indigo-200 focus:border-indigo-500" placeholder="実績入力">
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-3">
@@ -376,12 +376,12 @@ export function renderModals() {
                     </div>
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div class="op-input-group">
-                            <label>予想目標</label>
+                            <label>目標稼働</label>
                             <input type="number" id="in_target_19" class="op-input" placeholder="目標">
                         </div>
                         <div class="op-input-group">
-                            <label class="text-indigo-600 font-bold">当日目標</label>
-                            <input type="number" id="in_today_target_19" class="op-input border-indigo-200 focus:border-indigo-500" placeholder="当日決定">
+                            <label class="text-indigo-600 font-bold">実際稼働</label>
+                            <input type="number" id="in_today_target_19" class="op-input border-indigo-200 focus:border-indigo-500" placeholder="実績入力">
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-3">

@@ -18,6 +18,7 @@ export async function fetchCustomerData() {
         newOpeningData = nSnap.docs.map(d => d.data());
         eventMap = new Map(cSnap.docs.map(d => d.data()).sort((a, b) => a.date - b.date).map(e => [e.date, e]));
         renderToday();
+        updateNewOpeningCard();
     } catch (e) {
         const container = $('#todayEventContainer');
         if(container) container.innerHTML = `<p class="text-rose-500 text-center font-bold">データ読込失敗</p>`;
@@ -36,10 +37,39 @@ export function renderToday() {
     if(dateEl) dateEl.textContent = `${today.getFullYear()}.${m + 1}.${d}`;
 }
 
+function updateNewOpeningCard() {
+    // 2. New Machine Info Card in Dashboard
+    const cardLink = document.querySelector('a[href="#new-opening-section"]');
+    if (!cardLink) return;
+
+    if (!newOpeningData || newOpeningData.length === 0) {
+        // Disable
+        cardLink.classList.add('opacity-50', 'pointer-events-none', 'bg-slate-50');
+        cardLink.classList.remove('bg-white', 'hover:-translate-y-1', 'hover:shadow-xl', 'cursor-pointer');
+        cardLink.removeAttribute('href');
+
+        const title = cardLink.querySelector('h2');
+        if (title) {
+            title.textContent = "情報は現在ありません";
+            title.classList.remove('group-hover:text-indigo-600');
+            title.classList.add('text-slate-400');
+        }
+
+        const sub = cardLink.querySelector('p');
+        if (sub) sub.textContent = "Coming Soon...";
+    } else {
+        // Enable (Reset to original state if needed, though usually page reload handles this)
+        cardLink.classList.remove('opacity-50', 'pointer-events-none', 'bg-slate-50');
+        cardLink.classList.add('bg-white', 'hover:-translate-y-1', 'hover:shadow-xl', 'cursor-pointer');
+        cardLink.setAttribute('href', '#new-opening-section');
+    }
+}
+
 export function openNewOpening() {
     const c = $('#newOpeningInfo');
     c.innerHTML = "";
     if (!newOpeningData || !newOpeningData.length) {
+        // Though the card is disabled, keep this check for direct calls
         c.innerHTML = "<p class='text-center text-slate-400 py-10'>データなし</p>";
         $('#newOpeningModal').classList.remove("hidden");
         return;
