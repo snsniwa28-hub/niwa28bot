@@ -148,7 +148,7 @@ export function toggleQscEditMode() {
         $('#qscAddForm').classList.add('hidden');
         renderQSCList();
     } else {
-        showPasswordModal('qsc');
+        showPasswordModal(activateQscEditMode);
     }
 }
 

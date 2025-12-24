@@ -214,7 +214,7 @@ export async function updateMemberCount(name, delta) {
 
 // --- Admin Settings ---
 export function openMemberSettings() {
-    showPasswordModal('member_admin');
+    showPasswordModal(showMemberTargetModal);
 }
 
 export function showMemberTargetModal() {

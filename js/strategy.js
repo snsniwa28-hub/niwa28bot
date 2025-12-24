@@ -427,7 +427,7 @@ export function openStrategyAdmin(category) {
 }
 
 export function openStrategyAdminAuth(category) {
-    showPasswordModal('strategy_admin_' + category);
+    showPasswordModal(() => openStrategyAdmin(category));
 }
 
 // --- Initialize ---
