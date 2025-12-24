@@ -287,94 +287,12 @@ export function closeMonthlyCalendar() {
     $('#calendar-modal').classList.add('hidden');
 }
 
-// Excel Upload Handler
-export async function handleExcelUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-
-            // Get "月間目標数" or first sheet
-            let sheetName = "月間目標数";
-            if (!workbook.SheetNames.includes(sheetName)) {
-                sheetName = workbook.SheetNames[0];
-            }
-            const worksheet = workbook.Sheets[sheetName];
-
-            // Parse as array of arrays, starting from row 0
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-            // Start reading from 4th row (index 3) as per requirements
-            // A(0): Date, W(22): 15:00 Target, Y(24): 19:00 Target
-
-            const updates = [];
-            const year = currentOpYear;
-            const monthStr = String(currentOpMonth + 1).padStart(2, '0');
-
-            for (let i = 3; i < jsonData.length; i++) {
-                const row = jsonData[i];
-                if (!row || row.length === 0) continue;
-
-                let dayVal = row[0]; // A(0): Date
-                if (!dayVal) continue; // Skip if no date
-
-                // Normalize Day: "1日", "1", 1 -> 1
-                // Skip if not a valid number (1-31)
-                let dayNum = parseInt(String(dayVal).replace(/[^0-9]/g, ''), 10);
-                if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) continue;
-
-                const dayStr = String(dayNum).padStart(2, '0');
-                const docId = `${year}-${monthStr}-${dayStr}`;
-
-                // Clean Target Values
-                const cleanVal = (val) => {
-                    if (val === undefined || val === null) return 0;
-                    const num = parseInt(String(val).replace(/[^0-9]/g, ''), 10);
-                    return isNaN(num) ? 0 : num;
-                };
-
-                const target15 = cleanVal(row[22]); // Column W (index 22)
-                const target19 = cleanVal(row[24]); // Column Y (index 24)
-
-                // Prepare update promise
-                updates.push(setDoc(doc(db, "operations_data", docId), {
-                    target_total_15: target15,
-                    target_total_19: target19
-                }, { merge: true }));
-            }
-
-            await Promise.all(updates);
-
-            // Refresh local data view
-            updates.forEach(async () => {
-                // Not ideal but simple refresh
-            });
-            // Re-fetch all data to update UI
-            openMonthlyCalendar();
-
-            alert(`${updates.length}件のデータをインポートしました！`);
-
-        } catch (err) {
-            console.error(err);
-            alert("インポートに失敗しました: " + err.message);
-        }
-        // Reset input
-        event.target.value = '';
-    };
-    reader.readAsArrayBuffer(file);
-}
-
-
 function renderCalendarGrid() {
     const container = $('#calendar-grid-body');
     if (!container) return;
     container.innerHTML = '';
 
-    // Update Header with Month Navigation AND Excel Button
+    // Update Header with Month Navigation
     const headerContainer = $('#calendar-modal h3');
     if (headerContainer) {
         headerContainer.innerHTML = `
@@ -384,14 +302,6 @@ function renderCalendarGrid() {
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <!-- Excel Import -->
-                    <div class="relative">
-                        <input type="file" id="op-excel-upload" accept=".xlsx" class="hidden">
-                        <button onclick="document.getElementById('op-excel-upload').click()" class="bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
-                            <span>📊 Excel目標取込</span>
-                        </button>
-                    </div>
-
                     <!-- Navigation -->
                     <div class="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
                         <button id="op-prev-month" class="px-3 py-1 text-slate-400 hover:text-indigo-600 transition font-bold">◀</button>
@@ -407,9 +317,6 @@ function renderCalendarGrid() {
             const next = document.getElementById('op-next-month');
             if (prev) prev.onclick = (e) => { e.stopPropagation(); changeOpMonth(-1); };
             if (next) next.onclick = (e) => { e.stopPropagation(); changeOpMonth(1); };
-
-            const fileInput = document.getElementById('op-excel-upload');
-            if (fileInput) fileInput.onchange = handleExcelUpload;
         }, 0);
     }
 
@@ -539,18 +446,27 @@ export function closeOpInput() {
 
 export async function saveOpData() {
     const getVal = (id) => { const v = $(`#${id}`).value; return v ? parseInt(v) : null; };
+    const getNum = (id) => { const v = $(`#${id}`).value; return v ? parseInt(v) : 0; };
+
+    // Calculate sums forcibly from breakdown
+    const total15 = getNum('in_4p_15') + getNum('in_1p_15') + getNum('in_20s_15');
+    const total19 = getNum('in_4p_19') + getNum('in_1p_19') + getNum('in_20s_19');
+
     const d = {
         target_total_15: getVal('in_target_15'),
-        today_target_total_15: getVal('in_today_target_15'),
-        actual_4p_15: getVal('in_4p_15'), actual_1p_15: getVal('in_1p_15'), actual_20s_15: getVal('in_20s_15'),
+        today_target_total_15: total15, // Force overwrite with calculated sum
+        actual_total_15: total15,       // Force overwrite with calculated sum
+        actual_4p_15: getVal('in_4p_15'),
+        actual_1p_15: getVal('in_1p_15'),
+        actual_20s_15: getVal('in_20s_15'),
+
         target_total_19: getVal('in_target_19'),
-        today_target_total_19: getVal('in_today_target_19'),
-        actual_4p_19: getVal('in_4p_19'), actual_1p_19: getVal('in_1p_19'), actual_20s_19: getVal('in_20s_19'),
+        today_target_total_19: total19, // Force overwrite with calculated sum
+        actual_total_19: total19,       // Force overwrite with calculated sum
+        actual_4p_19: getVal('in_4p_19'),
+        actual_1p_19: getVal('in_1p_19'),
+        actual_20s_19: getVal('in_20s_19'),
     };
-    const sum15 = (d.actual_4p_15||0) + (d.actual_1p_15||0) + (d.actual_20s_15||0);
-    const sum19 = (d.actual_4p_19||0) + (d.actual_1p_19||0) + (d.actual_20s_19||0);
-    if (sum15 > 0) d.actual_total_15 = sum15;
-    if (sum19 > 0) d.actual_total_19 = sum19;
 
     const targetDate = editingOpDate || getTodayDateString();
 
