@@ -213,6 +213,22 @@ export function activateDeadlineAdminMode() {
     }
 }
 
+export function openDeadlineListModal() {
+    const modal = document.getElementById("deadlineListModal");
+    if (modal) {
+        modal.classList.remove("hidden");
+        // Ensure rendering happens when opened
+        renderDeadlinesList();
+    }
+}
+
+export function closeDeadlineListModal() {
+    const modal = document.getElementById("deadlineListModal");
+    if (modal) {
+        modal.classList.add("hidden");
+    }
+}
+
 export function openDeadlineModal() {
     const modal = document.getElementById("deadline-modal");
     if (modal) {

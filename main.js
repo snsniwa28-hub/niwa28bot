@@ -192,6 +192,8 @@ document.addEventListener("DOMContentLoaded", () => {
     Deadlines.initDeadlines();
 
     // Expose Deadlines modal functions
+    window.openDeadlineListModal = Deadlines.openDeadlineListModal;
+    window.closeDeadlineListModal = Deadlines.closeDeadlineListModal;
     window.openDeadlineModal = Deadlines.openDeadlineModal;
     window.closeDeadlineModal = Deadlines.closeDeadlineModal;
     window.addDeadline = Deadlines.addDeadline;
