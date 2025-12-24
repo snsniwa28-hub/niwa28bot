@@ -72,23 +72,50 @@ export function renderOperationsBoard() {
     }
 
     let html = `
-    <div class="bg-white rounded-3xl border border-slate-100 shadow-lg shadow-indigo-900/5 p-4 sm:p-6 w-full flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+    <div class="bg-white rounded-3xl border border-slate-100 shadow-lg shadow-indigo-900/5 p-4 sm:p-6 w-full relative overflow-hidden">
 
-        <!-- Header / Actions -->
-        <div class="absolute top-4 right-4 flex gap-2 z-10">
-             <button id="btn-monthly-cal" class="bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                <span>月間推移</span>
-            </button>
-            <button id="btn-op-input" class="bg-indigo-600 text-white hover:bg-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-lg shadow-indigo-200">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                <span>入力</span>
-            </button>
+        <!-- Header / Date (Mobile only) / Actions -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 md:mb-0">
+
+             <!-- Mobile Date/Title Area -->
+             <div class="md:hidden flex items-center justify-between">
+                <span class="text-sm font-black text-slate-700">稼働実績ボード</span>
+                <span class="text-xs font-bold text-slate-400">${today.getMonth()+1}/${today.getDate()}</span>
+             </div>
+
+             <!-- Action Buttons -->
+             <div class="flex gap-2 self-end md:absolute md:top-4 md:right-4 md:z-10">
+                 <button id="btn-monthly-cal" class="bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                    <span>月間推移</span>
+                </button>
+                <button id="btn-op-input" class="bg-indigo-600 text-white hover:bg-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-lg shadow-indigo-200">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                    <span>入力</span>
+                </button>
+            </div>
         </div>
 
-        <div class="w-full grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
-            <!-- 1. Yesterday 15:00 -->
-            <div class="relative pl-3 border-l-4 border-slate-200">
+        <!-- Content Grid -->
+        <div class="w-full flex flex-col md:grid md:grid-cols-5 gap-4 md:items-end">
+
+            <!-- Mobile: Main Stats Row -->
+            <div class="md:hidden flex justify-between items-center bg-slate-50 rounded-xl p-4 mb-2">
+                 <div>
+                    <p class="text-[10px] font-bold text-slate-400">本日 19:00</p>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-4xl font-black text-slate-800 tracking-tight leading-none">${today19 !== null ? today19 : '-'}</span>
+                        <span class="text-sm font-bold text-slate-400">/ ${effTarget19}</span>
+                    </div>
+                 </div>
+                 <div class="text-right">
+                    <span class="text-2xl font-black text-indigo-500">${achievementRate}%</span>
+                    <p class="text-[10px] font-bold text-indigo-300">達成率</p>
+                 </div>
+            </div>
+
+            <!-- Desktop: 1. Yesterday 15:00 -->
+            <div class="flex justify-between md:block relative pl-3 border-l-4 border-slate-200 bg-slate-50 md:bg-transparent p-2 md:p-0 rounded-lg md:rounded-none">
                 <p class="text-[10px] font-bold text-slate-400 mb-1">昨日実績 (15時)</p>
                 <div class="flex items-baseline gap-1">
                     <span class="text-xl font-black text-slate-500">${yester15 !== null ? yester15 : '-'}</span>
@@ -96,8 +123,8 @@ export function renderOperationsBoard() {
                 </div>
             </div>
 
-            <!-- 2. Yesterday 19:00 -->
-            <div class="relative pl-3 border-l-4 border-slate-200">
+            <!-- Desktop: 2. Yesterday 19:00 -->
+            <div class="flex justify-between md:block relative pl-3 border-l-4 border-slate-200 bg-slate-50 md:bg-transparent p-2 md:p-0 rounded-lg md:rounded-none">
                 <p class="text-[10px] font-bold text-slate-400 mb-1">昨日実績 (19時)</p>
                 <div class="flex items-baseline gap-1">
                     <span class="text-xl font-black text-slate-600">${yester19 !== null ? yester19 : '-'}</span>
@@ -105,8 +132,8 @@ export function renderOperationsBoard() {
                 </div>
             </div>
 
-            <!-- 3. Today Target -->
-            <div class="relative pl-3 border-l-4 border-indigo-200">
+            <!-- Desktop: 3. Today Target -->
+            <div class="flex justify-between md:block relative pl-3 border-l-4 border-indigo-200 bg-indigo-50/30 md:bg-transparent p-2 md:p-0 rounded-lg md:rounded-none">
                 <p class="text-[10px] font-bold text-indigo-400 mb-1">目標稼働 (19時)</p>
                 <div class="flex items-baseline gap-1">
                     <span class="text-2xl font-black text-indigo-900">${effTarget19}</span>
@@ -114,8 +141,8 @@ export function renderOperationsBoard() {
                 </div>
             </div>
 
-            <!-- 4. Today 15:00 -->
-            <div class="relative pl-3 border-l-4 border-slate-200">
+            <!-- Desktop: 4. Today 15:00 -->
+            <div class="flex justify-between md:block relative pl-3 border-l-4 border-slate-200 bg-slate-50 md:bg-transparent p-2 md:p-0 rounded-lg md:rounded-none">
                 <p class="text-[10px] font-bold text-slate-400 mb-1">本日 15:00</p>
                 <div class="flex items-baseline gap-1">
                     <span class="text-2xl font-black text-slate-700">${today15 !== null ? today15 : '-'}</span>
@@ -123,8 +150,8 @@ export function renderOperationsBoard() {
                 </div>
             </div>
 
-            <!-- 5. Today 19:00 (Main) -->
-            <div class="col-span-2 md:col-span-1">
+            <!-- Desktop: 5. Today 19:00 (Main) - Hidden on Mobile to avoid duplication -->
+            <div class="hidden md:block col-span-2 md:col-span-1">
                  <div class="flex justify-between items-end mb-1">
                     <p class="text-[10px] font-bold text-slate-400">本日 19:00</p>
                     <span class="text-xs font-bold text-indigo-500">${achievementRate}%</span>
