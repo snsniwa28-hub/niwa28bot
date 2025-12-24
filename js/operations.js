@@ -348,12 +348,10 @@ function renderCalendarGrid() {
 
         // Determine effective target
         const exp15 = (actual.target_total_15 !== undefined && actual.target_total_15 !== null) ? actual.target_total_15 : baseTarget.t15;
-        const daily15 = actual.today_target_total_15;
-        const effTarget15 = (daily15 !== undefined && daily15 !== null) ? daily15 : exp15;
+        const effTarget15 = exp15;
 
         const exp19 = (actual.target_total_19 !== undefined && actual.target_total_19 !== null) ? actual.target_total_19 : baseTarget.t19;
-        const daily19 = actual.today_target_total_19;
-        const effTarget19 = (daily19 !== undefined && daily19 !== null) ? daily19 : exp19;
+        const effTarget19 = exp19;
 
         const act15 = actual.actual_total_15 || ((parseInt(actual.actual_4p_15)||0)+(parseInt(actual.actual_1p_15)||0)+(parseInt(actual.actual_20s_15)||0)) || 0;
         const act19 = actual.actual_total_19 || ((parseInt(actual.actual_4p_19)||0)+(parseInt(actual.actual_1p_19)||0)+(parseInt(actual.actual_20s_19)||0)) || 0;
