@@ -38,30 +38,40 @@ function subscribeDeadlines() {
 }
 
 function renderDeadlinesList() {
-    const container = document.getElementById("deadlines-list");
-    if (!container || !latestDeadlineSnapshot) return;
+    if (!latestDeadlineSnapshot) return;
 
-    container.innerHTML = '';
-
-    if (latestDeadlineSnapshot.empty) {
-        container.innerHTML = '<p class="text-slate-400 text-sm text-center py-4">現在のお知らせはありません</p>';
-        return;
+    // Render for Dashboard (View Mode)
+    const dashboardContainer = document.getElementById("deadlines-list");
+    if (dashboardContainer) {
+        dashboardContainer.innerHTML = '';
+        if (latestDeadlineSnapshot.empty) {
+            dashboardContainer.innerHTML = '<p class="text-slate-400 text-sm text-center py-4">現在のお知らせはありません</p>';
+        } else {
+            latestDeadlineSnapshot.forEach((docSnap) => {
+                dashboardContainer.appendChild(createDeadlineElement(docSnap.id, docSnap.data(), 'view'));
+            });
+        }
     }
 
-    latestDeadlineSnapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        const el = createDeadlineElement(docSnap.id, data);
-        container.appendChild(el);
-    });
-
-    updateEditModeUI();
+    // Render for Admin Modal (Admin Mode)
+    const adminContainer = document.getElementById("deadlines-list-admin");
+    if (adminContainer) {
+        adminContainer.innerHTML = '';
+        if (latestDeadlineSnapshot.empty) {
+            adminContainer.innerHTML = '<p class="text-slate-400 text-sm text-center py-4">現在のお知らせはありません</p>';
+        } else {
+            latestDeadlineSnapshot.forEach((docSnap) => {
+                adminContainer.appendChild(createDeadlineElement(docSnap.id, docSnap.data(), 'admin'));
+            });
+        }
+    }
 }
 
 export function updateDeadlineStaffLists() {
     renderDeadlinesList();
 }
 
-function createDeadlineElement(id, data) {
+function createDeadlineElement(id, data, mode) {
     const isHighPriority = data.priority === 'high';
     const isExpanded = deadlineUIState.expandedIds.has(id);
     const activeTab = deadlineUIState.activeTabs[id] || 'employees'; // default to employees
@@ -93,148 +103,134 @@ function createDeadlineElement(id, data) {
     const actionContainer = document.createElement('div');
     actionContainer.className = 'flex items-center gap-1 shrink-0';
 
-    // Check Status Toggle Button
-    const checkToggleBtn = document.createElement('button');
-    checkToggleBtn.className = "text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm";
+    // Check Status Toggle Button (View Mode Only)
+    if (mode === 'view') {
+        const checkToggleBtn = document.createElement('button');
+        checkToggleBtn.className = "text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm";
 
-    // Calculate checked count
-    const checks = data.checks || {};
-    const checkedCount = Object.values(checks).filter(v => v === true).length;
-    checkToggleBtn.textContent = `確認 ${checkedCount}名`;
+        // Calculate checked count
+        const checks = data.checks || {};
+        const checkedCount = Object.values(checks).filter(v => v === true).length;
+        checkToggleBtn.textContent = `確認 ${checkedCount}名`;
 
-    const checklistId = `checklist-${id}`;
-    checkToggleBtn.onclick = () => {
-        if (deadlineUIState.expandedIds.has(id)) {
-            deadlineUIState.expandedIds.delete(id);
-            document.getElementById(checklistId).classList.add('hidden');
-        } else {
-            deadlineUIState.expandedIds.add(id);
-            document.getElementById(checklistId).classList.remove('hidden');
-        }
-    };
+        const checklistId = `checklist-${id}-${mode}`; // Unique ID for dashboard
+        checkToggleBtn.onclick = () => {
+            if (deadlineUIState.expandedIds.has(id)) {
+                deadlineUIState.expandedIds.delete(id);
+                document.getElementById(checklistId).classList.add('hidden');
+            } else {
+                deadlineUIState.expandedIds.add(id);
+                document.getElementById(checklistId).classList.remove('hidden');
+            }
+        };
+        actionContainer.appendChild(checkToggleBtn);
+    }
 
-    actionContainer.appendChild(checkToggleBtn);
+    // Delete button (Admin Mode Only)
+    if (mode === 'admin') {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'text-slate-400 hover:text-rose-500 transition-colors p-1.5 rounded-full hover:bg-rose-100';
+        deleteBtn.innerHTML = '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>';
+        deleteBtn.onclick = () => deleteDeadline(id);
+        actionContainer.appendChild(deleteBtn);
+    }
 
-    // Delete button (hidden by default)
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'deadline-delete-btn hidden text-slate-400 hover:text-rose-500 transition-colors p-1.5 rounded-full hover:bg-rose-100';
-    deleteBtn.innerHTML = '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>';
-    deleteBtn.onclick = () => deleteDeadline(id);
-
-    actionContainer.appendChild(deleteBtn);
     mainRow.appendChild(actionContainer);
     container.appendChild(mainRow);
 
-    // Checklist Container (Collapsible)
-    const checklistDiv = document.createElement('div');
-    checklistDiv.id = checklistId;
-    checklistDiv.className = `${isExpanded ? '' : 'hidden'} bg-white border-t border-slate-100 p-4 animate-fade-in`;
+    // Checklist Container (Collapsible) - Only in View Mode
+    if (mode === 'view') {
+        const checklistDiv = document.createElement('div');
+        checklistDiv.id = `checklist-${id}-${mode}`;
+        const isExpanded = deadlineUIState.expandedIds.has(id);
+        checklistDiv.className = `${isExpanded ? '' : 'hidden'} bg-white border-t border-slate-100 p-4 animate-fade-in`;
 
-    // Tabs
-    const tabsContainer = document.createElement('div');
-    tabsContainer.className = "flex justify-center mb-4";
-    const tabWrapper = document.createElement('div');
-    tabWrapper.className = "bg-slate-100 p-1 rounded-xl flex gap-1";
+        // Tabs
+        const tabsContainer = document.createElement('div');
+        tabsContainer.className = "flex justify-center mb-4";
+        const tabWrapper = document.createElement('div');
+        tabWrapper.className = "bg-slate-100 p-1 rounded-xl flex gap-1";
 
-    const createTabBtn = (key, label) => {
-        const btn = document.createElement('button');
-        const isActive = activeTab === key;
-        btn.className = `px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isActive ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:bg-white/50'}`;
-        btn.textContent = label;
-        btn.onclick = () => {
-            deadlineUIState.activeTabs[id] = key;
-            renderDeadlinesList(); // Re-render to update list based on new tab
+        const createTabBtn = (key, label) => {
+            const btn = document.createElement('button');
+            const isActive = activeTab === key;
+            btn.className = `px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isActive ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:bg-white/50'}`;
+            btn.textContent = label;
+            btn.onclick = () => {
+                deadlineUIState.activeTabs[id] = key;
+                renderDeadlinesList(); // Re-render to update list based on new tab
+            };
+            return btn;
         };
-        return btn;
-    };
 
-    tabWrapper.appendChild(createTabBtn('employees', '社員'));
-    tabWrapper.appendChild(createTabBtn('early', '早番'));
-    tabWrapper.appendChild(createTabBtn('late', '遅番'));
-    tabsContainer.appendChild(tabWrapper);
-    checklistDiv.appendChild(tabsContainer);
+        tabWrapper.appendChild(createTabBtn('employees', '社員'));
+        tabWrapper.appendChild(createTabBtn('early', '早番'));
+        tabWrapper.appendChild(createTabBtn('late', '遅番'));
+        tabsContainer.appendChild(tabWrapper);
+        checklistDiv.appendChild(tabsContainer);
 
-    // Staff List Grid
-    const gridContainer = document.createElement('div');
-    gridContainer.id = `grid-${id}`;
+        // Staff List Grid
+        const gridContainer = document.createElement('div');
+        gridContainer.id = `grid-${id}`;
 
-    if (window.masterStaffList) {
-        let staffList = [];
-        if (activeTab === 'employees') staffList = window.masterStaffList.employees || [];
-        else if (activeTab === 'early') staffList = window.masterStaffList.alba_early || [];
-        else if (activeTab === 'late') staffList = window.masterStaffList.alba_late || [];
+        if (window.masterStaffList) {
+            let staffList = [];
+            if (activeTab === 'employees') staffList = window.masterStaffList.employees || [];
+            else if (activeTab === 'early') staffList = window.masterStaffList.alba_early || [];
+            else if (activeTab === 'late') staffList = window.masterStaffList.alba_late || [];
 
-        // Remove duplicates
-        const uniqueStaff = [...new Set(staffList)];
+            // Remove duplicates
+            const uniqueStaff = [...new Set(staffList)];
 
-        if (uniqueStaff.length > 0) {
-            const grid = document.createElement('div');
-            grid.className = "grid grid-cols-2 sm:grid-cols-3 gap-2";
+            const checks = data.checks || {};
 
-            uniqueStaff.forEach(name => {
-                const label = document.createElement('label');
-                label.className = "flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-slate-50 transition-colors";
+            if (uniqueStaff.length > 0) {
+                const grid = document.createElement('div');
+                grid.className = "grid grid-cols-2 sm:grid-cols-3 gap-2";
 
-                const checkbox = document.createElement('input');
-                checkbox.type = "checkbox";
-                checkbox.className = "w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500";
-                checkbox.checked = !!checks[name];
+                uniqueStaff.forEach(name => {
+                    const label = document.createElement('label');
+                    label.className = "flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-slate-50 transition-colors";
 
-                checkbox.onchange = () => toggleDeadlineCheck(id, name, checkbox.checked);
+                    const checkbox = document.createElement('input');
+                    checkbox.type = "checkbox";
+                    checkbox.className = "w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500";
+                    checkbox.checked = !!checks[name];
 
-                const span = document.createElement('span');
-                span.className = "text-xs font-bold text-slate-600 select-none";
-                span.textContent = name;
+                    checkbox.onchange = () => toggleDeadlineCheck(id, name, checkbox.checked);
 
-                label.appendChild(checkbox);
-                label.appendChild(span);
-                grid.appendChild(label);
-            });
-            gridContainer.appendChild(grid);
+                    const span = document.createElement('span');
+                    span.className = "text-xs font-bold text-slate-600 select-none";
+                    span.textContent = name;
+
+                    label.appendChild(checkbox);
+                    label.appendChild(span);
+                    grid.appendChild(label);
+                });
+                gridContainer.appendChild(grid);
+            } else {
+                gridContainer.innerHTML = '<p class="text-xs text-slate-400 text-center">該当するスタッフがいません</p>';
+            }
         } else {
-            gridContainer.innerHTML = '<p class="text-xs text-slate-400 text-center">該当するスタッフがいません</p>';
+            gridContainer.innerHTML = '<p class="text-xs text-slate-400 text-center">スタッフリスト読み込み中...</p>';
         }
-    } else {
-        gridContainer.innerHTML = '<p class="text-xs text-slate-400 text-center">スタッフリスト読み込み中...</p>';
-    }
 
-    checklistDiv.appendChild(gridContainer);
-    container.appendChild(checklistDiv);
+        checklistDiv.appendChild(gridContainer);
+        container.appendChild(checklistDiv);
+    }
 
     return container;
 }
 
-export function activateDeadlineAdminMode() {
-    editMode = true;
-    updateEditModeUI();
-    const addBtn = document.getElementById("deadline-add-btn");
-    if (addBtn) {
-        addBtn.classList.remove("hidden");
-    }
-}
-
-export function openDeadlineListModal() {
-    const modal = document.getElementById("deadlineListModal");
+export function openDeadlineManagementModal() {
+    const modal = document.getElementById("deadlineManagementModal");
     if (modal) {
         modal.classList.remove("hidden");
-        // Ensure rendering happens when opened
+        // Ensure rendering happens when opened to populate the admin list
         renderDeadlinesList();
-    }
-}
 
-export function closeDeadlineListModal() {
-    const modal = document.getElementById("deadlineListModal");
-    if (modal) {
-        modal.classList.add("hidden");
-    }
-}
-
-export function openDeadlineModal() {
-    const modal = document.getElementById("deadline-modal");
-    if (modal) {
-        modal.classList.remove("hidden");
-        // Set default date to today if empty
-        const dateInput = document.getElementById('deadline-date-input');
+        // Initialize Date Input with today if empty
+        const dateInput = document.getElementById('new-deadline-date');
         if (dateInput && !dateInput.value) {
             const today = new Date();
             const y = today.getFullYear();
@@ -245,33 +241,23 @@ export function openDeadlineModal() {
     }
 }
 
-export function closeDeadlineModal() {
-    const modal = document.getElementById("deadline-modal");
+export function closeDeadlineManagementModal() {
+    const modal = document.getElementById("deadlineManagementModal");
     if (modal) {
         modal.classList.add("hidden");
     }
     // Clear inputs
-    const contentInput = document.getElementById('deadline-content-input');
-    const priorityInput = document.getElementById('deadline-priority-input');
+    const contentInput = document.getElementById('new-deadline-content');
+    const priorityInput = document.getElementById('new-deadline-priority');
     if (contentInput) contentInput.value = '';
     if (priorityInput) priorityInput.checked = false;
 }
 
-function updateEditModeUI() {
-    const deleteBtns = document.querySelectorAll('.deadline-delete-btn');
-    deleteBtns.forEach(btn => {
-        if (editMode) {
-            btn.classList.remove('hidden');
-        } else {
-            btn.classList.add('hidden');
-        }
-    });
-}
-
-export async function addDeadline() {
-    const dateInput = document.getElementById('deadline-date-input');
-    const contentInput = document.getElementById('deadline-content-input');
-    const priorityInput = document.getElementById('deadline-priority-input'); // checkbox
+// Function to add deadline directly from Management Modal
+export async function addDeadlineDirectly() {
+    const dateInput = document.getElementById('new-deadline-date');
+    const contentInput = document.getElementById('new-deadline-content');
+    const priorityInput = document.getElementById('new-deadline-priority');
 
     const dateVal = dateInput.value;
     const contentVal = contentInput.value.trim();
@@ -282,27 +268,35 @@ export async function addDeadline() {
         return;
     }
 
-    // Auto format date: YYYY-MM-DD -> M/D
     const [year, month, day] = dateVal.split('-');
     const displayVal = `${Number(month)}/${Number(day)}`;
 
     try {
         await addDoc(collection(db, "deadlines"), {
-            date: dateVal, // used for sorting
+            date: dateVal,
             displayDate: displayVal,
             content: contentVal,
             priority: isHigh ? 'high' : 'normal',
             createdAt: serverTimestamp(),
-            checks: {} // Initialize empty checks map
+            checks: {}
         });
 
-        closeDeadlineModal();
+        // Reset inputs
+        contentInput.value = '';
+        priorityInput.checked = false;
         showToast("お知らせを追加しました");
     } catch (e) {
         console.error("Error adding deadline:", e);
         alert("追加に失敗しました");
     }
 }
+
+// Deprecated functions (cleaned up if no longer used by main.js, but keeping for compatibility if references exist)
+export function openDeadlineModal() {}
+export function closeDeadlineModal() {}
+export async function addDeadline() {} // Legacy function
+
+// ... (Rest of delete/toggle functions)
 
 async function toggleDeadlineCheck(id, name, isChecked) {
     try {

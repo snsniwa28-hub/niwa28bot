@@ -168,7 +168,7 @@ window.checkPassword = function() {
 
         if (ctx === 'admin') {
             Tasks.activateAdminMode();
-            Deadlines.activateDeadlineAdminMode();
+            Deadlines.openDeadlineManagementModal();
             // Removed global Strategy admin activation
         } else if (ctx === 'qsc') {
             QSC.activateQscEditMode();
@@ -192,11 +192,9 @@ document.addEventListener("DOMContentLoaded", () => {
     Deadlines.initDeadlines();
 
     // Expose Deadlines modal functions
-    window.openDeadlineListModal = Deadlines.openDeadlineListModal;
-    window.closeDeadlineListModal = Deadlines.closeDeadlineListModal;
-    window.openDeadlineModal = Deadlines.openDeadlineModal;
-    window.closeDeadlineModal = Deadlines.closeDeadlineModal;
-    window.addDeadline = Deadlines.addDeadline;
+    window.openDeadlineManagementModal = Deadlines.openDeadlineManagementModal;
+    window.closeDeadlineManagementModal = Deadlines.closeDeadlineManagementModal;
+    window.addDeadlineDirectly = Deadlines.addDeadlineDirectly;
 
     // ★追加: 戦略共有の初期化
     Strategy.initStrategy();
