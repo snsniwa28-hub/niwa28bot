@@ -131,74 +131,66 @@
 
             </div>
 
-            <!-- SHARED & STRATEGY (List Layout) -->
-            <div class="flex flex-col gap-3 fade-in-up" style="animation-delay: 0.4s;">
-
                 <!-- 5. Pachinko Shared -->
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between p-1 pl-2 overflow-hidden">
-                    <button onclick="openInternalSharedModal('pachinko')" class="flex-1 flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl transition-colors text-left">
-                        <div class="bg-pink-50 text-pink-600 p-2 rounded-lg shrink-0">
-                            <span class="text-xl font-black">🅿️</span>
+                <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.4s;">
+                    <button onclick="openInternalSharedModal('pachinko')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="bg-pink-50 text-pink-600 p-3 rounded-2xl group-hover:bg-pink-600 group-hover:text-white transition-colors duration-300">
+                                <span class="text-xl font-black">🅿️</span>
+                            </div>
                         </div>
                         <div>
-                            <h2 class="text-sm font-bold text-slate-800">パチンコ共有</h2>
-                            <p class="text-[10px] font-bold text-slate-400">Team Sharing</p>
+                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-pink-600 transition-colors">パチンコ共有</h2>
+                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">Team Sharing</p>
                         </div>
                     </button>
-                    <button onclick="event.stopPropagation(); openStrategyAdminAuth('pachinko')" class="p-3 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all mx-1">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    </button>
+                    <!-- Admin button removed (moved to modal) -->
                 </div>
 
                 <!-- 6. Slot Shared -->
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between p-1 pl-2 overflow-hidden">
-                    <button onclick="openInternalSharedModal('slot')" class="flex-1 flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl transition-colors text-left">
-                        <div class="bg-purple-50 text-purple-600 p-2 rounded-lg shrink-0">
-                            <span class="text-xl font-black">🎰</span>
+                <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.45s;">
+                    <button onclick="openInternalSharedModal('slot')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="bg-purple-50 text-purple-600 p-3 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-colors duration-300">
+                                <span class="text-xl font-black">🎰</span>
+                            </div>
                         </div>
                         <div>
-                            <h2 class="text-sm font-bold text-slate-800">スロット共有</h2>
-                            <p class="text-[10px] font-bold text-slate-400">Team Sharing</p>
+                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-purple-600 transition-colors">スロット共有</h2>
+                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">Team Sharing</p>
                         </div>
-                    </button>
-                    <button onclick="event.stopPropagation(); openStrategyAdminAuth('slot')" class="p-3 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all mx-1">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     </button>
                 </div>
 
                 <!-- 7. CS Team Shared -->
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between p-1 pl-2 overflow-hidden">
-                    <button onclick="openInternalSharedModal('cs')" class="flex-1 flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl transition-colors text-left">
-                        <div class="bg-orange-50 text-orange-600 p-2 rounded-lg shrink-0">
-                            <span class="text-xl font-black">🤝</span>
+                <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.5s;">
+                    <button onclick="openInternalSharedModal('cs')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="bg-orange-50 text-orange-600 p-3 rounded-2xl group-hover:bg-orange-600 group-hover:text-white transition-colors duration-300">
+                                <span class="text-xl font-black">🤝</span>
+                            </div>
                         </div>
                         <div>
-                            <h2 class="text-sm font-bold text-slate-800">CSチーム共有</h2>
-                            <p class="text-[10px] font-bold text-slate-400">Customer Svc</p>
+                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-orange-600 transition-colors">CSチーム共有</h2>
+                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">Customer Svc</p>
                         </div>
-                    </button>
-                    <button onclick="event.stopPropagation(); openStrategyAdminAuth('cs')" class="p-3 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all mx-1">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     </button>
                 </div>
 
                 <!-- 8. Monthly Strategy -->
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between p-1 pl-2 overflow-hidden">
-                    <button onclick="openInternalSharedModal('strategy')" class="flex-1 flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl transition-colors text-left">
-                        <div class="bg-red-50 text-red-600 p-2 rounded-lg shrink-0">
-                            <span class="text-xl font-black">📈</span>
+                <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.55s;">
+                    <button onclick="openInternalSharedModal('strategy')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="bg-red-50 text-red-600 p-3 rounded-2xl group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
+                                <span class="text-xl font-black">📈</span>
+                            </div>
                         </div>
                         <div>
-                            <h2 class="text-sm font-bold text-slate-800">月間戦略</h2>
-                            <p class="text-[10px] font-bold text-slate-400">Monthly Goals</p>
+                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-red-600 transition-colors">月間戦略</h2>
+                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">Monthly Goals</p>
                         </div>
                     </button>
-                    <button onclick="event.stopPropagation(); openStrategyAdminAuth('strategy')" class="p-3 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all mx-1">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    </button>
                 </div>
-
-            </div>
 
             <section id="deadlines-section" class="mt-8 relative z-10 fade-in-up" style="animation-delay: 0.5s;">
                 <div class="bg-white rounded-3xl shadow-xl shadow-indigo-900/5 border border-slate-100 overflow-hidden">
@@ -207,11 +199,10 @@
                             <span>📅</span> 今月の期限物・お知らせ
                         </h2>
                         <div class="flex items-center gap-2">
-                            <button id="deadline-add-btn" onclick="openDeadlineModal()" class="hidden bg-indigo-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-md shadow-indigo-200 hover:bg-indigo-700 transition">
-                                ＋ 新規
-                            </button>
-                            <button onclick="showPasswordModal('admin')" class="text-slate-300 hover:text-slate-500 transition p-1">
+                            <!-- Removed inline Add button -->
+                            <button onclick="showPasswordModal('admin')" class="flex items-center gap-1 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition text-xs font-bold border border-slate-100">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                <span>管理・編集</span>
                             </button>
                         </div>
                     </div>
@@ -466,6 +457,10 @@
                         <span>＋</span> 新規作成
                     </button>
                     <button id="btn-create-strategy-mobile" onclick="openStrategyEditor()" class="hidden md:hidden bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-lg shadow-indigo-200">+</button>
+
+                    <button id="btn-strategy-admin-auth" onclick="showPasswordModal('strategy_modal_auth')" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-center transition">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    </button>
 
                     <button onclick="document.getElementById('internalSharedModal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 flex items-center justify-center transition">✕</button>
                 </div>

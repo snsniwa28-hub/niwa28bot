@@ -160,6 +160,16 @@ window.checkPassword = function() {
         const ctx = UI.getAuthContext();
         
         // Handle Strategy Admin
+        if (ctx === 'strategy_modal_auth') {
+             // Unlock admin mode within the current modal context
+             // Since the modal is already open (presumably), we just need to enable admin UI
+             // Strategy module should have a function to "Upgrade" current view to admin
+             // However, Strategy.openStrategyAdmin(category) re-opens it.
+             // We need to know the CURRENT category.
+             // Strategy.js likely keeps state of `currentCategory`.
+             Strategy.enableStrategyAdminMode();
+             return;
+        }
         if (ctx && ctx.startsWith('strategy_admin_')) {
             const category = ctx.replace('strategy_admin_', '');
             Strategy.openStrategyAdmin(category);

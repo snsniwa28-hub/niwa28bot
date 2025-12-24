@@ -430,6 +430,12 @@ export function openStrategyAdminAuth(category) {
     showPasswordModal('strategy_admin_' + category);
 }
 
+export function enableStrategyAdminMode() {
+    isStrategyAdmin = true;
+    // Re-render the header and list to show admin controls
+    setStrategyCategory(currentCategory);
+}
+
 // --- Initialize ---
 // main.jsから呼ばれる想定
 export function initStrategy() {

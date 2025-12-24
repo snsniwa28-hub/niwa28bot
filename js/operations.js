@@ -74,7 +74,7 @@ export function renderOperationsBoard() {
     let html = `
     <div class="bg-white rounded-3xl border border-slate-100 shadow-lg shadow-indigo-900/5 p-4 sm:p-6 w-full relative overflow-hidden">
 
-        <!-- Header / Date (Mobile only) / Actions -->
+        <!-- Header / Date (Mobile only) -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 md:mb-0">
 
              <!-- Mobile Date/Title Area -->
@@ -82,18 +82,6 @@ export function renderOperationsBoard() {
                 <span class="text-sm font-black text-slate-700">稼働実績ボード</span>
                 <span class="text-xs font-bold text-slate-400">${today.getMonth()+1}/${today.getDate()}</span>
              </div>
-
-             <!-- Action Buttons -->
-             <div class="flex gap-2 self-end md:absolute md:top-4 md:right-4 md:z-10">
-                 <button id="btn-monthly-cal" class="bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                    <span>月間推移</span>
-                </button>
-                <button id="btn-op-input" class="bg-indigo-600 text-white hover:bg-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-lg shadow-indigo-200">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                    <span>入力</span>
-                </button>
-            </div>
         </div>
 
         <!-- Content Grid -->
@@ -163,6 +151,18 @@ export function renderOperationsBoard() {
                  <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div class="bg-gradient-to-r from-indigo-500 to-indigo-400 h-full rounded-full transition-all duration-1000" style="width: ${achievementRate}%"></div>
                 </div>
+            </div>
+
+            <!-- Action Buttons (Bottom on Mobile, Absolute on Desktop) -->
+            <div class="flex justify-end gap-2 md:absolute md:top-4 md:right-4 md:z-10 mt-2 md:mt-0">
+                 <button id="btn-monthly-cal" class="bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm w-full md:w-auto justify-center">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                    <span>月間推移</span>
+                </button>
+                <button id="btn-op-input" class="bg-indigo-600 text-white hover:bg-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-lg shadow-indigo-200 w-full md:w-auto justify-center">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                    <span>入力</span>
+                </button>
             </div>
         </div>
     </div>
