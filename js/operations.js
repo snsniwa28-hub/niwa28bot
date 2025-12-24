@@ -72,23 +72,25 @@ export function renderOperationsBoard() {
     if (effTarget19 > 0 && today19 !== null) {
         achievementRate = Math.min(Math.round((today19 / effTarget19) * 100), 100);
     }
+    const remaining = Math.max(0, effTarget19 - (today19 || 0));
 
-    let html = `
-    <div class="bg-white rounded-3xl border border-slate-100 shadow-lg shadow-indigo-900/5 p-4 sm:p-6 w-full flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
 
+    // --- MOBILE LAYOUT (Existing design) ---
+    const mobileHtml = `
+    <div class="md:hidden bg-white rounded-3xl border border-slate-100 shadow-lg shadow-indigo-900/5 p-4 sm:p-6 w-full flex flex-col items-center justify-between gap-6 relative overflow-hidden">
         <!-- Header / Actions -->
         <div class="w-full flex justify-end mb-4 gap-2">
-             <button id="btn-monthly-cal" class="bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
+             <button id="btn-monthly-cal-mobile" class="bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                 <span>月間推移</span>
             </button>
-            <button id="btn-op-input" class="bg-indigo-600 text-white hover:bg-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-lg shadow-indigo-200">
+            <button id="btn-op-input-mobile" class="bg-indigo-600 text-white hover:bg-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-lg shadow-indigo-200">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                 <span>入力</span>
             </button>
         </div>
 
-        <div class="w-full grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
+        <div class="w-full grid grid-cols-2 gap-4 items-end">
             <!-- 1. Yesterday 15:00 -->
             <div class="relative pl-3 border-l-4 border-slate-200">
                 <p class="text-[10px] font-bold text-slate-400 mb-1">昨日実績 (15時)</p>
@@ -126,7 +128,7 @@ export function renderOperationsBoard() {
             </div>
 
             <!-- 5. Today 19:00 (Main) -->
-            <div class="col-span-2 md:col-span-1">
+            <div class="col-span-2">
                  <div class="flex justify-between items-end mb-1">
                     <p class="text-[10px] font-bold text-slate-400">本日 19:00</p>
                     <span class="text-xs font-bold text-indigo-500">${achievementRate}%</span>
@@ -142,13 +144,106 @@ export function renderOperationsBoard() {
         </div>
     </div>
     `;
-    container.innerHTML = html;
 
-    const btnMonthly = container.querySelector('#btn-monthly-cal');
-    if (btnMonthly) btnMonthly.onclick = (e) => { e.stopPropagation(); openMonthlyCalendar(); };
+    // --- PC LAYOUT (New 3-Zone design) ---
+    const pcHtml = `
+    <div class="hidden md:flex w-full bg-white rounded-3xl border border-slate-100 shadow-lg shadow-indigo-900/5 overflow-hidden min-h-[160px]">
+        <!-- Zone A: Yesterday -->
+        <div class="w-[25%] bg-slate-50 border-r border-slate-100 p-6 flex flex-col justify-center gap-4">
+            <div>
+                <span class="text-[10px] font-bold text-slate-400 block mb-1">昨日 15:00</span>
+                <span class="text-2xl font-black text-slate-500">${yester15 !== null ? yester15 : '-'} <span class="text-xs font-bold text-slate-400">名</span></span>
+            </div>
+            <div>
+                <span class="text-[10px] font-bold text-slate-400 block mb-1">昨日 19:00</span>
+                <span class="text-2xl font-black text-slate-600">${yester19 !== null ? yester19 : '-'} <span class="text-xs font-bold text-slate-400">名</span></span>
+            </div>
+        </div>
 
-    const btnInput = container.querySelector('#btn-op-input');
-    if (btnInput) btnInput.onclick = (e) => { e.stopPropagation(); openOpInput(); };
+        <!-- Zone B: Today Target -->
+        <div id="zone-target-pc" class="w-[25%] bg-indigo-50 border-r border-indigo-100 p-4 flex flex-col justify-center items-center relative group cursor-pointer hover:bg-indigo-100 transition">
+             <p class="text-[10px] font-bold text-indigo-400 mb-2 uppercase tracking-widest">Today's Goal</p>
+             <div class="flex items-baseline gap-1">
+                <span class="text-5xl font-black text-indigo-900 tracking-tight">${effTarget19}</span>
+                <span class="text-sm font-bold text-indigo-400">名</span>
+             </div>
+             <p class="text-[10px] font-bold text-indigo-300 mt-2">目標 (19:00)</p>
+             <span class="absolute bottom-3 right-3 text-[10px] text-indigo-400 opacity-0 group-hover:opacity-100 transition font-bold">Click to Edit ✎</span>
+        </div>
+
+        <!-- Zone C: Progress -->
+        <div class="w-[50%] bg-white p-6 flex flex-col justify-between relative">
+            <!-- Header: Actions -->
+            <div class="absolute top-4 right-4 flex gap-2">
+                 <button id="btn-monthly-cal-pc" class="bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                    <span>月間推移</span>
+                </button>
+                <button id="btn-op-input-pc" class="bg-indigo-600 text-white hover:bg-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-lg shadow-indigo-200">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                    <span>入力</span>
+                </button>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="flex items-end gap-10 mt-2">
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 mb-1">現在 (19:00)</p>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-4xl font-black text-slate-800 leading-none">${today19 !== null ? today19 : '-'}</span>
+                        <span class="text-sm font-bold text-slate-400">/ ${effTarget19}</span>
+                    </div>
+                </div>
+                 <div>
+                    <p class="text-[10px] font-bold text-slate-400 mb-1">15:00時点</p>
+                     <div class="flex items-baseline gap-1">
+                        <span class="text-2xl font-black text-slate-600 leading-none">${today15 !== null ? today15 : '-'}</span>
+                        <span class="text-xs font-bold text-slate-400">/ ${effTarget15}</span>
+                    </div>
+                </div>
+                 <div class="ml-auto pr-2">
+                    <div class="text-right">
+                        <p class="text-[10px] font-bold text-slate-400 mb-0.5">達成率</p>
+                        <span class="text-3xl font-black ${achievementRate >= 100 ? 'text-amber-500' : 'text-indigo-600'} leading-none">${achievementRate}<span class="text-sm">%</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full relative mt-4">
+                 <div class="flex justify-between text-[10px] font-bold text-slate-400 mb-1.5">
+                    <span>PROGRESS</span>
+                    <span>あと <span class="text-indigo-600 font-black text-sm mx-1">${remaining}</span> 人で達成</span>
+                 </div>
+                 <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden shadow-inner">
+                    <div class="bg-gradient-to-r from-indigo-500 to-indigo-400 h-full rounded-full transition-all duration-1000 relative shadow-sm" style="width: ${achievementRate}%">
+                        <div class="absolute top-0 right-0 h-full w-[2px] bg-white/50"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+
+    container.innerHTML = mobileHtml + pcHtml;
+
+    // Attach Listeners (Mobile)
+    const btnMonthlyMobile = container.querySelector('#btn-monthly-cal-mobile');
+    if (btnMonthlyMobile) btnMonthlyMobile.onclick = (e) => { e.stopPropagation(); openMonthlyCalendar(); };
+
+    const btnInputMobile = container.querySelector('#btn-op-input-mobile');
+    if (btnInputMobile) btnInputMobile.onclick = (e) => { e.stopPropagation(); openOpInput(); };
+
+    // Attach Listeners (PC)
+    const btnMonthlyPC = container.querySelector('#btn-monthly-cal-pc');
+    if (btnMonthlyPC) btnMonthlyPC.onclick = (e) => { e.stopPropagation(); openMonthlyCalendar(); };
+
+    const btnInputPC = container.querySelector('#btn-op-input-pc');
+    if (btnInputPC) btnInputPC.onclick = (e) => { e.stopPropagation(); openOpInput(); };
+
+    // Zone B click to open input
+    const zoneTargetPC = container.querySelector('#zone-target-pc');
+    if (zoneTargetPC) zoneTargetPC.onclick = (e) => { e.stopPropagation(); openOpInput(); };
 }
 
 export function changeOpMonth(offset) {
