@@ -11,7 +11,6 @@ let shiftState = {
     isAdminMode: false,
     selectedDay: null,
     adminSortMode: 'roster',
-    viewMode: 'table',
     staffDetails: {},
     staffListLists: { employees: [], alba_early: [], alba_late: [] },
     historyStack: [],
@@ -161,20 +160,22 @@ export function createShiftModals() {
                          </div>
                     </div>
                     <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
-                         <label class="flex items-center gap-2 text-xs font-bold bg-slate-700 px-3 py-2 rounded-lg border border-slate-600 cursor-pointer select-none">
-                            <input type="checkbox" id="chk-adjustment-mode" class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-600 bg-slate-600 border-slate-500">
-                            <span>調整モード</span>
-                         </label>
-                         <label class="flex items-center gap-2 text-xs font-bold bg-slate-700 px-3 py-2 rounded-lg border border-slate-600 cursor-pointer select-none">
-                            <input type="checkbox" id="chk-early-warehouse-auto" class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-600 bg-slate-600 border-slate-500">
-                            <span>早番倉庫お任せ</span>
-                         </label>
+                        <!-- UPDATED: Flex container for checkboxes to sit on one line on mobile -->
+                        <div class="flex items-center gap-2">
+                             <label class="flex items-center gap-1.5 text-[10px] md:text-xs font-bold bg-slate-700 px-2 py-2 rounded-lg border border-slate-600 cursor-pointer select-none whitespace-nowrap">
+                                <input type="checkbox" id="chk-adjustment-mode" class="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-500 rounded focus:ring-emerald-600 bg-slate-600 border-slate-500">
+                                <span>調整モード</span>
+                             </label>
+                             <label class="flex items-center gap-1.5 text-[10px] md:text-xs font-bold bg-slate-700 px-2 py-2 rounded-lg border border-slate-600 cursor-pointer select-none whitespace-nowrap">
+                                <input type="checkbox" id="chk-early-warehouse-auto" class="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-500 rounded focus:ring-emerald-600 bg-slate-600 border-slate-500">
+                                <span>早番倉庫お任せ</span>
+                             </label>
+                        </div>
                          <button id="btn-undo-action" class="hidden flex items-center gap-1 text-xs font-bold bg-slate-600 hover:bg-slate-500 px-3 py-2 rounded-lg transition border border-slate-500">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
                         </button>
                         <div class="h-6 w-px bg-slate-600 mx-1"></div>
                         <button id="btn-shift-toggle-mode" class="whitespace-nowrap text-xs font-bold bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg border border-slate-600">📂 名簿順</button>
-                        <button id="btn-view-toggle" class="md:hidden whitespace-nowrap text-xs font-bold bg-indigo-600 hover:bg-indigo-500 px-3 py-2 rounded-lg border border-indigo-500">📱 カード表示</button>
                         <button id="btn-open-staff-master" class="whitespace-nowrap text-xs font-bold bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg border border-slate-600">👥 スタッフ</button>
                     </div>
                 </div>
@@ -192,7 +193,6 @@ export function createShiftModals() {
                             <tbody id="shift-admin-body"></tbody>
                         </table>
                     </div>
-                    <div id="admin-mobile-list" class="hidden h-full overflow-y-auto p-4 bg-slate-50 pb-24"></div>
                 </div>
 
                 <div class="md:hidden absolute bottom-6 right-6 z-50">
@@ -526,7 +526,6 @@ function setupShiftEventListeners() {
         shiftState.adminSortMode = shiftState.adminSortMode === 'roster' ? 'shift' : 'roster';
         renderShiftAdminTable();
     };
-    $('#btn-view-toggle').onclick = toggleMobileView;
     $('#btn-undo-action').onclick = undoShiftAction;
     $('#btn-clear-shift').onclick = clearShiftAssignments;
     $('#btn-auto-create-shift').onclick = generateAutoShift;
@@ -619,7 +618,6 @@ export function checkShiftAdminPassword() {
 export function activateShiftAdminMode() {
     closePasswordModal();
     shiftState.isAdminMode = true;
-    shiftState.viewMode = 'table';
     switchShiftView('admin');
 }
 
@@ -816,7 +814,10 @@ export function renderShiftCalendar() {
         let label = '';
         let statusText = '';
 
-        if (assignedRole) {
+        // UPDATED: User Mode Logic - Ignore Assignments completely if not admin
+        const showAssignment = shiftState.isAdminMode && assignedRole;
+
+        if (showAssignment) {
             if (assignedRole === '公休') {
                 numColor = "text-white";
                 bgClass = "bg-rose-500";
@@ -829,6 +830,7 @@ export function renderShiftCalendar() {
                 statusText = assignedRole;
             }
         } else {
+            // Show Requests (Standard for User Mode)
             if (isOff) {
                 numColor = "text-white";
                 bgClass = "bg-rose-400 opacity-80";
@@ -866,22 +868,16 @@ export function renderShiftAdminTable() {
     const daysInMonth = new Date(y, m, 0).getDate();
     const holidays = getHolidays(y, m);
     const isMobile = window.innerWidth < 768;
-    const isListView = shiftState.viewMode === 'list'; // UPDATED: Allow table view on mobile
+
+    // UPDATED: Forced Table View (Removed View Mode Logic)
     const toggleBtn = document.getElementById('btn-shift-toggle-mode');
     toggleBtn.textContent = shiftState.adminSortMode === 'roster' ? "📂 名簿順" : "⚡ シフト別";
     const undoBtn = document.getElementById('btn-undo-action');
     if(shiftState.historyStack.length > 0) undoBtn.classList.remove('hidden');
     else undoBtn.classList.add('hidden');
 
-    if (isListView) {
-        document.getElementById('admin-table-container').classList.add('hidden');
-        document.getElementById('admin-mobile-list').classList.remove('hidden');
-        renderAdminMobileList();
-        return;
-    } else {
-        document.getElementById('admin-table-container').classList.remove('hidden');
-        document.getElementById('admin-mobile-list').classList.add('hidden');
-    }
+    // Ensure table container is always visible
+    document.getElementById('admin-table-container').classList.remove('hidden');
 
     const headerRow = document.getElementById('shift-admin-header-row');
     while (headerRow.children.length > 1) headerRow.removeChild(headerRow.lastChild);
@@ -1139,41 +1135,6 @@ export function renderShiftAdminTable() {
 
     // Append the entire fragment to the table body
     tbody.appendChild(fragment);
-}
-
-function renderAdminMobileList() {
-    const container = document.getElementById('admin-mobile-list');
-    container.innerHTML = '';
-    const allNames = [...shiftState.staffListLists.employees, ...shiftState.staffListLists.alba_early, ...shiftState.staffListLists.alba_late];
-    allNames.forEach(name => {
-        const details = shiftState.staffDetails[name] || {};
-        const data = shiftState.shiftDataCache[name] || {};
-        const type = (data.monthly_settings?.shift_type) || details.basic_shift || 'A';
-        const assignmentCount = Object.keys(data.assignments || {}).filter(k => data.assignments[k] !== '公休').length;
-        const card = document.createElement('div');
-        card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-3 flex items-center justify-between active:scale-95 transition-transform";
-        card.onclick = () => selectShiftStaff(name);
-        card.innerHTML = `
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-lg">👤</div>
-                <div>
-                    <h4 class="font-bold text-slate-800">${name}</h4>
-                    <span class="text-xs text-slate-400 font-bold">${details.rank || '-'}</span>
-                </div>
-            </div>
-            <div class="text-right">
-                <span class="inline-block px-2 py-1 rounded text-xs font-bold ${type==='A'?'bg-amber-100 text-amber-700':'bg-indigo-100 text-indigo-700'} mb-1">${type}番</span>
-                <p class="text-xs font-bold text-slate-500">${assignmentCount}日 出勤</p>
-            </div>
-        `;
-        container.appendChild(card);
-    });
-}
-
-function toggleMobileView() {
-    shiftState.viewMode = shiftState.viewMode === 'table' ? 'list' : 'table';
-    document.getElementById('btn-view-toggle').textContent = shiftState.viewMode === 'table' ? "📱 カード表示" : "📊 表形式";
-    renderShiftAdminTable();
 }
 
 export function showActionSelectModal(day, currentStatusText) {
