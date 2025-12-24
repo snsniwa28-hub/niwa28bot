@@ -154,7 +154,6 @@ export function toggleAdminEdit() {
     } else {
         showPasswordModal(() => {
             activateAdminMode();
-            openDeadlineManagementModal();
         });
     }
 }
