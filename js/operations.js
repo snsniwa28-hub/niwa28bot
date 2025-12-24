@@ -13,6 +13,25 @@ let returnToCalendar = false;
 let currentOpYear = new Date().getFullYear();
 let currentOpMonth = new Date().getMonth(); // 0-indexed
 
+// Auto-calculation logic exposed to global scope
+window.calcOpTotal = (time) => {
+    const getVal = (id) => {
+        const el = document.getElementById(id);
+        return el && el.value ? parseInt(el.value) : 0;
+    };
+
+    const p4 = getVal(`in_4p_${time}`);
+    const p1 = getVal(`in_1p_${time}`);
+    const s20 = getVal(`in_20s_${time}`);
+
+    const total = p4 + p1 + s20;
+    const totalInput = document.getElementById(`in_today_target_${time}`);
+
+    if (totalInput) {
+        totalInput.value = total > 0 ? total : '';
+    }
+};
+
 export function subscribeOperations() {
     const todayStr = getTodayDateString();
     const yesterdayStr = getYesterdayDateString();
@@ -67,15 +86,11 @@ export function renderOperationsBoard() {
     const yester15 = calcTotal(y, '15'); // Yesterday 15:00
     const yester19 = calcTotal(y, '19'); // Yesterday 19:00
 
-    // Achievement Rate (19:00)
-    let achievementRate = 0;
-    if (effTarget19 > 0 && today19 !== null) {
-        achievementRate = Math.min(Math.round((today19 / effTarget19) * 100), 100);
-    }
-    const remaining = Math.max(0, effTarget19 - (today19 || 0));
+    // Logic Update: Smart Display - Check if target reached (Target > 0 and Actual >= Target)
+    const is19Reached = effTarget19 > 0 && today19 !== null && today19 >= effTarget19;
+    const is15Reached = effTarget15 > 0 && today15 !== null && today15 >= effTarget15;
 
-
-    // --- MOBILE LAYOUT (Existing design) ---
+    // --- MOBILE LAYOUT (Smart Display) ---
     const mobileHtml = `
     <div class="md:hidden bg-white rounded-3xl border border-slate-100 shadow-lg shadow-indigo-900/5 p-4 sm:p-6 w-full flex flex-col items-center justify-between gap-6 relative overflow-hidden">
         <!-- Header / Actions -->
@@ -122,8 +137,9 @@ export function renderOperationsBoard() {
             <div class="relative pl-3 border-l-4 border-slate-200">
                 <p class="text-[10px] font-bold text-slate-400 mb-1">本日 15:00</p>
                 <div class="flex items-baseline gap-1">
-                    <span class="text-2xl font-black text-slate-700">${today15 !== null ? today15 : '-'}</span>
+                    <span class="text-2xl font-black ${is15Reached ? 'text-yellow-500' : 'text-slate-700'}">${today15 !== null ? today15 : '-'}</span>
                     <span class="text-xs font-bold text-slate-400">/ ${effTarget15}</span>
+                    ${is15Reached ? '<span class="text-sm ml-1">👑</span>' : ''}
                 </div>
             </div>
 
@@ -131,21 +147,18 @@ export function renderOperationsBoard() {
             <div class="col-span-2">
                  <div class="flex justify-between items-end mb-1">
                     <p class="text-[10px] font-bold text-slate-400">本日 19:00</p>
-                    <span class="text-xs font-bold text-indigo-500">${achievementRate}%</span>
                 </div>
                 <div class="flex items-baseline gap-1 mb-2">
-                    <span class="text-4xl font-black text-slate-800 tracking-tight leading-none">${today19 !== null ? today19 : '-'}</span>
+                    <span class="text-4xl font-black ${is19Reached ? 'text-yellow-500' : 'text-slate-800'} tracking-tight leading-none">${today19 !== null ? today19 : '-'}</span>
                     <span class="text-sm font-bold text-slate-400">/ ${effTarget19}</span>
-                </div>
-                 <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                    <div class="bg-gradient-to-r from-indigo-500 to-indigo-400 h-full rounded-full transition-all duration-1000" style="width: ${achievementRate}%"></div>
+                    ${is19Reached ? '<span class="text-2xl ml-2">👑</span>' : ''}
                 </div>
             </div>
         </div>
     </div>
     `;
 
-    // --- PC LAYOUT (New 3-Zone design) ---
+    // --- PC LAYOUT (Smart Display) ---
     const pcHtml = `
     <div class="hidden md:flex w-full bg-white rounded-3xl border border-slate-100 shadow-lg shadow-indigo-900/5 overflow-hidden min-h-[160px]">
         <!-- Zone A: Yesterday -->
@@ -171,7 +184,7 @@ export function renderOperationsBoard() {
              <span class="absolute bottom-3 right-3 text-[10px] text-indigo-400 opacity-0 group-hover:opacity-100 transition font-bold">Click to Edit ✎</span>
         </div>
 
-        <!-- Zone C: Progress -->
+        <!-- Zone C: Progress (Simplified) -->
         <div class="w-[50%] bg-white p-6 flex flex-col justify-between relative">
             <!-- Header: Actions -->
             <div class="absolute top-4 right-4 flex gap-2">
@@ -186,38 +199,21 @@ export function renderOperationsBoard() {
             </div>
 
             <!-- Stats Row -->
-            <div class="flex items-end gap-10 mt-2">
+            <div class="flex items-end gap-10 mt-2 h-full justify-start">
                 <div>
                     <p class="text-[10px] font-bold text-slate-400 mb-1">現在 (19:00)</p>
                     <div class="flex items-baseline gap-1">
-                        <span class="text-4xl font-black text-slate-800 leading-none">${today19 !== null ? today19 : '-'}</span>
+                        <span class="text-4xl font-black ${is19Reached ? 'text-yellow-500' : 'text-slate-800'} leading-none">${today19 !== null ? today19 : '-'}</span>
                         <span class="text-sm font-bold text-slate-400">/ ${effTarget19}</span>
+                        ${is19Reached ? '<span class="text-2xl ml-2">👑</span>' : ''}
                     </div>
                 </div>
                  <div>
                     <p class="text-[10px] font-bold text-slate-400 mb-1">15:00時点</p>
                      <div class="flex items-baseline gap-1">
-                        <span class="text-2xl font-black text-slate-600 leading-none">${today15 !== null ? today15 : '-'}</span>
+                        <span class="text-2xl font-black ${is15Reached ? 'text-yellow-500' : 'text-slate-600'} leading-none">${today15 !== null ? today15 : '-'}</span>
                         <span class="text-xs font-bold text-slate-400">/ ${effTarget15}</span>
-                    </div>
-                </div>
-                 <div class="ml-auto pr-2">
-                    <div class="text-right">
-                        <p class="text-[10px] font-bold text-slate-400 mb-0.5">達成率</p>
-                        <span class="text-3xl font-black ${achievementRate >= 100 ? 'text-amber-500' : 'text-indigo-600'} leading-none">${achievementRate}<span class="text-sm">%</span></span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Progress Bar -->
-            <div class="w-full relative mt-4">
-                 <div class="flex justify-between text-[10px] font-bold text-slate-400 mb-1.5">
-                    <span>PROGRESS</span>
-                    <span>あと <span class="text-indigo-600 font-black text-sm mx-1">${remaining}</span> 人で達成</span>
-                 </div>
-                 <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden shadow-inner">
-                    <div class="bg-gradient-to-r from-indigo-500 to-indigo-400 h-full rounded-full transition-all duration-1000 relative shadow-sm" style="width: ${achievementRate}%">
-                        <div class="absolute top-0 right-0 h-full w-[2px] bg-white/50"></div>
+                        ${is15Reached ? '<span class="text-lg ml-1">👑</span>' : ''}
                     </div>
                 </div>
             </div>
@@ -313,7 +309,7 @@ export async function handleExcelUpload(event) {
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
             // Start reading from 4th row (index 3) as per requirements
-            // A(0): Date, C(2): 15:00 Target, D(3): 19:00 Target
+            // A(0): Date, W(22): 15:00 Target, Y(24): 19:00 Target
 
             const updates = [];
             const year = currentOpYear;
@@ -323,10 +319,11 @@ export async function handleExcelUpload(event) {
                 const row = jsonData[i];
                 if (!row || row.length === 0) continue;
 
-                let dayVal = row[0];
+                let dayVal = row[0]; // A(0): Date
                 if (!dayVal) continue; // Skip if no date
 
                 // Normalize Day: "1日", "1", 1 -> 1
+                // Skip if not a valid number (1-31)
                 let dayNum = parseInt(String(dayVal).replace(/[^0-9]/g, ''), 10);
                 if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) continue;
 
@@ -340,8 +337,8 @@ export async function handleExcelUpload(event) {
                     return isNaN(num) ? 0 : num;
                 };
 
-                const target15 = cleanVal(row[2]); // Column C
-                const target19 = cleanVal(row[3]); // Column D
+                const target15 = cleanVal(row[22]); // Column W (index 22)
+                const target19 = cleanVal(row[24]); // Column Y (index 24)
 
                 // Prepare update promise
                 updates.push(setDoc(doc(db, "operations_data", docId), {
