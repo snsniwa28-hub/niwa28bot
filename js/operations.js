@@ -77,7 +77,7 @@ export function renderOperationsBoard() {
     <div class="bg-white rounded-3xl border border-slate-100 shadow-lg shadow-indigo-900/5 p-4 sm:p-6 w-full flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
 
         <!-- Header / Actions -->
-        <div class="absolute top-4 right-4 flex gap-2 z-10">
+        <div class="w-full flex justify-end mb-4 gap-2">
              <button id="btn-monthly-cal" class="bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                 <span>月間推移</span>
