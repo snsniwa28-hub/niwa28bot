@@ -88,3 +88,78 @@ export function getHolidays(year, month) {
 
     return finalHolidays.sort((a,b) => a-b);
 }
+
+// --- Map Image Compression Logic ---
+export async function compressMapImage(file) {
+    const MAX_SIZE_BYTES = 1048576 * 0.95; // 1MB * 0.95 (safety margin)
+
+    const createImageBitmap = (file) => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = URL.createObjectURL(file);
+        });
+    };
+
+    const attemptCompression = async (img, quality, scale) => {
+        const canvas = document.createElement('canvas');
+        let width = img.width * scale;
+        let height = img.height * scale;
+
+        // Ensure max dimension is not crazy high even on first try
+        const MAX_DIM = 2000;
+        if (width > MAX_DIM || height > MAX_DIM) {
+            const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
+            width *= ratio;
+            height *= ratio;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Get Base64
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+
+        // Calculate size in bytes
+        // We are storing the Base64 string in Firestore, so we must check the string length directly.
+        // Firestore limit is 1,048,576 bytes.
+        const size = dataUrl.length;
+
+        return { dataUrl, size };
+    };
+
+    let img;
+    try {
+        img = await createImageBitmap(file);
+
+        // Strategy: Try High Quality first, then degrade
+        // 1. High: Quality 0.85, Scale 1.0
+        let result = await attemptCompression(img, 0.85, 1.0);
+        if (result.size < MAX_SIZE_BYTES) return result.dataUrl;
+
+        // 2. Medium: Quality 0.7, Scale 0.9
+        result = await attemptCompression(img, 0.7, 0.9);
+        if (result.size < MAX_SIZE_BYTES) return result.dataUrl;
+
+        // 3. Low: Quality 0.6, Scale 0.7
+        result = await attemptCompression(img, 0.6, 0.7);
+        if (result.size < MAX_SIZE_BYTES) return result.dataUrl;
+
+        // 4. Aggressive: Quality 0.5, Scale 0.5
+        result = await attemptCompression(img, 0.5, 0.5);
+        if (result.size < MAX_SIZE_BYTES) return result.dataUrl;
+
+        throw new Error("画像を十分に圧縮できませんでした。別の画像をお試しください。");
+
+    } catch (e) {
+        console.error("Compression failed", e);
+        throw e;
+    } finally {
+        if (img && img.src) {
+            URL.revokeObjectURL(img.src);
+        }
+    }
+}

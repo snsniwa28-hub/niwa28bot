@@ -1,7 +1,7 @@
 import { db } from './firebase.js';
-import { collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { latestKeywords } from './config.js';
-import { $ } from './utils.js';
+import { $, compressMapImage } from './utils.js';
 
 let allMachines = [];
 let newOpeningData = [];
@@ -19,6 +19,7 @@ export async function fetchCustomerData() {
         eventMap = new Map(cSnap.docs.map(d => d.data()).sort((a, b) => a.date - b.date).map(e => [e.date, e]));
         renderToday();
         updateNewOpeningCard();
+        fetchMapData(); // Load Map
     } catch (e) {
         const container = $('#todayEventContainer');
         if(container) container.innerHTML = `<p class="text-rose-500 text-center font-bold">データ読込失敗</p>`;
@@ -156,4 +157,91 @@ export function closeNewOpeningModal() {
 
 export function closeDetailModal() {
     $('#machineDetailModal').classList.add('hidden');
+}
+
+// --- Map Update Logic ---
+
+export async function fetchMapData() {
+    try {
+        const docRef = doc(db, "settings", "map_config");
+        const snapshot = await getDoc(docRef);
+        if (snapshot.exists() && snapshot.data().image_data) {
+            const img = $('#map-section img');
+            if(img) img.src = snapshot.data().image_data;
+        }
+    } catch(e) {
+        console.warn("Map load failed, using default.");
+    }
+}
+
+let mapFileToSave = null;
+
+export function openMapUpdateModal() {
+    $('#map-update-modal').classList.remove('hidden');
+    $('#map-update-modal').classList.add('flex');
+    mapFileToSave = null;
+    $('#map-file-input').value = "";
+    $('#map-preview').src = "";
+    $('#map-preview-container').classList.add('hidden');
+    $('#map-current-preview').classList.remove('hidden');
+    // Load current map into current preview
+    const currentSrc = $('#map-section img').src;
+    $('#map-current-preview-img').src = currentSrc;
+}
+
+export function closeMapUpdateModal() {
+    $('#map-update-modal').classList.add('hidden');
+    $('#map-update-modal').classList.remove('flex');
+}
+
+export async function handleMapFileSelect(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        mapFileToSave = file;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            $('#map-preview').src = e.target.result;
+            $('#map-preview-container').classList.remove('hidden');
+            $('#map-current-preview').classList.add('hidden');
+        }
+        reader.readAsDataURL(file);
+    }
+}
+
+export async function saveMapUpdate() {
+    if (!mapFileToSave) {
+        alert("画像が選択されていません。");
+        return;
+    }
+
+    const btn = $('#btn-save-map');
+    const originalText = btn.textContent;
+    btn.textContent = "処理中...";
+    btn.disabled = true;
+
+    try {
+        // Compress
+        const base64 = await compressMapImage(mapFileToSave);
+
+        // Save to Firestore
+        await setDoc(doc(db, "settings", "map_config"), {
+            image_data: base64,
+            updated_at: new Date()
+        });
+
+        // Update DOM immediately
+        const img = $('#map-section img');
+        if(img) img.src = base64;
+
+        alert("マップを更新しました！");
+        closeMapUpdateModal();
+
+    } catch(e) {
+        console.error(e);
+        alert("更新に失敗しました: " + e.message);
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
 }
