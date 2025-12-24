@@ -10,7 +10,7 @@ import * as Deadlines from './js/deadlines.js';
 import * as Strategy from './js/strategy.js';
 import { renderModals, renderInfoSections, changeStrategySlide } from './js/components.js';
 import { getTodayDateString, getYesterdayDateString, getTaskColorClass } from './js/utils.js';
-import { EDIT_PASSWORD } from './js/config.js';
+import * as Auth from './js/auth.js';
 
 // --- Global Helpers Compatibility (Exposing to Window) ---
 // Many inline HTML onclick handlers expect these to be global.
@@ -155,28 +155,9 @@ window.closeRemarksModal = Tasks.closeRemarksModal;
 
 window.checkPassword = function() {
     const input = document.getElementById('password-input');
-    if(input.value.trim().toLowerCase() === EDIT_PASSWORD) {
+    if(Auth.check(input.value)) {
         UI.closePasswordModal();
-        const ctx = UI.getAuthContext();
-        
-        // Handle Strategy Admin
-        if (ctx && ctx.startsWith('strategy_admin_')) {
-            const category = ctx.replace('strategy_admin_', '');
-            Strategy.openStrategyAdmin(category);
-            return;
-        }
-
-        if (ctx === 'admin') {
-            Tasks.activateAdminMode();
-            Deadlines.openDeadlineManagementModal();
-            // Removed global Strategy admin activation
-        } else if (ctx === 'qsc') {
-            QSC.activateQscEditMode();
-        } else if (ctx === 'shift_admin') {
-            Shift.activateShiftAdminMode();
-        } else if (ctx === 'member_admin') {
-            MemberRace.showMemberTargetModal();
-        }
+        Auth.executeCallback();
     } else {
         document.getElementById('password-error').classList.remove('hidden');
     }

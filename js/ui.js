@@ -1,4 +1,5 @@
 import { $ } from './utils.js';
+import * as Auth from './auth.js';
 
 export function showToast(msg) {
     const toast = document.createElement('div');
@@ -38,10 +39,10 @@ export function switchView(viewName, callbacks = {}) {
 }
 
 // Password Modal UI Helpers
-let authContext = '';
-
-export function showPasswordModal(ctx, inputId = 'password-input', errorId = 'password-error', modalId = 'password-modal') {
-    authContext = ctx;
+export function showPasswordModal(callback, inputId = 'password-input', errorId = 'password-error', modalId = 'password-modal') {
+    if (typeof callback === 'function') {
+        Auth.setCallback(callback);
+    }
     $(`#${modalId}`).classList.remove('hidden');
     $(`#${inputId}`).value = "";
     $(`#${errorId}`).classList.add('hidden');
@@ -61,10 +62,6 @@ export function showPasswordModal(ctx, inputId = 'password-input', errorId = 'pa
 
 export function closePasswordModal(modalId = 'password-modal') {
     $(`#${modalId}`).classList.add('hidden');
-}
-
-export function getAuthContext() {
-    return authContext;
 }
 
 // Generic Modal Helpers

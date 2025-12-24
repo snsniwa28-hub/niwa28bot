@@ -3,7 +3,7 @@ import { doc, onSnapshot, setDoc, getDoc } from "https://www.gstatic.com/firebas
 import { TASKS_EMPLOYEE, TASKS_ALBA, MANUAL_TASK_LIST, DEFAULT_STAFF } from './config.js';
 import { $, $$, getTodayDateString, openTimeSlots, closeTimeSlots, openAlbaTimeSlots, openTimeIndexMap, closeTimeIndexMap, getTaskColorClass } from './utils.js';
 import { showToast, initModal, selectOptionUI, closeModal, showPasswordModal, showConfirmModal } from './ui.js';
-import { updateDeadlineStaffLists } from './deadlines.js';
+import { updateDeadlineStaffLists, openDeadlineManagementModal } from './deadlines.js';
 
 // --- State ---
 let masterStaffList = { employees: [], alba_early: [], alba_late: [] };
@@ -152,7 +152,10 @@ export function toggleAdminEdit() {
     if(isEditing) {
         setEditingMode(false);
     } else {
-        showPasswordModal('admin');
+        showPasswordModal(() => {
+            activateAdminMode();
+            openDeadlineManagementModal();
+        });
     }
 }
 

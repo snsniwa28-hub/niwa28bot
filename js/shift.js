@@ -613,7 +613,7 @@ function setupShiftEventListeners() {
 export function checkShiftAdminPassword() {
     const pwModal = document.getElementById('password-modal');
     if(pwModal) pwModal.style.zIndex = "100";
-    showPasswordModal('shift_admin');
+    showPasswordModal(activateShiftAdminMode);
 }
 
 export function activateShiftAdminMode() {
