@@ -1,54 +1,94 @@
-127.0.0.1 - - [23/Dec/2025 22:38:29] "GET /index.html HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:29] "GET /style.css HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:29] "GET /sinsou1.jpg HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:29] "GET /main.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:29] "GET /simazu.jpg HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:31] "GET /js/customer.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:31] "GET /js/ui.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:31] "GET /js/operations.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:31] "GET /js/shift.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:31] "GET /js/tasks.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:31] "GET /js/qsc.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:31] "GET /js/deadlines.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:31] "GET /js/member_race.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:31] "GET /js/components.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:31] "GET /js/strategy.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:31] "GET /js/config.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:31] "GET /js/utils.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:38:31] "GET /js/firebase.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:08] "GET /index.html HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:08] "GET /style.css HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:08] "GET /simazu.jpg HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:08] "GET /main.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:08] "GET /sinsou1.jpg HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:09] "GET /js/ui.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:09] "GET /js/qsc.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:09] "GET /js/tasks.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:09] "GET /js/customer.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:09] "GET /js/operations.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:09] "GET /js/shift.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:09] "GET /js/member_race.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:09] "GET /js/deadlines.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:09] "GET /js/config.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:09] "GET /js/components.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:09] "GET /js/utils.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:09] "GET /js/strategy.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:09] "GET /js/firebase.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:56] "GET /index.html HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:56] "GET /main.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:56] "GET /sinsou1.jpg HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:56] "GET /simazu.jpg HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:56] "GET /style.css HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:57] "GET /js/ui.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:57] "GET /js/customer.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:57] "GET /js/tasks.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:57] "GET /js/operations.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:57] "GET /js/shift.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:57] "GET /js/qsc.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:57] "GET /js/member_race.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:57] "GET /js/strategy.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:57] "GET /js/utils.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:57] "GET /js/deadlines.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:57] "GET /js/config.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:57] "GET /js/components.js HTTP/1.1" 200 -
-127.0.0.1 - - [23/Dec/2025 22:39:57] "GET /js/firebase.js HTTP/1.1" 200 -
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 1314, in <module>
+    test(
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 1261, in test
+    with ServerClass(addr, HandlerClass) as httpd:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/socketserver.py", line 457, in __init__
+    self.server_bind()
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 1308, in server_bind
+    return super().server_bind()
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/http/server.py", line 136, in server_bind
+    socketserver.TCPServer.server_bind(self)
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/socketserver.py", line 478, in server_bind
+    self.socket.bind(self.server_address)
+OSError: [Errno 98] Address already in use
+127.0.0.1 - - [24/Dec/2025 09:15:00] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:00] "GET /simazu.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:00] "GET /sinsou1.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:00] "GET /style.css HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:00] "GET /main.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:02] "GET /js/shift.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:02] "GET /js/qsc.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:02] "GET /js/ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:02] "GET /js/operations.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:02] "GET /js/customer.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:02] "GET /js/tasks.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:02] "GET /js/member_race.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:02] "GET /js/deadlines.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:02] "GET /js/strategy.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:02] "GET /js/components.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:02] "GET /js/utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:02] "GET /js/auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:02] "GET /js/config.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:02] "GET /js/firebase.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:41] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:41] "GET /sinsou1.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:41] "GET /main.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:41] "GET /style.css HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:41] "GET /simazu.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:42] "GET /js/ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:42] "GET /js/operations.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:42] "GET /js/shift.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:42] "GET /js/tasks.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:42] "GET /js/qsc.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:42] "GET /js/customer.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:42] "GET /js/member_race.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:42] "GET /js/components.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:42] "GET /js/deadlines.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:42] "GET /js/utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:42] "GET /js/strategy.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:42] "GET /js/firebase.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:42] "GET /js/auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:42] "GET /js/config.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:53] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:53] "GET /sinsou1.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:53] "GET /style.css HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:53] "GET /main.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:53] "GET /simazu.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:54] "GET /js/qsc.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:54] "GET /js/customer.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:54] "GET /js/ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:54] "GET /js/tasks.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:54] "GET /js/shift.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:54] "GET /js/operations.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:54] "GET /js/member_race.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:54] "GET /js/strategy.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:54] "GET /js/deadlines.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:54] "GET /js/utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:54] "GET /js/components.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:54] "GET /js/auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:54] "GET /js/config.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:15:54] "GET /js/firebase.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:40] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:40] "GET /style.css HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:40] "GET /simazu.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:40] "GET /sinsou1.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:40] "GET /main.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:41] "GET /js/tasks.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:41] "GET /js/qsc.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:41] "GET /js/shift.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:41] "GET /js/ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:41] "GET /js/operations.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:41] "GET /js/customer.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:41] "GET /js/member_race.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:41] "GET /js/strategy.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:41] "GET /js/deadlines.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:41] "GET /js/components.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:41] "GET /js/utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:41] "GET /js/auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:41] "GET /js/firebase.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Dec/2025 09:16:41] "GET /js/config.js HTTP/1.1" 200 -
