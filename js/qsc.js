@@ -38,6 +38,48 @@ const compressImage = (file) => {
     });
 };
 
+// --- Lightbox Logic ---
+function openQscLightbox(src) {
+    let lightbox = document.getElementById('qsc-lightbox');
+    if (!lightbox) {
+        lightbox = document.createElement('div');
+        lightbox.id = 'qsc-lightbox';
+        lightbox.className = 'fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 transition-opacity duration-300 opacity-0 hidden';
+        lightbox.innerHTML = `
+            <div class="relative max-w-full max-h-full">
+                <button id="qsc-lightbox-close" class="absolute -top-12 right-0 text-white text-3xl font-bold p-2 hover:text-rose-500 transition">×</button>
+                <img id="qsc-lightbox-img" src="" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl border border-white/10">
+            </div>
+        `;
+        document.body.appendChild(lightbox);
+
+        // Close handlers
+        lightbox.onclick = (e) => {
+             if (e.target === lightbox || e.target.id === 'qsc-lightbox-close') {
+                 closeQscLightbox();
+             }
+        };
+    }
+
+    const img = lightbox.querySelector('#qsc-lightbox-img');
+    img.src = src;
+    lightbox.classList.remove('hidden');
+    // slight delay for fade-in effect
+    requestAnimationFrame(() => lightbox.classList.remove('opacity-0'));
+}
+
+function closeQscLightbox() {
+     const lightbox = document.getElementById('qsc-lightbox');
+     if(lightbox) {
+         lightbox.classList.add('opacity-0');
+         setTimeout(() => {
+             lightbox.classList.add('hidden');
+             const img = lightbox.querySelector('#qsc-lightbox-img');
+             if(img) img.src = '';
+         }, 300);
+     }
+}
+
 export function subscribeQSC() {
     onSnapshot(collection(db, "qsc_items"), (s) => {
         qscItems = s.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => a.no - b.no);
@@ -122,8 +164,7 @@ export function renderQSCList() {
             const thumb = d.querySelector('.qsc-thumb');
             if (thumb) {
                 thumb.onclick = () => {
-                    const w = window.open("", "_blank");
-                    w.document.write(`<img src="${item.image}" style="max-width:100%;">`);
+                    openQscLightbox(item.image);
                 };
             }
 
