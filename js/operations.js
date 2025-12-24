@@ -1,6 +1,5 @@
 import { db } from './firebase.js';
 import { collection, doc, onSnapshot, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { TARGET_DATA_DEC } from './config.js';
 import { $, getTodayDateString, getYesterdayDateString } from './utils.js';
 import { showToast } from './ui.js';
 
@@ -9,6 +8,10 @@ let yesterdayOpData = null;
 let monthlyOpData = {};
 let editingOpDate = null;
 let returnToCalendar = false;
+
+// Dynamic Date Management
+let currentOpYear = new Date().getFullYear();
+let currentOpMonth = new Date().getMonth(); // 0-indexed
 
 export function subscribeOperations() {
     const todayStr = getTodayDateString();
@@ -28,9 +31,8 @@ export function renderOperationsBoard() {
     const container = $('#operationsBoardContainer');
     if (!container) return;
 
-    const today = new Date();
-    const dayNum = today.getDate();
-    const defaultTarget = TARGET_DATA_DEC[dayNum] || { t15: 0, t19: 0 };
+    // Use default target as 0 since we removed the config
+    const defaultTarget = { t15: 0, t19: 0 };
 
     const t = todayOpData || {};
     const y = yesterdayOpData || {}; // Yesterday's data
@@ -149,16 +151,36 @@ export function renderOperationsBoard() {
     if (btnInput) btnInput.onclick = (e) => { e.stopPropagation(); openOpInput(); };
 }
 
+export function changeOpMonth(offset) {
+    currentOpMonth += offset;
+    if (currentOpMonth > 11) {
+        currentOpMonth = 0;
+        currentOpYear++;
+    } else if (currentOpMonth < 0) {
+        currentOpMonth = 11;
+        currentOpYear--;
+    }
+    renderCalendarGrid();
+}
+
 export async function openMonthlyCalendar() {
     const modal = $('#calendar-modal');
     if (!modal) { alert("カレンダー画面が見つかりません"); return; }
     modal.classList.remove('hidden');
     returnToCalendar = false;
 
+    // Reset to current month on open if desired, or keep last viewed
+    // currentOpYear = new Date().getFullYear();
+    // currentOpMonth = new Date().getMonth();
+
+    renderCalendarGrid(); // Render skeletal grid first with current selection
+
+    // Refresh data
     const container = $('#calendar-grid-body');
     if (container) container.innerHTML = '<p class="text-center py-10 text-slate-400">データ読込中...</p>';
 
     try {
+        // Optimization: Fetch all for now as per original code, or refine later.
         const snapshot = await getDocs(collection(db, "operations_data"));
         monthlyOpData = {};
         snapshot.forEach(doc => {
@@ -174,13 +196,134 @@ export function closeMonthlyCalendar() {
     $('#calendar-modal').classList.add('hidden');
 }
 
+// Excel Upload Handler
+export async function handleExcelUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+
+            // Get "月間目標数" or first sheet
+            let sheetName = "月間目標数";
+            if (!workbook.SheetNames.includes(sheetName)) {
+                sheetName = workbook.SheetNames[0];
+            }
+            const worksheet = workbook.Sheets[sheetName];
+
+            // Parse as array of arrays, starting from row 0
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+            // Start reading from 4th row (index 3) as per requirements
+            // A(0): Date, C(2): 15:00 Target, D(3): 19:00 Target
+
+            const updates = [];
+            const year = currentOpYear;
+            const monthStr = String(currentOpMonth + 1).padStart(2, '0');
+
+            for (let i = 3; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                if (!row || row.length === 0) continue;
+
+                let dayVal = row[0];
+                if (!dayVal) continue; // Skip if no date
+
+                // Normalize Day: "1日", "1", 1 -> 1
+                let dayNum = parseInt(String(dayVal).replace(/[^0-9]/g, ''), 10);
+                if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) continue;
+
+                const dayStr = String(dayNum).padStart(2, '0');
+                const docId = `${year}-${monthStr}-${dayStr}`;
+
+                // Clean Target Values
+                const cleanVal = (val) => {
+                    if (val === undefined || val === null) return 0;
+                    const num = parseInt(String(val).replace(/[^0-9]/g, ''), 10);
+                    return isNaN(num) ? 0 : num;
+                };
+
+                const target15 = cleanVal(row[2]); // Column C
+                const target19 = cleanVal(row[3]); // Column D
+
+                // Prepare update promise
+                updates.push(setDoc(doc(db, "operations_data", docId), {
+                    target_total_15: target15,
+                    target_total_19: target19
+                }, { merge: true }));
+            }
+
+            await Promise.all(updates);
+
+            // Refresh local data view
+            updates.forEach(async () => {
+                // Not ideal but simple refresh
+            });
+            // Re-fetch all data to update UI
+            openMonthlyCalendar();
+
+            alert(`${updates.length}件のデータをインポートしました！`);
+
+        } catch (err) {
+            console.error(err);
+            alert("インポートに失敗しました: " + err.message);
+        }
+        // Reset input
+        event.target.value = '';
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+
 function renderCalendarGrid() {
     const container = $('#calendar-grid-body');
     if (!container) return;
     container.innerHTML = '';
 
-    const year = 2025;
-    const month = 11; // Dec
+    // Update Header with Month Navigation AND Excel Button
+    const headerContainer = $('#calendar-modal h3');
+    if (headerContainer) {
+        headerContainer.innerHTML = `
+            <div class="flex flex-col sm:flex-row items-center justify-between w-full gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">📅 稼働実績カレンダー</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <!-- Excel Import -->
+                    <div class="relative">
+                        <input type="file" id="op-excel-upload" accept=".xlsx" class="hidden">
+                        <button onclick="document.getElementById('op-excel-upload').click()" class="bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                            <span>📊 Excel目標取込</span>
+                        </button>
+                    </div>
+
+                    <!-- Navigation -->
+                    <div class="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                        <button id="op-prev-month" class="px-3 py-1 text-slate-400 hover:text-indigo-600 transition font-bold">◀</button>
+                        <span class="text-sm font-black text-slate-700 px-2 min-w-[90px] text-center">${currentOpYear}年${currentOpMonth + 1}月</span>
+                        <button id="op-next-month" class="px-3 py-1 text-slate-400 hover:text-indigo-600 transition font-bold">▶</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        // Re-attach listeners
+        setTimeout(() => {
+            const prev = document.getElementById('op-prev-month');
+            const next = document.getElementById('op-next-month');
+            if (prev) prev.onclick = (e) => { e.stopPropagation(); changeOpMonth(-1); };
+            if (next) next.onclick = (e) => { e.stopPropagation(); changeOpMonth(1); };
+
+            const fileInput = document.getElementById('op-excel-upload');
+            if (fileInput) fileInput.onchange = handleExcelUpload;
+        }, 0);
+    }
+
+
+    const year = currentOpYear;
+    const month = currentOpMonth;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     const headers = ['日','月','火','水','木','金','土'];
@@ -198,15 +341,18 @@ function renderCalendarGrid() {
 
     for(let d=1; d<=daysInMonth; d++) {
         const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const target = TARGET_DATA_DEC[d] || { t15:0, t19:0 };
+        // Fallback or data from DB
         const actual = monthlyOpData[dateStr] || {};
 
+        // Removed TARGET_DATA_DEC logic
+        const baseTarget = { t15:0, t19:0 };
+
         // Determine effective target
-        const exp15 = (actual.target_total_15 !== undefined && actual.target_total_15 !== null) ? actual.target_total_15 : target.t15;
+        const exp15 = (actual.target_total_15 !== undefined && actual.target_total_15 !== null) ? actual.target_total_15 : baseTarget.t15;
         const daily15 = actual.today_target_total_15;
         const effTarget15 = (daily15 !== undefined && daily15 !== null) ? daily15 : exp15;
 
-        const exp19 = (actual.target_total_19 !== undefined && actual.target_total_19 !== null) ? actual.target_total_19 : target.t19;
+        const exp19 = (actual.target_total_19 !== undefined && actual.target_total_19 !== null) ? actual.target_total_19 : baseTarget.t19;
         const daily19 = actual.today_target_total_19;
         const effTarget19 = (daily19 !== undefined && daily19 !== null) ? daily19 : exp19;
 
@@ -270,7 +416,8 @@ export function openOpInput(dateStr) {
     else data = monthlyOpData[dateStr] || {};
 
     const dayNum = parseInt(d);
-    const defaultTarget = TARGET_DATA_DEC[dayNum] || { t15: 0, t19: 0 };
+    // Removed TARGET_DATA_DEC support
+    const defaultTarget = { t15: 0, t19: 0 };
 
     const setVal = (id, val, def) => $(`#${id}`).value = (val !== undefined && val !== null) ? val : def;
 
