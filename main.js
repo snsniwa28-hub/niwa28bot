@@ -38,6 +38,11 @@ window.renderToday = Customer.renderToday;
 window.openNewOpening = Customer.openNewOpening;
 window.closeNewOpeningModal = Customer.closeNewOpeningModal;
 window.closeDetailModal = Customer.closeDetailModal;
+// Map Update
+window.openMapUpdateModal = Customer.openMapUpdateModal;
+window.closeMapUpdateModal = Customer.closeMapUpdateModal;
+window.saveMapUpdate = Customer.saveMapUpdate;
+window.handleMapFileSelect = Customer.handleMapFileSelect;
 
 // Internal Shared Modal
 // window.openInternalSharedModal is defined in js/strategy.js to handle categories
