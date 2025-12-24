@@ -357,15 +357,15 @@ export function renderModals() {
                     <div class="grid grid-cols-3 gap-3">
                         <div class="op-input-group">
                             <label class="text-blue-500">4円パチンコ</label>
-                            <input type="number" id="in_4p_15" class="op-input" placeholder="0">
+                            <input type="number" id="in_4p_15" class="op-input" placeholder="0" oninput="window.calcOpTotal('15')">
                         </div>
                         <div class="op-input-group">
                             <label class="text-yellow-600">1円パチンコ</label>
-                            <input type="number" id="in_1p_15" class="op-input" placeholder="0">
+                            <input type="number" id="in_1p_15" class="op-input" placeholder="0" oninput="window.calcOpTotal('15')">
                         </div>
                         <div class="op-input-group">
                             <label class="text-emerald-600">20円スロット</label>
-                            <input type="number" id="in_20s_15" class="op-input" placeholder="0">
+                            <input type="number" id="in_20s_15" class="op-input" placeholder="0" oninput="window.calcOpTotal('15')">
                         </div>
                     </div>
                 </div>
@@ -387,15 +387,15 @@ export function renderModals() {
                     <div class="grid grid-cols-3 gap-3">
                         <div class="op-input-group">
                             <label class="text-blue-500">4円パチンコ</label>
-                            <input type="number" id="in_4p_19" class="op-input" placeholder="0">
+                            <input type="number" id="in_4p_19" class="op-input" placeholder="0" oninput="window.calcOpTotal('19')">
                         </div>
                         <div class="op-input-group">
                             <label class="text-yellow-600">1円パチンコ</label>
-                            <input type="number" id="in_1p_19" class="op-input" placeholder="0">
+                            <input type="number" id="in_1p_19" class="op-input" placeholder="0" oninput="window.calcOpTotal('19')">
                         </div>
                         <div class="op-input-group">
                             <label class="text-emerald-600">20円スロット</label>
-                            <input type="number" id="in_20s_19" class="op-input" placeholder="0">
+                            <input type="number" id="in_20s_19" class="op-input" placeholder="0" oninput="window.calcOpTotal('19')">
                         </div>
                     </div>
                 </div>
