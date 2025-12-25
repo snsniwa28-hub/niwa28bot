@@ -141,7 +141,10 @@ export function setEditingMode(isEdit) {
     $('#view-mode-container').classList.toggle('hidden', isEdit);
     $('#edit-mode-container').classList.toggle('hidden', !isEdit);
     const b = $('#edit-mode-button');
-    if(b){ b.textContent = isEdit?"閲覧モードに戻る":"管理者編集"; b.className = isEdit?"text-xs font-bold text-white bg-indigo-600 px-4 py-2 rounded-full shadow-md":"text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-full"; }
+    if(b){
+        b.textContent = isEdit?"閲覧モードに戻る":"管理者編集";
+        b.className = isEdit?"text-xs font-bold text-white bg-indigo-600 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full shadow-md transition-all whitespace-nowrap shrink-0":"text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all whitespace-nowrap shrink-0";
+    }
     if(isEdit) {
         const isOpen = $('#tab-open').classList.contains('bg-white');
         renderEditTimeline(isOpen ? 'open' : 'close');
@@ -174,11 +177,11 @@ function renderEditTimeline(tabName) {
     const allStaff = [...empList, ...albaList];
 
     const buttonsHtml = `
-    <div class="flex gap-2 mb-4">
-        <button onclick="importFromShift(false)" class="px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-lg text-xs hover:bg-slate-200 border border-slate-200 flex items-center gap-1">
+    <div class="flex flex-col sm:flex-row gap-2 mb-4">
+        <button onclick="importFromShift(false)" class="px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-lg text-xs hover:bg-slate-200 border border-slate-200 flex items-center justify-center sm:justify-start gap-1">
             <span>📥</span> シフトから人員のみ
         </button>
-        <button onclick="importFromShift(true)" class="px-4 py-2 bg-indigo-50 text-indigo-600 font-bold rounded-lg text-xs hover:bg-indigo-100 border border-indigo-200 flex items-center gap-1">
+        <button onclick="importFromShift(true)" class="px-4 py-2 bg-indigo-50 text-indigo-600 font-bold rounded-lg text-xs hover:bg-indigo-100 border border-indigo-200 flex items-center justify-center sm:justify-start gap-1">
             <span>⚡</span> 全自動読み込み（タスク付）
         </button>
     </div>
