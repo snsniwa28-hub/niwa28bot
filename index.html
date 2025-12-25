@@ -313,15 +313,15 @@
                     <button onclick="switchView('customer')" class="p-2 -ml-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition">
                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
                     </button>
-                    <h1 class="text-lg font-black text-slate-800 tracking-tight">Daily Task Manager</h1>
+                    <h1 class="text-lg font-black text-slate-800 tracking-tight">Task Manager</h1>
                 </div>
-                <div class="flex items-center gap-3">
-                    <div class="flex items-center bg-slate-100 rounded-lg p-0.5">
+                <div class="flex items-center gap-2 sm:gap-3 flex-nowrap shrink-0">
+                    <div class="flex items-center bg-slate-100 rounded-lg p-0.5 shrink-0">
                         <button onclick="changeDate(-1)" class="px-2 py-1.5 text-slate-400 hover:text-indigo-600 transition">◀</button>
                         <input type="date" id="date-picker" class="bg-transparent border-none text-xs font-bold text-slate-600 px-1 py-1.5 outline-none focus:ring-0 cursor-pointer" onchange="handleDateChange(this.value)">
                         <button onclick="changeDate(1)" class="px-2 py-1.5 text-slate-400 hover:text-indigo-600 transition">▶</button>
                     </div>
-                    <button id="edit-mode-button" class="text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-full transition-all">管理者編集</button>
+                    <button id="edit-mode-button" class="text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-full transition-all whitespace-nowrap shrink-0">管理者編集</button>
                 </div>
             </div>
         </header>
