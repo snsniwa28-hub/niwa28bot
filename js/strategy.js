@@ -1,7 +1,11 @@
 
-import { db } from './firebase.js';
+import { db, app } from './firebase.js';
 import { collection, doc, setDoc, getDocs, deleteDoc, serverTimestamp, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 import { showToast, showConfirmModal, showPasswordModal } from './ui.js';
+
+// Initialize Functions
+const functions = getFunctions(app);
 
 // --- State ---
 let strategies = [];
@@ -329,7 +333,7 @@ export function closeStrategyEditor() {
     document.getElementById('strategy-editor-modal').classList.add('hidden');
 }
 
-export function addEditorBlock(type = 'text') {
+export function addEditorBlock(type = 'text', initialData = null) {
     const container = document.getElementById('strategy-blocks-container');
     const div = document.createElement('div');
     div.className = "strategy-block-item bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 animate-fade-in relative group";
@@ -338,16 +342,20 @@ export function addEditorBlock(type = 'text') {
     // タイプごとのラベル
     const typeLabels = { 'img_top': '📷 画像上＋文字', 'text': '📝 文字のみ', 'img_bottom': '📝 文字＋画像下 📷' };
 
+    // 初期値の準備
+    const importance = initialData ? initialData.importance : 'normal';
+    const textContent = initialData ? initialData.text : '';
+
     // HTML構築
     let inner = `
         <div class="flex justify-between items-center mb-3">
             <span class="text-xs font-black text-slate-400 bg-white px-2 py-1 rounded border border-slate-200">${typeLabels[type]}</span>
             <div class="flex gap-2">
                 <select class="importance-select text-xs font-bold bg-white border border-slate-200 rounded px-2 py-1 outline-none">
-                    <option value="normal">⚪ 普通(白)</option>
-                    <option value="important">🔴 重要(赤)</option>
-                    <option value="info">🔵 情報(青)</option>
-                    <option value="gold">🟡 達成(金)</option>
+                    <option value="normal" ${importance === 'normal' ? 'selected' : ''}>⚪ 普通(白)</option>
+                    <option value="important" ${importance === 'important' ? 'selected' : ''}>🔴 重要(赤)</option>
+                    <option value="info" ${importance === 'info' ? 'selected' : ''}>🔵 情報(青)</option>
+                    <option value="gold" ${importance === 'gold' ? 'selected' : ''}>🟡 達成(金)</option>
                 </select>
                 <button class="text-slate-300 hover:text-rose-500 font-bold" onclick="this.closest('.strategy-block-item').remove()">×</button>
             </div>
@@ -377,9 +385,93 @@ export function addEditorBlock(type = 'text') {
     div.innerHTML = inner;
     container.appendChild(div);
 
+    // テキスト初期値の反映（value属性だと改行などが崩れることがあるため後設定）
+    if (textContent) {
+        div.querySelector('.block-text').value = textContent;
+    }
+
     // 自動スクロール
     div.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
+
+// --- PDF to AI Handler ---
+window.handlePdfUpload = async (input) => {
+    const file = input.files[0];
+    if (!file) return;
+
+    // 10MB limit (Cloud Functions limit is higher, but good to check)
+    if (file.size > 10 * 1024 * 1024) {
+        alert("ファイルサイズが大きすぎます (上限10MB)");
+        input.value = '';
+        return;
+    }
+
+    const loading = document.getElementById('strategy-ai-loading');
+    loading.classList.remove('hidden');
+
+    try {
+        // Convert PDF to Base64
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+
+        reader.onload = async () => {
+            const base64Data = reader.result; // Data URL
+            const generateArticle = httpsCallable(functions, 'generateArticleFromPdf');
+
+            try {
+                const result = await generateArticle({
+                    pdfBase64: base64Data,
+                    mimeType: file.type
+                });
+
+                const data = result.data;
+
+                // Populate Editor
+                const titleInput = document.getElementById('strategy-editor-title');
+                if (data.title) titleInput.value = data.title;
+
+                // Clear existing blocks? Maybe confirm first if not empty?
+                // For now, let's append. Or clear if empty.
+                // If user uploaded PDF, they probably want to see that content.
+                // Let's clear for cleaner UX, assuming this is a "Create" action.
+                document.getElementById('strategy-blocks-container').innerHTML = '';
+
+                if (data.blocks && Array.isArray(data.blocks)) {
+                    data.blocks.forEach(block => {
+                        // AI returns 'text' type with importance.
+                        // We map this to our editor blocks.
+                        // Default to 'text' block type since PDF analysis is text-heavy.
+                        addEditorBlock('text', {
+                            text: block.text,
+                            importance: block.importance || 'normal'
+                        });
+                    });
+                }
+
+                showToast("AIによる下書き作成が完了しました！");
+
+            } catch (error) {
+                console.error("AI Generation Error:", error);
+                alert("AI生成に失敗しました。\n" + error.message);
+            } finally {
+                loading.classList.add('hidden');
+                input.value = ''; // Reset input
+            }
+        };
+
+        reader.onerror = (error) => {
+            console.error("File Reading Error:", error);
+            alert("ファイルの読み込みに失敗しました");
+            loading.classList.add('hidden');
+            input.value = '';
+        };
+
+    } catch (e) {
+        console.error("Upload handler error:", e);
+        loading.classList.add('hidden');
+        input.value = '';
+    }
+};
 
 // --- Global Handlers ---
 window.handleBlockImage = async (input) => {
