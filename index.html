@@ -459,6 +459,51 @@
     <!-- ========== MODALS ========== -->
     <div id="modals-container"></div>
 
+    <!-- Strategy Chat Modal (User View) -->
+    <div id="strategy-chat-modal" class="modal-overlay hidden" style="z-index: 100;">
+        <div class="modal-content p-0 w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col h-[85vh]">
+            <div class="p-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50">
+                <div>
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                        <span>🤖</span> AIナレッジチャット
+                    </h3>
+                    <p id="chat-strategy-title" class="text-xs font-bold text-indigo-600 truncate max-w-[200px]"></p>
+                </div>
+                <button onclick="closeStrategyChatModal()" class="w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center transition">
+                    ✕
+                </button>
+            </div>
+
+            <!-- Chat History -->
+            <div id="strategy-chat-history" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
+                <!-- Messages will be injected here -->
+                <div class="flex flex-col items-center justify-center py-10 opacity-50 space-y-2">
+                    <span class="text-4xl">💭</span>
+                    <p class="text-xs font-bold text-slate-400">資料について何でも聞いてください</p>
+                </div>
+            </div>
+
+            <!-- Preset Buttons -->
+            <div class="p-2 bg-white border-t border-slate-100 shrink-0 overflow-x-auto">
+                <div class="flex gap-2">
+                    <button onclick="sendQuickChat('この資料を3行で要約して')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition">📝 要約して</button>
+                    <button onclick="sendQuickChat('一番重要なポイントは？')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition">💡 重要ポイント</button>
+                    <button onclick="sendQuickChat('注意すべき点は？')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition">⚠️ 注意点は？</button>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-3 bg-white border-t border-slate-100 shrink-0">
+                <div class="flex gap-2">
+                    <input type="text" id="strategy-chat-input" placeholder="質問を入力..." class="flex-1 bg-slate-100 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                    <button onclick="sendStrategyChat()" id="btn-send-chat" class="bg-indigo-600 text-white rounded-xl px-4 font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition flex items-center justify-center">
+                        <svg class="w-5 h-5 transform rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Deadline Management Modal (Admin Only) -->
     <div id="deadlineManagementModal" class="modal-overlay hidden" style="z-index: 85;">
         <div class="modal-content p-0 w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
@@ -580,36 +625,65 @@
                         <input type="text" id="strategy-editor-title" class="w-full text-xl font-black text-slate-800 bg-transparent border-b-2 border-slate-200 focus:border-indigo-500 outline-none px-1 py-2 placeholder-slate-300 transition" placeholder="例: 12月の営業戦略">
                     </div>
 
-                    <div id="strategy-blocks-container" class="space-y-4 min-h-[100px]">
-                        </div>
+                    <!-- Knowledge Base Editor (New) -->
+                    <div id="strategy-knowledge-editor" class="hidden animate-fade-in space-y-6">
+                         <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                            <h5 class="text-sm font-black text-indigo-600 mb-2 flex items-center gap-2">
+                                <span>📄</span> 資料PDFアップロード
+                            </h5>
+                            <p class="text-xs font-bold text-indigo-400 mb-4">資料をアップロードして「AI読込」を押すと、AIが内容を学習します。</p>
 
-                    <!-- PDF Auto Generate Section -->
-                    <div class="mb-4 bg-indigo-50 p-3 rounded-xl border border-indigo-100 flex items-center justify-between mt-4">
-                        <div>
-                            <h5 class="text-xs font-black text-indigo-600 mb-0.5">✨ AI自動作成</h5>
-                            <p class="text-[10px] font-bold text-indigo-400">PDF資料を読み込んで下書きを作成</p>
-                        </div>
-                        <label class="cursor-pointer bg-indigo-600 text-white text-xs font-bold px-3 py-2 rounded-lg shadow-md hover:bg-indigo-700 transition flex items-center gap-1">
-                            <span>📄</span> PDFから作成
-                            <input type="file" id="strategy-pdf-input" accept="application/pdf" class="hidden" onchange="window.handlePdfUpload(this)">
-                        </label>
+                            <div class="flex items-center gap-3">
+                                <label class="flex-1 cursor-pointer bg-white border border-indigo-200 text-indigo-600 text-xs font-bold px-4 py-3 rounded-xl shadow-sm hover:bg-indigo-50 transition text-center truncate">
+                                    <span id="knowledge-file-name">ファイルを選択...</span>
+                                    <input type="file" id="knowledge-pdf-input" accept="application/pdf" class="hidden" onchange="window.handleKnowledgePdfSelect(this)">
+                                </label>
+                                <button onclick="window.handleKnowledgeAiRead()" class="bg-indigo-600 text-white text-xs font-bold px-4 py-3 rounded-xl shadow-md hover:bg-indigo-700 transition whitespace-nowrap">
+                                    ✨ AI読込
+                                </button>
+                            </div>
+                            <!-- Hidden storage for extracted text -->
+                            <input type="hidden" id="knowledge-pdf-text-storage">
+                         </div>
+
+                         <div>
+                            <label class="block text-xs font-bold text-slate-400 mb-2">自由記述メモ (補足情報)</label>
+                            <textarea id="knowledge-free-text" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 h-32 resize-none" placeholder="現場独自のルールや、PDFに載っていない補足事項などを入力してください。AI回答の参考に使われます。"></textarea>
+                         </div>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-2 mt-6 pt-6 border-t border-slate-200 border-dashed">
-                        <button onclick="addEditorBlock('img_top')" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
-                            <span class="text-lg mb-1 group-hover:scale-110 transition">📷📝</span>
-                            <span class="text-[10px] font-bold text-slate-500">画像上</span>
-                        </button>
-                        <button onclick="addEditorBlock('text')" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
-                            <span class="text-lg mb-1 group-hover:scale-110 transition">📝</span>
-                            <span class="text-[10px] font-bold text-slate-500">文字のみ</span>
-                        </button>
-                        <button onclick="addEditorBlock('img_bottom')" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
-                            <span class="text-lg mb-1 group-hover:scale-110 transition">📝📷</span>
-                            <span class="text-[10px] font-bold text-slate-500">画像下</span>
-                        </button>
+                    <!-- Article Block Editor (Old - for CS Team) -->
+                    <div id="strategy-article-editor" class="hidden">
+                        <div id="strategy-blocks-container" class="space-y-4 min-h-[100px]"></div>
+
+                        <!-- PDF Auto Generate Section -->
+                        <div class="mb-4 bg-indigo-50 p-3 rounded-xl border border-indigo-100 flex items-center justify-between mt-4">
+                            <div>
+                                <h5 class="text-xs font-black text-indigo-600 mb-0.5">✨ AI自動作成</h5>
+                                <p class="text-[10px] font-bold text-indigo-400">PDF資料を読み込んで下書きを作成</p>
+                            </div>
+                            <label class="cursor-pointer bg-indigo-600 text-white text-xs font-bold px-3 py-2 rounded-lg shadow-md hover:bg-indigo-700 transition flex items-center gap-1">
+                                <span>📄</span> PDFから作成
+                                <input type="file" id="strategy-pdf-input" accept="application/pdf" class="hidden" onchange="window.handlePdfUpload(this)">
+                            </label>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 mt-6 pt-6 border-t border-slate-200 border-dashed">
+                            <button onclick="addEditorBlock('img_top')" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
+                                <span class="text-lg mb-1 group-hover:scale-110 transition">📷📝</span>
+                                <span class="text-[10px] font-bold text-slate-500">画像上</span>
+                            </button>
+                            <button onclick="addEditorBlock('text')" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
+                                <span class="text-lg mb-1 group-hover:scale-110 transition">📝</span>
+                                <span class="text-[10px] font-bold text-slate-500">文字のみ</span>
+                            </button>
+                            <button onclick="addEditorBlock('img_bottom')" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
+                                <span class="text-lg mb-1 group-hover:scale-110 transition">📝📷</span>
+                                <span class="text-[10px] font-bold text-slate-500">画像下</span>
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-center text-slate-400 font-bold mt-2">↑ ブロックを追加して記事を構成 ↑</p>
                     </div>
-                    <p class="text-[10px] text-center text-slate-400 font-bold mt-2">↑ ブロックを追加して記事を構成 ↑</p>
                 </div>
 
                 <div class="p-4 border-t border-slate-100 bg-white shrink-0">
