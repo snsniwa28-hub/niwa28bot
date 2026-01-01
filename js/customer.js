@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, getDocs, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { latestKeywords } from './config.js';
 import { $, compressMapImage } from './utils.js';
 
@@ -161,16 +161,45 @@ export function closeDetailModal() {
 
 // --- Map Update Logic ---
 
-export async function fetchMapData() {
+export function fetchMapData() {
     try {
         const docRef = doc(db, "settings", "map_config");
-        const snapshot = await getDoc(docRef);
-        if (snapshot.exists() && snapshot.data().image_data) {
-            const img = $('#map-section img');
-            if(img) img.src = snapshot.data().image_data;
-        }
+        // Real-time listener for map updates (addresses caching/reload issues)
+        onSnapshot(docRef, (doc) => {
+            if (doc.exists()) {
+                const data = doc.data();
+                if (data.image_data) {
+                    const img = $('#map-section img');
+                    if(img) {
+                        img.onload = () => {
+                            img.classList.remove('hidden'); // Ensure visible on success
+                            // Remove any existing error message sibling
+                            const err = img.parentNode.querySelector('.map-error-msg');
+                            if(err) err.remove();
+                        };
+                        img.onerror = () => {
+                            img.classList.add('hidden'); // Hide broken image
+                            // Check if error message already exists
+                            if(!img.parentNode.querySelector('.map-error-msg')) {
+                                const errDiv = document.createElement('div');
+                                errDiv.className = 'map-error-msg h-full flex items-center justify-center text-slate-400 font-bold';
+                                errDiv.textContent = 'マップ画像を読み込めませんでした';
+                                img.parentNode.appendChild(errDiv);
+                            }
+                        };
+                        img.src = data.image_data;
+                        if(data.updated_at) {
+                            // Timestamp for debugging/verification
+                            img.setAttribute('data-last-updated', data.updated_at.seconds || Date.now());
+                        }
+                    }
+                }
+            }
+        }, (error) => {
+            console.warn("Map load failed (snapshot error), using default.", error);
+        });
     } catch(e) {
-        console.warn("Map load failed, using default.");
+        console.warn("Map listener setup failed.", e);
     }
 }
 
@@ -224,15 +253,24 @@ export async function saveMapUpdate() {
         // Compress
         const base64 = await compressMapImage(mapFileToSave);
 
+        // Validation: Ensure it's a valid image data URI
+        if (!base64 || !base64.startsWith('data:image')) {
+            throw new Error("画像の処理に失敗しました。有効な画像データではありません。");
+        }
+
         // Save to Firestore
         await setDoc(doc(db, "settings", "map_config"), {
             image_data: base64,
             updated_at: new Date()
         });
 
-        // Update DOM immediately
+        // Note: The onSnapshot listener in fetchMapData will automatically update the DOM.
+        // But we update locally to ensure immediate feedback.
         const img = $('#map-section img');
-        if(img) img.src = base64;
+        if(img) {
+            img.src = base64;
+            img.setAttribute('data-last-updated', Date.now());
+        }
 
         alert("マップを更新しました！");
         closeMapUpdateModal();
