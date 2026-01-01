@@ -2,9 +2,8 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Gemini API Client Initialization
-// NOTE: Ensure the GEMINI_API_KEY environment variable is set in Firebase Functions configuration.
-// Command: firebase functions:secrets:set GEMINI_API_KEY
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// 修正：APIキーを直接記述して確実に動くようにしました
+const genAI = new GoogleGenerativeAI("AIzaSyDeT26rBzRuzcdXyYNcN5J7UbePSmPgg6Y");
 
 // --- Existing Function for CS/Article Mode ---
 exports.generateArticleFromPdf = onCall({ cors: true, maxInstances: 10, timeoutSeconds: 60 }, async (request) => {
