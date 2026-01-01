@@ -287,8 +287,8 @@
                         <p class="text-slate-400 text-xs font-bold mt-1">フロアマップ</p>
                     </div>
                     <div class="p-4 sm:p-8 flex-1">
-                        <div class="bg-slate-50 rounded-xl border border-slate-200 p-2 h-full">
-                            <img src="simazu.jpg" alt="Map" class="w-full h-full object-contain lg:object-cover rounded-lg shadow-sm" onerror="this.parentNode.innerHTML='<div class=\'h-full flex items-center justify-center text-slate-400 font-bold\'>マップ画像を読み込めませんでした</div>'">
+                        <div class="bg-slate-50 rounded-xl border border-slate-200 p-2 h-full relative" id="map-container-inner">
+                            <img src="simazu.jpg" alt="Map" class="w-full h-full object-contain lg:object-cover rounded-lg shadow-sm" onerror="this.classList.add('hidden'); if(!this.parentNode.querySelector('.map-error-msg')) { const d=document.createElement('div'); d.className='map-error-msg h-full flex items-center justify-center text-slate-400 font-bold'; d.textContent='マップ画像を読み込めませんでした'; this.parentNode.appendChild(d); }">
                         </div>
                     </div>
                     <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">

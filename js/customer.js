@@ -265,12 +265,7 @@ export async function saveMapUpdate() {
         });
 
         // Note: The onSnapshot listener in fetchMapData will automatically update the DOM.
-        // But we update locally to ensure immediate feedback.
-        const img = $('#map-section img');
-        if(img) {
-            img.src = base64;
-            img.setAttribute('data-last-updated', Date.now());
-        }
+        // We do NOT update locally to prevent race conditions with the listener.
 
         alert("マップを更新しました！");
         closeMapUpdateModal();
