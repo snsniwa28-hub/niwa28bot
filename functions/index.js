@@ -2,8 +2,9 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Gemini API Client Initialization
-// 修正：APIキーを直接記述して確実に動くようにしました
-const genAI = new GoogleGenerativeAI("AIzaSyDeT26rBzRuzcdXyYNcN5J7UbePSmPgg6Y");
+// 修正: ハードコーディングを廃止し、環境変数またはデフォルト設定を使用
+// functions/.env に GEMINI_API_KEY が設定されていることを前提とします
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // --- Existing Function for CS/Article Mode ---
 exports.generateArticleFromPdf = onCall({ cors: true, maxInstances: 10, timeoutSeconds: 60 }, async (request) => {
@@ -14,7 +15,8 @@ exports.generateArticleFromPdf = onCall({ cors: true, maxInstances: 10, timeoutS
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // Updated to latest model
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const prompt = `
 役割: あなたはパチンコ店の優秀な店長兼マーケターです。
@@ -75,7 +77,8 @@ exports.extractTextFromPdf = onCall({ cors: true, maxInstances: 10, timeoutSecon
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // Updated to latest model
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const prompt = `
 役割: OCRアシスタント
@@ -110,17 +113,15 @@ exports.extractTextFromPdf = onCall({ cors: true, maxInstances: 10, timeoutSecon
 // --- New Function: Chat with Knowledge ---
 exports.chatWithKnowledge = onCall({ cors: true, maxInstances: 10, timeoutSeconds: 60 }, async (request) => {
     const { message, context, history } = request.data;
-    // context: PDF text + Free Text
-    // history: Previous chat messages (optional)
 
     if (!message || !context) {
         throw new HttpsError('invalid-argument', 'Message and Context are required.');
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // Updated to latest model
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-        // Build history string
         let historyText = "";
         if (history && Array.isArray(history)) {
             historyText = history.map(h => `${h.role === 'user' ? 'User' : 'AI'}: ${h.text}`).join("\n");
@@ -141,8 +142,8 @@ ${message}
 
 【回答のガイドライン】
 1. 資料に書かれていることに基づいて回答してください。資料にない場合は「資料には記載がありません」と正直に答えてください。
-2. 箇条書きや太字を使って、読みやすく簡潔に答えてください（スマホで読まれることが多いです）。
-3. スタッフへの業務連絡やスペック確認が目的なので、丁寧すぎず、プロフェッショナルかつフレンドリーな口調で。
+2. 箇条書きや太字を使って、読みやすく簡潔に答えてください。
+3. 丁寧すぎず、プロフェッショナルかつフレンドリーな口調で。
         `;
 
         const result = await model.generateContent(prompt);
