@@ -9,8 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # ★ここが魔法の行：設定ファイルがないなら、ロボットにその場で作らせる
+      - name: Create firebase.json
+        run: echo '{"functions": {"source": "functions"}}' > firebase.json
+
       - name: Install Dependencies
         run: cd functions && npm install
+
       - name: Deploy to Firebase
         uses: w9jds/firebase-action@master
         with:
