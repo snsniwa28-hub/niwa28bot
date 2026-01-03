@@ -14,6 +14,6 @@ jobs:
       - name: Deploy to Firebase
         uses: w9jds/firebase-action@master
         with:
-          args: deploy --only functions
+          args: deploy --only functions --project gardenyashiobot
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GARDENYASHIOBOT }}
