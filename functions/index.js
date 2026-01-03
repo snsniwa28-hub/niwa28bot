@@ -36,7 +36,8 @@ JSON
 OCR読み取りミスと思われる箇所は文脈から補正すること。
         `;
 
-        const cleanBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, "");
+        // 修正: 任意のMIMEタイプヘッダーを除去するように変更
+        const cleanBase64 = pdfBase64.replace(/^data:.*?;base64,/, "");
 
         const result = await model.generateContent([
             prompt,
@@ -85,7 +86,8 @@ exports.extractTextFromPdf = onCall({ cors: true, maxInstances: 10, timeoutSecon
 特に、数値（確率、日付など）や固有名詞は正確に書き出してください。
         `;
 
-        const cleanBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, "");
+        // 修正: 任意のMIMEタイプヘッダーを除去するように変更
+        const cleanBase64 = pdfBase64.replace(/^data:.*?;base64,/, "");
 
         const result = await model.generateContent([
             prompt,
