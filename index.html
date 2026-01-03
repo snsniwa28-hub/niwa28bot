@@ -12,7 +12,6 @@
 </head>
 <body class="antialiased pb-20">
 
-    <!-- ========== CUSTOMER / TOP VIEW ========== -->
     <div id="app-customer" class="transition-opacity duration-300">
         <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/60">
             <div class="container mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -22,7 +21,6 @@
                             GARDEN<span class="text-indigo-600 group-hover:text-slate-800 transition-colors">BOT</span>
                         </span>
                     </a>
-                    <!-- Global Navigation (PC only) -->
                     <nav class="hidden lg:flex gap-4">
                         <a href="#" onclick="document.documentElement.scrollTo({top:0, behavior:'smooth'})" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">TOP</a>
                         <a href="#task-section" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">タスク</a>
@@ -36,7 +34,6 @@
             </div>
         </header>
 
-        <!-- Dashboard Grid Layout for PC -->
         <main class="container mx-auto px-4 mt-6 pb-20 max-w-7xl">
 
             <section class="mb-8 fade-in-up" style="animation-delay: 0.1s;">
@@ -55,7 +52,6 @@
                 </div>
             </section>
 
-            <!-- Operations Dashboard (Always Expanded) -->
             <section id="operations-dashboard-section" class="mb-8 fade-in-up" style="animation-delay: 0.15s;">
                 <div id="operationsBoardContainer" class="w-full">
                     <div class="bg-white rounded-3xl border border-slate-100 shadow-lg shadow-indigo-900/5 p-6 flex items-center justify-center min-h-[120px]">
@@ -66,7 +62,6 @@
 
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
 
-                <!-- 1. Today's Tasks (Staff Only) -->
                 <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.2s;">
                     <div onclick="switchView('staff')" class="group cursor-pointer bg-slate-800 rounded-3xl shadow-lg shadow-slate-900/20 border border-slate-700 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 flex flex-col justify-between relative overflow-hidden aspect-square">
                         <div class="absolute top-0 right-0 p-24 bg-white/5 rounded-full blur-2xl -mr-12 -mt-12 pointer-events-none"></div>
@@ -85,7 +80,6 @@
                     </div>
                 </div>
 
-                <!-- 2. New Machine Info -->
                 <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.25s;">
                     <a id="newOpeningCard" href="#new-opening-section" class="block group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
                         <div class="flex justify-between items-start mb-2">
@@ -100,7 +94,6 @@
                     </a>
                 </div>
 
-                <!-- 3. Shift Management -->
                 <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.3s;">
                     <div id="shiftEntryCard" class="group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
                         <div class="flex justify-between items-start mb-2">
@@ -115,7 +108,6 @@
                     </div>
                 </div>
 
-                <!-- 4. QSC Check -->
                 <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.35s;">
                     <div id="openQSCButton" class="group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
                         <div class="flex justify-between items-start mb-2">
@@ -131,7 +123,6 @@
                     </div>
                 </div>
 
-                <!-- 5. Pachinko Shared -->
                 <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.4s;">
                     <button onclick="openInternalSharedModal('pachinko')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
                         <div class="flex justify-between items-start mb-2">
@@ -149,7 +140,6 @@
                     </button>
                 </div>
 
-                <!-- 6. Slot Shared -->
                 <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.45s;">
                     <button onclick="openInternalSharedModal('slot')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
                         <div class="flex justify-between items-start mb-2">
@@ -167,7 +157,6 @@
                     </button>
                 </div>
 
-                <!-- 7. CS Team Shared -->
                 <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.5s;">
                     <button onclick="openInternalSharedModal('cs')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
                         <div class="flex justify-between items-start mb-2">
@@ -185,7 +174,6 @@
                     </button>
                 </div>
 
-                <!-- 8. Monthly Strategy -->
                 <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.55s;">
                     <button onclick="openInternalSharedModal('strategy')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
                         <div class="flex justify-between items-start mb-2">
@@ -305,7 +293,6 @@
         </footer>
     </div>
 
-    <!-- ========== STAFF VIEW (追加部分) ========== -->
     <div id="app-staff" class="hidden min-h-screen bg-slate-50 pb-20 transition-opacity duration-300">
         <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
             <div class="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -456,55 +443,8 @@
         </main>
     </div>
 
-    <!-- ========== MODALS ========== -->
     <div id="modals-container"></div>
 
-    <!-- Strategy Chat Modal (User View) -->
-    <div id="strategy-chat-modal" class="modal-overlay hidden" style="z-index: 100;">
-        <div class="modal-content p-0 w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col h-[85vh]">
-            <div class="p-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50">
-                <div>
-                    <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                        <span>🤖</span> AIナレッジチャット
-                    </h3>
-                    <p id="chat-strategy-title" class="text-xs font-bold text-indigo-600 truncate max-w-[200px]"></p>
-                </div>
-                <button onclick="closeStrategyChatModal()" class="w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center transition">
-                    ✕
-                </button>
-            </div>
-
-            <!-- Chat History -->
-            <div id="strategy-chat-history" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
-                <!-- Messages will be injected here -->
-                <div class="flex flex-col items-center justify-center py-10 opacity-50 space-y-2">
-                    <span class="text-4xl">💭</span>
-                    <p class="text-xs font-bold text-slate-400">資料について何でも聞いてください</p>
-                </div>
-            </div>
-
-            <!-- Preset Buttons -->
-            <div class="p-2 bg-white border-t border-slate-100 shrink-0 overflow-x-auto">
-                <div class="flex gap-2">
-                    <button onclick="sendQuickChat('この資料を3行で要約して')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition">📝 要約して</button>
-                    <button onclick="sendQuickChat('一番重要なポイントは？')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition">💡 重要ポイント</button>
-                    <button onclick="sendQuickChat('注意すべき点は？')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition">⚠️ 注意点は？</button>
-                </div>
-            </div>
-
-            <!-- Input Area -->
-            <div class="p-3 bg-white border-t border-slate-100 shrink-0">
-                <div class="flex gap-2">
-                    <input type="text" id="strategy-chat-input" placeholder="質問を入力..." class="flex-1 bg-slate-100 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 transition">
-                    <button onclick="sendStrategyChat()" id="btn-send-chat" class="bg-indigo-600 text-white rounded-xl px-4 font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition flex items-center justify-center">
-                        <svg class="w-5 h-5 transform rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Deadline Management Modal (Admin Only) -->
     <div id="deadlineManagementModal" class="modal-overlay hidden" style="z-index: 85;">
         <div class="modal-content p-0 w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
             <div class="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
@@ -543,7 +483,6 @@
         </div>
     </div>
 
-    <!-- Map Update Modal -->
     <div id="map-update-modal" class="modal-overlay hidden" style="z-index: 95;">
         <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col">
             <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -607,12 +546,6 @@
 
         <div id="strategy-editor-modal" class="absolute inset-0 bg-black/50 backdrop-blur-sm z-20 flex items-center justify-center hidden animate-fade-in">
             <div class="bg-white w-full max-w-lg h-[85vh] rounded-2xl shadow-2xl flex flex-col m-4 overflow-hidden relative">
-                <!-- Loading Overlay -->
-                <div id="strategy-ai-loading" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
-                    <div class="animate-spin h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full mb-3"></div>
-                    <p class="text-sm font-bold text-indigo-600">AIが資料を解析中...</p>
-                    <p class="text-xs font-bold text-slate-400 mt-1">これには数秒〜1分ほどかかります</p>
-                </div>
 
                 <div class="p-4 border-b border-slate-100 bg-slate-50 shrink-0 flex justify-between items-center">
                     <h4 class="font-black text-slate-700">記事の作成・編集</h4>
@@ -625,48 +558,8 @@
                         <input type="text" id="strategy-editor-title" class="w-full text-xl font-black text-slate-800 bg-transparent border-b-2 border-slate-200 focus:border-indigo-500 outline-none px-1 py-2 placeholder-slate-300 transition" placeholder="例: 12月の営業戦略">
                     </div>
 
-                    <!-- Knowledge Base Editor (New) -->
-                    <div id="strategy-knowledge-editor" class="hidden animate-fade-in space-y-6">
-                         <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                            <h5 class="text-sm font-black text-indigo-600 mb-2 flex items-center gap-2">
-                                <span>📄</span> 資料PDFアップロード
-                            </h5>
-                            <p class="text-xs font-bold text-indigo-400 mb-4">資料をアップロードして「AI読込」を押すと、AIが内容を学習します。</p>
-
-                            <div class="flex items-center gap-3">
-                                <label class="flex-1 cursor-pointer bg-white border border-indigo-200 text-indigo-600 text-xs font-bold px-4 py-3 rounded-xl shadow-sm hover:bg-indigo-50 transition text-center truncate">
-                                    <span id="knowledge-file-name">ファイルを選択...</span>
-                                    <input type="file" id="knowledge-pdf-input" accept="application/pdf" class="hidden" onchange="window.handleKnowledgePdfSelect(this)">
-                                </label>
-                                <button onclick="window.handleKnowledgeAiRead()" class="bg-indigo-600 text-white text-xs font-bold px-4 py-3 rounded-xl shadow-md hover:bg-indigo-700 transition whitespace-nowrap">
-                                    ✨ AI読込
-                                </button>
-                            </div>
-                            <!-- Hidden storage for extracted text -->
-                            <input type="hidden" id="knowledge-pdf-text-storage">
-                         </div>
-
-                         <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-2">自由記述メモ (補足情報)</label>
-                            <textarea id="knowledge-free-text" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 h-32 resize-none" placeholder="現場独自のルールや、PDFに載っていない補足事項などを入力してください。AI回答の参考に使われます。"></textarea>
-                         </div>
-                    </div>
-
-                    <!-- Article Block Editor (Old - for CS Team) -->
-                    <div id="strategy-article-editor" class="hidden">
+                    <div id="strategy-article-editor" class="">
                         <div id="strategy-blocks-container" class="space-y-4 min-h-[100px]"></div>
-
-                        <!-- PDF Auto Generate Section -->
-                        <div class="mb-4 bg-indigo-50 p-3 rounded-xl border border-indigo-100 flex items-center justify-between mt-4">
-                            <div>
-                                <h5 class="text-xs font-black text-indigo-600 mb-0.5">✨ AI自動作成</h5>
-                                <p class="text-[10px] font-bold text-indigo-400">PDF資料を読み込んで下書きを作成</p>
-                            </div>
-                            <label class="cursor-pointer bg-indigo-600 text-white text-xs font-bold px-3 py-2 rounded-lg shadow-md hover:bg-indigo-700 transition flex items-center gap-1">
-                                <span>📄</span> PDFから作成
-                                <input type="file" id="strategy-pdf-input" accept="application/pdf" class="hidden" onchange="window.handlePdfUpload(this)">
-                            </label>
-                        </div>
 
                         <div class="grid grid-cols-3 gap-2 mt-6 pt-6 border-t border-slate-200 border-dashed">
                             <button onclick="addEditorBlock('img_top')" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
@@ -693,7 +586,6 @@
         </div>
     </div>
 
-    <!-- Member Target Setting Modal -->
     <div id="member-target-modal" class="modal-overlay hidden" style="z-index: 80;">
         <div class="modal-content p-0 w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
             <div class="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
@@ -719,7 +611,6 @@
         </div>
     </div>
 
-    <!-- QSC Edit Modal -->
     <div id="qscEditModal" class="modal-overlay hidden" style="z-index: 80;">
         <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-2xl">
             <h3 class="text-lg font-bold text-slate-800 mb-4">QSC項目編集</h3>
@@ -756,7 +647,6 @@
 
     <div id="remarks-modal" class="modal-overlay hidden"><div class="modal-content p-6"><h3 class="text-lg font-bold text-slate-800 mb-1" id="remarks-modal-task"></h3><p class="text-xs font-bold text-slate-400 mb-4" id="remarks-modal-time"></p><div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-slate-700 text-sm font-medium leading-relaxed mb-6" id="remarks-modal-text"></div><button onclick="closeRemarksModal()" class="w-full py-3 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">閉じる</button></div></div>
 
-    <!-- Deadline Add Modal -->
     <div id="deadline-modal" class="modal-overlay hidden">
         <div class="modal-content p-6 max-w-sm">
             <h3 class="text-lg font-black text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-4">
