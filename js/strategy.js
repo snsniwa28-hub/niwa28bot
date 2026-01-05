@@ -65,6 +65,12 @@ export async function saveStrategy() {
         author: "Admin"
     };
 
+    // AI Context
+    const aiContextInput = document.getElementById('strategy-ai-context');
+    if (aiContextInput) {
+        data.ai_context = aiContextInput.value;
+    }
+
     // Block Data Collection
     const blocksData = [];
     const blockElements = document.querySelectorAll('.strategy-block-item');
@@ -226,7 +232,6 @@ export function openStrategyEditor(id = null) {
 
     // Reset Forms
     document.getElementById('strategy-blocks-container').innerHTML = '';
-    // Removed Knowledge/PDF resets as elements are gone
 
     // Category Select Injection
     let titleInputContainer = document.getElementById('strategy-editor-title').parentNode;
@@ -258,6 +263,37 @@ export function openStrategyEditor(id = null) {
         categorySelect.classList.remove('opacity-50', 'cursor-not-allowed');
     }
 
+    // Always show editor
+    document.getElementById('strategy-article-editor').classList.remove('hidden');
+
+    // AI Context Section Injection
+    if (!document.getElementById('strategy-ai-section')) {
+        const aiDiv = document.createElement('div');
+        aiDiv.id = 'strategy-ai-section';
+        aiDiv.className = "mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100 animate-fade-in";
+        aiDiv.innerHTML = `
+            <label class="block text-xs font-bold text-indigo-600 mb-2">🤖 AI用知識データ (PDF/テキスト)</label>
+            <div class="mb-2 flex gap-2 items-center">
+                <label class="cursor-pointer bg-white text-indigo-600 px-3 py-2 rounded-lg text-xs font-bold border border-indigo-200 hover:bg-indigo-50 transition shadow-sm flex items-center gap-2">
+                    <span>📄 PDFを読み込む</span>
+                    <input type="file" accept="application/pdf" class="hidden" onchange="window.handlePdfUpload(this)">
+                </label>
+                <span id="pdf-status" class="text-[10px] text-slate-400 font-bold flex items-center"></span>
+            </div>
+            <textarea id="strategy-ai-context" class="w-full bg-white border border-indigo-200 rounded-lg p-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 h-32 resize-none placeholder-indigo-200" placeholder="ここにAIが参照するテキストを入力（PDFを読み込むと自動で抽出されます）"></textarea>
+            <p class="text-[10px] text-indigo-400 font-bold mt-1 text-right">※このテキストは記事には表示されず、AIの回答のみに使用されます</p>
+        `;
+        // Insert before the blocks container
+        const blocksContainer = document.getElementById('strategy-article-editor');
+        blocksContainer.parentNode.insertBefore(aiDiv, blocksContainer);
+    }
+
+    // Reset AI Context
+    const aiContextInput = document.getElementById('strategy-ai-context');
+    const pdfStatus = document.getElementById('pdf-status');
+    if (aiContextInput) aiContextInput.value = '';
+    if (pdfStatus) pdfStatus.textContent = '';
+
     if (id) {
         // Edit Mode
         const item = strategies.find(s => s.id === id);
@@ -270,13 +306,13 @@ export function openStrategyEditor(id = null) {
             if(item.blocks) {
                 item.blocks.forEach(block => addEditorBlock(block.type, block));
             }
+            if(item.ai_context && aiContextInput) {
+                aiContextInput.value = item.ai_context;
+            }
         }
     } else {
         titleInput.value = '';
     }
-
-    // Always show editor (no toggle logic anymore)
-    document.getElementById('strategy-article-editor').classList.remove('hidden');
 }
 
 export function closeStrategyEditor() {
@@ -346,6 +382,45 @@ window.handleBlockImage = async (input) => {
             label.querySelector('span').textContent = "画像変更";
         } catch (e) {
             alert("画像処理に失敗しました");
+        }
+    }
+};
+
+window.handlePdfUpload = async (input) => {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const statusEl = document.getElementById('pdf-status');
+        const textarea = document.getElementById('strategy-ai-context');
+
+        if (file.type !== 'application/pdf') {
+            alert('PDFファイルを選択してください');
+            return;
+        }
+
+        if(statusEl) statusEl.textContent = '読み込み中...';
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let extractedText = "";
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                extractedText += `[Page ${i}]\n${pageText}\n\n`;
+            }
+
+            if(textarea) {
+                const currentVal = textarea.value;
+                textarea.value = (currentVal ? currentVal + "\n\n" : "") + extractedText;
+            }
+            if(statusEl) statusEl.textContent = `完了 (${pdf.numPages}ページ)`;
+
+        } catch (e) {
+            console.error(e);
+            alert("PDFの読み込みに失敗しました: " + e.message);
+            if(statusEl) statusEl.textContent = 'エラー';
         }
     }
 };
