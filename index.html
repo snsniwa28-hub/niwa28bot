@@ -9,6 +9,10 @@
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="rogo.jpg">
     <link rel="apple-touch-icon" href="rogo.jpg">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
 </head>
 <body class="antialiased pb-20">
 
@@ -27,6 +31,7 @@
                         <a href="#new-opening-section" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">新台情報</a>
                         <a href="#operations-section" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">稼働実績</a>
                         <button onclick="openInternalSharedModal()" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">📋 社内共有・戦略</button>
+                        <button onclick="toggleAIChat()" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors bg-gradient-to-r from-indigo-50 to-blue-50 px-3 py-1 rounded-full border border-indigo-100 text-indigo-600">🤖 AI Chat</button>
                         <a href="#map-section" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">MAP</a>
                     </nav>
                 </div>
@@ -674,6 +679,52 @@
             </div>
         </div>
     </div>
+
+    <!-- AI Chat Modal -->
+    <div id="ai-chat-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center pointer-events-none">
+        <div class="absolute inset-0 bg-black/20 backdrop-blur-sm pointer-events-auto" onclick="toggleAIChat()"></div>
+        <div class="w-full sm:w-[450px] h-[80vh] sm:h-[700px] bg-slate-50 sm:rounded-3xl rounded-t-3xl shadow-2xl flex flex-col pointer-events-auto relative overflow-hidden transition-transform duration-300">
+            <!-- Header -->
+            <div class="bg-white p-4 border-b border-slate-200 flex justify-between items-center shrink-0 shadow-sm z-10">
+                <div class="flex items-center gap-3">
+                    <div class="bg-indigo-100 p-2 rounded-xl text-indigo-600">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-slate-800">Garden AI Assistant</h3>
+                        <p id="ai-status-text" class="text-[10px] font-bold text-slate-400 truncate max-w-[200px]">待機中...</p>
+                    </div>
+                </div>
+                <button onclick="toggleAIChat()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 flex items-center justify-center transition">✕</button>
+            </div>
+
+            <!-- Messages -->
+            <div id="ai-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
+                <div class="flex justify-start mb-4 animate-fade-in">
+                    <div class="bg-white p-3 rounded-2xl rounded-bl-none text-sm font-bold text-slate-700 border border-slate-100 shadow-sm max-w-[80%]">
+                        こんにちは！社内資料に基づいて質問にお答えします。<br>
+                        「今月のスロット戦略は？」のように聞いてください。
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input -->
+            <div class="p-4 bg-white border-t border-slate-200 shrink-0">
+                <div class="flex items-end gap-2 bg-slate-100 p-2 rounded-2xl border border-slate-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition">
+                    <textarea id="ai-input" rows="1" class="w-full bg-transparent border-none text-sm font-bold text-slate-700 px-2 py-2 outline-none resize-none max-h-32" placeholder="質問を入力..." onkeydown="if(event.key === 'Enter' && !event.shiftKey){ event.preventDefault(); sendAIMessage(); }"></textarea>
+                    <button onclick="sendAIMessage()" class="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-md shadow-indigo-200 transition shrink-0">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                    </button>
+                </div>
+                <p class="text-[10px] text-center text-slate-300 font-bold mt-2">Powered by Gemini 1.5 Flash</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile FAB -->
+    <button onclick="toggleAIChat()" class="fixed bottom-6 right-6 z-40 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg shadow-indigo-900/20 transition hover:scale-105 active:scale-95 md:hidden">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+    </button>
 
     <script type="module" src="main.js"></script>
 </body>

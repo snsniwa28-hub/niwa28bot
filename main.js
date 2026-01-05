@@ -11,6 +11,7 @@ import * as Strategy from './js/strategy.js';
 import { renderModals, renderInfoSections, changeStrategySlide } from './js/components.js';
 import { getTodayDateString, getYesterdayDateString, getTaskColorClass } from './js/utils.js';
 import * as Auth from './js/auth.js';
+import * as AI from './js/ai.js';
 
 // --- Global Helpers Compatibility (Exposing to Window) ---
 // Many inline HTML onclick handlers expect these to be global.
@@ -184,6 +185,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ★追加: 戦略共有の初期化
     Strategy.initStrategy();
+
+    // AI Initialization
+    AI.initAI();
 
     QSC.subscribeQSC();
     Tasks.fetchMasterData().then(() => {
