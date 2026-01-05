@@ -8,6 +8,7 @@ export async function onRequest(context) {
   try {
     const { prompt, contextData } = await request.json();
     const apiKey = env.GEMINI_API_KEY;
+    const model = env.GEMINI_MODEL || "gemini-2.0-flash";
 
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "API Key not configured" }), {
@@ -23,7 +24,7 @@ export async function onRequest(context) {
     }
     fullPrompt += `ユーザーの質問: ${prompt}`;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
