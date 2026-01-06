@@ -468,7 +468,8 @@ export function openInternalSharedModal(category = 'strategy') {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
     }
-};
+}
+window.openInternalSharedModal = openInternalSharedModal;
 
 export function openStrategyAdmin(category) {
     isStrategyAdmin = true;
