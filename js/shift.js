@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { showPasswordModal, closePasswordModal, showToast, showConfirmModal } from './ui.js';
 import { $, getHolidays } from './utils.js';
 

@@ -160,7 +160,7 @@ export function setStrategyCategory(category) {
         aiBtn = document.createElement('button');
         aiBtn.id = 'btn-header-ai-chat';
         aiBtn.className = "bg-gradient-to-r from-indigo-500 to-blue-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-md hover:shadow-lg hover:from-indigo-600 hover:to-blue-600 transition flex items-center gap-1";
-        aiBtn.innerHTML = `<span>🤖</span> <span class="hidden sm:inline">AI Chat</span>`;
+        aiBtn.innerHTML = `<span>🤖</span> <span class="ai-label-text hidden md:inline">AI Chat</span>`;
         // 閉じるボタンの前に追加
         btnContainer.insertBefore(aiBtn, btnContainer.lastElementChild);
     }
@@ -177,7 +177,7 @@ export function setStrategyCategory(category) {
         };
 
         // テキストをカテゴリに合わせて変更してもよい
-        const label = aiBtn.querySelector('.hidden.sm:inline');
+        const label = aiBtn.querySelector('.ai-label-text');
         if (label) label.textContent = `${c.title} AI`;
     }
 }

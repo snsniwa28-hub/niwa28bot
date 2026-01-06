@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { doc, onSnapshot, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { doc, onSnapshot, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { TASKS_EMPLOYEE, TASKS_ALBA, MANUAL_TASK_LIST, DEFAULT_STAFF } from './config.js';
 import { $, $$, getTodayDateString, openTimeSlots, closeTimeSlots, openAlbaTimeSlots, openTimeIndexMap, closeTimeIndexMap, getTaskColorClass } from './utils.js';
 import { showToast, initModal, selectOptionUI, closeModal, showPasswordModal, showConfirmModal } from './ui.js';

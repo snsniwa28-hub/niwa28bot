@@ -26,12 +26,12 @@
                         </span>
                     </a>
                     <nav class="hidden lg:flex gap-4">
-                        <a href="#" onclick="document.documentElement.scrollTo({top:0, behavior:'smooth'})" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">TOP</a>
+                        <a href="#" id="nav-top" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">TOP</a>
                         <a href="#task-section" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">タスク</a>
                         <a href="#new-opening-section" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">新台情報</a>
                         <a href="#operations-section" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">稼働実績</a>
-                        <button onclick="openInternalSharedModal()" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">📋 社内共有・戦略</button>
-                        <button onclick="toggleAIChat()" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors bg-gradient-to-r from-indigo-50 to-blue-50 px-3 py-1 rounded-full border border-indigo-100 text-indigo-600">🤖 AI Chat</button>
+                        <button id="nav-shared" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">📋 社内共有・戦略</button>
+                        <button id="nav-ai" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors bg-gradient-to-r from-indigo-50 to-blue-50 px-3 py-1 rounded-full border border-indigo-100 text-indigo-600">🤖 AI Chat</button>
                         <a href="#map-section" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">MAP</a>
                     </nav>
                 </div>
@@ -68,7 +68,7 @@
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
 
                 <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.2s;">
-                    <div onclick="switchView('staff')" class="group cursor-pointer bg-slate-800 rounded-3xl shadow-lg shadow-slate-900/20 border border-slate-700 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 flex flex-col justify-between relative overflow-hidden aspect-square">
+                    <div id="card-staff" class="group cursor-pointer bg-slate-800 rounded-3xl shadow-lg shadow-slate-900/20 border border-slate-700 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 flex flex-col justify-between relative overflow-hidden aspect-square">
                         <div class="absolute top-0 right-0 p-24 bg-white/5 rounded-full blur-2xl -mr-12 -mt-12 pointer-events-none"></div>
 
                         <div class="flex justify-between items-start mb-2">
@@ -129,7 +129,7 @@
                 </div>
 
                 <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.4s;">
-                    <button onclick="openInternalSharedModal('pachinko')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                    <button id="card-pachinko" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
                         <div class="flex justify-between items-start mb-2">
                             <div class="bg-pink-50 text-pink-600 p-3 rounded-2xl group-hover:bg-pink-600 group-hover:text-white transition-colors duration-300">
                                 <span class="text-xl font-black">🅿️</span>
@@ -140,13 +140,13 @@
                             <p class="text-slate-400 text-[10px] font-bold mt-0.5">Team Sharing</p>
                         </div>
                     </button>
-                    <button onclick="event.stopPropagation(); openStrategyAdminAuth('pachinko')" class="absolute top-3 right-3 p-2 bg-slate-100/80 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-full transition-all shadow-sm z-20 opacity-0 group-hover/card:opacity-100">
+                    <button id="admin-pachinko" class="absolute top-3 right-3 p-2 bg-slate-100/80 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-full transition-all shadow-sm z-20 opacity-0 group-hover/card:opacity-100">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     </button>
                 </div>
 
                 <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.45s;">
-                    <button onclick="openInternalSharedModal('slot')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                    <button id="card-slot" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
                         <div class="flex justify-between items-start mb-2">
                             <div class="bg-purple-50 text-purple-600 p-3 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-colors duration-300">
                                 <span class="text-xl font-black">🎰</span>
@@ -157,13 +157,13 @@
                             <p class="text-slate-400 text-[10px] font-bold mt-0.5">Team Sharing</p>
                         </div>
                     </button>
-                    <button onclick="event.stopPropagation(); openStrategyAdminAuth('slot')" class="absolute top-3 right-3 p-2 bg-slate-100/80 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-full transition-all shadow-sm z-20 opacity-0 group-hover/card:opacity-100">
+                    <button id="admin-slot" class="absolute top-3 right-3 p-2 bg-slate-100/80 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-full transition-all shadow-sm z-20 opacity-0 group-hover/card:opacity-100">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     </button>
                 </div>
 
                 <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.5s;">
-                    <button onclick="openInternalSharedModal('cs')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                    <button id="card-cs" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
                         <div class="flex justify-between items-start mb-2">
                             <div class="bg-orange-50 text-orange-600 p-3 rounded-2xl group-hover:bg-orange-600 group-hover:text-white transition-colors duration-300">
                                 <span class="text-xl font-black">🤝</span>
@@ -174,13 +174,13 @@
                             <p class="text-slate-400 text-[10px] font-bold mt-0.5">Customer Svc</p>
                         </div>
                     </button>
-                    <button onclick="event.stopPropagation(); openStrategyAdminAuth('cs')" class="absolute top-3 right-3 p-2 bg-slate-100/80 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-full transition-all shadow-sm z-20 opacity-0 group-hover/card:opacity-100">
+                    <button id="admin-cs" class="absolute top-3 right-3 p-2 bg-slate-100/80 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-full transition-all shadow-sm z-20 opacity-0 group-hover/card:opacity-100">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     </button>
                 </div>
 
                 <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.55s;">
-                    <button onclick="openInternalSharedModal('strategy')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                    <button id="card-strategy" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
                         <div class="flex justify-between items-start mb-2">
                             <div class="bg-red-50 text-red-600 p-3 rounded-2xl group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
                                 <span class="text-xl font-black">📈</span>
@@ -191,7 +191,7 @@
                             <p class="text-slate-400 text-[10px] font-bold mt-0.5">Monthly Goals</p>
                         </div>
                     </button>
-                    <button onclick="event.stopPropagation(); openStrategyAdminAuth('strategy')" class="absolute top-3 right-3 p-2 bg-slate-100/80 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-full transition-all shadow-sm z-20 opacity-0 group-hover/card:opacity-100">
+                    <button id="admin-strategy" class="absolute top-3 right-3 p-2 bg-slate-100/80 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-full transition-all shadow-sm z-20 opacity-0 group-hover/card:opacity-100">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     </button>
                 </div>
@@ -204,7 +204,7 @@
                         <h2 class="text-sm font-bold text-slate-500 flex items-center gap-2">
                             <span>📅</span> 今月の期限物・お知らせ
                         </h2>
-                        <button onclick="showPasswordModal(openDeadlineManagementModal)" class="text-slate-300 hover:text-slate-500 transition p-1">
+                        <button id="btn-deadline-settings" class="text-slate-300 hover:text-slate-500 transition p-1">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                         </button>
                     </div>
@@ -225,14 +225,14 @@
                                  <div>
                                     <h2 class="text-xl font-black text-slate-800 leading-tight">新規会員獲得一覧</h2>
                                     <div class="flex items-center gap-2 mt-1">
-                                        <button onclick="event.preventDefault(); changeMemberMonth(-1)" class="text-slate-400 hover:text-indigo-600 transition z-10 relative">◀</button>
+                                        <button id="btn-member-prev" class="text-slate-400 hover:text-indigo-600 transition z-10 relative">◀</button>
                                         <span id="member-current-month" class="text-xs font-bold text-slate-500">----年 --月</span>
-                                        <button onclick="event.preventDefault(); changeMemberMonth(1)" class="text-slate-400 hover:text-indigo-600 transition z-10 relative">▶</button>
+                                        <button id="btn-member-next" class="text-slate-400 hover:text-indigo-600 transition z-10 relative">▶</button>
                                     </div>
                                  </div>
                             </div>
                             <div class="flex items-center gap-2">
-                                <button onclick="event.preventDefault(); openMemberSettings()" class="text-slate-300 hover:text-slate-500 transition p-2 z-10 relative">
+                                <button id="btn-member-settings" class="text-slate-300 hover:text-slate-500 transition p-2 z-10 relative">
                                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                 </button>
                                 <span class="group-open:rotate-180 transition-transform duration-300">
@@ -259,9 +259,9 @@
 
                             <div class="flex justify-center mb-6">
                                 <div class="bg-slate-100 p-1 rounded-xl flex gap-1">
-                                    <button onclick="switchMemberTab('early')" id="btn-member-early" class="px-4 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-white transition-all bg-white shadow-sm text-indigo-600">早番</button>
-                                    <button onclick="switchMemberTab('late')" id="btn-member-late" class="px-4 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-white transition-all">遅番</button>
-                                    <button onclick="switchMemberTab('employee')" id="btn-member-employee" class="px-4 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-white transition-all">社員</button>
+                                    <button id="btn-member-early" class="px-4 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-white transition-all bg-white shadow-sm text-indigo-600">早番</button>
+                                    <button id="btn-member-late" class="px-4 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-white transition-all">遅番</button>
+                                    <button id="btn-member-employee" class="px-4 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-white transition-all">社員</button>
                                 </div>
                             </div>
 
@@ -285,7 +285,7 @@
                         </div>
                     </div>
                     <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
-                        <button onclick="showPasswordModal(openMapUpdateModal)" class="bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-2">
+                        <button id="btn-map-update" class="bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-2">
                             <span>🗺️</span> マップを更新する
                         </button>
                     </div>
@@ -302,16 +302,16 @@
         <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
             <div class="container mx-auto px-4 h-16 flex items-center justify-between">
                 <div class="flex items-center gap-4">
-                    <button onclick="switchView('customer')" class="p-2 -ml-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition">
+                    <button id="btn-staff-back" class="p-2 -ml-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition">
                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
                     </button>
                     <h1 class="text-lg font-black text-slate-800 tracking-tight">Task Manager</h1>
                 </div>
                 <div class="flex items-center gap-2 sm:gap-3 flex-nowrap shrink-0">
                     <div class="flex items-center bg-slate-100 rounded-lg p-0.5 shrink-0">
-                        <button onclick="changeDate(-1)" class="px-2 py-1.5 text-slate-400 hover:text-indigo-600 transition">◀</button>
-                        <input type="date" id="date-picker" class="bg-transparent border-none text-xs font-bold text-slate-600 px-1 py-1.5 outline-none focus:ring-0 cursor-pointer" onchange="handleDateChange(this.value)">
-                        <button onclick="changeDate(1)" class="px-2 py-1.5 text-slate-400 hover:text-indigo-600 transition">▶</button>
+                        <button id="btn-staff-date-prev" class="px-2 py-1.5 text-slate-400 hover:text-indigo-600 transition">◀</button>
+                        <input type="date" id="date-picker" class="bg-transparent border-none text-xs font-bold text-slate-600 px-1 py-1.5 outline-none focus:ring-0 cursor-pointer">
+                        <button id="btn-staff-date-next" class="px-2 py-1.5 text-slate-400 hover:text-indigo-600 transition">▶</button>
                     </div>
                     <button id="edit-mode-button" class="text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-full transition-all whitespace-nowrap shrink-0">管理者編集</button>
                 </div>
@@ -321,15 +321,15 @@
         <main class="container mx-auto px-2 sm:px-4 py-6 max-w-7xl">
             <div class="flex justify-center mb-8">
                 <div class="bg-slate-200/50 p-1.5 rounded-xl inline-flex shadow-inner">
-                    <button id="tab-open" onclick="showSubTab('open')" class="px-6 py-2.5 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm transition-all">早番 (OPEN)</button>
-                    <button id="tab-close" onclick="showSubTab('close')" class="px-6 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all">遅番 (CLOSE)</button>
+                    <button id="tab-open" class="px-6 py-2.5 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm transition-all">早番 (OPEN)</button>
+                    <button id="tab-close" class="px-6 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all">遅番 (CLOSE)</button>
                 </div>
             </div>
 
             <div class="flex justify-center gap-2 mb-6">
-                <button onclick="filterTasks('all')" id="filter-btn-all" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-slate-800 text-white shadow-sm transition-all">すべて</button>
-                <button onclick="filterTasks('employee')" id="filter-btn-employee" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 transition-all">社員のみ</button>
-                <button onclick="filterTasks('byte')" id="filter-btn-byte" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 transition-all">バイトのみ</button>
+                <button id="filter-btn-all" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-slate-800 text-white shadow-sm transition-all">すべて</button>
+                <button id="filter-btn-employee" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 transition-all">社員のみ</button>
+                <button id="filter-btn-byte" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 transition-all">バイトのみ</button>
             </div>
 
             <div id="view-mode-container" class="space-y-8 animate-fade-in">
@@ -380,36 +380,36 @@
                 <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-lg overflow-x-auto">
                     <h3 class="text-xs font-black text-slate-400 uppercase tracking-wider mb-4 flex justify-between items-center">
                         <span>Preview Timeline</span>
-                        <button onclick="openBulkDeleteMenu()" class="text-rose-500 hover:bg-rose-50 px-3 py-1 rounded-lg transition">🗑️ 一括削除メニュー</button>
+                        <button id="btn-bulk-delete" class="text-rose-500 hover:bg-rose-50 px-3 py-1 rounded-lg transition">🗑️ 一括削除メニュー</button>
                     </h3>
                     <div id="editor-timeline-content"></div>
                 </div>
 
                 <div id="edit-content-open">
                     <div class="grid grid-cols-2 gap-4 mb-6">
-                        <button onclick="autoAssignSection('open')" class="col-span-2 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+                        <button id="btn-auto-open" class="col-span-2 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
                             <span>⚡</span> AI 自動割り振り (早番)
                         </button>
                     </div>
                     <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6">
                         <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">📌 固定ポジション設定</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <button id="fixed-money_count-btn" onclick="openFixedStaffSelect('fixed_money_count','open_early','金銭業務 (早番)')" class="w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">金銭業務: 未選択</button>
-                            <button id="fixed_open_warehouse-btn" onclick="openFixedStaffSelect('fixed_open_warehouse','open_early','倉庫番 (特景)')" class="w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">倉庫番: 未選択</button>
-                            <button id="fixed-open_counter-btn" onclick="openFixedStaffSelect('fixed_open_counter','open_late','カウンター開設')" class="w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">カウンター開設: 未選択</button>
+                            <button id="fixed-money_count-btn" class="w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">金銭業務: 未選択</button>
+                            <button id="fixed_open_warehouse-btn" class="w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">倉庫番: 未選択</button>
+                            <button id="fixed-open_counter-btn" class="w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">カウンター開設: 未選択</button>
                         </div>
                     </div>
                     <div class="mb-8">
                         <div class="flex justify-between items-end mb-4 px-1">
                             <h3 class="text-lg font-black text-slate-700 flex items-center gap-2"><span class="w-2 h-6 bg-indigo-500 rounded-full"></span> 社員 (Employees)</h3>
-                            <button onclick="openStaffSelect('early','employees')" class="text-indigo-600 text-sm font-bold bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition">+ 追加</button>
+                            <button id="btn-add-staff-open-early" class="text-indigo-600 text-sm font-bold bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition">+ 追加</button>
                         </div>
                         <div id="staff-list-open-early" class="staff-grid"></div>
                     </div>
                     <div class="mb-8">
                         <div class="flex justify-between items-end mb-4 px-1">
                             <h3 class="text-lg font-black text-slate-700 flex items-center gap-2"><span class="w-2 h-6 bg-teal-500 rounded-full"></span> アルバイト (Part-time)</h3>
-                            <button onclick="openStaffSelect('late','alba_early')" class="text-teal-600 text-sm font-bold bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-lg transition">+ 追加</button>
+                            <button id="btn-add-staff-open-late" class="text-teal-600 text-sm font-bold bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-lg transition">+ 追加</button>
                         </div>
                         <div id="staff-list-open-late" class="staff-grid"></div>
                     </div>
@@ -417,29 +417,29 @@
 
                 <div id="edit-content-close" class="hidden">
                     <div class="grid grid-cols-2 gap-4 mb-6">
-                        <button onclick="autoAssignSection('close')" class="col-span-2 bg-gradient-to-r from-purple-600 to-purple-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-purple-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+                        <button id="btn-auto-close" class="col-span-2 bg-gradient-to-r from-purple-600 to-purple-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-purple-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
                             <span>⚡</span> AI 自動割り振り (遅番)
                         </button>
                     </div>
                     <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6">
                         <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">📌 固定ポジション設定</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <button id="fixed-money_collect-btn" onclick="openFixedStaffSelect('fixed_money_collect','close_emp','金銭回収')" class="w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">金銭回収: 未選択</button>
-                            <button id="fixed-warehouses-btn" onclick="openFixedStaffSelect('fixed_warehouses','close_all','倉庫整理')" class="w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">倉庫整理: 未選択</button>
-                            <button id="fixed-counters-btn" onclick="openFixedStaffSelect('fixed_counters','close_all','カウンター')" class="w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">カウンター: 未選択</button>
+                            <button id="fixed-money_collect-btn" class="w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">金銭回収: 未選択</button>
+                            <button id="fixed-warehouses-btn" class="w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">倉庫整理: 未選択</button>
+                            <button id="fixed-counters-btn" class="w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">カウンター: 未選択</button>
                         </div>
                     </div>
                     <div class="mb-8">
                         <div class="flex justify-between items-end mb-4 px-1">
                             <h3 class="text-lg font-black text-slate-700 flex items-center gap-2"><span class="w-2 h-6 bg-purple-500 rounded-full"></span> 社員 (Employees)</h3>
-                            <button onclick="openStaffSelect('closing_employee','employees')" class="text-purple-600 text-sm font-bold bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition">+ 追加</button>
+                            <button id="btn-add-staff-close-emp" class="text-purple-600 text-sm font-bold bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition">+ 追加</button>
                         </div>
                         <div id="staff-list-close-employee" class="staff-grid"></div>
                     </div>
                     <div class="mb-8">
                         <div class="flex justify-between items-end mb-4 px-1">
                             <h3 class="text-lg font-black text-slate-700 flex items-center gap-2"><span class="w-2 h-6 bg-pink-500 rounded-full"></span> アルバイト (Part-time)</h3>
-                            <button onclick="openStaffSelect('closing_alba','alba_late')" class="text-pink-600 text-sm font-bold bg-pink-50 hover:bg-pink-100 px-3 py-1.5 rounded-lg transition">+ 追加</button>
+                            <button id="btn-add-staff-close-alba" class="text-pink-600 text-sm font-bold bg-pink-50 hover:bg-pink-100 px-3 py-1.5 rounded-lg transition">+ 追加</button>
                         </div>
                         <div id="staff-list-close-alba" class="staff-grid"></div>
                     </div>
@@ -457,7 +457,7 @@
                     <span>⚙️</span> 期限物・お知らせ管理
                 </h2>
                 <div class="flex items-center gap-2">
-                    <button onclick="closeDeadlineManagementModal()" class="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 flex items-center justify-center transition">
+                    <button id="btn-close-deadline-modal" class="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 flex items-center justify-center transition">
                         ✕
                     </button>
                 </div>
@@ -475,7 +475,7 @@
                          </div>
                          <div class="flex gap-2">
                              <input type="text" id="new-deadline-content" placeholder="内容を入力..." class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
-                             <button onclick="addDeadlineDirectly()" class="bg-indigo-600 text-white font-bold px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700 transition">追加</button>
+                             <button id="btn-add-deadline" class="bg-indigo-600 text-white font-bold px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700 transition">追加</button>
                          </div>
                     </div>
                 </div>
@@ -521,8 +521,8 @@
             </div>
 
             <div class="flex gap-3 pt-2 border-t border-slate-100">
-                <button onclick="closeMapUpdateModal()" class="flex-1 py-2.5 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
-                <button id="btn-save-map" onclick="saveMapUpdate()" class="flex-1 py-2.5 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存して更新</button>
+                <button id="btn-close-map-modal" class="flex-1 py-2.5 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
+                <button id="btn-save-map" class="flex-1 py-2.5 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存して更新</button>
             </div>
         </div>
     </div>
@@ -538,9 +538,9 @@
                     <button id="btn-create-strategy" class="hidden items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">
                         <span>＋</span> 新規作成
                     </button>
-                    <button id="btn-create-strategy-mobile" onclick="openStrategyEditor()" class="hidden md:hidden bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-lg shadow-indigo-200">+</button>
+                    <button id="btn-create-strategy-mobile" class="hidden md:hidden bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-lg shadow-indigo-200">+</button>
 
-                    <button onclick="document.getElementById('internalSharedModal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 flex items-center justify-center transition">✕</button>
+                    <button id="btn-close-shared" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 flex items-center justify-center transition">✕</button>
                 </div>
             </div>
 
@@ -554,7 +554,7 @@
 
                 <div class="p-4 border-b border-slate-100 bg-slate-50 shrink-0 flex justify-between items-center">
                     <h4 class="font-black text-slate-700">記事の作成・編集</h4>
-                    <button onclick="closeStrategyEditor()" class="text-xs font-bold text-slate-400 hover:text-slate-600">キャンセル</button>
+                    <button id="btn-cancel-strategy" class="text-xs font-bold text-slate-400 hover:text-slate-600">キャンセル</button>
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4 bg-slate-50/50">
@@ -567,15 +567,15 @@
                         <div id="strategy-blocks-container" class="space-y-4 min-h-[100px]"></div>
 
                         <div class="grid grid-cols-3 gap-2 mt-6 pt-6 border-t border-slate-200 border-dashed">
-                            <button onclick="addEditorBlock('img_top')" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
+                            <button id="btn-add-block-img-top" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
                                 <span class="text-lg mb-1 group-hover:scale-110 transition">📷📝</span>
                                 <span class="text-[10px] font-bold text-slate-500">画像上</span>
                             </button>
-                            <button onclick="addEditorBlock('text')" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
+                            <button id="btn-add-block-text" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
                                 <span class="text-lg mb-1 group-hover:scale-110 transition">📝</span>
                                 <span class="text-[10px] font-bold text-slate-500">文字のみ</span>
                             </button>
-                            <button onclick="addEditorBlock('img_bottom')" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
+                            <button id="btn-add-block-img-bottom" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
                                 <span class="text-lg mb-1 group-hover:scale-110 transition">📝📷</span>
                                 <span class="text-[10px] font-bold text-slate-500">画像下</span>
                             </button>
@@ -585,7 +585,7 @@
                 </div>
 
                 <div class="p-4 border-t border-slate-100 bg-white shrink-0">
-                    <button onclick="saveStrategy()" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存して公開</button>
+                    <button id="btn-save-strategy" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存して公開</button>
                 </div>
             </div>
         </div>
@@ -595,7 +595,7 @@
         <div class="modal-content p-0 w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
             <div class="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
                 <h3 class="font-bold text-slate-800">目標設定 <span id="member-target-modal-month" class="text-xs text-slate-400 ml-2"></span></h3>
-                <button onclick="closeMemberTargetModal()" class="text-slate-400 hover:text-slate-600">✕</button>
+                <button id="btn-close-member-target" class="text-slate-400 hover:text-slate-600">✕</button>
             </div>
             <div class="p-6 overflow-y-auto flex-1">
                 <div class="mb-6">
@@ -611,7 +611,7 @@
                 </div>
             </div>
             <div class="p-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl shrink-0">
-                <button onclick="saveMemberTargets()" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">設定を保存する</button>
+                <button id="btn-save-member-target" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">設定を保存する</button>
             </div>
         </div>
     </div>
@@ -644,13 +644,13 @@
             </div>
 
             <div class="flex gap-3 mt-6">
-                <button onclick="closeQscEditModal()" class="flex-1 py-2.5 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
-                <button onclick="saveQscEdit()" class="flex-1 py-2.5 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存する</button>
+                <button id="btn-close-qsc-edit" class="flex-1 py-2.5 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
+                <button id="btn-save-qsc-edit" class="flex-1 py-2.5 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存する</button>
             </div>
         </div>
     </div>
 
-    <div id="remarks-modal" class="modal-overlay hidden"><div class="modal-content p-6"><h3 class="text-lg font-bold text-slate-800 mb-1" id="remarks-modal-task"></h3><p class="text-xs font-bold text-slate-400 mb-4" id="remarks-modal-time"></p><div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-slate-700 text-sm font-medium leading-relaxed mb-6" id="remarks-modal-text"></div><button onclick="closeRemarksModal()" class="w-full py-3 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">閉じる</button></div></div>
+    <div id="remarks-modal" class="modal-overlay hidden"><div class="modal-content p-6"><h3 class="text-lg font-bold text-slate-800 mb-1" id="remarks-modal-task"></h3><p class="text-xs font-bold text-slate-400 mb-4" id="remarks-modal-time"></p><div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-slate-700 text-sm font-medium leading-relaxed mb-6" id="remarks-modal-text"></div><button id="btn-close-remarks" class="w-full py-3 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">閉じる</button></div></div>
 
     <div id="deadline-modal" class="modal-overlay hidden">
         <div class="modal-content p-6 max-w-sm">
@@ -674,15 +674,15 @@
                 </div>
             </div>
             <div class="mt-8 flex gap-3">
-                <button onclick="closeDeadlineModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl">キャンセル</button>
-                <button onclick="addDeadline()" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700">追加する</button>
+                <button id="btn-cancel-legacy-deadline" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl">キャンセル</button>
+                <button id="btn-add-legacy-deadline" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700">追加する</button>
             </div>
         </div>
     </div>
 
     <!-- AI Chat Modal -->
     <div id="ai-chat-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center pointer-events-none">
-        <div class="absolute inset-0 bg-black/20 backdrop-blur-sm pointer-events-auto" onclick="toggleAIChat()"></div>
+        <div id="ai-overlay" class="absolute inset-0 bg-black/20 backdrop-blur-sm pointer-events-auto"></div>
         <div class="w-full sm:w-[450px] h-[80vh] sm:h-[700px] bg-slate-50 sm:rounded-3xl rounded-t-3xl shadow-2xl flex flex-col pointer-events-auto relative overflow-hidden transition-transform duration-300">
             <!-- Header -->
             <div class="bg-white p-4 border-b border-slate-200 flex justify-between items-center shrink-0 shadow-sm z-10">
@@ -695,7 +695,7 @@
                         <p id="ai-status-text" class="text-[10px] font-bold text-slate-400 truncate max-w-[200px]">待機中...</p>
                     </div>
                 </div>
-                <button onclick="toggleAIChat()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 flex items-center justify-center transition">✕</button>
+                <button id="btn-ai-close" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 flex items-center justify-center transition">✕</button>
             </div>
 
             <!-- Messages -->
@@ -711,8 +711,8 @@
             <!-- Input -->
             <div class="p-4 bg-white border-t border-slate-200 shrink-0">
                 <div class="flex items-end gap-2 bg-slate-100 p-2 rounded-2xl border border-slate-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition">
-                    <textarea id="ai-input" rows="1" class="w-full bg-transparent border-none text-sm font-bold text-slate-700 px-2 py-2 outline-none resize-none max-h-32" placeholder="質問を入力..." onkeydown="if(event.key === 'Enter' && !event.shiftKey){ event.preventDefault(); sendAIMessage(); }"></textarea>
-                    <button onclick="sendAIMessage()" class="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-md shadow-indigo-200 transition shrink-0">
+                    <textarea id="ai-input" rows="1" class="w-full bg-transparent border-none text-sm font-bold text-slate-700 px-2 py-2 outline-none resize-none max-h-32" placeholder="質問を入力..."></textarea>
+                    <button id="btn-ai-send" class="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-md shadow-indigo-200 transition shrink-0">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
                     </button>
                 </div>
@@ -722,7 +722,7 @@
     </div>
 
     <!-- Mobile FAB -->
-    <button onclick="toggleAIChat()" class="fixed bottom-6 right-6 z-40 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg shadow-indigo-900/20 transition hover:scale-105 active:scale-95 md:hidden">
+    <button id="btn-ai-fab" class="fixed bottom-6 right-6 z-40 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg shadow-indigo-900/20 transition hover:scale-105 active:scale-95 md:hidden">
         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
     </button>
 

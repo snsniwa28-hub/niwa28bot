@@ -9,7 +9,7 @@ import {
     doc,
     updateDoc,
     serverTimestamp
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { showToast, showConfirmModal } from './ui.js';
 
 let editMode = false;
