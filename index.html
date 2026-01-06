@@ -31,7 +31,6 @@
                         <a href="#new-opening-section" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">新台情報</a>
                         <a href="#operations-section" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">稼働実績</a>
                         <button onclick="openInternalSharedModal()" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">📋 社内共有・戦略</button>
-                        <button onclick="toggleAIChat()" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors bg-gradient-to-r from-indigo-50 to-blue-50 px-3 py-1 rounded-full border border-indigo-100 text-indigo-600">🤖 AI Chat</button>
                         <a href="#map-section" class="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">MAP</a>
                     </nav>
                 </div>
@@ -535,6 +534,9 @@
                     <h3 class="font-black text-slate-800 text-lg">社内共有・戦略</h3>
                 </div>
                 <div class="flex items-center gap-3">
+                    <button id="btn-category-ai" class="flex items-center gap-1 bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition">
+                        🤖 AIに聞く
+                    </button>
                     <button id="btn-create-strategy" class="hidden items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">
                         <span>＋</span> 新規作成
                     </button>
@@ -681,7 +683,7 @@
     </div>
 
     <!-- AI Chat Modal -->
-    <div id="ai-chat-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center pointer-events-none">
+    <div id="ai-chat-modal" class="fixed inset-0 z-[100] hidden items-end sm:items-center justify-center pointer-events-none">
         <div class="absolute inset-0 bg-black/20 backdrop-blur-sm pointer-events-auto" onclick="toggleAIChat()"></div>
         <div class="w-full sm:w-[450px] h-[80vh] sm:h-[700px] bg-slate-50 sm:rounded-3xl rounded-t-3xl shadow-2xl flex flex-col pointer-events-auto relative overflow-hidden transition-transform duration-300">
             <!-- Header -->
@@ -721,10 +723,6 @@
         </div>
     </div>
 
-    <!-- Mobile FAB -->
-    <button onclick="toggleAIChat()" class="fixed bottom-6 right-6 z-40 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg shadow-indigo-900/20 transition hover:scale-105 active:scale-95 md:hidden">
-        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
-    </button>
 
     <script type="module" src="main.js"></script>
 </body>
