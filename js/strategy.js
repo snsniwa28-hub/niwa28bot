@@ -460,7 +460,7 @@ window.addEditorBlock = addEditorBlock;
 window.saveStrategy = saveStrategy;
 window.deleteStrategy = deleteStrategy;
 
-window.openInternalSharedModal = (category = 'strategy') => {
+export function openInternalSharedModal(category = 'strategy') {
     isStrategyAdmin = false;
     setStrategyCategory(category);
     const modal = document.getElementById('internalSharedModal');
