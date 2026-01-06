@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, doc, onSnapshot, updateDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, doc, onSnapshot, updateDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { $ } from './utils.js';
 import { showPasswordModal } from './ui.js';
 

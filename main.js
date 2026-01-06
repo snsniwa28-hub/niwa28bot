@@ -14,7 +14,8 @@ import * as Auth from './js/auth.js';
 import * as AI from './js/ai.js';
 
 // --- Global Helpers Compatibility (Exposing to Window) ---
-// Many inline HTML onclick handlers expect these to be global.
+// Note: We keep these for now to support any dynamic HTML that might still rely on them,
+// but for static index.html elements, we now use addEventListener.
 
 // Utils
 window.getTodayDateString = getTodayDateString;
@@ -28,7 +29,7 @@ window.showPasswordModal = UI.showPasswordModal;
 window.closePasswordModal = UI.closePasswordModal;
 window.showConfirmModal = UI.showConfirmModal;
 window.closeConfirmModal = UI.closeConfirmModal;
-window.selectOption = Tasks.selectOption; // Tasks manages the select logic
+window.selectOption = Tasks.selectOption;
 window.confirmSelection = Tasks.confirmSelection;
 window.closeSelectModal = Tasks.closeSelectModal;
 window.closeModal = UI.closeModal;
@@ -47,22 +48,14 @@ window.handleMapFileSelect = Customer.handleMapFileSelect;
 
 // Internal Shared Modal
 window.openInternalSharedModal = Strategy.openInternalSharedModal;
-
 window.closeInternalSharedModal = function () {
     const modal = document.getElementById('internalSharedModal');
     if (modal) {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
     }
-    // Also reset admin mode via Strategy module if needed, but Strategy.openInternalSharedModal(category) resets it to false.
-    // However, if we close it and reopen via user click, it resets.
-    // If we just hide it here, the state remains until reopened.
 };
-// Strategy Admin Auth
 window.openStrategyAdminAuth = Strategy.openStrategyAdminAuth;
-
-
-// Slideshow
 window.changeStrategySlide = changeStrategySlide;
 
 // Operations
@@ -79,12 +72,10 @@ window.subscribeQSC = QSC.subscribeQSC;
 window.renderQSCList = QSC.renderQSCList;
 window.addQscItem = QSC.addQscItem;
 window.deleteQscItem = QSC.deleteQscItem;
-window.openQSCModal = QSC.openQSCModal; // Replaced specific inline code
+window.openQSCModal = QSC.openQSCModal;
 window.closeQscEditModal = QSC.closeQscEditModal;
 window.saveQscEdit = QSC.saveQscEdit;
-// Handle QSC tab switching specifically to avoid complex inline JS
 window.handleQscTab = (tab) => QSC.setQscTab(tab);
-// Note: We need to bind specific QSC actions from HTML if they are complex
 
 // Shift
 window.injectShiftButton = Shift.injectShiftButton;
@@ -157,6 +148,16 @@ window.confirmDelete = Tasks.confirmDelete;
 window.showRemarksModal = Tasks.showRemarksModal;
 window.closeRemarksModal = Tasks.closeRemarksModal;
 
+// Deadlines
+window.openDeadlineManagementModal = Deadlines.openDeadlineManagementModal;
+window.closeDeadlineManagementModal = Deadlines.closeDeadlineManagementModal;
+window.addDeadlineDirectly = Deadlines.addDeadlineDirectly;
+
+// AI
+window.toggleAIChat = AI.toggleAIChat;
+window.closeAIChat = AI.closeAIChat;
+window.sendAIMessage = AI.sendAIMessage;
+
 // --- Main Initialization ---
 
 window.checkPassword = function () {
@@ -168,88 +169,6 @@ window.checkPassword = function () {
         document.getElementById('password-error').classList.remove('hidden');
     }
 };
-
-document.addEventListener("DOMContentLoaded", () => {
-    // 0. Render Static Components
-    renderModals();
-    renderInfoSections();
-
-    // 1. Initial Data Load
-    Customer.fetchCustomerData();
-    Deadlines.initDeadlines();
-
-    // Expose Deadlines modal functions
-    window.openDeadlineManagementModal = Deadlines.openDeadlineManagementModal;
-    window.closeDeadlineManagementModal = Deadlines.closeDeadlineManagementModal;
-    window.addDeadlineDirectly = Deadlines.addDeadlineDirectly;
-
-    // ★追加: 戦略共有の初期化
-    Strategy.initStrategy();
-
-    // AI Initialization
-    AI.initAI();
-
-    QSC.subscribeQSC();
-    Tasks.fetchMasterData().then(() => {
-        MemberRace.subscribeMemberRace();
-    });
-    Operations.subscribeOperations();
-
-    // 2. Event Listeners Setup (replacing some inline onclicks where possible or convenient)
-
-    // QSC
-    const qscEditBtn = document.getElementById('qscEditButton');
-    if (qscEditBtn) qscEditBtn.onclick = () => QSC.toggleQscEditMode();
-
-    const openQscBtn = document.getElementById('openQSCButton');
-    if (openQscBtn) openQscBtn.onclick = QSC.openQSCModal;
-
-    const closeQscBtn = document.getElementById('closeQscModal');
-    if (closeQscBtn) closeQscBtn.onclick = QSC.closeQSCModal;
-
-    const qscTabUnfinished = document.getElementById('qscTabUnfinished');
-    if (qscTabUnfinished) qscTabUnfinished.onclick = () => QSC.setQscTab('未実施');
-
-    const qscTabFinished = document.getElementById('qscTabFinished');
-    if (qscTabFinished) qscTabFinished.onclick = () => QSC.setQscTab('完了');
-
-    // Customer
-    const newOpeningBtn = document.getElementById('newOpeningButton');
-    if (newOpeningBtn) newOpeningBtn.onclick = Customer.openNewOpening;
-
-    const closeNewOpeningBtn = document.getElementById('closeNewOpeningModal');
-    if (closeNewOpeningBtn) closeNewOpeningBtn.onclick = Customer.closeNewOpeningModal;
-
-    const closeDetailBtn = document.getElementById('closeDetailModal');
-    if (closeDetailBtn) closeDetailBtn.onclick = Customer.closeDetailModal;
-
-    // Tasks / Staff
-    const editModeBtn = document.getElementById('edit-mode-button');
-    if (editModeBtn) editModeBtn.onclick = Tasks.toggleAdminEdit;
-
-    // Switch View callback integration
-    window.switchView = (view) => UI.switchView(view, {
-        onStaffView: () => {
-            Tasks.setupInitialView();
-            if (!window.taskDocRef) { // Check if initialized (Tasks logic handles this mostly)
-                Tasks.handleDateChange(getTodayDateString());
-            }
-        }
-    });
-
-    // Check Hash
-    if (window.location.hash === '#staff') {
-        UI.switchView('staff', {
-            onStaffView: () => {
-                Tasks.setupInitialView();
-                Tasks.handleDateChange(getTodayDateString());
-            }
-        });
-    }
-
-    // Shift Button Setup (Static HTML)
-    Shift.injectShiftButton();
-});
 
 window.filterTasks = (type) => {
     // 1. Update Button Styles
@@ -295,3 +214,185 @@ window.filterTasks = (type) => {
         setVisibility(false, true);
     }
 };
+
+document.addEventListener("DOMContentLoaded", () => {
+    // 0. Render Static Components
+    renderModals();
+    renderInfoSections();
+
+    // 1. Initialize Event Listeners (Refactored from inline onclick)
+    initEventListeners();
+
+    // 2. Initial Data Load
+    Customer.fetchCustomerData();
+    Deadlines.initDeadlines();
+    Strategy.initStrategy();
+    AI.initAI();
+    QSC.subscribeQSC();
+    Tasks.fetchMasterData().then(() => {
+        MemberRace.subscribeMemberRace();
+    });
+    Operations.subscribeOperations();
+
+    // Shift Button Setup
+    Shift.injectShiftButton();
+
+    // Initial View Logic
+    if (window.location.hash === '#staff') {
+        UI.switchView('staff', {
+            onStaffView: () => {
+                Tasks.setupInitialView();
+                Tasks.handleDateChange(getTodayDateString());
+            }
+        });
+    }
+
+    // Override switchView for hash handling
+    const originalSwitchView = window.switchView;
+    window.switchView = (view) => UI.switchView(view, {
+        onStaffView: () => {
+            Tasks.setupInitialView();
+            if (!window.taskDocRef) {
+                Tasks.handleDateChange(getTodayDateString());
+            }
+        }
+    });
+});
+
+function initEventListeners() {
+    // --- Helper for safe binding ---
+    const bind = (id, event, handler) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, handler);
+    };
+
+    // --- Header & Nav ---
+    bind('nav-top', 'click', (e) => {
+        e.preventDefault();
+        document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    bind('nav-shared', 'click', () => Strategy.openInternalSharedModal());
+    bind('nav-ai', 'click', () => AI.toggleAIChat());
+
+    // --- Dashboard Cards ---
+    bind('card-staff', 'click', () => window.switchView('staff'));
+
+    // Strategy Cards
+    ['pachinko', 'slot', 'cs', 'strategy'].forEach(category => {
+        bind(`card-${category}`, 'click', () => Strategy.openInternalSharedModal(category));
+        bind(`admin-${category}`, 'click', (e) => {
+            e.stopPropagation();
+            Strategy.openStrategyAdminAuth(category);
+        });
+    });
+
+    // --- Sections ---
+    // Deadlines
+    bind('btn-deadline-settings', 'click', () => UI.showPasswordModal(Deadlines.openDeadlineManagementModal));
+
+    // Member Race
+    bind('btn-member-prev', 'click', (e) => { e.preventDefault(); MemberRace.changeMemberMonth(-1); });
+    bind('btn-member-next', 'click', (e) => { e.preventDefault(); MemberRace.changeMemberMonth(1); });
+    bind('btn-member-settings', 'click', (e) => { e.preventDefault(); MemberRace.openMemberSettings(); });
+    bind('btn-member-early', 'click', () => MemberRace.switchMemberTab('early'));
+    bind('btn-member-late', 'click', () => MemberRace.switchMemberTab('late'));
+    bind('btn-member-employee', 'click', () => MemberRace.switchMemberTab('employee'));
+
+    // Map
+    bind('btn-map-update', 'click', () => UI.showPasswordModal(Customer.openMapUpdateModal));
+
+    // --- Staff View ---
+    bind('btn-staff-back', 'click', () => window.switchView('customer'));
+    bind('btn-staff-date-prev', 'click', () => window.changeDate(-1));
+    bind('btn-staff-date-next', 'click', () => window.changeDate(1));
+    bind('date-picker', 'change', (e) => Tasks.handleDateChange(e.target.value));
+
+    bind('tab-open', 'click', () => Tasks.showSubTab('open'));
+    bind('tab-close', 'click', () => Tasks.showSubTab('close'));
+
+    bind('filter-btn-all', 'click', () => window.filterTasks('all'));
+    bind('filter-btn-employee', 'click', () => window.filterTasks('employee'));
+    bind('filter-btn-byte', 'click', () => window.filterTasks('byte'));
+
+    bind('edit-mode-button', 'click', Tasks.toggleAdminEdit);
+
+    // --- Modals ---
+    // Deadline Management
+    bind('btn-close-deadline-modal', 'click', Deadlines.closeDeadlineManagementModal);
+    bind('btn-add-deadline', 'click', Deadlines.addDeadlineDirectly);
+
+    // Map Update
+    bind('btn-close-map-modal', 'click', Customer.closeMapUpdateModal);
+    bind('btn-save-map', 'click', Customer.saveMapUpdate);
+
+    // Internal Shared
+    bind('btn-close-shared', 'click', () => {
+        document.getElementById('internalSharedModal').classList.add('hidden');
+    });
+    bind('btn-create-strategy-mobile', 'click', Strategy.openStrategyEditor);
+
+    // Strategy Editor
+    bind('btn-cancel-strategy', 'click', Strategy.closeStrategyEditor);
+    bind('btn-save-strategy', 'click', Strategy.saveStrategy);
+    bind('btn-add-block-img-top', 'click', () => Strategy.addEditorBlock('img_top'));
+    bind('btn-add-block-text', 'click', () => Strategy.addEditorBlock('text'));
+    bind('btn-add-block-img-bottom', 'click', () => Strategy.addEditorBlock('img_bottom'));
+
+    // Member Target
+    bind('btn-close-member-target', 'click', MemberRace.closeMemberTargetModal);
+    bind('btn-save-member-target', 'click', MemberRace.saveMemberTargets);
+
+    // QSC Edit
+    bind('btn-close-qsc-edit', 'click', QSC.closeQscEditModal);
+    bind('btn-save-qsc-edit', 'click', QSC.saveQscEdit);
+    bind('openQSCButton', 'click', QSC.openQSCModal);
+
+    // Remarks
+    bind('btn-close-remarks', 'click', Tasks.closeRemarksModal);
+
+    // AI Chat
+    bind('ai-overlay', 'click', () => AI.toggleAIChat());
+    bind('btn-ai-close', 'click', () => AI.toggleAIChat());
+    bind('btn-ai-send', 'click', () => AI.sendAIMessage());
+    bind('btn-ai-fab', 'click', () => AI.toggleAIChat());
+
+    const aiInput = document.getElementById('ai-input');
+    if (aiInput) {
+        aiInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                AI.sendAIMessage();
+            }
+        });
+    }
+
+    // Customer Detail Modals (if buttons exist)
+    bind('newOpeningButton', 'click', Customer.openNewOpening);
+    bind('closeNewOpeningModal', 'click', Customer.closeNewOpeningModal);
+    bind('closeDetailModal', 'click', Customer.closeDetailModal);
+
+    // --- Edit Mode & Fixed Staff ---
+    bind('btn-bulk-delete', 'click', Tasks.openBulkDeleteMenu);
+    bind('btn-auto-open', 'click', () => Tasks.autoAssignSection('open'));
+    bind('btn-auto-close', 'click', () => Tasks.autoAssignSection('close'));
+
+    // Fixed Position Buttons (Early)
+    bind('fixed-money_count-btn', 'click', () => Tasks.openFixedStaffSelect('fixed_money_count','open_early','金銭業務 (早番)'));
+    bind('fixed_open_warehouse-btn', 'click', () => Tasks.openFixedStaffSelect('fixed_open_warehouse','open_early','倉庫番 (特景)'));
+    bind('fixed-open_counter-btn', 'click', () => Tasks.openFixedStaffSelect('fixed_open_counter','open_late','カウンター開設'));
+
+    // Fixed Position Buttons (Late)
+    bind('fixed-money_collect-btn', 'click', () => Tasks.openFixedStaffSelect('fixed_money_collect','close_emp','金銭回収'));
+    bind('fixed-warehouses-btn', 'click', () => Tasks.openFixedStaffSelect('fixed_warehouses','close_all','倉庫整理'));
+    bind('fixed-counters-btn', 'click', () => Tasks.openFixedStaffSelect('fixed_counters','close_all','カウンター'));
+
+    // Add Staff Buttons
+    bind('btn-add-staff-open-early', 'click', () => Tasks.openStaffSelect('early','employees'));
+    bind('btn-add-staff-open-late', 'click', () => Tasks.openStaffSelect('late','alba_early'));
+    bind('btn-add-staff-close-emp', 'click', () => Tasks.openStaffSelect('closing_employee','employees'));
+    bind('btn-add-staff-close-alba', 'click', () => Tasks.openStaffSelect('closing_alba','alba_late'));
+
+    // Legacy Deadline Modal (if used)
+    bind('btn-cancel-legacy-deadline', 'click', Deadlines.closeDeadlineModal);
+    bind('btn-add-legacy-deadline', 'click', Deadlines.addDeadline);
+}
