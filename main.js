@@ -46,9 +46,9 @@ window.saveMapUpdate = Customer.saveMapUpdate;
 window.handleMapFileSelect = Customer.handleMapFileSelect;
 
 // Internal Shared Modal
-window.openInternalSharedModal = Strategy.openInternalSharedModal;
+// window.openInternalSharedModal is defined in js/strategy.js to handle categories
 
-window.closeInternalSharedModal = function () {
+window.closeInternalSharedModal = function() {
     const modal = document.getElementById('internalSharedModal');
     if (modal) {
         modal.classList.add('hidden');
@@ -116,7 +116,7 @@ window.renderMemberRaceBoard = MemberRace.renderMemberRaceBoard;
 // Tasks (Staff App)
 window.fetchMasterData = Tasks.fetchMasterData;
 window.handleDateChange = Tasks.handleDateChange;
-window.changeDate = function (offset) {
+window.changeDate = function(offset) {
     const picker = document.getElementById('date-picker');
     if (!picker) return;
     const currentVal = picker.value || window.getTodayDateString();
@@ -159,9 +159,9 @@ window.closeRemarksModal = Tasks.closeRemarksModal;
 
 // --- Main Initialization ---
 
-window.checkPassword = function () {
+window.checkPassword = function() {
     const input = document.getElementById('password-input');
-    if (Auth.check(input.value)) {
+    if(Auth.check(input.value)) {
         UI.closePasswordModal();
         Auth.executeCallback();
     } else {
@@ -196,54 +196,54 @@ document.addEventListener("DOMContentLoaded", () => {
     Operations.subscribeOperations();
 
     // 2. Event Listeners Setup (replacing some inline onclicks where possible or convenient)
-
+    
     // QSC
     const qscEditBtn = document.getElementById('qscEditButton');
-    if (qscEditBtn) qscEditBtn.onclick = () => QSC.toggleQscEditMode();
-
+    if(qscEditBtn) qscEditBtn.onclick = () => QSC.toggleQscEditMode();
+    
     const openQscBtn = document.getElementById('openQSCButton');
-    if (openQscBtn) openQscBtn.onclick = QSC.openQSCModal;
-
+    if(openQscBtn) openQscBtn.onclick = QSC.openQSCModal;
+    
     const closeQscBtn = document.getElementById('closeQscModal');
-    if (closeQscBtn) closeQscBtn.onclick = QSC.closeQSCModal;
+    if(closeQscBtn) closeQscBtn.onclick = QSC.closeQSCModal;
 
     const qscTabUnfinished = document.getElementById('qscTabUnfinished');
-    if (qscTabUnfinished) qscTabUnfinished.onclick = () => QSC.setQscTab('未実施');
-
+    if(qscTabUnfinished) qscTabUnfinished.onclick = () => QSC.setQscTab('未実施');
+    
     const qscTabFinished = document.getElementById('qscTabFinished');
-    if (qscTabFinished) qscTabFinished.onclick = () => QSC.setQscTab('完了');
+    if(qscTabFinished) qscTabFinished.onclick = () => QSC.setQscTab('完了');
 
     // Customer
     const newOpeningBtn = document.getElementById('newOpeningButton');
-    if (newOpeningBtn) newOpeningBtn.onclick = Customer.openNewOpening;
-
+    if(newOpeningBtn) newOpeningBtn.onclick = Customer.openNewOpening;
+    
     const closeNewOpeningBtn = document.getElementById('closeNewOpeningModal');
-    if (closeNewOpeningBtn) closeNewOpeningBtn.onclick = Customer.closeNewOpeningModal;
-
+    if(closeNewOpeningBtn) closeNewOpeningBtn.onclick = Customer.closeNewOpeningModal;
+    
     const closeDetailBtn = document.getElementById('closeDetailModal');
-    if (closeDetailBtn) closeDetailBtn.onclick = Customer.closeDetailModal;
+    if(closeDetailBtn) closeDetailBtn.onclick = Customer.closeDetailModal;
 
     // Tasks / Staff
     const editModeBtn = document.getElementById('edit-mode-button');
-    if (editModeBtn) editModeBtn.onclick = Tasks.toggleAdminEdit;
-
+    if(editModeBtn) editModeBtn.onclick = Tasks.toggleAdminEdit;
+    
     // Switch View callback integration
     window.switchView = (view) => UI.switchView(view, {
         onStaffView: () => {
-            Tasks.setupInitialView();
-            if (!window.taskDocRef) { // Check if initialized (Tasks logic handles this mostly)
-                Tasks.handleDateChange(getTodayDateString());
-            }
+             Tasks.setupInitialView();
+             if(!window.taskDocRef) { // Check if initialized (Tasks logic handles this mostly)
+                 Tasks.handleDateChange(getTodayDateString());
+             }
         }
     });
 
     // Check Hash
-    if (window.location.hash === '#staff') {
+    if(window.location.hash === '#staff') {
         UI.switchView('staff', {
-            onStaffView: () => {
-                Tasks.setupInitialView();
-                Tasks.handleDateChange(getTodayDateString());
-            }
+             onStaffView: () => {
+                 Tasks.setupInitialView();
+                 Tasks.handleDateChange(getTodayDateString());
+             }
         });
     }
 
@@ -273,15 +273,15 @@ window.filterTasks = (type) => {
     // 2. Toggle Visibility using Partial Matches
     const toggle = (selector, show) => {
         document.querySelectorAll(selector).forEach(el => {
-            if (show) el.classList.remove('hidden');
+            if(show) el.classList.remove('hidden');
             else el.classList.add('hidden');
         });
     };
 
     const setVisibility = (isEmployee, isVisible) => {
-        const infix = isEmployee ? 'employee' : 'alba';
-        const selector = `[id*="summary-open-${infix}-container"], [id*="summary-close-${infix}-container"]`;
-        toggle(selector, isVisible);
+         const infix = isEmployee ? 'employee' : 'alba';
+         const selector = `[id*="summary-open-${infix}-container"], [id*="summary-close-${infix}-container"]`;
+         toggle(selector, isVisible);
     };
 
     if (type === 'all') {
