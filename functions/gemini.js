@@ -6,9 +6,11 @@ export async function onRequest(context) {
   }
 
   try {
-    const { prompt, contextData } = await request.json();
+    const { prompt, contextData, images } = await request.json();
     const apiKey = env.GEMINI_API_KEY;
-    const model = env.GEMINI_MODEL || "gemini-2.0-flash";
+    // User requested "2.5 flash".
+    // Setting default to gemini-2.5-flash based on user request.
+    const model = env.GEMINI_MODEL || "gemini-2.5-flash";
 
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "API Key not configured" }), {
@@ -17,12 +19,33 @@ export async function onRequest(context) {
       });
     }
 
-    // Construct the full prompt
-    let fullPrompt = "あなたは社内アシスタントAIです。以下の社内資料（コンテキスト）に基づいて、ユーザーの質問に回答してください。\nもし資料に答えがない場合は、一般的な知識で回答せず、「資料には記載がありません」と答えてください。\n\n";
+    // Construct the parts array
+    const parts = [];
+
+    // 1. System Instruction / Context (as text)
+    let systemText = "あなたは社内アシスタントAIです。以下の社内資料（コンテキスト）に基づいて、ユーザーの質問に回答してください。\nもし資料に答えがない場合は、一般的な知識で回答せず、「資料には記載がありません」と答えてください。\n\n";
     if (contextData) {
-      fullPrompt += `=== 社内資料 ===\n${contextData}\n================\n\n`;
+      systemText += `=== 社内資料 ===\n${contextData}\n================\n\n`;
     }
-    fullPrompt += `ユーザーの質問: ${prompt}`;
+    systemText += `ユーザーの質問: ${prompt}`;
+
+    parts.push({ text: systemText });
+
+    // 2. Images (if any)
+    if (images && Array.isArray(images)) {
+      images.forEach(imgBase64 => {
+        // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
+        const base64Data = imgBase64.split(',')[1] || imgBase64;
+        // Assuming jpeg for simplicity, or we could pass mimeType from client
+        // Gemini API supports image/png, image/jpeg, image/webp, image/heic, image/heif
+        parts.push({
+          inline_data: {
+            mime_type: "image/jpeg",
+            data: base64Data
+          }
+        });
+      });
+    }
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
@@ -33,7 +56,7 @@ export async function onRequest(context) {
       },
       body: JSON.stringify({
         contents: [{
-          parts: [{ text: fullPrompt }]
+          parts: parts
         }]
       }),
     });
@@ -41,12 +64,12 @@ export async function onRequest(context) {
     const data = await response.json();
 
     if (data.error) {
-        throw new Error(data.error.message);
+      throw new Error(data.error.message);
     }
 
     // Handle safety ratings or empty content if necessary
     if (!data.candidates || data.candidates.length === 0) {
-       throw new Error("No response generated.");
+      throw new Error("No response generated.");
     }
 
     const reply = data.candidates[0].content.parts[0].text;
