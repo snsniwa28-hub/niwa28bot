@@ -129,13 +129,13 @@ export function setStrategyCategory(category) {
 
     const c = config[category] || config['all'];
 
-    if(titleEl) {
+    if (titleEl) {
         titleEl.textContent = c.title;
         titleEl.className = `font-black text-lg ${c.color}`;
     }
-    if(iconEl) iconEl.textContent = c.icon;
+    if (iconEl) iconEl.textContent = c.icon;
 
-    if(createBtn) {
+    if (createBtn) {
         if (isStrategyAdmin) {
             createBtn.classList.remove('hidden');
             createBtn.classList.add('inline-flex');
@@ -144,12 +144,41 @@ export function setStrategyCategory(category) {
             createBtn.classList.remove('inline-flex');
         }
     }
-    if(createBtnMobile) {
+    if (createBtnMobile) {
         if (isStrategyAdmin) {
             createBtnMobile.classList.remove('hidden');
         } else {
             createBtnMobile.classList.add('hidden');
         }
+    }
+
+    // AI Chat Button Injection in Header
+    let aiBtn = document.getElementById('btn-header-ai-chat');
+    const btnContainer = document.querySelector('#internalSharedModal .flex.items-center.gap-3');
+
+    if (!aiBtn && btnContainer) {
+        aiBtn = document.createElement('button');
+        aiBtn.id = 'btn-header-ai-chat';
+        aiBtn.className = "bg-gradient-to-r from-indigo-500 to-blue-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-md hover:shadow-lg hover:from-indigo-600 hover:to-blue-600 transition flex items-center gap-1";
+        aiBtn.innerHTML = `<span>🤖</span> <span class="hidden sm:inline">AI Chat</span>`;
+        // 閉じるボタンの前に追加
+        btnContainer.insertBefore(aiBtn, btnContainer.lastElementChild);
+    }
+
+    if (aiBtn) {
+        // Remove old listener to avoid duplicates (cloneNode trick or simply onclick)
+        aiBtn.onclick = () => {
+            // AIチャットをこのカテゴリで開く
+            // importしたtoggleAIChatを呼びたいが、module scopeの問題があるためwindow経由で呼ぶ
+            // main.jsで window.toggleAIChat が公開されている前提
+            if (window.toggleAIChat) {
+                window.toggleAIChat(currentCategory);
+            }
+        };
+
+        // テキストをカテゴリに合わせて変更してもよい
+        const label = aiBtn.querySelector('.hidden.sm:inline');
+        if (label) label.textContent = `${c.title} AI`;
     }
 }
 
@@ -303,10 +332,10 @@ export function openStrategyEditor(id = null) {
             categorySelect.disabled = false;
             categorySelect.classList.remove('opacity-50');
 
-            if(item.blocks) {
+            if (item.blocks) {
                 item.blocks.forEach(block => addEditorBlock(block.type, block));
             }
-            if(item.ai_context && aiContextInput) {
+            if (item.ai_context && aiContextInput) {
                 aiContextInput.value = item.ai_context;
             }
         }
@@ -397,7 +426,7 @@ window.handlePdfUpload = async (input) => {
             return;
         }
 
-        if(statusEl) statusEl.textContent = '読み込み中...';
+        if (statusEl) statusEl.textContent = '読み込み中...';
 
         try {
             const arrayBuffer = await file.arrayBuffer();
@@ -411,16 +440,16 @@ window.handlePdfUpload = async (input) => {
                 extractedText += `[Page ${i}]\n${pageText}\n\n`;
             }
 
-            if(textarea) {
+            if (textarea) {
                 const currentVal = textarea.value;
                 textarea.value = (currentVal ? currentVal + "\n\n" : "") + extractedText;
             }
-            if(statusEl) statusEl.textContent = `完了 (${pdf.numPages}ページ)`;
+            if (statusEl) statusEl.textContent = `完了 (${pdf.numPages}ページ)`;
 
         } catch (e) {
             console.error(e);
             alert("PDFの読み込みに失敗しました: " + e.message);
-            if(statusEl) statusEl.textContent = 'エラー';
+            if (statusEl) statusEl.textContent = 'エラー';
         }
     }
 };
@@ -459,7 +488,7 @@ export function openStrategyAdminAuth(category) {
 export function initStrategy() {
     loadStrategies();
     const createBtn = document.getElementById('btn-create-strategy');
-    if(createBtn) createBtn.onclick = () => openStrategyEditor();
+    if (createBtn) createBtn.onclick = () => openStrategyEditor();
     const createBtnMobile = document.getElementById('btn-create-strategy-mobile');
-    if(createBtnMobile) createBtnMobile.onclick = () => openStrategyEditor();
+    if (createBtnMobile) createBtnMobile.onclick = () => openStrategyEditor();
 }
