@@ -1,10 +1,11 @@
 import { db } from './firebase.js';
-import { collection, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, getDocs, query, orderBy, limit, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { showToast } from './ui.js';
 
 let isChatOpen = false;
 let currentContext = "";
 let contextTitle = "";
+let currentCategory = "";
 
 function escapeHtml(text) {
     if (!text) return text;
@@ -22,15 +23,17 @@ export async function initAI() {
     // Let's fetch on open to be fresh.
 }
 
-export async function toggleAIChat() {
+export async function toggleAIChat(category = 'all', categoryName = '社内資料') {
     const modal = document.getElementById('ai-chat-modal');
     isChatOpen = !isChatOpen;
 
     if (isChatOpen) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
-        if (!currentContext) {
-            await loadContext();
+
+        // Check if category changed or if it's the first load
+        if (category !== currentCategory || !currentContext) {
+            await loadContext(category, categoryName);
         }
         scrollToBottom();
     } else {
@@ -45,21 +48,46 @@ export function closeAIChat() {
     document.getElementById('ai-chat-modal').classList.remove('flex');
 }
 
-async function loadContext() {
+async function loadContext(category, categoryName) {
+    currentCategory = category;
     const statusEl = document.getElementById('ai-status-text');
-    if(statusEl) statusEl.textContent = "社内資料を読み込み中...";
+    if(statusEl) statusEl.textContent = `${categoryName}の資料を読み込み中...`;
 
     try {
-        // Fetch latest strategy articles
-        // We prioritize 'strategy' (Monthly Strategy) then 'all' sorted by date
-        const q = query(collection(db, "strategies"), orderBy("updatedAt", "desc"), limit(5));
+        let q;
+        if (category && category !== 'all') {
+            // Filter by category
+            // Note: Avoiding composite index error by doing client-side sort if needed.
+            // For now, simply querying by category should be safe if we don't strictly require index-heavy sorting immediately
+            // or if we have single field indexes.
+            // However, to be safe and get latest, we query by category.
+            // If index missing for category+updatedAt, we might need to fetch all for category and sort in JS.
+            // Given the volume is likely low, client-side sort is acceptable.
+            q = query(collection(db, "strategies"), where("category", "==", category));
+        } else {
+            // Default: Latest articles regardless of category
+            q = query(collection(db, "strategies"), orderBy("updatedAt", "desc"), limit(5));
+        }
+
         const snapshot = await getDocs(q);
+
+        let docs = snapshot.docs.map(doc => doc.data());
+
+        // Client-side sort if filtered by category (to ensure latest)
+        if (category && category !== 'all') {
+            docs.sort((a, b) => {
+                const dateA = a.updatedAt ? a.updatedAt.toDate() : new Date(0);
+                const dateB = b.updatedAt ? b.updatedAt.toDate() : new Date(0);
+                return dateB - dateA;
+            });
+            // Limit to top 5
+            docs = docs.slice(0, 5);
+        }
 
         let combinedText = "";
         let titles = [];
 
-        snapshot.docs.forEach(doc => {
-            const data = doc.data();
+        docs.forEach(data => {
             // Use ai_context if available, otherwise try to construct from blocks
             let text = "";
             if (data.ai_context) {
@@ -80,8 +108,8 @@ async function loadContext() {
 
         if(statusEl) {
             statusEl.textContent = titles.length > 0
-                ? `参照中の資料: ${titles[0]} 他${titles.length-1}件`
-                : "参照可能な資料がありません";
+                ? `[${categoryName}] 参照中: ${titles[0]} 他${titles.length-1}件`
+                : `[${categoryName}] 参照可能な資料がありません`;
         }
 
     } catch (e) {

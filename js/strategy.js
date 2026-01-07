@@ -116,6 +116,7 @@ export function setStrategyCategory(category) {
     const iconEl = document.querySelector('#internalSharedModal span.text-2xl');
     const createBtn = document.getElementById('btn-create-strategy');
     const createBtnMobile = document.getElementById('btn-create-strategy-mobile');
+    const aiBtn = document.getElementById('btn-category-ai');
 
     if (header) header.className = "p-4 border-b border-slate-200 flex justify-between items-center shrink-0 z-10 shadow-sm bg-white";
 
@@ -134,6 +135,13 @@ export function setStrategyCategory(category) {
         titleEl.className = `font-black text-lg ${c.color}`;
     }
     if(iconEl) iconEl.textContent = c.icon;
+
+    // AI Button Logic
+    if (aiBtn) {
+        aiBtn.onclick = () => window.toggleAIChat(category, c.title);
+        // Optional: Hide AI button if category is 'all' or specific ones if requested
+        // For now, it stays visible as a general bot or category bot
+    }
 
     if(createBtn) {
         if (isStrategyAdmin) {
