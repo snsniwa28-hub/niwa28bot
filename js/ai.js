@@ -4,6 +4,7 @@ import { showToast } from './ui.js';
 
 let isChatOpen = false;
 let currentContext = "";
+let contextImages = []; // Array of base64 strings
 let contextTitle = "";
 let currentCategory = "";
 
@@ -19,8 +20,6 @@ function escapeHtml(text) {
 
 export async function initAI() {
     // Init logic if needed
-    // Pre-fetch context? Or fetch on open.
-    // Let's fetch on open to be fresh.
 }
 
 export async function toggleAIChat(category = 'all', categoryName = '社内資料') {
@@ -31,7 +30,6 @@ export async function toggleAIChat(category = 'all', categoryName = '社内資�
         modal.classList.remove('hidden');
         modal.classList.add('flex');
 
-        // Check if category changed or if it's the first load
         if (category !== currentCategory || !currentContext) {
             await loadContext(category, categoryName);
         }
@@ -54,61 +52,91 @@ async function loadContext(category, categoryName) {
     if(statusEl) statusEl.textContent = `${categoryName}の資料を読み込み中...`;
 
     try {
-        let q;
+        let docs = [];
+
+        // 1. Load Knowledge Base (Long-term Memory) - Always include these if relevant or global?
+        // The prompt implies "Knowledge Base" (isKnowledge: true) should always be referenced?
+        // "AI Chat context generation... constructs its context window by merging two data sources: a 'Trend' query ... and a 'Knowledge Base' query" (from Memory)
+
+        // Fetch Knowledge Base
+        const qKnowledge = query(collection(db, "strategies"), where("isKnowledge", "==", true));
+        const snapshotKnowledge = await getDocs(qKnowledge);
+        const knowledgeDocs = snapshotKnowledge.docs.map(doc => doc.data());
+
+        // 2. Load Trend/Category Base (Short-term Memory)
+        let qTrend;
         if (category && category !== 'all') {
-            // Filter by category
-            // Note: Avoiding composite index error by doing client-side sort if needed.
-            // For now, simply querying by category should be safe if we don't strictly require index-heavy sorting immediately
-            // or if we have single field indexes.
-            // However, to be safe and get latest, we query by category.
-            // If index missing for category+updatedAt, we might need to fetch all for category and sort in JS.
-            // Given the volume is likely low, client-side sort is acceptable.
-            q = query(collection(db, "strategies"), where("category", "==", category));
+             qTrend = query(collection(db, "strategies"), where("category", "==", category));
         } else {
-            // Default: Latest articles regardless of category
-            q = query(collection(db, "strategies"), orderBy("updatedAt", "desc"), limit(5));
+             qTrend = query(collection(db, "strategies"), orderBy("updatedAt", "desc"), limit(10));
         }
 
-        const snapshot = await getDocs(q);
+        const snapshotTrend = await getDocs(qTrend);
+        let trendDocs = snapshotTrend.docs.map(doc => doc.data());
 
-        let docs = snapshot.docs.map(doc => doc.data());
-
-        // Client-side sort if filtered by category (to ensure latest)
+        // Sort Trend Docs client-side if needed (category query doesn't guarantee order without composite index)
         if (category && category !== 'all') {
-            docs.sort((a, b) => {
+            trendDocs.sort((a, b) => {
                 const dateA = a.updatedAt ? a.updatedAt.toDate() : new Date(0);
                 const dateB = b.updatedAt ? b.updatedAt.toDate() : new Date(0);
                 return dateB - dateA;
             });
-            // Limit to top 5
-            docs = docs.slice(0, 5);
+            trendDocs = trendDocs.slice(0, 10); // Limit to top 10 trends
         }
+
+        // Merge Unique Docs (by ID if we had ID, but we mapped to data. Let's merge lists)
+        // Since we don't have IDs in the mapped object above easily without modifying map, let's just concatenate and dedupe by title/content hash if needed.
+        // Or simpler: merge arrays.
+
+        const allDocs = [...knowledgeDocs, ...trendDocs];
+        // Deduplicate based on title for now (simple heuristic)
+        const uniqueDocs = [];
+        const seenTitles = new Set();
+        allDocs.forEach(d => {
+            if (!seenTitles.has(d.title)) {
+                seenTitles.add(d.title);
+                uniqueDocs.push(d);
+            }
+        });
+
+        docs = uniqueDocs;
 
         let combinedText = "";
         let titles = [];
+        let collectedImages = [];
 
         docs.forEach(data => {
-            // Use ai_context if available, otherwise try to construct from blocks
+            // Text Context
             let text = "";
             if (data.ai_context) {
                 text = data.ai_context;
             } else if (data.blocks) {
-                // Fallback: simple join of text blocks
                 text = data.blocks.map(b => b.text || "").join("\n");
             }
 
             if (text) {
-                combinedText += `\n--- [${data.title}] ---\n${text}\n`;
+                combinedText += `\n--- [${data.title}] ${data.isKnowledge ? '(知識データ)' : ''} ---\n${text}\n`;
                 titles.push(data.title);
+            }
+
+            // Image Context
+            if (data.ai_images && Array.isArray(data.ai_images)) {
+                collectedImages.push(...data.ai_images);
             }
         });
 
+        // Limit images to max 10 to prevent request overflow
+        if (collectedImages.length > 10) {
+            collectedImages = collectedImages.slice(0, 10);
+        }
+
         currentContext = combinedText;
+        contextImages = collectedImages;
         contextTitle = titles.length > 0 ? titles.join(", ") : "なし";
 
         if(statusEl) {
             statusEl.textContent = titles.length > 0
-                ? `[${categoryName}] 参照中: ${titles[0]} 他${titles.length-1}件`
+                ? `[${categoryName}] 参照中: ${titles.length}件 (画像${contextImages.length}枚)`
                 : `[${categoryName}] 参照可能な資料がありません`;
         }
 
@@ -131,13 +159,16 @@ export async function sendAIMessage() {
     const loadingId = addMessageToUI("ai", "考え中...", true);
 
     try {
+        const payload = {
+            prompt: message,
+            contextData: currentContext,
+            contextImages: contextImages // Send collected images
+        };
+
         const response = await fetch('/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prompt: message,
-                contextData: currentContext
-            })
+            body: JSON.stringify(payload)
         });
 
         const data = await response.json();
