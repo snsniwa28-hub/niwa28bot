@@ -6,7 +6,7 @@ export async function onRequest(context) {
   }
 
   try {
-    const { prompt, contextData } = await request.json();
+    const { prompt, contextData, contextImages } = await request.json();
     const apiKey = env.GEMINI_API_KEY;
     const model = env.GEMINI_MODEL || "gemini-2.0-flash";
 
@@ -17,12 +17,32 @@ export async function onRequest(context) {
       });
     }
 
-    // Construct the full prompt
-    let fullPrompt = "あなたは社内アシスタントAIです。以下の社内資料（コンテキスト）に基づいて、ユーザーの質問に回答してください。\nもし資料に答えがない場合は、一般的な知識で回答せず、「資料には記載がありません」と答えてください。\n\n";
+    // Construct the full prompt text
+    let fullPrompt = "あなたは社内アシスタントAIです。以下の社内資料（コンテキスト）および添付された画像に基づいて、ユーザーの質問に回答してください。\nもし資料に答えがない場合は、一般的な知識で回答せず、「資料には記載がありません」と答えてください。\n\n";
     if (contextData) {
-      fullPrompt += `=== 社内資料 ===\n${contextData}\n================\n\n`;
+      fullPrompt += `=== 社内資料 (テキスト) ===\n${contextData}\n================\n\n`;
     }
     fullPrompt += `ユーザーの質問: ${prompt}`;
+
+    // Construct API Payload
+    const parts = [{ text: fullPrompt }];
+
+    // Add Images if available
+    if (contextImages && Array.isArray(contextImages) && contextImages.length > 0) {
+        contextImages.forEach(base64Image => {
+            // Ensure base64 string doesn't contain data URI prefix for inlineData
+            // Typically "data:image/jpeg;base64,..."
+            const match = base64Image.match(/^data:(.*?);base64,(.*)$/);
+            if (match) {
+                parts.push({
+                    inlineData: {
+                        mimeType: match[1],
+                        data: match[2]
+                    }
+                });
+            }
+        });
+    }
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
@@ -33,7 +53,7 @@ export async function onRequest(context) {
       },
       body: JSON.stringify({
         contents: [{
-          parts: [{ text: fullPrompt }]
+          parts: parts
         }]
       }),
     });
@@ -44,7 +64,6 @@ export async function onRequest(context) {
         throw new Error(data.error.message);
     }
 
-    // Handle safety ratings or empty content if necessary
     if (!data.candidates || data.candidates.length === 0) {
        throw new Error("No response generated.");
     }
