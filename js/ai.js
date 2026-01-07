@@ -19,8 +19,6 @@ function escapeHtml(text) {
 
 export async function initAI() {
     // Init logic if needed
-    // Pre-fetch context? Or fetch on open.
-    // Let's fetch on open to be fresh.
 }
 
 export async function toggleAIChat(category = 'all', categoryName = '社内資料') {
@@ -54,68 +52,108 @@ async function loadContext(category, categoryName) {
     if(statusEl) statusEl.textContent = `${categoryName}の資料を読み込み中...`;
 
     try {
-        let q;
+        // Query A: Trend (Latest items)
+        let qTrend;
         if (category && category !== 'all') {
-            // Filter by category
-            // Note: Avoiding composite index error by doing client-side sort if needed.
-            // For now, simply querying by category should be safe if we don't strictly require index-heavy sorting immediately
-            // or if we have single field indexes.
-            // However, to be safe and get latest, we query by category.
-            // If index missing for category+updatedAt, we might need to fetch all for category and sort in JS.
-            // Given the volume is likely low, client-side sort is acceptable.
-            q = query(collection(db, "strategies"), where("category", "==", category));
+            // Client-side sort for specific category to avoid composite index requirement
+            qTrend = query(collection(db, "strategies"), where("category", "==", category), limit(50));
         } else {
-            // Default: Latest articles regardless of category
-            q = query(collection(db, "strategies"), orderBy("updatedAt", "desc"), limit(5));
+            // Global trend: use index on updatedAt
+            qTrend = query(collection(db, "strategies"), orderBy("updatedAt", "desc"), limit(10));
         }
 
-        const snapshot = await getDocs(q);
+        // Query B: Knowledge Base (Long-term memory)
+        // Fetch all knowledge items (limit 100 for safety)
+        const qKnowledge = query(collection(db, "strategies"), where("isKnowledge", "==", true), limit(100));
 
-        let docs = snapshot.docs.map(doc => doc.data());
+        // Execute parallel
+        const [snapTrend, snapKnowledge] = await Promise.all([
+            getDocs(qTrend),
+            getDocs(qKnowledge)
+        ]);
 
-        // Client-side sort if filtered by category (to ensure latest)
+        let trendDocs = snapTrend.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let knowledgeDocs = snapKnowledge.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Post-process Trend Docs (Sort & Limit)
         if (category && category !== 'all') {
-            docs.sort((a, b) => {
+            trendDocs.sort((a, b) => {
                 const dateA = a.updatedAt ? a.updatedAt.toDate() : new Date(0);
                 const dateB = b.updatedAt ? b.updatedAt.toDate() : new Date(0);
                 return dateB - dateA;
             });
-            // Limit to top 5
-            docs = docs.slice(0, 5);
+            trendDocs = trendDocs.slice(0, 10);
         }
 
-        let combinedText = "";
-        let titles = [];
+        // === Construct Context ===
+        let knowledgeText = "";
+        let knowledgeCount = 0;
+        const knowledgeIds = new Set();
 
-        docs.forEach(data => {
-            // Use ai_context if available, otherwise try to construct from blocks
-            let text = "";
-            if (data.ai_context) {
-                text = data.ai_context;
-            } else if (data.blocks) {
-                // Fallback: simple join of text blocks
-                text = data.blocks.map(b => b.text || "").join("\n");
-            }
-
+        knowledgeDocs.forEach(data => {
+            const text = getStrategyText(data);
             if (text) {
-                combinedText += `\n--- [${data.title}] ---\n${text}\n`;
-                titles.push(data.title);
+                knowledgeText += `[タイトル: ${data.title}]\n${text}\n\n`;
+                knowledgeCount++;
+                knowledgeIds.add(data.id);
             }
         });
 
-        currentContext = combinedText;
-        contextTitle = titles.length > 0 ? titles.join(", ") : "なし";
+        let trendText = "";
+        let trendCount = 0;
+        let trendTitles = [];
 
+        trendDocs.forEach(data => {
+            if (knowledgeIds.has(data.id)) return; // Avoid duplicates
+
+            const text = getStrategyText(data);
+            if (text) {
+                trendText += `[タイトル: ${data.title}]\n${text}\n\n`;
+                trendCount++;
+                trendTitles.push(data.title);
+            }
+        });
+
+        // Merge Texts
+        let combinedText = "";
+        if (knowledgeText) {
+            combinedText += "=== 【重要】知識ベース（マニュアル・規定・基本戦略） ===\n" + knowledgeText + "\n";
+        }
+        if (trendText) {
+            combinedText += "=== 直近の共有事項（トレンド） ===\n" + trendText;
+        }
+
+        // Safety Truncate (approx 500k chars)
+        if (combinedText.length > 500000) {
+            combinedText = combinedText.substring(0, 500000) + "\n...(truncated)...";
+        }
+
+        currentContext = combinedText;
+
+        // UI Feedback
         if(statusEl) {
-            statusEl.textContent = titles.length > 0
-                ? `[${categoryName}] 参照中: ${titles[0]} 他${titles.length-1}件`
-                : `[${categoryName}] 参照可能な資料がありません`;
+            const totalCount = knowledgeCount + trendCount;
+            if (totalCount > 0) {
+                statusEl.textContent = `[${categoryName}] 知識:${knowledgeCount}件 / 最新:${trendCount}件 を参照中`;
+            } else {
+                statusEl.textContent = `[${categoryName}] 参照可能な資料がありません`;
+            }
         }
 
     } catch (e) {
         console.error("Failed to load context:", e);
         if(statusEl) statusEl.textContent = "資料の読み込みに失敗しました";
     }
+}
+
+function getStrategyText(data) {
+    let text = "";
+    if (data.ai_context) {
+        text = data.ai_context;
+    } else if (data.blocks) {
+        text = data.blocks.map(b => b.text || "").join("\n");
+    }
+    return text;
 }
 
 export async function sendAIMessage() {

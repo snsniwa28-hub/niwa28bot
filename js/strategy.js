@@ -70,6 +70,12 @@ export async function saveStrategy() {
     if (aiContextInput) {
         data.ai_context = aiContextInput.value;
     }
+    const isKnowledgeInput = document.getElementById('strategy-is-knowledge');
+    if (isKnowledgeInput) {
+        data.isKnowledge = isKnowledgeInput.checked;
+    } else {
+        data.isKnowledge = false;
+    }
 
     // Block Data Collection
     const blocksData = [];
@@ -290,6 +296,13 @@ export function openStrategyEditor(id = null) {
             </div>
             <textarea id="strategy-ai-context" class="w-full bg-white border border-indigo-200 rounded-lg p-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 h-32 resize-none placeholder-indigo-200" placeholder="ここにAIが参照するテキストを入力（PDFを読み込むと自動で抽出されます）"></textarea>
             <p class="text-[10px] text-indigo-400 font-bold mt-1 text-right">※このテキストは記事には表示されず、AIの回答のみに使用されます</p>
+            <div class="mt-3 bg-white p-3 rounded-lg border border-indigo-100">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="strategy-is-knowledge" class="w-4 h-4 text-indigo-600 rounded border-indigo-300 focus:ring-indigo-500">
+                    <span class="text-xs font-bold text-indigo-700">🤖 この記事をAIの知識ベース（長期記憶）として登録する</span>
+                </label>
+                <p class="text-[10px] text-indigo-400 font-bold mt-1 pl-6">※チェックを入れると、記事が古くなってもAIが常に参照するようになります（マニュアルや規定など）</p>
+            </div>
         `;
         // Insert before the blocks container
         const blocksContainer = document.getElementById('strategy-article-editor');
@@ -299,8 +312,10 @@ export function openStrategyEditor(id = null) {
     // Reset AI Context
     const aiContextInput = document.getElementById('strategy-ai-context');
     const pdfStatus = document.getElementById('pdf-status');
+    const isKnowledgeInput = document.getElementById('strategy-is-knowledge');
     if (aiContextInput) aiContextInput.value = '';
     if (pdfStatus) pdfStatus.textContent = '';
+    if (isKnowledgeInput) isKnowledgeInput.checked = false;
 
     if (id) {
         // Edit Mode
@@ -316,6 +331,9 @@ export function openStrategyEditor(id = null) {
             }
             if(item.ai_context && aiContextInput) {
                 aiContextInput.value = item.ai_context;
+            }
+            if (isKnowledgeInput) {
+                isKnowledgeInput.checked = !!item.isKnowledge;
             }
         }
     } else {
