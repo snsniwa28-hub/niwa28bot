@@ -18,10 +18,23 @@ export async function onRequest(context) {
     }
 
     // Construct the full prompt text
-    let fullPrompt = "あなたは社内アシスタントAIです。以下の社内資料（コンテキスト）および添付された画像に基づいて、ユーザーの質問に回答してください。\nもし資料に答えがない場合は、一般的な知識で回答せず、「資料には記載がありません」と答えてください。\n\n";
+    // Updated system prompt to separate Knowledge and History
+    let fullPrompt = `あなたは社内アシスタントAIです。
+以下の【社内資料】および【会話履歴】、添付された画像に基づいて、ユーザーの質問に回答してください。
+
+【制約事項】
+1. 社内資料に答えがある場合は、それを優先して回答してください。
+2. 会話履歴がある場合、その文脈（過去のやり取り）を踏まえて回答してください。
+3. 資料に答えがなく、会話履歴からも推測できない場合は、一般的な知識で回答せず、「資料には記載がありません」と答えてください。
+4. 常に丁寧なビジネス言葉（です・ます調）で回答してください。
+
+`;
+
     if (contextData) {
-      fullPrompt += `=== 社内資料 (テキスト) ===\n${contextData}\n================\n\n`;
+      // contextData now contains structured headers "=== 社内資料 (Knowledge) ===" and "=== 会話履歴 (History) ==="
+      fullPrompt += `${contextData}\n\n`;
     }
+
     fullPrompt += `ユーザーの質問: ${prompt}`;
 
     // Construct API Payload

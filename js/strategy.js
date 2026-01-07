@@ -217,12 +217,23 @@ function renderStrategyList() {
     container.innerHTML = '';
 
     const filtered = strategies.filter(s => {
-        if (isKnowledgeMode) {
-            return s.isKnowledge === true;
+        // Step 2: Enforce category scoping even in Knowledge Mode
+        // Original: return s.isKnowledge === true;
+        // New: Check isKnowledge AND category (unless category is 'all')
+
+        if (!currentCategory || currentCategory === 'all') {
+             if (isKnowledgeMode) return s.isKnowledge === true;
+             return true;
         }
-        if (!currentCategory || currentCategory === 'all') return true;
+
         const cat = s.category || 'strategy';
-        return cat === currentCategory;
+        const isCatMatch = cat === currentCategory;
+
+        if (isKnowledgeMode) {
+            return s.isKnowledge === true && isCatMatch;
+        }
+
+        return isCatMatch;
     });
 
     if (filtered.length === 0) {
