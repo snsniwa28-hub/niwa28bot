@@ -52,7 +52,6 @@ export async function loadStrategies() {
 export async function saveStrategy() {
     const titleInput = document.getElementById('strategy-editor-title');
     const categorySelect = document.getElementById('strategy-editor-category');
-    const isKnowledgeInput = document.getElementById('strategy-is-knowledge');
 
     // Default to 'strategy' if select is missing (fallback)
     const category = categorySelect ? categorySelect.value : 'strategy';
@@ -66,7 +65,7 @@ export async function saveStrategy() {
         type: type,
         updatedAt: serverTimestamp(),
         author: "Admin",
-        isKnowledge: isKnowledgeInput ? isKnowledgeInput.checked : false
+        isKnowledge: true // Always treat as Knowledge (Long-term memory)
     };
 
     // AI Context
@@ -253,21 +252,6 @@ function renderStrategyList() {
         card.className = "bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden mb-8 transition hover:shadow-xl animate-fade-in";
 
         // Show delete button if Admin OR KnowledgeMode (as requested: "知識リスト表示中も...削除できるようにする")
-        // NOTE: Security-wise, deleteStrategy does verification on server usually, but here we are client-side admin.
-        // If not in admin mode but in Knowledge List, should we allow delete?
-        // The prompt says "Knowledge List... allow deleting".
-        // Typically Knowledge List is accessed via the button.
-        // Let's assume the user viewing the Knowledge List has rights or the UI allows it.
-        // But usually, only admins should delete.
-        // However, if the user requested "Make a management UI", implies this UI is for managers.
-        // Let's enable delete if isStrategyAdmin OR isKnowledgeMode (assuming accessing it implies permission or just UI requirement)
-        // Actually, let's stick to `isStrategyAdmin` being the gatekeeper for *entering* the mode?
-        // Wait, the prompt says "Add filter button". It didn't say protect it.
-        // But `deleteStrategy` calls `deleteDoc` which might have Firestore rules.
-        // I will show the buttons if `isStrategyAdmin` is true OR if `isKnowledgeMode` is true (assuming the user wants this specific list to be manageable).
-        // Safest is to rely on `isStrategyAdmin`.
-        // BUT, the prompt says "Admin Mode" is not explicitly mentioned for the knowledge list button visibility.
-        // Let's just show it. If Firestore fails, it fails.
         const showControls = isStrategyAdmin || isKnowledgeMode;
 
         let html = `
@@ -342,24 +326,14 @@ export function openStrategyEditor(id = null) {
         titleInputContainer.parentNode.insertBefore(catDiv, titleInputContainer);
     }
 
-    // Knowledge Checkbox Injection
-    if (!document.getElementById('strategy-is-knowledge-container')) {
-         const container = document.getElementById('strategy-editor-category').parentNode;
-         const div = document.createElement('div');
-         div.id = 'strategy-is-knowledge-container';
-         div.className = "mb-4";
-         div.innerHTML = `
-            <label class="flex items-center gap-2 cursor-pointer bg-white border border-slate-200 rounded-lg px-3 py-2 hover:bg-indigo-50 hover:border-indigo-200 transition shadow-sm w-max">
-                <input type="checkbox" id="strategy-is-knowledge" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
-                <span class="text-xs font-bold text-slate-700">🧠 AI知識として登録 (長期記憶)</span>
-            </label>
-         `;
-         container.parentNode.insertBefore(div, container.nextSibling);
+    // Knowledge Checkbox Removal (Always ON now)
+    const existingCheckbox = document.getElementById('strategy-is-knowledge-container');
+    if (existingCheckbox) {
+        existingCheckbox.remove();
     }
 
     const titleInput = document.getElementById('strategy-editor-title');
     const categorySelect = document.getElementById('strategy-editor-category');
-    const isKnowledgeInput = document.getElementById('strategy-is-knowledge');
 
     // Handle Category Locking & Initial Value
     if (currentCategory && currentCategory !== 'all' && !id) {
@@ -380,15 +354,15 @@ export function openStrategyEditor(id = null) {
         aiDiv.id = 'strategy-ai-section';
         aiDiv.className = "mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100 animate-fade-in";
         aiDiv.innerHTML = `
-            <label class="block text-xs font-bold text-indigo-600 mb-2">🤖 AI用知識データ (PDF/テキスト)</label>
+            <label class="block text-xs font-bold text-indigo-600 mb-2">🤖 AI用知識データ (PDF / Excel)</label>
             <div class="mb-2 flex gap-2 items-center">
                 <label class="cursor-pointer bg-white text-indigo-600 px-3 py-2 rounded-lg text-xs font-bold border border-indigo-200 hover:bg-indigo-50 transition shadow-sm flex items-center gap-2">
-                    <span>📄 PDFを読み込む</span>
-                    <input type="file" accept="application/pdf" class="hidden" onchange="window.handlePdfUpload(this)">
+                    <span>📂 資料を読み込む (PDF / Excel)</span>
+                    <input type="file" accept=".pdf, .xlsx, .xls" class="hidden" onchange="window.handleContextFileUpload(this)">
                 </label>
-                <span id="pdf-status" class="text-[10px] text-slate-400 font-bold flex items-center"></span>
+                <span id="file-status" class="text-[10px] text-slate-400 font-bold flex items-center"></span>
             </div>
-            <textarea id="strategy-ai-context" class="w-full bg-white border border-indigo-200 rounded-lg p-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 h-32 resize-none placeholder-indigo-200" placeholder="ここにAIが参照するテキストを入力（PDFを読み込むと自動で抽出されます）"></textarea>
+            <textarea id="strategy-ai-context" class="w-full bg-white border border-indigo-200 rounded-lg p-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 h-32 resize-none placeholder-indigo-200" placeholder="ここにAIが参照するテキストを入力（資料を読み込むと自動で抽出されます）"></textarea>
             <p class="text-[10px] text-indigo-400 font-bold mt-1 text-right">※このテキストは記事には表示されず、AIの回答のみに使用されます</p>
         `;
         // Insert before the blocks container
@@ -398,10 +372,9 @@ export function openStrategyEditor(id = null) {
 
     // Reset AI Context
     const aiContextInput = document.getElementById('strategy-ai-context');
-    const pdfStatus = document.getElementById('pdf-status');
+    const fileStatus = document.getElementById('file-status');
     if (aiContextInput) aiContextInput.value = '';
-    if (pdfStatus) pdfStatus.textContent = '';
-    if (isKnowledgeInput) isKnowledgeInput.checked = false;
+    if (fileStatus) fileStatus.textContent = '';
 
     if (id) {
         // Edit Mode
@@ -411,7 +384,6 @@ export function openStrategyEditor(id = null) {
             categorySelect.value = item.category || 'strategy';
             categorySelect.disabled = false;
             categorySelect.classList.remove('opacity-50');
-            if (isKnowledgeInput) isKnowledgeInput.checked = !!item.isKnowledge;
 
             if(item.blocks) {
                 item.blocks.forEach(block => addEditorBlock(block.type, block));
@@ -419,19 +391,10 @@ export function openStrategyEditor(id = null) {
             if(item.ai_context && aiContextInput) {
                 aiContextInput.value = item.ai_context;
             }
-            // Note: We don't restore ai_images to tempPdfImages because they are already saved.
-            // Editing won't clear them unless we explicitly handle that, but typically new PDF upload overwrites.
-            // If the user adds blocks, those block images will be appended.
-            // Existing PDF images in DB are preserved if we don't overwrite ai_images with empty tempPdfImages?
-            // Actually, saveStrategy rewrites ai_images.
-            // If we don't upload a new PDF, tempPdfImages is empty.
-            // So if we save, we might lose old PDF images unless we load them back.
-            // However, implementing full restoration of 10 base64 images to a hidden state is heavy.
-            // For now, assume re-upload is needed if you want to update PDF content.
-            // Or better: Load existing ai_images into tempPdfImages?
+
             if (item.ai_images) {
                 tempPdfImages = item.ai_images;
-                if (pdfStatus) pdfStatus.textContent = `既存画像: ${item.ai_images.length}枚`;
+                if (fileStatus) fileStatus.textContent = `既存画像: ${item.ai_images.length}枚`;
             }
         }
     } else {
@@ -510,71 +473,102 @@ window.handleBlockImage = async (input) => {
     }
 };
 
-window.handlePdfUpload = async (input) => {
+window.handleContextFileUpload = async (input) => {
     if (input.files && input.files[0]) {
         const file = input.files[0];
-        const statusEl = document.getElementById('pdf-status');
+        const statusEl = document.getElementById('file-status');
         const textarea = document.getElementById('strategy-ai-context');
-
-        if (file.type !== 'application/pdf') {
-            alert('PDFファイルを選択してください');
-            return;
-        }
 
         if(statusEl) statusEl.textContent = '読み込み中...';
         tempPdfImages = []; // Clear previous images
 
-        try {
-            const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-            let extractedText = "";
+        const fileName = file.name.toLowerCase();
 
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
+        if (fileName.endsWith('.pdf')) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let extractedText = "";
 
-                // Text Extraction
-                const textContent = await page.getTextContent();
-                const pageText = textContent.items.map(item => item.str).join(' ');
-                extractedText += `[Page ${i}]\n${pageText}\n\n`;
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
 
-                // Image Extraction (First 5 pages)
-                if (i <= 5) {
-                    const viewport = page.getViewport({ scale: 1.5 });
-                    const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
+                    // Text Extraction
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    extractedText += `[Page ${i}]\n${pageText}\n\n`;
 
-                    await page.render({ canvasContext: context, viewport: viewport }).promise;
+                    // Image Extraction (First 5 pages)
+                    if (i <= 5) {
+                        const viewport = page.getViewport({ scale: 1.5 });
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
 
-                    // Resize if needed to max 800px width
-                    const MAX_WIDTH = 800;
-                    let finalDataUrl;
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
 
-                    if (canvas.width > MAX_WIDTH) {
-                        const scale = MAX_WIDTH / canvas.width;
-                        const w = MAX_WIDTH;
-                        const h = canvas.height * scale;
-                        const c2 = document.createElement('canvas');
-                        c2.width = w; c2.height = h;
-                        c2.getContext('2d').drawImage(canvas, 0, 0, w, h);
-                        finalDataUrl = c2.toDataURL('image/jpeg', 0.6);
-                    } else {
-                        finalDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                        // Resize if needed to max 800px width
+                        const MAX_WIDTH = 800;
+                        let finalDataUrl;
+
+                        if (canvas.width > MAX_WIDTH) {
+                            const scale = MAX_WIDTH / canvas.width;
+                            const w = MAX_WIDTH;
+                            const h = canvas.height * scale;
+                            const c2 = document.createElement('canvas');
+                            c2.width = w; c2.height = h;
+                            c2.getContext('2d').drawImage(canvas, 0, 0, w, h);
+                            finalDataUrl = c2.toDataURL('image/jpeg', 0.6);
+                        } else {
+                            finalDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                        }
+                        tempPdfImages.push(finalDataUrl);
                     }
-                    tempPdfImages.push(finalDataUrl);
                 }
-            }
 
-            if(textarea) {
-                const currentVal = textarea.value;
-                textarea.value = (currentVal ? currentVal + "\n\n" : "") + extractedText;
-            }
-            if(statusEl) statusEl.textContent = `完了 (${pdf.numPages}ページ, 画像${tempPdfImages.length}枚)`;
+                if(textarea) {
+                    const currentVal = textarea.value;
+                    textarea.value = (currentVal ? currentVal + "\n\n" : "") + extractedText;
+                }
+                if(statusEl) statusEl.textContent = `完了 (${pdf.numPages}ページ, 画像${tempPdfImages.length}枚)`;
 
-        } catch (e) {
-            console.error(e);
-            alert("PDFの読み込みに失敗しました: " + e.message);
+            } catch (e) {
+                console.error(e);
+                alert("PDFの読み込みに失敗しました: " + e.message);
+                if(statusEl) statusEl.textContent = 'エラー';
+            }
+        } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+            try {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    let extractedText = `[Excel File: ${file.name}]\n`;
+
+                    workbook.SheetNames.forEach(sheetName => {
+                        const worksheet = workbook.Sheets[sheetName];
+                        const txt = XLSX.utils.sheet_to_txt(worksheet);
+                        if(txt && txt.trim().length > 0) {
+                            extractedText += `\n--- Sheet: ${sheetName} ---\n${txt}\n`;
+                        }
+                    });
+
+                    if(textarea) {
+                        const currentVal = textarea.value;
+                        textarea.value = (currentVal ? currentVal + "\n\n" : "") + extractedText;
+                    }
+                    if(statusEl) statusEl.textContent = '完了 (Excel)';
+                };
+                reader.readAsArrayBuffer(file);
+            } catch (e) {
+                console.error(e);
+                alert("Excelの読み込みに失敗しました: " + e.message);
+                if(statusEl) statusEl.textContent = 'エラー';
+            }
+        } else {
+            alert('PDFまたはExcelファイルを選択してください');
             if(statusEl) statusEl.textContent = 'エラー';
         }
     }
