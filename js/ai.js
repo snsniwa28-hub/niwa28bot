@@ -1,13 +1,10 @@
 import { db } from './firebase.js';
-import { collection, addDoc, updateDoc, getDocs, query, orderBy, limit, where, serverTimestamp, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, addDoc, updateDoc, getDocs, query, orderBy, limit, where, serverTimestamp, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { showToast, showConfirmModal } from './ui.js';
 
 let isChatOpen = false;
-let currentContext = ""; // This will now contain structured context (or JSON string, or keep as plain text?)
-// To minimize changes in gemini.js payload structure if possible, I'll keep currentContext as a string
-// but structured: "=== Knowledge ===\n...\n=== History ===\n..."
+let currentContext = "";
 let contextImages = []; // Array of base64 strings
-let contextTitle = "";
 let currentCategory = "";
 
 function escapeHtml(text) {
@@ -32,31 +29,27 @@ export async function toggleAIChat(category = 'all', categoryName = '社内資�
         modal.classList.remove('hidden');
         modal.classList.add('flex');
 
+        // Reset UI every time it opens
+        const messagesContainer = document.getElementById('ai-messages');
+        messagesContainer.innerHTML = '';
+
+        // Add Default Greeting
+        addMessageToUI("ai", "資料に基づいて回答します。ご質問をどうぞ。");
+
         if (category !== currentCategory) {
             currentCategory = category;
-            document.getElementById('ai-messages').innerHTML = ''; // Clear previous messages
-            await fetchChatHistory(category);
-            await loadContext(category, categoryName);
-        } else {
-            // Re-fetch context even if same category to include latest history if any new messages were added elsewhere?
-            // Or just check if context needs update. For now, fetch to ensure "History" in context is up to date.
-            // However, fetching history for UI vs fetching history for Context are slightly different (UI needs structure, Context needs text).
-            // Let's reload context to be safe.
-             await loadContext(category, categoryName);
-
-             // Check if UI is empty (first load of this category in this session)
-             const container = document.getElementById('ai-messages');
-             if (container.children.length === 0) {
-                 await fetchChatHistory(category);
-             }
         }
+
+        // Load Context (Knowledge Base only)
+        await loadContext(category, categoryName);
 
         // Update Status Text with Category Name
         const statusEl = document.getElementById('ai-status-text');
         if(statusEl) statusEl.textContent = `${categoryName}の資料を読み込み中...`;
 
-        scrollToBottom();
     } else {
+        // Clear UI when closing
+        document.getElementById('ai-messages').innerHTML = '';
         modal.classList.add('hidden');
         modal.classList.remove('flex');
     }
@@ -64,69 +57,9 @@ export async function toggleAIChat(category = 'all', categoryName = '社内資�
 
 export function closeAIChat() {
     isChatOpen = false;
+    document.getElementById('ai-messages').innerHTML = '';
     document.getElementById('ai-chat-modal').classList.add('hidden');
     document.getElementById('ai-chat-modal').classList.remove('flex');
-}
-
-// --- Chat History Management ---
-
-async function fetchChatHistory(category) {
-    try {
-        const q = query(
-            collection(db, "ai_chat_logs"),
-            where("category", "==", category),
-            where("isDeleted", "==", false),
-            orderBy("timestamp", "asc"),
-            limit(100) // Reasonable limit for display
-        );
-        const snapshot = await getDocs(q);
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            addMessageToUI(data.role, data.message, false, doc.id);
-        });
-    } catch (e) {
-        console.error("Failed to fetch chat history:", e);
-    }
-}
-
-async function saveChatLog(role, message) {
-    try {
-        await addDoc(collection(db, "ai_chat_logs"), {
-            category: currentCategory,
-            role: role,
-            message: message,
-            timestamp: serverTimestamp(),
-            isDeleted: false
-        });
-    } catch (e) {
-        console.error("Failed to save chat log:", e);
-    }
-}
-
-export async function deleteChatMessage(id) {
-    showConfirmModal("削除確認", "このメッセージを削除しますか？\n（AIの記憶からも消去されます）", async () => {
-        try {
-            await updateDoc(doc(db, "ai_chat_logs", id), {
-                isDeleted: true
-            });
-            const el = document.getElementById(id); // ID matching logic needs to be consistent
-            if (el) el.remove();
-            showToast("メッセージを削除しました");
-            // Reload context to remove deleted message from memory
-            // But we don't have categoryName here easily.
-            // Using currentCategory and a default name or just update context silently?
-            // Re-running loadContext might be heavy.
-            // Ideally, just let it be updated next time user sends message (if we reload context on send).
-            // But currently `sendAIMessage` uses `currentContext`.
-            // We should reload context before sending message or update it here.
-            // Let's assume user accepts next message might use old context unless we refresh.
-            // Triggering refresh:
-            await loadContext(currentCategory, "現在のカテゴリ");
-        } catch (e) {
-            console.error("Failed to delete chat log:", e);
-            showToast("削除に失敗しました");
-        }
-    });
 }
 
 // --- Context & AI Logic ---
@@ -137,7 +70,6 @@ async function loadContext(category, categoryName) {
 
     try {
         let knowledgeText = "";
-        let historyText = "";
         let collectedImages = [];
         let titles = [];
 
@@ -145,21 +77,8 @@ async function loadContext(category, categoryName) {
         const qKnowledge = query(
             collection(db, "strategies"),
             where("isKnowledge", "==", true)
-            // Note: Composite query might require index. If "isKnowledge" + "category" fails,
-            // we might need to filter client side or create index.
-            // Given "isKnowledge" is a specific flag, filtering by it first is good.
-            // Let's try to query by isKnowledge only and filter client-side for safety/speed without index creation wait.
-            // Or better: Query by category first (if indexed) then filter isKnowledge?
-            // "category" query is common.
-            // Let's stick to client-side filtering for robust "AND" logic without new indexes if possible.
-            // Actually, querying all `isKnowledge: true` might be small enough?
-            // Or querying all `category == current` then filter `isKnowledge`?
-            // Let's try: Query all `category` (or top N updated) + `isKnowledge` ones?
-            // Merging approach:
         );
 
-        // Approach: Fetch all `isKnowledge: true` and filter.
-        // Assuming the number of knowledge items isn't huge (100s).
         const snapshotKnowledge = await getDocs(qKnowledge);
         let knowledgeDocs = snapshotKnowledge.docs.map(doc => doc.data());
 
@@ -185,47 +104,19 @@ async function loadContext(category, categoryName) {
             }
         });
 
-        // 2. Load Chat History (Scoped by Category)
-        // Fetch last 50 messages for context (to avoid huge payload)
-        // "Without time limit" -> but token limit exists.
-        // Let's fetch reasonably large amount, e.g. 50.
-        const qHistory = query(
-            collection(db, "ai_chat_logs"),
-            where("category", "==", category),
-            where("isDeleted", "==", false),
-            orderBy("timestamp", "desc"), // Get latest
-            limit(50)
-        );
-
-        const snapshotHistory = await getDocs(qHistory);
-        // Reverse to chronological order
-        const historyDocs = snapshotHistory.docs.map(doc => doc.data()).reverse();
-
-        historyDocs.forEach(log => {
-            historyText += `[${log.role === 'user' ? 'ユーザー' : 'AI'}]: ${log.message}\n`;
-        });
+        // 2. No History Loading (Ephemeral)
 
         // 3. Combine
-        // We will pass structured text blocks to the prompt via `currentContext`
-        // Format:
-        // === 社内資料 (Knowledge) ===
-        // ...
-        // === 会話履歴 (History) ===
-        // ...
-
         let combinedText = "";
         if (knowledgeText) {
             combinedText += `=== 社内資料 (Knowledge) ===\n${knowledgeText}\n\n`;
-        }
-        if (historyText) {
-            combinedText += `=== 会話履歴 (History) ===\n${historyText}\n`;
         }
 
         currentContext = combinedText;
         contextImages = collectedImages.slice(0, 10); // Max 10 images
 
         if(statusEl) {
-             statusEl.textContent = `[${categoryName}] 知識:${titles.length}件 / 履歴:${historyDocs.length}件 参照中`;
+             statusEl.textContent = `[${categoryName}] 知識:${titles.length}件 参照中`;
         }
 
     } catch (e) {
@@ -241,32 +132,8 @@ export async function sendAIMessage() {
 
     input.value = "";
 
-    // Save User Message
-    let userMsgId = null;
-    try {
-        const docRef = await addDoc(collection(db, "ai_chat_logs"), {
-            category: currentCategory,
-            role: "user",
-            message: message,
-            timestamp: serverTimestamp(),
-            isDeleted: false
-        });
-        userMsgId = docRef.id;
-        addMessageToUI("user", message, false, userMsgId);
-    } catch (e) {
-        console.error("Failed to save user message", e);
-        addMessageToUI("user", message);
-    }
-
-    // Reload Context to include the new user message?
-    // Actually, we just added it to UI. The `currentContext` has history up to *before* this message.
-    // Ideally, we should append this message to `currentContext` temporarily for the API call.
-    // Or simpler: The backend prompt says "User Question: ...".
-    // If we include it in history AND prompt, it duplicates.
-    // Standard practice: History contains *past* turns. Current turn is "User Question".
-    // So we DON'T need to reload context here.
-    // BUT, we *do* need to make sure `currentContext` (loaded previously) is fresh enough?
-    // If user deleted something *after* opening chat, `deleteChatMessage` calls `loadContext`. So it's fine.
+    // Add User Message to UI (Ephemeral)
+    addMessageToUI("user", message);
 
     const loadingId = addMessageToUI("ai", "考え中...", true);
 
@@ -293,20 +160,8 @@ export async function sendAIMessage() {
             addMessageToUI("ai", aiReply);
         } else {
             aiReply = data.reply;
-            // Save AI Message
-             try {
-                const docRef = await addDoc(collection(db, "ai_chat_logs"), {
-                    category: currentCategory,
-                    role: "ai",
-                    message: aiReply,
-                    timestamp: serverTimestamp(),
-                    isDeleted: false
-                });
-                addMessageToUI("ai", aiReply, false, docRef.id);
-            } catch (e) {
-                console.error("Failed to save AI message", e);
-                addMessageToUI("ai", aiReply);
-            }
+            // Add AI Message to UI (Ephemeral)
+            addMessageToUI("ai", aiReply);
         }
 
     } catch (e) {
@@ -326,14 +181,6 @@ function addMessageToUI(role, text, isLoading = false, id = null) {
 
     div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} mb-4 animate-fade-in group`;
 
-    const deleteBtn = (id && !isLoading) ? `
-        <button onclick="window.deleteChatMessage('${id}')" class="opacity-0 group-hover:opacity-100 transition text-slate-300 hover:text-rose-400 p-1 self-center ${isUser ? 'mr-2' : 'ml-2 order-last'}">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-        </button>
-    ` : '';
-
     let contentHtml = `
         <div class="max-w-[80%] p-3 rounded-2xl text-sm font-bold leading-relaxed shadow-sm ${
             isUser
@@ -344,11 +191,7 @@ function addMessageToUI(role, text, isLoading = false, id = null) {
         </div>
     `;
 
-    if (isUser) {
-        div.innerHTML = `${deleteBtn}${contentHtml}`;
-    } else {
-        div.innerHTML = `${contentHtml}${deleteBtn}`;
-    }
+    div.innerHTML = `${contentHtml}`;
 
     container.appendChild(div);
     scrollToBottom();
@@ -362,11 +205,51 @@ function removeMessageUI(id) {
 
 function scrollToBottom() {
     const container = document.getElementById('ai-messages');
-    container.scrollTop = container.scrollHeight;
+    if(container) container.scrollTop = container.scrollHeight;
 }
+
+// Utility to delete all logs (Available via console for admin maintenance)
+window.emergencyDeleteAllLogs = async () => {
+    if (!confirm("【警告】過去のすべての会話ログを削除しますか？\nこの操作は取り消せません。")) return;
+
+    console.log("Starting log deletion...");
+    try {
+        // Since we can't delete collection directly from client SDK efficiently without cloud functions,
+        // we have to batch delete.
+        const q = query(collection(db, "ai_chat_logs"), limit(500));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            console.log("No logs found.");
+            alert("削除対象のログはありませんでした。");
+            return;
+        }
+
+        const batchSize = snapshot.size;
+        let count = 0;
+        const deletePromises = [];
+
+        snapshot.forEach(doc => {
+            deletePromises.push(deleteDoc(doc.ref));
+            count++;
+        });
+
+        await Promise.all(deletePromises);
+        console.log(`Deleted ${count} logs.`);
+
+        if (batchSize === 500) {
+             alert(`500件削除しました。まだ残っている可能性があるため、再度実行してください。`);
+        } else {
+             alert(`完了: ${count}件のログを削除しました。`);
+        }
+
+    } catch (e) {
+        console.error(e);
+        alert("削除中にエラーが発生しました: " + e.message);
+    }
+};
 
 // Global Expose
 window.toggleAIChat = toggleAIChat;
 window.closeAIChat = closeAIChat;
 window.sendAIMessage = sendAIMessage;
-window.deleteChatMessage = deleteChatMessage;
