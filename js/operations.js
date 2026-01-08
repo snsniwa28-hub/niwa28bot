@@ -551,22 +551,31 @@ async function handleOpImportFile(e) {
         let jsonStr = data.reply.replace(/```json/g, '').replace(/```/g, '').trim();
         const targets = JSON.parse(jsonStr);
 
-        // Confirm
-        const count = Object.keys(targets).length;
+        // Filter by currently viewed month (currentOpYear, currentOpMonth)
+        // Note: currentOpMonth is 0-indexed (0=Jan, 11=Dec)
+        const targetMonthPrefix = `${currentOpYear}-${String(currentOpMonth + 1).padStart(2, '0')}`;
+        const filteredTargets = Object.entries(targets).filter(([date, val]) => {
+            return date.startsWith(targetMonthPrefix);
+        });
+
+        const count = filteredTargets.length;
         if (count === 0) {
-            alert("目標値が見つかりませんでした。");
+            alert(`表示中の月 (${currentOpYear}年${currentOpMonth + 1}月) の目標値が見つかりませんでした。\nファイル内の日付とカレンダーの表示月を確認してください。`);
             return;
         }
 
-        if (confirm(`${count}日分の目標値を検出しました。\n一括登録しますか？`)) {
+        if (confirm(`${currentOpYear}年${currentOpMonth + 1}月のデータ ${count}日分を検出しました。\n一括登録しますか？`)) {
             // Batch Write
             const batch = writeBatch(db);
 
-            Object.entries(targets).forEach(([date, val]) => {
-                if (val && val.t19) {
+            filteredTargets.forEach(([date, val]) => {
+                const updateData = {};
+                if (val.t19 !== undefined) updateData.target_total_19 = val.t19;
+                if (val.t15 !== undefined) updateData.target_total_15 = val.t15;
+
+                if (Object.keys(updateData).length > 0) {
                     const ref = doc(db, "operations_data", date);
-                    // Update only target_total_19, keeping other fields
-                    batch.set(ref, { target_total_19: val.t19 }, { merge: true });
+                    batch.set(ref, updateData, { merge: true });
                 }
             });
 

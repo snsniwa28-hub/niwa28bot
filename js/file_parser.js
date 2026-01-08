@@ -74,9 +74,10 @@ async function parseExcel(file) {
 
                 workbook.SheetNames.forEach(sheetName => {
                     const worksheet = workbook.Sheets[sheetName];
-                    const txt = XLSX.utils.sheet_to_txt(worksheet);
-                    if(txt && txt.trim().length > 0) {
-                        extractedText += `\n--- Sheet: ${sheetName} ---\n${txt}\n`;
+                    // Changed from sheet_to_txt to sheet_to_csv for better column structure
+                    const csv = XLSX.utils.sheet_to_csv(worksheet);
+                    if(csv && csv.trim().length > 0) {
+                        extractedText += `\n--- Sheet: ${sheetName} ---\n${csv}\n`;
                     }
                 });
 
