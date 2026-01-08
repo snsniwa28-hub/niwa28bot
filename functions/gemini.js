@@ -6,7 +6,7 @@ export async function onRequest(context) {
   }
 
   try {
-    const { prompt, contextData, contextImages } = await request.json();
+    const { prompt, contextData, contextImages, mode } = await request.json();
     const apiKey = env.GEMINI_API_KEY;
     const model = env.GEMINI_MODEL || "gemini-2.0-flash";
 
@@ -17,25 +17,51 @@ export async function onRequest(context) {
       });
     }
 
-    // Construct the full prompt text
-    // Updated system prompt to separate Knowledge and History
-    let fullPrompt = `あなたは社内アシスタントAIです。
-以下の【社内資料】および【会話履歴】、添付された画像に基づいて、ユーザーの質問に回答してください。
+    let fullPrompt = "";
 
-【制約事項】
-1. 社内資料に答えがある場合は、それを優先して回答してください。
-2. 会話履歴がある場合、その文脈（過去のやり取り）を踏まえて回答してください。
-3. 資料に答えがなく、会話履歴からも推測できない場合は、一般的な知識で回答せず、「資料には記載がありません」と答えてください。
-4. 常に丁寧なビジネス言葉（です・ます調）で回答してください。
+    if (mode === 'extraction') {
+        // Extraction Mode for Operations Targets
+        fullPrompt = `
+あなたはデータ抽出AIです。
+提供されたテキストデータまたは画像から、**「稼働目標値（Target 19:00）」**を日付ごとに抽出してください。
+以下のJSON形式のみを出力してください。余計な解説やMarkdown記法（\`\`\`jsonなど）は一切不要です。
+
+【出力フォーマット】
+{
+  "YYYY-MM-DD": { "t19": 数値 },
+  "YYYY-MM-DD": { "t19": 数値 },
+  ...
+}
+
+【ルール】
+1. 日付は YYYY-MM-DD 形式（例: 2024-12-01）。
+2. t19 は「19時時点の目標稼働数」または単に「目標」と記載されている数値。
+3. 明確な数値がない日付は除外してください。
+4. JSON以外のテキストは一切出力しないでください。
+
+解析対象データ:
+${prompt}
+`;
+    } else {
+        // Normal Chat Mode (Updated Persona)
+        fullPrompt = `あなたは現場のアシスタントAIです。
+以下の【社内資料】に基づいて、ユーザーの質問に**即答**してください。
+
+【厳格な回答ルール】
+1. **結論ファースト**: 最初に答えを短く述べる。
+2. **要約・極短文**: 冗長な解説は禁止。現場で一瞬で読める長さに留める。
+3. **記号の制限**:
+   - アスタリスク (*) や太字Markdownは**一切使用禁止**。
+   - 箇条書きは「・」または「1.」のみ使用可能。
+4. **情報の優先度**: 社内資料の内容を最優先する。資料にない場合は「資料にありません」と即答する。
+5. **丁寧語**: です・ます調を使用。
 
 `;
-
-    if (contextData) {
-      // contextData now contains structured headers "=== 社内資料 (Knowledge) ===" and "=== 会話履歴 (History) ==="
-      fullPrompt += `${contextData}\n\n`;
+        if (contextData) {
+            fullPrompt += `${contextData}\n\n`;
+        }
+        fullPrompt += `質問: ${prompt}`;
     }
-
-    fullPrompt += `ユーザーの質問: ${prompt}`;
 
     // Construct API Payload
     const parts = [{ text: fullPrompt }];

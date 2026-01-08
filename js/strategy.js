@@ -1,6 +1,7 @@
 import { db, app } from './firebase.js';
 import { collection, doc, setDoc, getDocs, deleteDoc, serverTimestamp, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { showToast, showConfirmModal, showPasswordModal } from './ui.js';
+import { parseFile } from './file_parser.js';
 
 // --- State ---
 let strategies = [];
@@ -482,93 +483,27 @@ window.handleContextFileUpload = async (input) => {
         if(statusEl) statusEl.textContent = '読み込み中...';
         tempPdfImages = []; // Clear previous images
 
-        const fileName = file.name.toLowerCase();
+        try {
+            const { text, images, pageCount } = await parseFile(file);
 
-        if (fileName.endsWith('.pdf')) {
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                let extractedText = "";
-
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-
-                    // Text Extraction
-                    const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(' ');
-                    extractedText += `[Page ${i}]\n${pageText}\n\n`;
-
-                    // Image Extraction (First 5 pages)
-                    if (i <= 5) {
-                        const viewport = page.getViewport({ scale: 1.5 });
-                        const canvas = document.createElement('canvas');
-                        const context = canvas.getContext('2d');
-                        canvas.height = viewport.height;
-                        canvas.width = viewport.width;
-
-                        await page.render({ canvasContext: context, viewport: viewport }).promise;
-
-                        // Resize if needed to max 800px width
-                        const MAX_WIDTH = 800;
-                        let finalDataUrl;
-
-                        if (canvas.width > MAX_WIDTH) {
-                            const scale = MAX_WIDTH / canvas.width;
-                            const w = MAX_WIDTH;
-                            const h = canvas.height * scale;
-                            const c2 = document.createElement('canvas');
-                            c2.width = w; c2.height = h;
-                            c2.getContext('2d').drawImage(canvas, 0, 0, w, h);
-                            finalDataUrl = c2.toDataURL('image/jpeg', 0.6);
-                        } else {
-                            finalDataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                        }
-                        tempPdfImages.push(finalDataUrl);
-                    }
-                }
-
-                if(textarea) {
-                    const currentVal = textarea.value;
-                    textarea.value = (currentVal ? currentVal + "\n\n" : "") + extractedText;
-                }
-                if(statusEl) statusEl.textContent = `完了 (${pdf.numPages}ページ, 画像${tempPdfImages.length}枚)`;
-
-            } catch (e) {
-                console.error(e);
-                alert("PDFの読み込みに失敗しました: " + e.message);
-                if(statusEl) statusEl.textContent = 'エラー';
+            if(textarea) {
+                const currentVal = textarea.value;
+                textarea.value = (currentVal ? currentVal + "\n\n" : "") + text;
             }
-        } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-            try {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
 
-                    let extractedText = `[Excel File: ${file.name}]\n`;
+            tempPdfImages = images || [];
 
-                    workbook.SheetNames.forEach(sheetName => {
-                        const worksheet = workbook.Sheets[sheetName];
-                        const txt = XLSX.utils.sheet_to_txt(worksheet);
-                        if(txt && txt.trim().length > 0) {
-                            extractedText += `\n--- Sheet: ${sheetName} ---\n${txt}\n`;
-                        }
-                    });
-
-                    if(textarea) {
-                        const currentVal = textarea.value;
-                        textarea.value = (currentVal ? currentVal + "\n\n" : "") + extractedText;
-                    }
-                    if(statusEl) statusEl.textContent = '完了 (Excel)';
-                };
-                reader.readAsArrayBuffer(file);
-            } catch (e) {
-                console.error(e);
-                alert("Excelの読み込みに失敗しました: " + e.message);
-                if(statusEl) statusEl.textContent = 'エラー';
+            let statusText = '完了';
+            if (file.name.toLowerCase().endsWith('.pdf')) {
+                statusText += ` (${pageCount}ページ, 画像${tempPdfImages.length}枚)`;
+            } else {
+                 statusText += ` (Excel)`;
             }
-        } else {
-            alert('PDFまたはExcelファイルを選択してください');
+            if(statusEl) statusEl.textContent = statusText;
+
+        } catch (e) {
+            console.error(e);
+            alert("ファイルの読み込みに失敗しました: " + e.message);
             if(statusEl) statusEl.textContent = 'エラー';
         }
     }
@@ -593,6 +528,7 @@ window.openInternalSharedModal = (category = 'strategy') => {
 
 export function openStrategyAdmin(category) {
     isStrategyAdmin = true;
+    isKnowledgeMode = true; // Force Knowledge Mode for Admin View from Chat
     setStrategyCategory(category);
     const modal = document.getElementById('internalSharedModal');
     if (modal) {
