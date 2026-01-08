@@ -1,6 +1,6 @@
 import { db } from './firebase.js';
 import { collection, addDoc, updateDoc, getDocs, query, orderBy, limit, where, serverTimestamp, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { showToast, showConfirmModal } from './ui.js';
+import { showToast, showConfirmModal, showPasswordModal } from './ui.js';
 
 let isChatOpen = false;
 let currentContext = "";
@@ -46,6 +46,29 @@ export async function toggleAIChat(category = 'all', categoryName = '社内資�
         // Update Status Text with Category Name
         const statusEl = document.getElementById('ai-status-text');
         if(statusEl) statusEl.textContent = `${categoryName}の資料を読み込み中...`;
+
+        // Add Admin Management Button dynamically if not exists
+        let header = modal.querySelector('.border-b');
+        if (!header.querySelector('.admin-knowledge-btn')) {
+            const btn = document.createElement('button');
+            btn.className = 'admin-knowledge-btn ml-auto mr-2 p-2 bg-slate-100 rounded-full hover:bg-slate-200 text-slate-400 transition';
+            btn.innerHTML = '⚙️';
+            btn.onclick = () => showPasswordModal(() => {
+                // Open Strategy Admin in Knowledge Mode
+                window.openStrategyAdmin(category);
+                // We might want to close chat or keep it open?
+                // Let's close chat to avoid overlay issues, or just open modal above.
+                // The strategy modal has z-index 90, chat has 100.
+                // We need to close chat to see strategy modal properly OR strategy modal needs higher Z.
+                // Strategy modal uses z-90. Chat uses z-100.
+                // If we open strategy modal, it will be behind chat.
+                // So we should close chat.
+                closeAIChat();
+            });
+            // Insert before close button
+            const closeBtn = header.querySelector('button:last-child');
+            header.insertBefore(btn, closeBtn);
+        }
 
     } else {
         // Clear UI when closing
@@ -141,7 +164,8 @@ export async function sendAIMessage() {
         const payload = {
             prompt: message,
             contextData: currentContext,
-            contextImages: contextImages
+            contextImages: contextImages,
+            mode: 'chat'
         };
 
         const response = await fetch('/gemini', {
@@ -253,3 +277,4 @@ window.emergencyDeleteAllLogs = async () => {
 window.toggleAIChat = toggleAIChat;
 window.closeAIChat = closeAIChat;
 window.sendAIMessage = sendAIMessage;
+window.openCategoryChat = (category, name) => toggleAIChat(category, name);

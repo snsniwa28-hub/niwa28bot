@@ -1,7 +1,8 @@
 import { db } from './firebase.js';
-import { collection, doc, onSnapshot, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, doc, onSnapshot, getDocs, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { $, getTodayDateString, getYesterdayDateString } from './utils.js';
 import { showToast } from './ui.js';
+import { parseFile } from './file_parser.js';
 
 let todayOpData = null;
 let yesterdayOpData = null;
@@ -222,6 +223,50 @@ export function renderOperationsBoard() {
     `;
 
     container.innerHTML = mobileHtml + pcHtml;
+
+    // --- IMPORT BUTTON (Mobile) ---
+    const importBtnMobile = `
+        <button onclick="document.getElementById('op-import-file').click()" class="bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+            <span>AI取込</span>
+        </button>
+    `;
+
+    // --- IMPORT BUTTON (PC) ---
+    const importBtnPC = `
+        <button onclick="document.getElementById('op-import-file').click()" class="bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
+             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+             <span>AI取込</span>
+        </button>
+    `;
+
+    // Inject Import Buttons
+    // Mobile: Add to header actions
+    const mobileHeaderActions = container.querySelector('.md\\:hidden .flex.justify-end');
+    if (mobileHeaderActions) {
+         const div = document.createElement('div');
+         div.innerHTML = importBtnMobile;
+         mobileHeaderActions.insertBefore(div.firstElementChild, mobileHeaderActions.firstElementChild);
+    }
+
+    // PC: Add to header actions
+    const pcHeaderActions = container.querySelector('.hidden.md\\:flex .absolute.top-4.right-4');
+    if (pcHeaderActions) {
+         const div = document.createElement('div');
+         div.innerHTML = importBtnPC;
+         pcHeaderActions.insertBefore(div.firstElementChild, pcHeaderActions.firstElementChild);
+    }
+
+    // Hidden File Input for Import
+    if (!document.getElementById('op-import-file')) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.id = 'op-import-file';
+        input.accept = '.pdf, .xlsx, .xls';
+        input.className = 'hidden';
+        input.onchange = handleOpImportFile;
+        document.body.appendChild(input);
+    }
 
     // Attach Listeners (Mobile)
     const btnMonthlyMobile = container.querySelector('#btn-monthly-cal-mobile');
@@ -473,4 +518,68 @@ export async function saveOpData() {
         closeOpInput();
         showToast("保存しました！");
     } catch (e) { alert("保存失敗: " + e.message); }
+}
+
+async function handleOpImportFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Reset input
+    e.target.value = '';
+
+    showToast("AI解析中...", 5000);
+
+    try {
+        const { text, images } = await parseFile(file);
+
+        // Send to Gemini
+        const response = await fetch('/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: text,
+                contextImages: images ? images.slice(0, 5) : [],
+                mode: 'extraction'
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) throw new Error(data.error);
+
+        // Clean JSON (remove potential markdown code blocks)
+        let jsonStr = data.reply.replace(/```json/g, '').replace(/```/g, '').trim();
+        const targets = JSON.parse(jsonStr);
+
+        // Confirm
+        const count = Object.keys(targets).length;
+        if (count === 0) {
+            alert("目標値が見つかりませんでした。");
+            return;
+        }
+
+        if (confirm(`${count}日分の目標値を検出しました。\n一括登録しますか？`)) {
+            // Batch Write
+            const batch = writeBatch(db);
+
+            Object.entries(targets).forEach(([date, val]) => {
+                if (val && val.t19) {
+                    const ref = doc(db, "operations_data", date);
+                    // Update only target_total_19, keeping other fields
+                    batch.set(ref, { target_total_19: val.t19 }, { merge: true });
+                }
+            });
+
+            await batch.commit();
+            showToast(`${count}件の目標を更新しました！`);
+            // Refresh calendar if open
+            if (!$('#calendar-modal').classList.contains('hidden')) {
+                openMonthlyCalendar();
+            }
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("AI解析エラー: " + err.message);
+    }
 }
