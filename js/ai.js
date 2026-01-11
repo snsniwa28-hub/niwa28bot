@@ -243,6 +243,22 @@ export async function sendAIMessage() {
     }
 }
 
+function formatAIMessage(text) {
+    if (!text) return "";
+    let safeText = escapeHtml(text);
+
+    // Headers (## Title) - Larger, colored, with spacing
+    safeText = safeText.replace(/^##\s+(.+)$/gm, '<div class="text-lg font-bold text-indigo-600 mt-3 mb-1 border-b border-indigo-100 pb-1">$1</div>');
+
+    // Bold (**Text**) - Darker and heavier
+    safeText = safeText.replace(/\*\*(.+?)\*\*/g, '<span class="font-extrabold text-slate-900 bg-slate-50 px-1 rounded">$1</span>');
+
+    // Newlines
+    safeText = safeText.replace(/\n/g, '<br>');
+
+    return safeText;
+}
+
 function addMessageToUI(role, text, isLoading = false, id = null) {
     const container = document.getElementById('ai-messages');
     const div = document.createElement('div');
@@ -253,13 +269,15 @@ function addMessageToUI(role, text, isLoading = false, id = null) {
 
     div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} mb-4 animate-fade-in group`;
 
+    // Use formatAIMessage for AI, simple escape for User
+    // Changed base font to font-medium for better contrast with bold elements
     let contentHtml = `
-        <div class="max-w-[80%] p-3 rounded-2xl text-sm font-bold leading-relaxed shadow-sm ${
+        <div class="max-w-[85%] p-3 rounded-2xl text-sm font-medium leading-relaxed shadow-sm ${
             isUser
             ? 'bg-indigo-600 text-white rounded-br-none'
             : 'bg-white text-slate-700 border border-slate-100 rounded-bl-none'
         }">
-            ${escapeHtml(text).replace(/\n/g, '<br>')}
+            ${isUser ? escapeHtml(text).replace(/\n/g, '<br>') : formatAIMessage(text)}
         </div>
     `;
 
