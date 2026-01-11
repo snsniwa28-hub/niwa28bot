@@ -6,6 +6,7 @@ let isChatOpen = false;
 let currentContext = "";
 let contextImages = []; // Array of base64 strings
 let currentCategory = "";
+let chatHistory = []; // Conversation history for the current session
 
 function escapeHtml(text) {
     if (!text) return text;
@@ -32,9 +33,10 @@ export async function toggleAIChat(category = 'all', categoryName = '社内資�
         // Reset UI every time it opens
         const messagesContainer = document.getElementById('ai-messages');
         messagesContainer.innerHTML = '';
+        chatHistory = [];
 
-        // Add Default Greeting
-        addMessageToUI("ai", "資料に基づいて回答します。ご質問をどうぞ。");
+        // Initial Status
+        addMessageToUI("ai", "資料を確認しています...", true, "init-loading");
 
         if (category !== currentCategory) {
             currentCategory = category;
@@ -42,6 +44,12 @@ export async function toggleAIChat(category = 'all', categoryName = '社内資�
 
         // Load Context (Knowledge Base only)
         await loadContext(category, categoryName);
+
+        // Remove initial loading message
+        removeMessageUI("init-loading");
+
+        // Trigger Auto Summary
+        await generateAutoSummary();
 
         // Update Status Text with Category Name
         const statusEl = document.getElementById('ai-status-text');
@@ -148,6 +156,42 @@ async function loadContext(category, categoryName) {
     }
 }
 
+async function generateAutoSummary() {
+    const loadingId = addMessageToUI("ai", "資料を分析して要約を作成中...", true);
+
+    try {
+        const payload = {
+            prompt: "要約をお願いします",
+            contextData: currentContext,
+            contextImages: contextImages,
+            mode: 'summary',
+            currentDate: new Date().toISOString().split('T')[0]
+        };
+
+        const response = await fetch('/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        removeMessageUI(loadingId);
+
+        if (data.error) {
+            addMessageToUI("ai", "要約の作成に失敗しました: " + data.error);
+        } else {
+            const reply = data.reply;
+            // Save to history so AI knows what it already told the user
+            chatHistory.push({ role: 'model', parts: [{ text: reply }] });
+            addMessageToUI("ai", reply);
+        }
+    } catch (e) {
+        removeMessageUI(loadingId);
+        console.error("Summary error:", e);
+        addMessageToUI("ai", "要約の生成に失敗しました。");
+    }
+}
+
 export async function sendAIMessage() {
     const input = document.getElementById('ai-input');
     const message = input.value.trim();
@@ -155,8 +199,9 @@ export async function sendAIMessage() {
 
     input.value = "";
 
-    // Add User Message to UI (Ephemeral)
+    // Add User Message to UI
     addMessageToUI("user", message);
+    chatHistory.push({ role: 'user', parts: [{ text: message }] });
 
     const loadingId = addMessageToUI("ai", "考え中...", true);
 
@@ -165,7 +210,9 @@ export async function sendAIMessage() {
             prompt: message,
             contextData: currentContext,
             contextImages: contextImages,
-            mode: 'chat'
+            mode: 'chat',
+            history: chatHistory,
+            currentDate: new Date().toISOString().split('T')[0]
         };
 
         const response = await fetch('/gemini', {
@@ -184,8 +231,9 @@ export async function sendAIMessage() {
             addMessageToUI("ai", aiReply);
         } else {
             aiReply = data.reply;
-            // Add AI Message to UI (Ephemeral)
+            // Add AI Message to UI
             addMessageToUI("ai", aiReply);
+            chatHistory.push({ role: 'model', parts: [{ text: aiReply }] });
         }
 
     } catch (e) {
