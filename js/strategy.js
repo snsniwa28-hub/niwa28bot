@@ -104,10 +104,57 @@ export async function saveStrategy() {
     }
     data.ai_images = aiImages;
 
+    // --- AI Analysis (Generate Chat Content) ---
     try {
+        showToast("AIが資料を分析中...", 3000); // Temporary toast
+
+        // Construct Text Context for AI
+        let fullText = "";
+        if (data.ai_context) {
+            fullText += data.ai_context + "\n\n";
+        }
+        if (data.blocks) {
+            fullText += data.blocks.map(b => b.text || "").join("\n");
+        }
+
+        const payload = {
+            prompt: data.title,
+            contextData: fullText,
+            contextImages: aiImages,
+            mode: 'analyze_strategy'
+        };
+
+        const response = await fetch('/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const resData = await response.json();
+
+        if (resData.reply) {
+            try {
+                // Parse JSON from AI
+                // Sanitize potential markdown code blocks if AI ignores instructions
+                let cleanJson = resData.reply.replace(/```json/g, '').replace(/```/g, '').trim();
+                const analysis = JSON.parse(cleanJson);
+
+                if (analysis) {
+                    data.ai_summary = analysis.ai_summary || "";
+                    data.ai_details = analysis.ai_details || "";
+                    data.relevant_date = analysis.relevant_date || null;
+                    console.log("AI Analysis Result:", analysis);
+                }
+            } catch (jsonErr) {
+                console.error("AI JSON Parse Error:", jsonErr);
+                console.log("Raw Reply:", resData.reply);
+                // Continue saving without AI data if parsing fails
+            }
+        }
+
         const docRef = editingId ? doc(db, "strategies", editingId) : doc(collection(db, "strategies"));
         await setDoc(docRef, data, { merge: true });
-        showToast("保存しました！");
+        showToast("保存しました！(AI分析完了)");
         closeStrategyEditor();
         loadStrategies();
     } catch (e) {
@@ -255,14 +302,21 @@ function renderStrategyList() {
         // Show delete button if Admin OR KnowledgeMode (as requested: "知識リスト表示中も...削除できるようにする")
         const showControls = isStrategyAdmin || isKnowledgeMode;
 
+        // AI Generated Indicator
+        const hasAI = item.ai_summary ? '<span class="ml-2 text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full">🤖 AI済</span>' : '';
+
         let html = `
             <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-start">
                 <div>
-                    <span class="text-xs font-bold text-slate-400 block mb-1">${date} 更新 ${item.isKnowledge ? '<span class="text-indigo-500">🧠 知識</span>' : ''}</span>
+                    <span class="text-xs font-bold text-slate-400 block mb-1">
+                        ${date} 更新 ${item.isKnowledge ? '<span class="text-indigo-500">🧠 知識</span>' : ''}
+                        ${hasAI}
+                    </span>
                     <h2 class="text-2xl font-black text-slate-800 leading-tight">${item.title}</h2>
                 </div>
                 ${showControls ? `
-                <div class="flex gap-2">
+                <div class="flex gap-2 items-center">
+                     ${!item.ai_summary ? `<button class="text-xs bg-green-50 text-green-600 px-3 py-1 rounded-full font-bold hover:bg-green-100 shadow-sm border border-green-100 transition" onclick="window.regenerateAI('${item.id}')">🤖 AI生成</button>` : ''}
                      <button class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold hover:bg-indigo-100 shadow-sm border border-indigo-100 transition" onclick="window.openStrategyEditor('${item.id}')">✏️ 編集</button>
                      <button class="text-xs bg-rose-50 text-rose-600 px-3 py-1 rounded-full font-bold hover:bg-rose-100 shadow-sm border border-rose-100 transition" onclick="window.deleteStrategy('${item.id}')">🗑️ 削除</button>
                 </div>
@@ -515,6 +569,64 @@ window.addEditorBlock = addEditorBlock;
 window.saveStrategy = saveStrategy;
 window.deleteStrategy = deleteStrategy;
 window.toggleKnowledgeList = toggleKnowledgeList;
+
+window.regenerateAI = async (id) => {
+    const item = strategies.find(s => s.id === id);
+    if (!item) return;
+
+    if (!confirm(`「${item.title}」のAI要約・詳細データを再生成しますか？`)) return;
+
+    showToast("AI分析を開始します...", 2000);
+
+    try {
+        let fullText = "";
+        if (item.ai_context) {
+            fullText += item.ai_context + "\n\n";
+        }
+        if (item.blocks) {
+            fullText += item.blocks.map(b => b.text || "").join("\n");
+        }
+
+        const payload = {
+            prompt: item.title,
+            contextData: fullText,
+            contextImages: item.ai_images || [],
+            mode: 'analyze_strategy'
+        };
+
+        const response = await fetch('/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const resData = await response.json();
+
+        if (resData.reply) {
+             let cleanJson = resData.reply.replace(/```json/g, '').replace(/```/g, '').trim();
+             const analysis = JSON.parse(cleanJson);
+
+             if (analysis) {
+                 await setDoc(doc(db, "strategies", id), {
+                     ai_summary: analysis.ai_summary || "",
+                     ai_details: analysis.ai_details || "",
+                     relevant_date: analysis.relevant_date || null
+                 }, { merge: true });
+
+                 showToast("AI生成が完了しました！");
+                 loadStrategies(); // Reload UI
+             } else {
+                 alert("AI分析に失敗しました（データ解析エラー）");
+             }
+        } else {
+            alert("AIからの応答がありませんでした");
+        }
+
+    } catch (e) {
+        console.error(e);
+        alert("エラーが発生しました: " + e.message);
+    }
+};
 
 window.openInternalSharedModal = (category = 'strategy') => {
     isStrategyAdmin = false;

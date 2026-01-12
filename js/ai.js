@@ -42,18 +42,15 @@ export async function toggleAIChat(category = 'all', categoryName = '社内資�
             currentCategory = category;
         }
 
-        // Load Context (Knowledge Base only)
-        await loadContext(category, categoryName);
+        // Load Context (Knowledge Base only) & Show Pre-generated Summary
+        await loadContextAndRenderSummary(category, categoryName);
 
         // Remove initial loading message
         removeMessageUI("init-loading");
 
-        // Trigger Auto Summary
-        await generateAutoSummary();
-
         // Update Status Text with Category Name
         const statusEl = document.getElementById('ai-status-text');
-        if(statusEl) statusEl.textContent = `${categoryName}の資料を読み込み中...`;
+        if(statusEl) statusEl.textContent = `${categoryName}の資料を表示中`;
 
         // Add Admin Management Button dynamically if not exists
         let header = modal.querySelector('.border-b');
@@ -95,37 +92,62 @@ export function closeAIChat() {
 
 // --- Context & AI Logic ---
 
-async function loadContext(category, categoryName) {
+// Cache loaded docs to use for "Tell me more" details
+let loadedDocsCache = [];
+
+async function loadContextAndRenderSummary(category, categoryName) {
     const statusEl = document.getElementById('ai-status-text');
-    if(statusEl) statusEl.textContent = "記憶データを構築中...";
+    if(statusEl) statusEl.textContent = "データを取得中...";
 
     try {
         let knowledgeText = "";
         let collectedImages = [];
         let titles = [];
+        loadedDocsCache = [];
 
-        // 1. Load Knowledge Base (Scoped by Category)
+        // 1. Load Knowledge Base
         const qKnowledge = query(
             collection(db, "strategies"),
             where("isKnowledge", "==", true)
         );
 
         const snapshotKnowledge = await getDocs(qKnowledge);
-        let knowledgeDocs = snapshotKnowledge.docs.map(doc => doc.data());
+        let knowledgeDocs = snapshotKnowledge.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         if (category && category !== 'all') {
             knowledgeDocs = knowledgeDocs.filter(d => d.category === category);
         }
 
-        // Construct Knowledge Text
-        knowledgeDocs.forEach(data => {
+        // 2. Filter Logic (Future dates + No Date)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString().split('T')[0];
+
+        const relevantDocs = knowledgeDocs.filter(doc => {
+            if (!doc.relevant_date) return true; // Keep timeless docs
+            return doc.relevant_date >= todayStr; // Keep future docs
+        });
+
+        // Sort: Dated (Ascending) -> Timeless
+        relevantDocs.sort((a, b) => {
+            if (a.relevant_date && b.relevant_date) {
+                return a.relevant_date.localeCompare(b.relevant_date);
+            }
+            if (a.relevant_date) return -1; // Dated first
+            if (b.relevant_date) return 1;
+            return 0;
+        });
+
+        loadedDocsCache = relevantDocs;
+
+        // 3. Construct Context for Chat (Standard Text Context)
+        relevantDocs.forEach(data => {
             let text = "";
             if (data.ai_context) {
                 text = data.ai_context;
             } else if (data.blocks) {
                 text = data.blocks.map(b => b.text || "").join("\n");
             }
-
             if (text) {
                 knowledgeText += `\n--- [${data.title}] ---\n${text}\n`;
                 titles.push(data.title);
@@ -135,19 +157,45 @@ async function loadContext(category, categoryName) {
             }
         });
 
-        // 2. No History Loading (Ephemeral)
-
-        // 3. Combine
         let combinedText = "";
         if (knowledgeText) {
             combinedText += `=== 社内資料 (Knowledge) ===\n${knowledgeText}\n\n`;
         }
 
         currentContext = combinedText;
-        contextImages = collectedImages.slice(0, 10); // Max 10 images
+        contextImages = collectedImages.slice(0, 10);
 
-        if(statusEl) {
-             statusEl.textContent = `[${categoryName}] 知識:${titles.length}件 参照中`;
+        if(statusEl) statusEl.textContent = `[${categoryName}] ${relevantDocs.length}件を表示`;
+
+        // 4. Render Pre-generated Summary Cards (No AI API Call)
+        const docsWithSummary = relevantDocs.filter(d => d.ai_summary);
+
+        if (docsWithSummary.length === 0) {
+            addMessageToUI("ai", "表示できる新しい資料や予定はありません。");
+        } else {
+            // Initial Greeting
+            addMessageToUI("ai", `🤖 **${categoryName}** の最新情報をお伝えします。（AI通信なし）`);
+
+            // Render Cards
+            docsWithSummary.forEach(doc => {
+                const dateBadge = doc.relevant_date ? `📅 ${doc.relevant_date.slice(5).replace('-', '/')} ` : '📌 ';
+                const html = `
+                    <div class="mb-2">
+                        <div class="font-bold text-indigo-700 text-sm border-b border-indigo-100 mb-1 pb-1">
+                            ${dateBadge} ${escapeHtml(doc.title)}
+                        </div>
+                        <div class="text-sm text-slate-600 mb-3 leading-relaxed">
+                            ${escapeHtml(doc.ai_summary)}
+                        </div>
+                        <button onclick="window.showAIStrategyDetails('${doc.id}')" class="w-full text-center bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold py-2 rounded-lg text-xs transition border border-indigo-100">
+                            ✨ もっと詳しく
+                        </button>
+                    </div>
+                `;
+
+                // We inject this HTML into a special message bubble
+                addCustomHtmlMessage("ai", html);
+            });
         }
 
     } catch (e) {
@@ -156,40 +204,34 @@ async function loadContext(category, categoryName) {
     }
 }
 
-async function generateAutoSummary() {
-    const loadingId = addMessageToUI("ai", "資料を分析して要約を作成中...", true);
+// Function to handle "Tell me more" click
+window.showAIStrategyDetails = (docId) => {
+    const doc = loadedDocsCache.find(d => d.id === docId);
+    if (!doc || !doc.ai_details) return;
 
-    try {
-        const payload = {
-            prompt: "要約をお願いします",
-            contextData: currentContext,
-            contextImages: contextImages,
-            mode: 'summary',
-            currentDate: new Date().toISOString().split('T')[0]
-        };
+    // Simulate User asking
+    addMessageToUI("user", `「${doc.title}」について詳しく教えて`);
 
-        const response = await fetch('/gemini', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+    // Simulate AI replying with pre-generated details
+    setTimeout(() => {
+        addMessageToUI("ai", doc.ai_details);
+    }, 500); // Small delay for realism
+};
 
-        const data = await response.json();
-        removeMessageUI(loadingId);
+// Helper for custom HTML messages (bypassing formatAIMessage for buttons)
+function addCustomHtmlMessage(role, rawHtml) {
+    const container = document.getElementById('ai-messages');
+    const div = document.createElement('div');
+    div.className = `flex justify-start mb-4 animate-fade-in group`;
 
-        if (data.error) {
-            addMessageToUI("ai", "要約の作成に失敗しました: " + data.error);
-        } else {
-            const reply = data.reply;
-            // Save to history so AI knows what it already told the user
-            chatHistory.push({ role: 'model', parts: [{ text: reply }] });
-            addMessageToUI("ai", reply);
-        }
-    } catch (e) {
-        removeMessageUI(loadingId);
-        console.error("Summary error:", e);
-        addMessageToUI("ai", "要約の生成に失敗しました。");
-    }
+    div.innerHTML = `
+        <div class="max-w-[85%] p-3 rounded-2xl text-sm font-medium leading-relaxed shadow-sm bg-white text-slate-700 border border-slate-100 rounded-bl-none">
+            ${rawHtml}
+        </div>
+    `;
+
+    container.appendChild(div);
+    scrollToBottom();
 }
 
 export async function sendAIMessage() {
