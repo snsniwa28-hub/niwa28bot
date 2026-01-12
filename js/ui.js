@@ -133,3 +133,86 @@ export function closeConfirmModal() {
     if(modal) modal.classList.add('hidden');
     confirmCallback = null;
 }
+
+// --- Game Loading Overlay ---
+let loadingInterval = null;
+
+export function showLoadingOverlay(message = "Now Loading...") {
+    if (!document.getElementById('game-loading-overlay')) {
+        const html = `
+        <div id="game-loading-overlay" class="fixed inset-0 z-[200] bg-slate-900 flex flex-col items-center justify-center transition-opacity duration-300 opacity-0 pointer-events-none">
+            <div class="w-64 relative mb-8">
+                <!-- Glitchy Text Effect Base -->
+                <h2 id="loading-text" class="text-2xl font-black text-white tracking-widest text-center mb-2 animate-pulse">Now Loading...</h2>
+                <div class="h-1 w-full bg-slate-700 rounded-full overflow-hidden">
+                    <div id="loading-bar" class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 w-0 transition-all duration-300 ease-out"></div>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <span class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0s"></span>
+                <span class="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
+                <span class="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+            </div>
+            <p id="loading-subtext" class="text-xs font-bold text-slate-500 mt-4 tracking-wide">SYSTEM INITIALIZING</p>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    const overlay = document.getElementById('game-loading-overlay');
+    const bar = document.getElementById('loading-bar');
+    const textEl = document.getElementById('loading-text');
+    const subtextEl = document.getElementById('loading-subtext');
+
+    overlay.classList.remove('pointer-events-none', 'opacity-0');
+    overlay.classList.add('pointer-events-auto', 'opacity-100');
+
+    textEl.textContent = message;
+    subtextEl.textContent = "AI PROCESSING...";
+    bar.style.width = "0%";
+
+    // Simulated Progress Logic
+    let width = 0;
+    if (loadingInterval) clearInterval(loadingInterval);
+
+    loadingInterval = setInterval(() => {
+        // Fast at first, slow at end
+        if (width < 30) width += Math.random() * 5;
+        else if (width < 60) width += Math.random() * 2;
+        else if (width < 85) width += Math.random() * 0.5;
+
+        if (width > 90) width = 90; // Cap at 90 until explicit hide
+
+        bar.style.width = width + "%";
+    }, 100);
+}
+
+export function updateLoadingMessage(message) {
+    const textEl = document.getElementById('loading-text');
+    if (textEl) textEl.textContent = message;
+}
+
+export function hideLoadingOverlay() {
+    const overlay = document.getElementById('game-loading-overlay');
+    const bar = document.getElementById('loading-bar');
+    const subtextEl = document.getElementById('loading-subtext');
+
+    if (!overlay) return;
+
+    if (loadingInterval) clearInterval(loadingInterval);
+
+    // Finish bar
+    if (bar) bar.style.width = "100%";
+    if (subtextEl) subtextEl.textContent = "COMPLETE";
+
+    // Wait a bit then fade
+    setTimeout(() => {
+        overlay.classList.remove('opacity-100', 'pointer-events-auto');
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+        // Reset width for next time
+        setTimeout(() => { if(bar) bar.style.width = "0%"; }, 300);
+    }, 500);
+}
+
+window.showLoadingOverlay = showLoadingOverlay;
+window.hideLoadingOverlay = hideLoadingOverlay;
+window.closeConfirmModal = closeConfirmModal;

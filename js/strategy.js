@@ -1,6 +1,6 @@
 import { db, app } from './firebase.js';
 import { collection, doc, setDoc, getDocs, deleteDoc, serverTimestamp, query, orderBy, limit, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { showToast, showConfirmModal, showPasswordModal } from './ui.js';
+import { showToast, showConfirmModal, showPasswordModal, showLoadingOverlay, hideLoadingOverlay, updateLoadingMessage } from './ui.js';
 import { parseFile } from './file_parser.js';
 
 // --- State ---
@@ -21,25 +21,22 @@ export async function loadStrategies() {
 
 // Function to trigger global summary update
 async function updateCategorySummary(category) {
-    if (!category || category === 'all') return; // Cannot summarize 'all', must be specific
+    if (!category || category === 'all') return;
 
     try {
-        showToast("AIが全体サマリーを更新中...", 5000);
+        updateLoadingMessage("全体サマリーを再構築中...");
 
-        // 1. Fetch ALL valid strategies for this category
-        // Valid = No Date (Timeless) OR Future Date (Today+)
+        // 1. Fetch ALL valid strategies
         const todayStr = new Date().toISOString().split('T')[0];
         const q = query(collection(db, "strategies"), where("category", "==", category));
         const snapshot = await getDocs(q);
 
         const validDocs = snapshot.docs.map(d => d.data()).filter(d => {
-            // Filter out old dates
             if (d.relevant_date && d.relevant_date < todayStr) return false;
             return true;
         });
 
         if (validDocs.length === 0) {
-            // Clear summary if no docs
              await setDoc(doc(db, "category_summaries", category), {
                 short: "現在、共有されている情報はありません。",
                 full: "現在、共有されている情報はありません。",
@@ -55,15 +52,16 @@ async function updateCategorySummary(category) {
         validDocs.forEach(d => {
             aggregatedContext += `\n--- [${d.title}] (${d.relevant_date || "日付なし"}) ---\n`;
             if (d.ai_context) aggregatedContext += d.ai_context + "\n";
-            if (d.text_content) aggregatedContext += d.text_content + "\n"; // Manual text
+            if (d.text_content) aggregatedContext += d.text_content + "\n";
 
-            // Limit images to avoid payload limits (e.g., take 1 from each doc, max 10 total)
             if (d.ai_images && d.ai_images.length > 0) {
                  if (aggregatedImages.length < 10) {
                      aggregatedImages.push(d.ai_images[0]);
                  }
             }
         });
+
+        updateLoadingMessage("AIがサマリーを執筆中...");
 
         // 3. Call Gemini
         const payload = {
@@ -91,22 +89,20 @@ async function updateCategorySummary(category) {
                 full: summaryData.full || "",
                 updatedAt: serverTimestamp()
             });
-            showToast("全体サマリー更新完了！");
         }
 
     } catch (e) {
         console.error("Summary Update Failed:", e);
-        // Don't block the UI, just log it
+        showToast("サマリー更新に失敗しました");
     }
 }
 
 export async function saveStrategy() {
     const titleInput = document.getElementById('strategy-editor-title');
     const categorySelect = document.getElementById('strategy-editor-category');
-    const textInput = document.getElementById('strategy-editor-text'); // Manual text
-    const aiContextInput = document.getElementById('strategy-ai-context'); // Hidden buffer
+    const textInput = document.getElementById('strategy-editor-text');
+    const aiContextInput = document.getElementById('strategy-ai-context');
 
-    // Default to 'strategy' if select is missing (fallback)
     const category = categorySelect ? categorySelect.value : 'strategy';
     const type = 'article';
 
@@ -118,31 +114,21 @@ export async function saveStrategy() {
         type: type,
         updatedAt: serverTimestamp(),
         author: "Admin",
-        isKnowledge: true // Always true
+        isKnowledge: true
     };
 
-    // Text Content
-    if (textInput && textInput.value.trim()) {
-        data.text_content = textInput.value;
-    }
+    if (textInput && textInput.value.trim()) data.text_content = textInput.value;
+    if (aiContextInput && aiContextInput.value.trim()) data.ai_context = aiContextInput.value;
+    if (tempPdfImages.length > 0) data.ai_images = tempPdfImages.slice(0, 10);
 
-    // AI Context (File content)
-    if (aiContextInput && aiContextInput.value.trim()) {
-        data.ai_context = aiContextInput.value;
-    }
-
-    // Images (PDF converted or otherwise)
-    if (tempPdfImages.length > 0) {
-        data.ai_images = tempPdfImages.slice(0, 10);
-    }
-
-    // Validation
     const hasContent = data.text_content || data.ai_context;
     if (!hasContent) return alert("テキストを入力するか、資料をアップロードしてください");
 
-    // --- AI Analysis for Single Doc (Optional, but good for metadata) ---
+    // --- Loading Start ---
+    showLoadingOverlay("データ処理を開始します...");
+
     try {
-        showToast("保存中...", 2000);
+        updateLoadingMessage("個別の資料を分析中...");
 
         // Simple analysis to get date
         const fullText = (data.text_content || "") + "\n" + (data.ai_context || "");
@@ -167,6 +153,7 @@ export async function saveStrategy() {
                 const analysis = JSON.parse(cleanJson);
                 if (analysis) {
                     data.relevant_date = analysis.relevant_date || null;
+                    data.ai_summary = analysis.ai_summary || "要約なし"; // Store explicit success marker
                 }
              } catch(e) {}
         }
@@ -177,10 +164,12 @@ export async function saveStrategy() {
         // --- Trigger Global Summary Update ---
         await updateCategorySummary(category);
 
+        hideLoadingOverlay();
         closeStrategyEditor();
         loadStrategies();
     } catch (e) {
         console.error(e);
+        hideLoadingOverlay();
         alert("保存エラー: " + e.message);
     }
 }
@@ -317,15 +306,22 @@ function renderStrategyList() {
         const showControls = isStrategyAdmin || isKnowledgeMode;
 
         // Simplified Card for Management
+        const aiStatus = item.ai_summary
+            ? '<span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">✅ AI把握済</span>'
+            : '<span class="text-[10px] bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full border border-yellow-200">⚠️ 未解析</span>';
+
         let html = `
             <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                 <div class="flex items-center gap-3">
                      <span class="text-2xl">${item.relevant_date ? '📅' : '📌'}</span>
                      <div>
-                        <h2 class="text-base font-black text-slate-800 leading-tight">${item.title}</h2>
-                        <span class="text-[10px] font-bold text-slate-400">
-                             ${item.relevant_date ? item.relevant_date : '日付指定なし'} | 更新: ${date}
-                        </span>
+                        <h2 class="text-base font-black text-slate-800 leading-tight mb-1">${item.title}</h2>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold text-slate-400">
+                                ${item.relevant_date ? item.relevant_date : '日付なし'} | 更新: ${date}
+                            </span>
+                            ${aiStatus}
+                        </div>
                      </div>
                 </div>
                 ${showControls ? `
