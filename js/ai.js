@@ -118,22 +118,34 @@ async function loadContextAndRenderSummary(category, categoryName) {
             knowledgeDocs = knowledgeDocs.filter(d => d.category === category);
         }
 
-        // 2. Filter Logic (Future dates + No Date)
+        // 2. Filter Logic (Today to Today+4 days OR No Date)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const todayStr = today.toISOString().split('T')[0];
 
+        const limitDate = new Date(today);
+        limitDate.setDate(today.getDate() + 4);
+        const limitStr = limitDate.toISOString().split('T')[0];
+
         const relevantDocs = knowledgeDocs.filter(doc => {
-            if (!doc.relevant_date) return true; // Keep timeless docs
-            return doc.relevant_date >= todayStr; // Keep future docs
+            // Keep timeless docs (Always visible)
+            if (!doc.relevant_date) return true;
+
+            // Keep docs within range [Today, Today+4]
+            return doc.relevant_date >= todayStr && doc.relevant_date <= limitStr;
         });
 
         // Sort: Dated (Ascending) -> Timeless
         relevantDocs.sort((a, b) => {
+            // If both have dates, sort by date ASC
             if (a.relevant_date && b.relevant_date) {
                 return a.relevant_date.localeCompare(b.relevant_date);
             }
-            if (a.relevant_date) return -1; // Dated first
+            // If only one has date, dated comes first?
+            // Actually, usually "Important/Pinned" (No Date) might be better at top or bottom?
+            // User requested "News Feed" style. Usually chronological is good.
+            // Let's put Dated items FIRST (chronological), then Timeless items.
+            if (a.relevant_date) return -1;
             if (b.relevant_date) return 1;
             return 0;
         });
@@ -171,10 +183,10 @@ async function loadContextAndRenderSummary(category, categoryName) {
         const docsWithSummary = relevantDocs.filter(d => d.ai_summary);
 
         if (docsWithSummary.length === 0) {
-            addMessageToUI("ai", "表示できる新しい資料や予定はありません。");
+            addMessageToUI("ai", "現在、表示できる新しいお知らせはありません。");
         } else {
-            // Initial Greeting
-            addMessageToUI("ai", `🤖 **${categoryName}** の最新情報をお伝えします。（AI通信なし）`);
+            // Initial Greeting (Removed "AI通信なし")
+            addMessageToUI("ai", `🤖 **${categoryName}** の最新情報です。`);
 
             // Render Cards
             docsWithSummary.forEach(doc => {
@@ -185,7 +197,7 @@ async function loadContextAndRenderSummary(category, categoryName) {
                             ${dateBadge} ${escapeHtml(doc.title)}
                         </div>
                         <div class="text-sm text-slate-600 mb-3 leading-relaxed">
-                            ${escapeHtml(doc.ai_summary)}
+                            ${formatAIMessage(doc.ai_summary)}
                         </div>
                         <button onclick="window.showAIStrategyDetails('${doc.id}')" class="w-full text-center bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold py-2 rounded-lg text-xs transition border border-indigo-100">
                             ✨ もっと詳しく
@@ -289,11 +301,11 @@ function formatAIMessage(text) {
     if (!text) return "";
     let safeText = escapeHtml(text);
 
-    // Headers (## Title) - Larger, colored, with spacing
-    safeText = safeText.replace(/^##\s+(.+)$/gm, '<div class="text-lg font-bold text-indigo-600 mt-3 mb-1 border-b border-indigo-100 pb-1">$1</div>');
+    // Headers (## Title) - Larger, colored, with spacing, nice icon
+    safeText = safeText.replace(/^##\s+(.+)$/gm, '<div class="text-lg font-black text-indigo-600 mt-4 mb-2 border-b-2 border-indigo-100 pb-1 flex items-center gap-2"><span class="text-xl">📌</span> $1</div>');
 
-    // Bold (**Text**) - Darker and heavier
-    safeText = safeText.replace(/\*\*(.+?)\*\*/g, '<span class="font-extrabold text-slate-900 bg-slate-50 px-1 rounded">$1</span>');
+    // Bold (**Text**) - Highlighter style
+    safeText = safeText.replace(/\*\*(.+?)\*\*/g, '<span class="font-bold text-slate-800 bg-yellow-100 px-1 rounded shadow-sm border-b-2 border-yellow-200 mx-1">$1</span>');
 
     // Newlines
     safeText = safeText.replace(/\n/g, '<br>');

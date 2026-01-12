@@ -94,7 +94,11 @@ export async function saveStrategy() {
         blocksData.push({ type, importance, text, image });
     });
 
-    if (blocksData.length === 0) return alert("少なくとも1つのブロックを追加してください");
+    // Validation: Require Title + (Blocks OR File)
+    const hasBlocks = blocksData.length > 0;
+    const hasContextFile = tempPdfImages.length > 0 || (aiContextInput && aiContextInput.value.trim().length > 0);
+
+    if (!hasBlocks && !hasContextFile) return alert("少なくとも1つのブロックを追加するか、資料(PDF/Excel)を読み込んでください");
     data.blocks = blocksData;
 
     // Combine PDF images and Block images for AI (Max 10)
@@ -116,6 +120,40 @@ export async function saveStrategy() {
         if (data.blocks) {
             fullText += data.blocks.map(b => b.text || "").join("\n");
         }
+
+        // --- Context-Aware: Fetch Existing Active Strategies ---
+        // Fetch active strategies (Today/Future or No Date) to provide context
+        const todayStr = new Date().toISOString().split('T')[0];
+        let existingContext = "";
+
+        try {
+            // Re-using the memory strategies array which is already loaded
+            // Filtering similar to AI Chat logic
+            const activeStrategiesList = strategies.filter(s => {
+                // Skip self (if editing)
+                if (editingId && s.id === editingId) return false;
+
+                // Only same category or 'all'
+                if (s.category && s.category !== 'all' && s.category !== category) return false;
+
+                // Time filter
+                if (!s.relevant_date) return true; // Timeless
+                return s.relevant_date >= todayStr; // Future
+            });
+
+            if (activeStrategiesList.length > 0) {
+                existingContext = "【現在の有効な社内状況(参考にしてください)】\n";
+                activeStrategiesList.slice(0, 10).forEach(s => { // Limit to top 10 relevant
+                    existingContext += `- ${s.title}: ${s.ai_summary || '詳細なし'}\n`;
+                });
+                existingContext += "\n";
+            }
+        } catch (ctxErr) {
+            console.warn("Failed to build existing context:", ctxErr);
+        }
+
+        // Prepend existing context to fullText
+        fullText = existingContext + "【今回の新しい資料】\n" + fullText;
 
         const payload = {
             prompt: data.title,
@@ -143,7 +181,6 @@ export async function saveStrategy() {
                     data.ai_summary = analysis.ai_summary || "";
                     data.ai_details = analysis.ai_details || "";
                     data.relevant_date = analysis.relevant_date || null;
-                    console.log("AI Analysis Result:", analysis);
                 }
             } catch (jsonErr) {
                 console.error("AI JSON Parse Error:", jsonErr);
