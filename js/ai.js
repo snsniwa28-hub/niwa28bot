@@ -1,12 +1,16 @@
 import { db } from './firebase.js';
-import { collection, addDoc, updateDoc, getDocs, query, orderBy, limit, where, serverTimestamp, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, addDoc, updateDoc, getDoc, getDocs, query, orderBy, limit, where, serverTimestamp, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { showToast, showConfirmModal, showPasswordModal } from './ui.js';
 
 let isChatOpen = false;
-let currentContext = "";
+let currentContext = ""; // Not fully used in new mode but kept for chat compatibility
 let contextImages = []; // Array of base64 strings
 let currentCategory = "";
 let chatHistory = []; // Conversation history for the current session
+
+// Cache for swapping view
+let currentSummaryShort = "";
+let currentSummaryFull = "";
 
 function escapeHtml(text) {
     if (!text) return text;
@@ -34,6 +38,8 @@ export async function toggleAIChat(category = 'all', categoryName = '社内資�
         const messagesContainer = document.getElementById('ai-messages');
         messagesContainer.innerHTML = '';
         chatHistory = [];
+        currentSummaryShort = "";
+        currentSummaryFull = "";
 
         // Initial Status
         addMessageToUI("ai", "資料を確認しています...", true, "init-loading");
@@ -42,8 +48,8 @@ export async function toggleAIChat(category = 'all', categoryName = '社内資�
             currentCategory = category;
         }
 
-        // Load Context (Knowledge Base only) & Show Pre-generated Summary
-        await loadContextAndRenderSummary(category, categoryName);
+        // NEW: Load Pre-computed Category Summary
+        await loadCategorySummary(category, categoryName);
 
         // Remove initial loading message
         removeMessageUI("init-loading");
@@ -59,15 +65,7 @@ export async function toggleAIChat(category = 'all', categoryName = '社内資�
             btn.className = 'admin-knowledge-btn ml-auto mr-2 p-2 bg-slate-100 rounded-full hover:bg-slate-200 text-slate-400 transition';
             btn.innerHTML = '⚙️';
             btn.onclick = () => showPasswordModal(() => {
-                // Open Strategy Admin in Knowledge Mode
                 window.openStrategyAdmin(category);
-                // We might want to close chat or keep it open?
-                // Let's close chat to avoid overlay issues, or just open modal above.
-                // The strategy modal has z-index 90, chat has 100.
-                // We need to close chat to see strategy modal properly OR strategy modal needs higher Z.
-                // Strategy modal uses z-90. Chat uses z-100.
-                // If we open strategy modal, it will be behind chat.
-                // So we should close chat.
                 closeAIChat();
             });
             // Insert before close button
@@ -92,143 +90,73 @@ export function closeAIChat() {
 
 // --- Context & AI Logic ---
 
-// Cache loaded docs to use for "Tell me more" details
-let loadedDocsCache = [];
-
-async function loadContextAndRenderSummary(category, categoryName) {
+async function loadCategorySummary(category, categoryName) {
     const statusEl = document.getElementById('ai-status-text');
     if(statusEl) statusEl.textContent = "データを取得中...";
 
     try {
-        let knowledgeText = "";
-        let collectedImages = [];
-        let titles = [];
-        loadedDocsCache = [];
+        // Fetch the summary doc
+        const summaryDocRef = doc(db, "category_summaries", category);
+        const summarySnap = await getDoc(summaryDocRef);
 
-        // 1. Load Knowledge Base
-        const qKnowledge = query(
-            collection(db, "strategies"),
-            where("isKnowledge", "==", true)
-        );
+        let shortText = "現在、共有されている情報はありません。";
+        let fullText = "現在、共有されている情報はありません。";
 
-        const snapshotKnowledge = await getDocs(qKnowledge);
-        let knowledgeDocs = snapshotKnowledge.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        if (category && category !== 'all') {
-            knowledgeDocs = knowledgeDocs.filter(d => d.category === category);
+        if (summarySnap.exists()) {
+            const data = summarySnap.data();
+            shortText = data.short || shortText;
+            fullText = data.full || fullText;
         }
 
-        // 2. Filter Logic (Today to Today+4 days OR No Date)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayStr = today.toISOString().split('T')[0];
+        // Cache
+        currentSummaryShort = shortText;
+        currentSummaryFull = fullText;
+        // Also set as context for Chat
+        currentContext = fullText;
 
-        const limitDate = new Date(today);
-        limitDate.setDate(today.getDate() + 4);
-        const limitStr = limitDate.toISOString().split('T')[0];
+        // Initial Greeting
+        addMessageToUI("ai", `🤖 **${categoryName}** の最新情報（直近のまとめ）です。`);
 
-        const relevantDocs = knowledgeDocs.filter(doc => {
-            // Keep timeless docs (Always visible)
-            if (!doc.relevant_date) return true;
+        // Display Short Summary
+        addCustomHtmlMessage("ai", `
+            <div id="ai-summary-content" class="text-sm text-slate-700 leading-relaxed">
+                ${formatAIMessage(shortText)}
+            </div>
+            <div class="mt-4 pt-4 border-t border-slate-100">
+                <button onclick="window.showFullSummary()" class="w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold rounded-xl transition flex items-center justify-center gap-2">
+                    <span>📅</span> 今後の予定・詳細をすべて見る
+                </button>
+            </div>
+        `);
 
-            // Keep docs within range [Today, Today+4]
-            return doc.relevant_date >= todayStr && doc.relevant_date <= limitStr;
-        });
-
-        // Sort: Dated (Ascending) -> Timeless
-        relevantDocs.sort((a, b) => {
-            // If both have dates, sort by date ASC
-            if (a.relevant_date && b.relevant_date) {
-                return a.relevant_date.localeCompare(b.relevant_date);
-            }
-            // If only one has date, dated comes first?
-            // Actually, usually "Important/Pinned" (No Date) might be better at top or bottom?
-            // User requested "News Feed" style. Usually chronological is good.
-            // Let's put Dated items FIRST (chronological), then Timeless items.
-            if (a.relevant_date) return -1;
-            if (b.relevant_date) return 1;
-            return 0;
-        });
-
-        loadedDocsCache = relevantDocs;
-
-        // 3. Construct Context for Chat (Standard Text Context)
-        relevantDocs.forEach(data => {
-            let text = "";
-            if (data.ai_context) {
-                text = data.ai_context;
-            } else if (data.blocks) {
-                text = data.blocks.map(b => b.text || "").join("\n");
-            }
-            if (text) {
-                knowledgeText += `\n--- [${data.title}] ---\n${text}\n`;
-                titles.push(data.title);
-            }
-            if (data.ai_images && Array.isArray(data.ai_images)) {
-                collectedImages.push(...data.ai_images);
-            }
-        });
-
-        let combinedText = "";
-        if (knowledgeText) {
-            combinedText += `=== 社内資料 (Knowledge) ===\n${knowledgeText}\n\n`;
-        }
-
-        currentContext = combinedText;
-        contextImages = collectedImages.slice(0, 10);
-
-        if(statusEl) statusEl.textContent = `[${categoryName}] ${relevantDocs.length}件を表示`;
-
-        // 4. Render Pre-generated Summary Cards (No AI API Call)
-        const docsWithSummary = relevantDocs.filter(d => d.ai_summary);
-
-        if (docsWithSummary.length === 0) {
-            addMessageToUI("ai", "現在、表示できる新しいお知らせはありません。");
-        } else {
-            // Initial Greeting (Removed "AI通信なし")
-            addMessageToUI("ai", `🤖 **${categoryName}** の最新情報です。`);
-
-            // Render Cards
-            docsWithSummary.forEach(doc => {
-                const dateBadge = doc.relevant_date ? `📅 ${doc.relevant_date.slice(5).replace('-', '/')} ` : '📌 ';
-                const html = `
-                    <div class="mb-2">
-                        <div class="font-bold text-indigo-700 text-sm border-b border-indigo-100 mb-1 pb-1">
-                            ${dateBadge} ${escapeHtml(doc.title)}
-                        </div>
-                        <div class="text-sm text-slate-600 mb-3 leading-relaxed">
-                            ${formatAIMessage(doc.ai_summary)}
-                        </div>
-                        <button onclick="window.showAIStrategyDetails('${doc.id}')" class="w-full text-center bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold py-2 rounded-lg text-xs transition border border-indigo-100">
-                            ✨ もっと詳しく
-                        </button>
-                    </div>
-                `;
-
-                // We inject this HTML into a special message bubble
-                addCustomHtmlMessage("ai", html);
-            });
-        }
+        if(statusEl) statusEl.textContent = `[${categoryName}] 最新サマリーを表示`;
 
     } catch (e) {
-        console.error("Failed to load context:", e);
+        console.error("Failed to load category summary:", e);
         if(statusEl) statusEl.textContent = "データ読み込みエラー";
+        addMessageToUI("ai", "情報の取得に失敗しました。");
     }
 }
 
-// Function to handle "Tell me more" click
-window.showAIStrategyDetails = (docId) => {
-    const doc = loadedDocsCache.find(d => d.id === docId);
-    if (!doc || !doc.ai_details) return;
+// Function to swap to full summary
+window.showFullSummary = () => {
+    const container = document.getElementById('ai-summary-content');
+    const button = document.querySelector('button[onclick="window.showFullSummary()"]');
 
-    // Simulate User asking
-    addMessageToUI("user", `「${doc.title}」について詳しく教えて`);
+    if (container) {
+        // Apply transition effect
+        container.style.opacity = '0';
+        setTimeout(() => {
+            container.innerHTML = formatAIMessage(currentSummaryFull);
+            container.style.opacity = '1';
+        }, 200);
+    }
 
-    // Simulate AI replying with pre-generated details
-    setTimeout(() => {
-        addMessageToUI("ai", doc.ai_details);
-    }, 500); // Small delay for realism
+    if (button) {
+        button.remove(); // Remove button after showing full
+    }
 };
+
 
 // Helper for custom HTML messages (bypassing formatAIMessage for buttons)
 function addCustomHtmlMessage(role, rawHtml) {
@@ -237,7 +165,7 @@ function addCustomHtmlMessage(role, rawHtml) {
     div.className = `flex justify-start mb-4 animate-fade-in group`;
 
     div.innerHTML = `
-        <div class="max-w-[85%] p-3 rounded-2xl text-sm font-medium leading-relaxed shadow-sm bg-white text-slate-700 border border-slate-100 rounded-bl-none">
+        <div class="max-w-[85%] p-4 rounded-2xl text-sm font-medium leading-relaxed shadow-sm bg-white text-slate-700 border border-slate-100 rounded-bl-none w-full">
             ${rawHtml}
         </div>
     `;
@@ -262,7 +190,7 @@ export async function sendAIMessage() {
     try {
         const payload = {
             prompt: message,
-            contextData: currentContext,
+            contextData: currentContext, // Use full summary as context
             contextImages: contextImages,
             mode: 'chat',
             history: chatHistory,
@@ -302,10 +230,10 @@ function formatAIMessage(text) {
     let safeText = escapeHtml(text);
 
     // Headers (## Title) - Larger, colored, with spacing, nice icon
-    safeText = safeText.replace(/^##\s+(.+)$/gm, '<div class="text-lg font-black text-indigo-600 mt-4 mb-2 border-b-2 border-indigo-100 pb-1 flex items-center gap-2"><span class="text-xl">📌</span> $1</div>');
+    safeText = safeText.replace(/^##\s+(.+)$/gm, '<div class="text-lg font-black text-indigo-600 mt-6 mb-3 border-b-2 border-indigo-100 pb-1 flex items-center gap-2"><span class="text-xl">📌</span> $1</div>');
 
     // Bold (**Text**) - Highlighter style
-    safeText = safeText.replace(/\*\*(.+?)\*\*/g, '<span class="font-bold text-slate-800 bg-yellow-100 px-1 rounded shadow-sm border-b-2 border-yellow-200 mx-1">$1</span>');
+    safeText = safeText.replace(/\*\*(.+?)\*\*/g, '<span class="font-bold text-slate-900 bg-yellow-100 px-1 rounded shadow-sm border-b-2 border-yellow-200 mx-1">$1</span>');
 
     // Newlines
     safeText = safeText.replace(/\n/g, '<br>');
@@ -324,7 +252,6 @@ function addMessageToUI(role, text, isLoading = false, id = null) {
     div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} mb-4 animate-fade-in group`;
 
     // Use formatAIMessage for AI, simple escape for User
-    // Changed base font to font-medium for better contrast with bold elements
     let contentHtml = `
         <div class="max-w-[85%] p-3 rounded-2xl text-sm font-medium leading-relaxed shadow-sm ${
             isUser
@@ -352,49 +279,9 @@ function scrollToBottom() {
     if(container) container.scrollTop = container.scrollHeight;
 }
 
-// Utility to delete all logs (Available via console for admin maintenance)
-window.emergencyDeleteAllLogs = async () => {
-    if (!confirm("【警告】過去のすべての会話ログを削除しますか？\nこの操作は取り消せません。")) return;
-
-    console.log("Starting log deletion...");
-    try {
-        // Since we can't delete collection directly from client SDK efficiently without cloud functions,
-        // we have to batch delete.
-        const q = query(collection(db, "ai_chat_logs"), limit(500));
-        const snapshot = await getDocs(q);
-
-        if (snapshot.empty) {
-            console.log("No logs found.");
-            alert("削除対象のログはありませんでした。");
-            return;
-        }
-
-        const batchSize = snapshot.size;
-        let count = 0;
-        const deletePromises = [];
-
-        snapshot.forEach(doc => {
-            deletePromises.push(deleteDoc(doc.ref));
-            count++;
-        });
-
-        await Promise.all(deletePromises);
-        console.log(`Deleted ${count} logs.`);
-
-        if (batchSize === 500) {
-             alert(`500件削除しました。まだ残っている可能性があるため、再度実行してください。`);
-        } else {
-             alert(`完了: ${count}件のログを削除しました。`);
-        }
-
-    } catch (e) {
-        console.error(e);
-        alert("削除中にエラーが発生しました: " + e.message);
-    }
-};
-
 // Global Expose
 window.toggleAIChat = toggleAIChat;
 window.closeAIChat = closeAIChat;
 window.sendAIMessage = sendAIMessage;
 window.openCategoryChat = (category, name) => toggleAIChat(category, name);
+window.showFullSummary = () => { /* Defined inside module but exposed for onclick */ };
