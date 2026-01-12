@@ -229,16 +229,98 @@ function formatAIMessage(text) {
     if (!text) return "";
     let safeText = escapeHtml(text);
 
-    // Headers (## Title) - Larger, colored, with spacing, nice icon
-    safeText = safeText.replace(/^##\s+(.+)$/gm, '<div class="text-lg font-black text-indigo-600 mt-6 mb-3 border-b-2 border-indigo-100 pb-1 flex items-center gap-2"><span class="text-xl">📌</span> $1</div>');
+    // If no specific headers found, treat as standard text (but still apply inline formatting)
+    if (!safeText.includes('## ')) {
+         return safeText
+            .replace(/\n/g, '<br>')
+            .replace(/\*\*(.+?)\*\*/g, '<span class="font-bold text-slate-900 bg-yellow-100 px-1 rounded shadow-sm border-b-2 border-yellow-200 mx-1">$1</span>');
+    }
 
-    // Bold (**Text**) - Highlighter style
-    safeText = safeText.replace(/\*\*(.+?)\*\*/g, '<span class="font-bold text-slate-900 bg-yellow-100 px-1 rounded shadow-sm border-b-2 border-yellow-200 mx-1">$1</span>');
+    const lines = safeText.split('\n');
+    let html = '';
+    let currentCardContent = '';
+    let currentCardTitle = '';
+    let isInsideCard = false;
 
-    // Newlines
-    safeText = safeText.replace(/\n/g, '<br>');
+    lines.forEach((line) => {
+        const trimmed = line.trim();
 
-    return safeText;
+        if (trimmed.startsWith('## ')) {
+            // Close previous card
+            if (isInsideCard) {
+                html += createCardHtml(currentCardTitle, currentCardContent);
+            }
+            // Start new card
+            currentCardTitle = trimmed.replace(/^##\s+/, '');
+            currentCardContent = '';
+            isInsideCard = true;
+        } else {
+            if (isInsideCard) {
+                currentCardContent += line + '\n';
+            } else {
+                // Content before the first header is displayed as standard text block
+                if (trimmed) {
+                    html += `<div class="mb-4 leading-relaxed text-slate-700">${processInlineFormatting(line)}</div>`;
+                }
+            }
+        }
+    });
+
+    // Close final card
+    if (isInsideCard) {
+        html += createCardHtml(currentCardTitle, currentCardContent);
+    }
+
+    return html;
+}
+
+function createCardHtml(title, contentRaw) {
+    let processedContent = '';
+    const lines = contentRaw.split('\n');
+
+    lines.forEach(line => {
+        let trimmed = line.trim();
+        if (!trimmed) return;
+
+        // Alert Box (> ...)
+        if (trimmed.startsWith('&gt; ')) {
+             const alertText = trimmed.replace(/^&gt;\s+/, '');
+             processedContent += `
+                <div class="my-3 p-3 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r text-sm font-bold shadow-sm flex gap-3 items-start animate-pulse-subtle">
+                    <span class="text-xl shrink-0">⚠️</span>
+                    <span class="pt-0.5">${processInlineFormatting(alertText)}</span>
+                </div>`;
+        }
+        // Sub-header (### ...)
+        else if (trimmed.startsWith('### ')) {
+            const subTitle = trimmed.replace(/^###\s+/, '');
+            processedContent += `
+                <div class="mt-5 mb-2 text-md font-bold text-slate-700 flex items-center gap-2 border-b border-dashed border-slate-200 pb-1">
+                    ${processInlineFormatting(subTitle)}
+                </div>`;
+        }
+        // Standard Text
+        else {
+            processedContent += `<div class="mb-1.5 leading-relaxed text-slate-600 text-[15px]">${processInlineFormatting(line)}</div>`;
+        }
+    });
+
+    return `
+        <div class="mb-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-md transition-shadow duration-300">
+            <div class="bg-gradient-to-r from-slate-50 to-white px-4 py-3 border-b border-slate-100 flex items-center gap-3">
+                 <div class="w-1.5 h-6 bg-indigo-500 rounded-full shadow-sm"></div>
+                 <h2 class="font-bold text-slate-800 text-lg tracking-tight">${processInlineFormatting(title)}</h2>
+            </div>
+            <div class="p-4 bg-white">
+                ${processedContent}
+            </div>
+        </div>
+    `;
+}
+
+function processInlineFormatting(text) {
+    if (!text) return "";
+    return text.replace(/\*\*(.+?)\*\*/g, '<span class="font-bold text-slate-900 bg-yellow-100 px-1 rounded shadow-sm border-b-2 border-yellow-200 mx-1">$1</span>');
 }
 
 function addMessageToUI(role, text, isLoading = false, id = null) {
