@@ -54,6 +54,41 @@ ${prompt}
         }
         contents = [{ parts: parts }];
 
+    } else if (mode === 'analyze_strategy') {
+        // --- Analyze Strategy Mode (Generate Chat Content) ---
+        const systemPrompt = `
+あなたは社内資料の分析官です。
+提供されたテキストと画像を分析し、チャットボット用の「要約データ」を作成してください。
+以下のJSON形式のみを出力してください。余計な解説やMarkdown記法（\`\`\`jsonなど）は一切不要です。
+
+【出力フォーマット】
+{
+  "ai_summary": "チャットの冒頭に表示する、2-3行の簡潔な要約（キャッチーに）",
+  "ai_details": "ユーザーが『詳しく知りたい』とボタンを押した時に表示する詳細な解説（Markdown形式で、見出しや箇条書きを駆使して読みやすく）",
+  "relevant_date": "YYYY-MM-DD" または null
+}
+
+【ルール】
+1. **relevant_date**: 記事の内容が特定のイベントや日付に関するものであれば、その日付（YYYY-MM-DD）を抽出してください。期限や実施日など。特になければ null (Javascriptのnull値)。
+2. **ai_summary**: ユーザーが興味を持つように短くまとめてください。
+3. **ai_details**: ここには本文の内容を網羅的に、かつ構造化して記述してください。
+4. JSONとしてパースできない文字が含まれないように注意してください。
+
+【対象コンテンツ】
+タイトル: ${prompt}
+内容:
+${contextData}
+`;
+        const parts = [{ text: systemPrompt }];
+        // Add Images
+        if (contextImages && Array.isArray(contextImages)) {
+            contextImages.forEach(base64Image => {
+                const match = base64Image.match(/^data:(.*?);base64,(.*)$/);
+                if (match) parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+            });
+        }
+        contents = [{ parts: parts }];
+
     } else if (mode === 'summary') {
         // --- Summary Mode ---
         const systemPrompt = `
