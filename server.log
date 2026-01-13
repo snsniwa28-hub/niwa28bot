@@ -1,0 +1,22 @@
+127.0.0.1 - - [13/Jan/2026 13:04:22] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:22] "GET /main.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:22] "GET /sinsou1.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:22] code 404, message File not found
+127.0.0.1 - - [13/Jan/2026 13:04:22] "GET /simazu.jpg HTTP/1.1" 404 -
+127.0.0.1 - - [13/Jan/2026 13:04:22] "GET /style.css HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/operations.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/shift.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/tasks.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/qsc.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/customer.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/member_race.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/strategy.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/components.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/deadlines.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/ai.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/firebase.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/file_parser.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Jan/2026 13:04:25] "GET /js/config.js HTTP/1.1" 200 -
