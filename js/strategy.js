@@ -592,7 +592,7 @@ window.deleteStrategy = deleteStrategy;
 window.toggleKnowledgeList = toggleKnowledgeList;
 window.setKnowledgeFilter = setKnowledgeFilter;
 
-window.openInternalSharedModal = (category = 'strategy') => {
+window.openInternalSharedModal = (category = 'unified') => {
     isStrategyAdmin = false;
     setStrategyCategory(category);
     const modal = document.getElementById('internalSharedModal');
@@ -629,18 +629,20 @@ export async function checkAndTriggerDailyUpdate() {
             needsUpdate = true;
         } else {
             const data = docSnap.data();
+            // 既存の日付チェック
             if (!data.updatedAt) {
                 needsUpdate = true;
             } else {
-                const updatedDate = new Date(data.updatedAt.toDate()).toLocaleDateString('ja-JP').split('/').join('-');
-                // Simple comparison: if the formatted date string (YYYY-M-D or similar) matches, or
-                // more reliably, check if updatedAt is before today 00:00:00.
                 const updatedTime = data.updatedAt.toDate().getTime();
                 const todayStart = new Date().setHours(0,0,0,0);
-
                 if (updatedTime < todayStart) {
                     needsUpdate = true;
                 }
+            }
+
+            // ★追加: もし内容が「情報はありません」なら、バグ等で失敗している可能性が高いので再生成させる
+            if (data.short === "現在、共有されている情報はありません。") {
+                needsUpdate = true;
             }
         }
 
