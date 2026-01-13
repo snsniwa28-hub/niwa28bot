@@ -293,7 +293,7 @@ function createCardHtml(title, contentRaw) {
     return `
         <div class="mb-6 last:mb-0">
             <!-- Header (Date) -->
-            <div class="flex items-center gap-2 mb-3 border-b border-indigo-100 pb-1">
+            <div class="flex items-center gap-2 mb-3 border-b-2 border-indigo-500 pb-1">
                 <span class="text-xl">🗓</span>
                 <h3 class="text-base font-black text-indigo-600">
                     ${processInlineFormatting(title)}
@@ -356,9 +356,9 @@ function processInlineFormatting(text) {
     return text
         // Clean Bold (No background)
         .replace(/\*\*(.+?)\*\*/g, '<span class="font-black text-slate-800">$1</span>')
-        // Badges (Keep style but ensure it fits new clean look)
-        .replace(/【(.+?)】/g, '<span class="inline-block bg-slate-100 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-200 mx-1 align-middle">$1</span>')
-        .replace(/\[(.+?)\]/g, '<span class="inline-block bg-slate-100 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-200 mx-1 align-middle">$1</span>');
+        // Badges (Prominent Blue Style)
+        .replace(/【(.+?)】/g, '<span class="inline-block bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded border border-indigo-200 mx-1 align-middle shadow-sm" style="font-size: 10px;">$1</span>')
+        .replace(/\[(.+?)\]/g, '<span class="inline-block bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded border border-indigo-200 mx-1 align-middle shadow-sm" style="font-size: 10px;">$1</span>');
 }
 
 function addMessageToUI(role, text, isLoading = false, id = null) {
