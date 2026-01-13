@@ -44,10 +44,7 @@ async function updateCategorySummary(category) {
         const q = query(collection(db, "strategies"), where("category", "in", targetCategories));
         const snapshot = await getDocs(q);
 
-        const validDocs = snapshot.docs.map(d => d.data()).filter(d => {
-            if (d.relevant_date && d.relevant_date < todayStr) return false;
-            return true;
-        });
+        const validDocs = snapshot.docs.map(d => d.data());
 
         if (validDocs.length === 0) {
              await setDoc(doc(db, "category_summaries", "unified"), {
@@ -323,7 +320,13 @@ function updateHeaderUI() {
 
     // AI Button Logic
     if (aiBtn) {
-        aiBtn.onclick = () => window.toggleAIChat(currentCategory, isKnowledgeMode ? "知識ベース" : (currentCategory === 'all' ? '社内資料' : currentCategory));
+        aiBtn.onclick = () => {
+            if (['pachinko', 'slot', 'strategy'].includes(currentCategory)) {
+                window.toggleAIChat('unified', '各チームの伝達');
+            } else {
+                window.toggleAIChat(currentCategory, isKnowledgeMode ? "知識ベース" : (currentCategory === 'all' ? '社内資料' : currentCategory));
+            }
+        };
     }
 
     if(createBtn) {
