@@ -231,13 +231,11 @@ function formatAIMessage(text) {
 
     // If no specific headers found, treat as standard text (but still apply inline formatting)
     if (!safeText.includes('## ')) {
-         return safeText
-            .replace(/\n/g, '<br>')
-            .replace(/\*\*(.+?)\*\*/g, '<span class="font-bold text-slate-900 bg-yellow-100 px-1 rounded shadow-sm border-b-2 border-yellow-200 mx-1">$1</span>');
+         return `<div class="p-2 space-y-2">${processTextBlocks(safeText)}</div>`;
     }
 
     const lines = safeText.split('\n');
-    let introHtml = '';
+    let introTextRaw = '';
     let timelineHtml = '';
     let currentCardContent = '';
     let currentCardTitle = '';
@@ -259,10 +257,8 @@ function formatAIMessage(text) {
             if (isInsideCard) {
                 currentCardContent += line + '\n';
             } else {
-                // Content before the first header is displayed as standard text block
-                if (trimmed) {
-                    introHtml += `<div class="mb-4 leading-relaxed text-slate-700">${processInlineFormatting(line)}</div>`;
-                }
+                // Content before the first header
+                introTextRaw += line + '\n';
             }
         }
     });
@@ -272,7 +268,11 @@ function formatAIMessage(text) {
         timelineHtml += createCardHtml(currentCardTitle, currentCardContent);
     }
 
-    let finalHtml = introHtml;
+    let finalHtml = '';
+    if (introTextRaw.trim()) {
+        finalHtml += `<div class="mb-6 space-y-2 text-slate-700 leading-relaxed">${processTextBlocks(introTextRaw)}</div>`;
+    }
+
     if (timelineHtml) {
         finalHtml += `<div class="relative border-l-4 border-indigo-100 ml-3 my-6 pr-2 space-y-8">${timelineHtml}</div>`;
     }
@@ -280,59 +280,114 @@ function formatAIMessage(text) {
     return finalHtml;
 }
 
+// Helper to process standard text blocks (outside of cards) with simple list support
+function processTextBlocks(rawText) {
+    // Reuse CreateCard logic for consistency, but without card wrapper?
+    // Or just simple parsing. Let's use a simplified version of card body logic.
+    return createCardBodyHtml(rawText);
+}
+
 function createCardHtml(title, contentRaw) {
+    const bodyHtml = createCardBodyHtml(contentRaw);
+
+    return `
+        <div class="relative pl-6 group mb-8 last:mb-0">
+            <!-- Timeline Dot -->
+            <div class="absolute -left-[11px] top-1.5 w-5 h-5 rounded-full bg-white border-4 border-indigo-400 shadow-sm group-hover:border-indigo-600 transition-colors z-10"></div>
+
+            <!-- Header (Date) -->
+            <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2 group-hover:text-indigo-700 transition-colors bg-slate-50/50 p-2 rounded-lg -ml-2">
+                ${processInlineFormatting(title)}
+            </h3>
+
+            <!-- Content -->
+            <div class="text-slate-600 pl-1">
+                ${bodyHtml}
+            </div>
+        </div>
+    `;
+}
+
+function createCardBodyHtml(contentRaw) {
     let processedContent = '';
     const lines = contentRaw.split('\n');
+    let inList = false;
 
-    lines.forEach(line => {
+    lines.forEach((line) => {
         let trimmed = line.trim();
-        if (!trimmed) return;
+        if (!trimmed) {
+            if (inList) {
+                processedContent += '</ul>';
+                inList = false;
+            }
+            return;
+        }
 
-        // Alert Box (> ...)
-        if (trimmed.startsWith('&gt; ')) {
-             const alertText = trimmed.replace(/^&gt;\s+/, '');
+        // 1. Alert Box (> ...)
+        if (trimmed.startsWith('&gt; ') || trimmed.startsWith('> ')) {
+             if (inList) { processedContent += '</ul>'; inList = false; }
+             const alertText = trimmed.replace(/^(&gt;|>)\s+/, '');
              processedContent += `
                 <div class="my-3 p-3 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r text-sm font-bold shadow-sm flex gap-3 items-start animate-pulse-subtle">
                     <span class="text-xl shrink-0">⚠️</span>
                     <span class="pt-0.5">${processInlineFormatting(alertText)}</span>
                 </div>`;
         }
-        // Sub-header (### ...)
+        // 2. Sub-header (### ...)
         else if (trimmed.startsWith('### ')) {
+            if (inList) { processedContent += '</ul>'; inList = false; }
             const subTitle = trimmed.replace(/^###\s+/, '');
             processedContent += `
-                <div class="mt-4 mb-2 text-md font-bold text-slate-700 flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                <div class="mt-5 mb-3 text-base font-bold text-slate-700 flex items-center gap-2 border-b border-slate-100 pb-1">
+                    <span class="w-1.5 h-4 bg-indigo-500 rounded-full"></span>
                     ${processInlineFormatting(subTitle)}
                 </div>`;
         }
-        // Standard Text
+        // 3. Time Schedule (15:00 ..., 9時 ...)
+        else if (trimmed.match(/^(\d{1,2}:\d{2}|\d{1,2}時)\s+/)) {
+            if (inList) { processedContent += '</ul>'; inList = false; }
+            const match = trimmed.match(/^(\d{1,2}:\d{2}|\d{1,2}時)\s+(.*)/);
+            const timeStr = match[1];
+            const contentStr = match[2];
+            processedContent += `
+                <div class="flex gap-3 items-baseline mb-2 group/time">
+                    <div class="w-14 shrink-0 text-right font-bold text-indigo-600 text-sm bg-indigo-50 px-1 rounded">${timeStr}</div>
+                    <div class="relative flex-1 pb-2 border-l-2 border-indigo-100 pl-4 ml-1">
+                        <div class="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-200 group-hover/time:bg-indigo-400 transition-colors"></div>
+                        <div class="text-sm text-slate-700 leading-relaxed">${processInlineFormatting(contentStr)}</div>
+                    </div>
+                </div>`;
+        }
+        // 4. List Items (- ..., ・ ..., * ...)
+        else if (trimmed.match(/^[-・*]\s+/)) {
+            if (!inList) {
+                processedContent += '<ul class="space-y-2 mb-3 ml-2">';
+                inList = true;
+            }
+            const listText = trimmed.replace(/^[-・*]\s+/, '');
+            processedContent += `
+                <li class="flex items-start gap-2 text-sm text-slate-600 pl-1">
+                    <span class="text-indigo-400 mt-1.5 text-[8px]">●</span>
+                    <span class="flex-1 leading-relaxed">${processInlineFormatting(listText)}</span>
+                </li>`;
+        }
+        // 5. Standard Text
         else {
-            processedContent += `<div class="mb-1.5 leading-relaxed text-slate-600 text-[15px]">${processInlineFormatting(line)}</div>`;
+            if (inList) { processedContent += '</ul>'; inList = false; }
+            processedContent += `<div class="mb-2 leading-relaxed text-slate-600 text-[15px]">${processInlineFormatting(trimmed)}</div>`;
         }
     });
 
-    return `
-        <div class="relative pl-6 group">
-            <!-- Timeline Dot -->
-            <div class="absolute -left-[11px] top-1.5 w-5 h-5 rounded-full bg-white border-4 border-indigo-400 shadow-sm group-hover:border-indigo-600 transition-colors"></div>
-
-            <!-- Header (Date) -->
-            <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2 group-hover:text-indigo-700 transition-colors">
-                ${processInlineFormatting(title)}
-            </h3>
-
-            <!-- Content -->
-            <div class="text-slate-600 pl-1">
-                ${processedContent}
-            </div>
-        </div>
-    `;
+    if (inList) { processedContent += '</ul>'; }
+    return processedContent;
 }
 
 function processInlineFormatting(text) {
     if (!text) return "";
-    return text.replace(/\*\*(.+?)\*\*/g, '<span class="font-bold text-slate-900 bg-yellow-100 px-1 rounded shadow-sm border-b-2 border-yellow-200 mx-1">$1</span>');
+    return text
+        .replace(/\*\*(.+?)\*\*/g, '<span class="font-bold text-slate-800 bg-yellow-100 px-1 py-0.5 rounded mx-1">$1</span>')
+        .replace(/【(.+?)】/g, '<span class="inline-block bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded border border-slate-200 mx-1">$1</span>')
+        .replace(/\[(.+?)\]/g, '<span class="inline-block bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded border border-slate-200 mx-1">$1</span>');
 }
 
 function addMessageToUI(role, text, isLoading = false, id = null) {
