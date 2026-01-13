@@ -128,70 +128,27 @@
                     </div>
                 </div>
 
-                <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.4s;">
-                    <button onclick="openCategoryChat('pachinko', 'パチンコ共有')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="bg-pink-50 text-pink-600 p-3 rounded-2xl group-hover:bg-pink-600 group-hover:text-white transition-colors duration-300">
-                                <span class="text-xl font-black">🅿️</span>
-                            </div>
-                        </div>
-                        <div>
-                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-pink-600 transition-colors">パチンコ共有</h2>
-                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">Team Sharing</p>
-                        </div>
-                    </button>
-                    <button onclick="event.stopPropagation(); openStrategyAdminAuth('pachinko')" class="absolute top-3 right-3 p-2 bg-slate-100/80 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-full transition-all shadow-sm z-20 opacity-0 group-hover/card:opacity-100">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    </button>
-                </div>
+            </div>
 
-                <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.45s;">
-                    <button onclick="openCategoryChat('slot', 'スロット共有')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="bg-purple-50 text-purple-600 p-3 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-colors duration-300">
-                                <span class="text-xl font-black">🎰</span>
+            <div class="mt-4 lg:mt-5 fade-in-up" style="animation-delay: 0.4s;">
+                 <div class="relative w-full rounded-3xl overflow-hidden shadow-xl shadow-indigo-900/10 border border-slate-100 group cursor-pointer transition-all hover:shadow-2xl hover:-translate-y-1">
+                    <button onclick="openCategoryChat('unified', '社内共有・戦略')" class="w-full text-left bg-gradient-to-r from-slate-800 to-slate-700 p-6 sm:p-8 flex items-center justify-between">
+                        <div class="flex items-center gap-5">
+                            <div class="bg-white/10 p-4 rounded-2xl backdrop-blur-md">
+                                <span class="text-3xl">📋</span>
+                            </div>
+                            <div>
+                                <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight mb-1">各チームの伝達</h2>
+                                <p class="text-slate-300 text-xs sm:text-sm font-bold">Team Communication & Strategy</p>
                             </div>
                         </div>
-                        <div>
-                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-purple-600 transition-colors">スロット共有</h2>
-                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">Team Sharing</p>
+                        <div class="bg-white/10 rounded-full p-2 group-hover:bg-white/20 transition">
+                             <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                         </div>
                     </button>
-                    <button onclick="event.stopPropagation(); openStrategyAdminAuth('slot')" class="absolute top-3 right-3 p-2 bg-slate-100/80 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-full transition-all shadow-sm z-20 opacity-0 group-hover/card:opacity-100">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    </button>
-                </div>
 
-                <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.5s;">
-                    <button onclick="openCategoryChat('cs', 'CSチーム共有')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="bg-orange-50 text-orange-600 p-3 rounded-2xl group-hover:bg-orange-600 group-hover:text-white transition-colors duration-300">
-                                <span class="text-xl font-black">🤝</span>
-                            </div>
-                        </div>
-                        <div>
-                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-orange-600 transition-colors">CSチーム共有</h2>
-                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">Customer Svc</p>
-                        </div>
-                    </button>
-                    <button onclick="event.stopPropagation(); openStrategyAdminAuth('cs')" class="absolute top-3 right-3 p-2 bg-slate-100/80 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-full transition-all shadow-sm z-20 opacity-0 group-hover/card:opacity-100">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    </button>
-                </div>
-
-                <div class="fade-in-up col-span-1 h-full relative group/card" style="animation-delay: 0.55s;">
-                    <button onclick="openCategoryChat('strategy', '月間戦略')" class="w-full text-left group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="bg-red-50 text-red-600 p-3 rounded-2xl group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
-                                <span class="text-xl font-black">📈</span>
-                            </div>
-                        </div>
-                        <div>
-                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-red-600 transition-colors">月間戦略</h2>
-                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">Monthly Goals</p>
-                        </div>
-                    </button>
-                    <button onclick="event.stopPropagation(); openStrategyAdminAuth('strategy')" class="absolute top-3 right-3 p-2 bg-slate-100/80 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-full transition-all shadow-sm z-20 opacity-0 group-hover/card:opacity-100">
+                     <!-- Admin Lock Button -->
+                    <button onclick="event.stopPropagation(); openStrategyAdminAuth('strategy')" class="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white rounded-full transition-all z-20">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     </button>
                 </div>
@@ -564,11 +521,6 @@
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4 bg-slate-50/50">
-                    <div class="mb-6">
-                        <label class="block text-xs font-bold text-slate-400 mb-1">大タイトル</label>
-                        <input type="text" id="strategy-editor-title" class="w-full text-xl font-black text-slate-800 bg-transparent border-b-2 border-slate-200 focus:border-indigo-500 outline-none px-1 py-2 placeholder-slate-300 transition" placeholder="例: 12月の営業戦略">
-                    </div>
-
                     <div id="strategy-article-editor" class="">
                         <div id="strategy-blocks-container" class="space-y-4 min-h-[100px]"></div>
 

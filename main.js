@@ -185,6 +185,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ★追加: 戦略共有の初期化
     Strategy.initStrategy();
+    // ★追加: 日次更新チェック (おはよう更新)
+    Strategy.checkAndTriggerDailyUpdate();
 
     // AI Initialization
     AI.initAI();

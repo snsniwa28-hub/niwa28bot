@@ -21,14 +21,26 @@ export async function loadStrategies() {
 
 // Function to trigger global summary update
 async function updateCategorySummary(category) {
-    if (!category || category === 'all') return;
+    // If the category is one of the teams, we update the unified summary.
+    // We ignore CS as per user request.
+    const targetCategories = ['pachinko', 'slot', 'strategy'];
+    const isUnifiedTarget = targetCategories.includes(category);
+
+    // If it's not a target category (and not forced 'unified'), we might skip or do legacy behavior.
+    // But for this request, we treat any update to these categories as a trigger for the Unified Summary.
+    const updateTarget = isUnifiedTarget ? 'unified' : category;
+
+    // If 'all' or 'cs' or unknown, we might return, but let's stick to the plan.
+    if (!updateTarget || updateTarget === 'all' || updateTarget === 'cs') return;
 
     try {
-        updateLoadingMessage("全体サマリーを再構築中...");
+        updateLoadingMessage("全チームの情報を統合中...");
 
-        // 1. Fetch ALL valid strategies
+        // 1. Fetch ALL valid strategies from target categories
         const todayStr = new Date().toISOString().split('T')[0];
-        const q = query(collection(db, "strategies"), where("category", "==", category));
+
+        // Firestore 'in' query supports up to 10 values
+        const q = query(collection(db, "strategies"), where("category", "in", targetCategories));
         const snapshot = await getDocs(q);
 
         const validDocs = snapshot.docs.map(d => d.data()).filter(d => {
@@ -37,7 +49,7 @@ async function updateCategorySummary(category) {
         });
 
         if (validDocs.length === 0) {
-             await setDoc(doc(db, "category_summaries", category), {
+             await setDoc(doc(db, "category_summaries", "unified"), {
                 short: "現在、共有されている情報はありません。",
                 full: "現在、共有されている情報はありません。",
                 updatedAt: serverTimestamp()
@@ -49,8 +61,15 @@ async function updateCategorySummary(category) {
         let aggregatedContext = "";
         let aggregatedImages = [];
 
+        const categoryMap = {
+            'pachinko': 'パチンコ',
+            'slot': 'スロット',
+            'strategy': '戦略'
+        };
+
         validDocs.forEach(d => {
-            aggregatedContext += `\n--- [${d.title}] (${d.relevant_date || "日付なし"}) ---\n`;
+            const catName = categoryMap[d.category] || d.category;
+            aggregatedContext += `\n--- 【${catName}】${d.title} (${d.relevant_date || "日付なし"}) ---\n`;
             if (d.ai_context) aggregatedContext += d.ai_context + "\n";
             if (d.text_content) aggregatedContext += d.text_content + "\n";
 
@@ -84,7 +103,7 @@ async function updateCategorySummary(category) {
             const summaryData = JSON.parse(cleanJson);
 
             // 4. Save to Firestore
-            await setDoc(doc(db, "category_summaries", category), {
+            await setDoc(doc(db, "category_summaries", "unified"), {
                 short: summaryData.short || "",
                 full: summaryData.full || "",
                 updatedAt: serverTimestamp()
@@ -106,10 +125,15 @@ export async function saveStrategy() {
     const category = categorySelect ? categorySelect.value : 'strategy';
     const type = 'article';
 
-    if (!titleInput.value.trim()) return alert("タイトルを入力してください");
+    // Auto-generate title if empty
+    let titleVal = titleInput.value.trim();
+    if (!titleVal) {
+        const catMap = { 'pachinko': 'パチンコ', 'slot': 'スロット', 'strategy': '戦略' };
+        titleVal = `【${catMap[category] || category}】共有事項`;
+    }
 
     let data = {
-        title: titleInput.value,
+        title: titleVal,
         category: category,
         type: type,
         updatedAt: serverTimestamp(),
@@ -232,6 +256,7 @@ function updateHeaderUI() {
             'slot': { title: 'スロット共有', icon: '🎰', color: 'text-purple-600', bg: 'bg-purple-50' },
             'cs': { title: 'CSチーム共有', icon: '🤝', color: 'text-orange-600', bg: 'bg-orange-50' },
             'strategy': { title: '月間戦略', icon: '📈', color: 'text-red-600', bg: 'bg-red-50' },
+            'unified': { title: '各チームの伝達', icon: '📋', color: 'text-slate-800', bg: 'bg-slate-50' },
             'all': { title: '社内共有・戦略', icon: '📋', color: 'text-slate-800', bg: 'bg-slate-50' }
         };
 
@@ -278,12 +303,18 @@ function renderStrategyList() {
     container.innerHTML = '';
 
     const filtered = strategies.filter(s => {
-        if (!currentCategory || currentCategory === 'all') {
-             if (isKnowledgeMode) return s.isKnowledge === true;
-             return true;
-        }
         const cat = s.category || 'strategy';
-        const isCatMatch = cat === currentCategory;
+        let isCatMatch = false;
+
+        if (!currentCategory || currentCategory === 'all') {
+            isCatMatch = true;
+        } else if (currentCategory === 'unified') {
+            // Unified view shows: Pachinko, Slot, Strategy (No CS)
+            isCatMatch = ['pachinko', 'slot', 'strategy'].includes(cat);
+        } else {
+            isCatMatch = cat === currentCategory;
+        }
+
         if (isKnowledgeMode) {
             return s.isKnowledge === true && isCatMatch;
         }
@@ -351,17 +382,19 @@ export function openStrategyEditor(id = null) {
         <div class="space-y-6">
             <!-- Category Selection -->
             <div>
-                 <label class="block text-xs font-bold text-slate-400 mb-1">カテゴリー</label>
+                 <label class="block text-xs font-bold text-slate-400 mb-1">共有するチームを選択</label>
                  <select id="strategy-editor-category" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option value="pachinko">🅿️ パチンコ共有</option>
-                    <option value="slot">🎰 スロット共有</option>
-                    <option value="cs">🤝 CSチーム共有</option>
-                    <option value="strategy">📈 月間戦略</option>
+                    <option value="pachinko">🅿️ パチンコチーム</option>
+                    <option value="slot">🎰 スロットチーム</option>
+                    <option value="strategy">📈 戦略チーム</option>
                  </select>
             </div>
 
-            <!-- Manual Text Input -->
+             <!-- Manual Text Input -->
              <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1">件名 (省略可)</label>
+                <input type="text" id="strategy-editor-title" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 mb-2" placeholder="未入力時はチーム名がタイトルになります">
+
                 <label class="block text-xs font-bold text-slate-400 mb-1">テキスト入力 (任意)</label>
                 <textarea id="strategy-editor-text" class="w-full bg-white border border-slate-200 rounded-lg p-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 h-32 resize-none" placeholder="伝えたい内容をここに入力..."></textarea>
             </div>
@@ -496,6 +529,71 @@ export function openStrategyAdmin(category) {
 
 export function openStrategyAdminAuth(category) {
     showPasswordModal(() => openStrategyAdmin(category));
+}
+
+export async function checkAndTriggerDailyUpdate() {
+    try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const docRef = doc(db, "category_summaries", "unified");
+        const docSnap = await getDoc(docRef);
+
+        let needsUpdate = false;
+
+        if (!docSnap.exists()) {
+            needsUpdate = true;
+        } else {
+            const data = docSnap.data();
+            if (!data.updatedAt) {
+                needsUpdate = true;
+            } else {
+                const updatedDate = new Date(data.updatedAt.toDate()).toLocaleDateString('ja-JP').split('/').join('-');
+                // Simple comparison: if the formatted date string (YYYY-M-D or similar) matches, or
+                // more reliably, check if updatedAt is before today 00:00:00.
+                const updatedTime = data.updatedAt.toDate().getTime();
+                const todayStart = new Date().setHours(0,0,0,0);
+
+                if (updatedTime < todayStart) {
+                    needsUpdate = true;
+                }
+            }
+        }
+
+        if (needsUpdate) {
+            // Show special blocking overlay
+            const overlay = document.createElement('div');
+            overlay.id = "daily-update-overlay";
+            overlay.className = "fixed inset-0 z-[9999] bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center transition-opacity duration-500";
+            overlay.innerHTML = `
+                <div class="text-center animate-fade-in p-8">
+                    <div class="inline-block relative mb-6">
+                        <span class="text-6xl animate-bounce inline-block">🌅</span>
+                    </div>
+                    <h2 class="text-2xl font-black text-slate-800 mb-2">おはようございます</h2>
+                    <p class="text-sm font-bold text-slate-500 mb-6">本日のチーム情報をまとめています...</p>
+
+                    <div class="w-64 h-2 bg-slate-100 rounded-full overflow-hidden mx-auto mb-2">
+                        <div class="h-full bg-gradient-to-r from-indigo-400 to-indigo-600 animate-pulse w-full"></div>
+                    </div>
+                    <p class="text-[10px] text-slate-400 font-bold">1日1回のみ実行されます</p>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            // Execute Update
+            await updateCategorySummary('unified');
+
+            // Hide Overlay
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.remove();
+            }, 500);
+        }
+
+    } catch (e) {
+        console.error("Daily Check Error:", e);
+        const el = document.getElementById("daily-update-overlay");
+        if (el) el.remove();
+    }
 }
 
 // --- Initialize ---
