@@ -1,3 +1,4 @@
+
 // js/file_parser.js
 
 export async function parseFile(file) {
@@ -5,10 +6,14 @@ export async function parseFile(file) {
 
     if (fileName.endsWith('.pdf')) {
         return await parsePdf(file);
-    } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+    } else if (fileName.match(/\.(xlsx|xls)$/)) {
         return await parseExcel(file);
+    } else if (file.type.startsWith('image/') || fileName.match(/\.(jpg|jpeg|png|webp|gif)$/)) {
+        return await parseImage(file);
+    } else if (fileName.match(/\.(txt|md|csv|json)$/)) {
+        return await parseText(file);
     } else {
-        throw new Error("Unsupported file format. Please use PDF or Excel.");
+        throw new Error("Unsupported file format. Please use PDF, Excel, Image, or Text files.");
     }
 }
 
@@ -37,22 +42,8 @@ async function parsePdf(file) {
 
                 await page.render({ canvasContext: context, viewport: viewport }).promise;
 
-                // Resize if needed to max 800px width
-                const MAX_WIDTH = 800;
-                let finalDataUrl;
-
-                if (canvas.width > MAX_WIDTH) {
-                    const scale = MAX_WIDTH / canvas.width;
-                    const w = MAX_WIDTH;
-                    const h = canvas.height * scale;
-                    const c2 = document.createElement('canvas');
-                    c2.width = w; c2.height = h;
-                    c2.getContext('2d').drawImage(canvas, 0, 0, w, h);
-                    finalDataUrl = c2.toDataURL('image/jpeg', 0.6);
-                } else {
-                    finalDataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                }
-                extractedImages.push(finalDataUrl);
+                const processedImage = resizeImageCanvas(canvas);
+                extractedImages.push(processedImage);
             } catch (err) {
                 console.warn(`Failed to render page ${i} image`, err);
             }
@@ -74,7 +65,6 @@ async function parseExcel(file) {
 
                 workbook.SheetNames.forEach(sheetName => {
                     const worksheet = workbook.Sheets[sheetName];
-                    // Changed from sheet_to_txt to sheet_to_csv for better column structure
                     const csv = XLSX.utils.sheet_to_csv(worksheet);
                     if(csv && csv.trim().length > 0) {
                         extractedText += `\n--- Sheet: ${sheetName} ---\n${csv}\n`;
@@ -89,4 +79,56 @@ async function parseExcel(file) {
         reader.onerror = (err) => reject(err);
         reader.readAsArrayBuffer(file);
     });
+}
+
+async function parseImage(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                const processedImage = resizeImageCanvas(canvas);
+                resolve({ text: "", images: [processedImage] });
+            };
+            img.onerror = (err) => reject(new Error("Failed to load image"));
+            img.src = e.target.result;
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(file);
+    });
+}
+
+async function parseText(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            resolve({ text: e.target.result, images: [] });
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsText(file);
+    });
+}
+
+function resizeImageCanvas(canvas) {
+    const MAX_WIDTH = 800;
+    let finalDataUrl;
+
+    if (canvas.width > MAX_WIDTH) {
+        const scale = MAX_WIDTH / canvas.width;
+        const w = MAX_WIDTH;
+        const h = canvas.height * scale;
+        const c2 = document.createElement('canvas');
+        c2.width = w; c2.height = h;
+        c2.getContext('2d').drawImage(canvas, 0, 0, w, h);
+        finalDataUrl = c2.toDataURL('image/jpeg', 0.6);
+    } else {
+        finalDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+    }
+    return finalDataUrl;
 }

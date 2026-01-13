@@ -1,5 +1,5 @@
 import { db, app } from './firebase.js';
-import { collection, doc, setDoc, getDocs, deleteDoc, serverTimestamp, query, orderBy, limit, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, doc, setDoc, getDoc, getDocs, deleteDoc, serverTimestamp, query, orderBy, limit, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { showToast, showConfirmModal, showPasswordModal, showLoadingOverlay, hideLoadingOverlay, updateLoadingMessage } from './ui.js';
 import { parseFile } from './file_parser.js';
 
@@ -10,6 +10,7 @@ let currentCategory = 'all'; // 'all', 'pachinko', 'slot', 'cs', 'strategy'
 let isStrategyAdmin = false;
 let isKnowledgeMode = false;
 let tempPdfImages = []; // Stores images converted from PDF
+let knowledgeFilter = 'all'; // 'all', 'pachinko', 'slot', 'strategy'
 
 // --- Firestore Operations ---
 export async function loadStrategies() {
@@ -173,13 +174,36 @@ export async function saveStrategy() {
 
         if (resData.reply) {
              try {
-                let cleanJson = resData.reply.replace(/```json/g, '').replace(/```/g, '').trim();
+                // More robust JSON cleaning
+                let cleanJson = resData.reply.trim();
+                // Remove code blocks
+                if (cleanJson.startsWith('```')) {
+                    cleanJson = cleanJson.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+                }
+
+                // Locate JSON object if surrounded by text
+                const jsonStart = cleanJson.indexOf('{');
+                const jsonEnd = cleanJson.lastIndexOf('}');
+                if (jsonStart !== -1 && jsonEnd !== -1) {
+                    cleanJson = cleanJson.substring(jsonStart, jsonEnd + 1);
+                }
+
                 const analysis = JSON.parse(cleanJson);
                 if (analysis) {
                     data.relevant_date = analysis.relevant_date || null;
-                    data.ai_summary = analysis.ai_summary || "要約なし"; // Store explicit success marker
+                    data.ai_summary = analysis.ai_summary || "要約なし";
+                    if(analysis.ai_details) data.ai_details = analysis.ai_details;
                 }
-             } catch(e) {}
+             } catch(e) {
+                 console.warn("JSON Parse Failed, falling back to raw text:", e);
+                 // Fallback: use the raw reply as summary if it's not JSON
+                 data.ai_summary = resData.reply.substring(0, 100) + "...";
+                 data.ai_details = resData.reply;
+                 data.relevant_date = null;
+             }
+        } else {
+            console.warn("No reply from AI");
+            data.ai_summary = "AI解析応答なし";
         }
 
         const docRef = editingId ? doc(db, "strategies", editingId) : doc(collection(db, "strategies"));
@@ -225,8 +249,31 @@ export function setStrategyCategory(category) {
 
 export function toggleKnowledgeList() {
     isKnowledgeMode = !isKnowledgeMode;
+    // Reset filter when toggling mode
+    if(isKnowledgeMode) knowledgeFilter = 'all';
+
     renderStrategyList();
     updateHeaderUI();
+}
+
+export function setKnowledgeFilter(filter) {
+    knowledgeFilter = filter;
+    renderStrategyList();
+    updateKnowledgeFilterUI();
+}
+
+function updateKnowledgeFilterUI() {
+    const filters = ['all', 'pachinko', 'slot', 'strategy'];
+    filters.forEach(f => {
+        const btn = document.getElementById(`k-filter-${f}`);
+        if(btn) {
+            if(f === knowledgeFilter) {
+                btn.className = "px-3 py-1 rounded-full text-xs font-bold bg-indigo-600 text-white shadow-sm transition";
+            } else {
+                btn.className = "px-3 py-1 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 transition";
+            }
+        }
+    });
 }
 
 function updateHeaderUI() {
@@ -302,31 +349,53 @@ function renderStrategyList() {
     if (!container) return;
     container.innerHTML = '';
 
+    // --- Knowledge Mode Filter UI Injection ---
+    if (isKnowledgeMode) {
+        const filterBar = document.createElement('div');
+        filterBar.className = "flex justify-center gap-2 mb-6";
+        filterBar.innerHTML = `
+            <button id="k-filter-all" onclick="window.setKnowledgeFilter('all')">全て</button>
+            <button id="k-filter-pachinko" onclick="window.setKnowledgeFilter('pachinko')">パチンコ</button>
+            <button id="k-filter-slot" onclick="window.setKnowledgeFilter('slot')">スロット</button>
+            <button id="k-filter-strategy" onclick="window.setKnowledgeFilter('strategy')">戦略</button>
+        `;
+        container.appendChild(filterBar);
+        // Apply active styles after appending
+        setTimeout(updateKnowledgeFilterUI, 0);
+    }
+
     const filtered = strategies.filter(s => {
         const cat = s.category || 'strategy';
-        let isCatMatch = false;
-
-        if (!currentCategory || currentCategory === 'all') {
-            isCatMatch = true;
-        } else if (currentCategory === 'unified') {
-            // Unified view shows: Pachinko, Slot, Strategy (No CS)
-            isCatMatch = ['pachinko', 'slot', 'strategy'].includes(cat);
-        } else {
-            isCatMatch = cat === currentCategory;
-        }
 
         if (isKnowledgeMode) {
-            return s.isKnowledge === true && isCatMatch;
+            // In Knowledge Mode, we show ALL items unless filtered by the new buttons
+            // AND ensure isKnowledge is true
+            if (s.isKnowledge !== true) return false;
+
+            if (knowledgeFilter === 'all') return true;
+            return cat === knowledgeFilter;
+        } else {
+            // Normal View Logic (per category)
+            let isCatMatch = false;
+            if (!currentCategory || currentCategory === 'all') {
+                isCatMatch = true;
+            } else if (currentCategory === 'unified') {
+                isCatMatch = ['pachinko', 'slot', 'strategy'].includes(cat);
+            } else {
+                isCatMatch = cat === currentCategory;
+            }
+            return isCatMatch;
         }
-        return isCatMatch;
     });
 
     if (filtered.length === 0) {
         const msg = isKnowledgeMode ? "登録された知識データはありません" : "まだ記事がありません";
-        container.innerHTML = `<div class="flex flex-col items-center justify-center py-20 opacity-50">
+        const emptyDiv = document.createElement('div');
+        emptyDiv.innerHTML = `<div class="flex flex-col items-center justify-center py-20 opacity-50">
             <span class="text-4xl mb-2">📭</span>
             <p class="text-sm font-bold text-slate-400">${msg}</p>
         </div>`;
+        container.appendChild(emptyDiv);
         return;
     }
 
@@ -341,12 +410,20 @@ function renderStrategyList() {
             ? '<span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">✅ AI把握済</span>'
             : '<span class="text-[10px] bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full border border-yellow-200">⚠️ 未解析</span>';
 
+        // Team Badge for Knowledge Mode
+        let teamBadge = "";
+        if (isKnowledgeMode) {
+            const teamMap = { 'pachinko': 'パチンコ', 'slot': 'スロット', 'strategy': '戦略' };
+            const teamName = teamMap[item.category] || item.category;
+            teamBadge = `<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200 font-bold mr-2">[${teamName}]</span>`;
+        }
+
         let html = `
             <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                 <div class="flex items-center gap-3">
                      <span class="text-2xl">${item.relevant_date ? '📅' : '📌'}</span>
                      <div>
-                        <h2 class="text-base font-black text-slate-800 leading-tight mb-1">${item.title}</h2>
+                        <h2 class="text-base font-black text-slate-800 leading-tight mb-1">${teamBadge}${item.title}</h2>
                         <div class="flex items-center gap-2">
                             <span class="text-[10px] font-bold text-slate-400">
                                 ${item.relevant_date ? item.relevant_date : '日付なし'} | 更新: ${date}
@@ -401,11 +478,11 @@ export function openStrategyEditor(id = null) {
 
             <!-- File Upload -->
             <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                <label class="block text-xs font-bold text-indigo-600 mb-2">📂 資料アップロード (PDF / Excel / 画像)</label>
+                <label class="block text-xs font-bold text-indigo-600 mb-2">📂 資料アップロード (PDF / Excel / 画像 / テキスト)</label>
                 <div class="flex gap-2 items-center mb-2">
                     <label class="cursor-pointer bg-white text-indigo-600 px-4 py-3 rounded-xl text-sm font-bold border border-indigo-200 hover:bg-indigo-50 transition shadow-sm flex items-center gap-2 w-full justify-center">
                         <span>📄 ファイルを選択</span>
-                        <input type="file" accept=".pdf, .xlsx, .xls, image/*" class="hidden" onchange="window.handleContextFileUpload(this)">
+                        <input type="file" accept=".pdf, .xlsx, .xls, .txt, .md, .csv, image/*" class="hidden" onchange="window.handleContextFileUpload(this)">
                     </label>
                 </div>
                 <div id="file-status" class="text-xs text-slate-500 font-bold text-center h-5"></div>
@@ -428,8 +505,11 @@ export function openStrategyEditor(id = null) {
     // Handle Category Locking
     if (currentCategory && currentCategory !== 'all' && !id) {
         categorySelect.value = currentCategory;
-        categorySelect.disabled = true;
-        categorySelect.classList.add('opacity-50', 'cursor-not-allowed');
+        // In Knowledge Mode, allow changing category even if we were in a view
+        if(!isKnowledgeMode) {
+             categorySelect.disabled = true;
+             categorySelect.classList.add('opacity-50', 'cursor-not-allowed');
+        }
     } else {
         categorySelect.disabled = false;
         categorySelect.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -487,8 +567,10 @@ window.handleContextFileUpload = async (input) => {
                 statusText += ` (${pageCount}ページ, 画像${tempPdfImages.length}枚)`;
             } else if (file.name.match(/\.(xlsx|xls)$/i)) {
                  statusText += ` (Excel)`;
-            } else if (file.type.startsWith('image/')) {
+            } else if (file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
                  statusText += ` (画像)`;
+            } else {
+                 statusText += ` (テキスト)`;
             }
             if(statusEl) statusEl.textContent = statusText;
 
@@ -505,6 +587,7 @@ window.closeStrategyEditor = closeStrategyEditor;
 window.saveStrategy = saveStrategy;
 window.deleteStrategy = deleteStrategy;
 window.toggleKnowledgeList = toggleKnowledgeList;
+window.setKnowledgeFilter = setKnowledgeFilter;
 
 window.openInternalSharedModal = (category = 'strategy') => {
     isStrategyAdmin = false;
@@ -562,16 +645,16 @@ export async function checkAndTriggerDailyUpdate() {
             // Show special blocking overlay
             const overlay = document.createElement('div');
             overlay.id = "daily-update-overlay";
-            overlay.className = "fixed inset-0 z-[9999] bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center transition-opacity duration-500";
+            overlay.className = "fixed inset-0 z-[9999] bg-slate-100 flex flex-col items-center justify-center transition-opacity duration-500";
             overlay.innerHTML = `
                 <div class="text-center animate-fade-in p-8">
                     <div class="inline-block relative mb-6">
                         <span class="text-6xl animate-bounce inline-block">🌅</span>
                     </div>
                     <h2 class="text-2xl font-black text-slate-800 mb-2">おはようございます</h2>
-                    <p class="text-sm font-bold text-slate-500 mb-6">本日のチーム情報をまとめています...</p>
+                    <p class="text-sm font-bold text-slate-500 mb-6">本日のチーム情報を準備中...</p>
 
-                    <div class="w-64 h-2 bg-slate-100 rounded-full overflow-hidden mx-auto mb-2">
+                    <div class="w-64 h-2 bg-slate-200 rounded-full overflow-hidden mx-auto mb-2">
                         <div class="h-full bg-gradient-to-r from-indigo-400 to-indigo-600 animate-pulse w-full"></div>
                     </div>
                     <p class="text-[10px] text-slate-400 font-bold">1日1回のみ実行されます</p>
