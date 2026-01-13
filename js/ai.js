@@ -229,28 +229,26 @@ function formatAIMessage(text) {
     if (!text) return "";
     let safeText = escapeHtml(text);
 
-    // If no specific headers found, treat as standard text (but still apply inline formatting)
-    if (!safeText.includes('## ')) {
-         return `<div class="p-2 space-y-2">${processTextBlocks(safeText)}</div>`;
-    }
-
     const lines = safeText.split('\n');
     let introTextRaw = '';
     let timelineHtml = '';
     let currentCardContent = '';
     let currentCardTitle = '';
     let isInsideCard = false;
+    let hasFoundAnyHeader = false;
 
     lines.forEach((line) => {
         const trimmed = line.trim();
 
-        if (trimmed.startsWith('## ')) {
+        // Support ## and ### with space
+        if (trimmed.match(/^#{2,3}\s/)) {
+            hasFoundAnyHeader = true;
             // Close previous card
             if (isInsideCard) {
                 timelineHtml += createCardHtml(currentCardTitle, currentCardContent);
             }
             // Start new card
-            currentCardTitle = trimmed.replace(/^##\s+/, '');
+            currentCardTitle = trimmed.replace(/^#{2,3}\s+/, '');
             currentCardContent = '';
             isInsideCard = true;
         } else {
@@ -266,6 +264,12 @@ function formatAIMessage(text) {
     // Close final card
     if (isInsideCard) {
         timelineHtml += createCardHtml(currentCardTitle, currentCardContent);
+    }
+
+    // Fallback: If no headers found, or parsing resulted in empty content (but text exists),
+    // treat as standard list text.
+    if (!hasFoundAnyHeader || (!timelineHtml && !introTextRaw.trim())) {
+         return `<div class="p-2 space-y-2">${processTextBlocks(safeText)}</div>`;
     }
 
     let finalHtml = '';
