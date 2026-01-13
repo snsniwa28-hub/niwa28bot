@@ -274,7 +274,7 @@ function formatAIMessage(text) {
     }
 
     if (timelineHtml) {
-        finalHtml += `<div class="relative border-l-4 border-indigo-100 ml-3 my-6 pr-2 space-y-8">${timelineHtml}</div>`;
+        finalHtml += `<div class="space-y-6">${timelineHtml}</div>`;
     }
 
     return finalHtml;
@@ -291,17 +291,17 @@ function createCardHtml(title, contentRaw) {
     const bodyHtml = createCardBodyHtml(contentRaw);
 
     return `
-        <div class="relative pl-6 group mb-8 last:mb-0">
-            <!-- Timeline Dot -->
-            <div class="absolute -left-[11px] top-1.5 w-5 h-5 rounded-full bg-white border-4 border-indigo-400 shadow-sm group-hover:border-indigo-600 transition-colors z-10"></div>
-
+        <div class="mb-8 last:mb-0">
             <!-- Header (Date) -->
-            <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2 group-hover:text-indigo-700 transition-colors bg-slate-50/50 p-2 rounded-lg -ml-2">
-                ${processInlineFormatting(title)}
-            </h3>
+            <div class="flex items-center gap-2 mb-4 border-b border-indigo-100 pb-2">
+                <span class="text-2xl">🗓</span>
+                <h3 class="text-lg font-black text-indigo-600">
+                    ${processInlineFormatting(title)}
+                </h3>
+            </div>
 
             <!-- Content -->
-            <div class="text-slate-600 pl-1">
+            <div class="text-slate-700 pl-1 space-y-3">
                 ${bodyHtml}
             </div>
         </div>
@@ -350,23 +350,33 @@ function createCardBodyHtml(contentRaw) {
             const timeStr = match[1];
             const contentStr = match[2];
             processedContent += `
-                <div class="flex gap-3 items-baseline mb-2 group/time">
-                    <div class="w-14 shrink-0 text-right font-bold text-indigo-600 text-sm bg-indigo-50 px-1 rounded">${timeStr}</div>
-                    <div class="relative flex-1 pb-2 border-l-2 border-indigo-100 pl-4 ml-1">
-                        <div class="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-200 group-hover/time:bg-indigo-400 transition-colors"></div>
-                        <div class="text-sm text-slate-700 leading-relaxed">${processInlineFormatting(contentStr)}</div>
-                    </div>
+                <div class="flex gap-3 items-baseline mb-2 bg-indigo-50/50 p-2 rounded-lg">
+                    <div class="shrink-0 font-black text-indigo-600 text-sm">${timeStr}</div>
+                    <div class="text-sm text-slate-700 font-bold leading-relaxed">${processInlineFormatting(contentStr)}</div>
                 </div>`;
         }
-        // 4. List Items (- ..., ・ ..., * ...)
+        // 4. List Items with Emoji (Checking for emoji at start)
+        // Regex detects lines starting with emoji like ✅, ⚠️, ℹ️, etc.
+        else if (trimmed.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})/u)) {
+             if (!inList) {
+                processedContent += '<ul class="space-y-4 mb-3">';
+                inList = true;
+            }
+            // No bullet point needed, the emoji is the bullet
+             processedContent += `
+                <li class="flex items-start gap-3 text-sm text-slate-700 leading-relaxed">
+                    ${processInlineFormatting(trimmed)}
+                </li>`;
+        }
+        // 5. Standard List Items (- ..., ・ ..., * ...)
         else if (trimmed.match(/^[-・*]\s+/)) {
             if (!inList) {
-                processedContent += '<ul class="space-y-2 mb-3 ml-2">';
+                processedContent += '<ul class="space-y-3 mb-3 ml-1">';
                 inList = true;
             }
             const listText = trimmed.replace(/^[-・*]\s+/, '');
             processedContent += `
-                <li class="flex items-start gap-2 text-sm text-slate-600 pl-1">
+                <li class="flex items-start gap-2 text-sm text-slate-600">
                     <span class="text-indigo-400 mt-1.5 text-[8px]">●</span>
                     <span class="flex-1 leading-relaxed">${processInlineFormatting(listText)}</span>
                 </li>`;
