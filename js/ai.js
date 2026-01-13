@@ -237,7 +237,8 @@ function formatAIMessage(text) {
     }
 
     const lines = safeText.split('\n');
-    let html = '';
+    let introHtml = '';
+    let timelineHtml = '';
     let currentCardContent = '';
     let currentCardTitle = '';
     let isInsideCard = false;
@@ -248,7 +249,7 @@ function formatAIMessage(text) {
         if (trimmed.startsWith('## ')) {
             // Close previous card
             if (isInsideCard) {
-                html += createCardHtml(currentCardTitle, currentCardContent);
+                timelineHtml += createCardHtml(currentCardTitle, currentCardContent);
             }
             // Start new card
             currentCardTitle = trimmed.replace(/^##\s+/, '');
@@ -260,7 +261,7 @@ function formatAIMessage(text) {
             } else {
                 // Content before the first header is displayed as standard text block
                 if (trimmed) {
-                    html += `<div class="mb-4 leading-relaxed text-slate-700">${processInlineFormatting(line)}</div>`;
+                    introHtml += `<div class="mb-4 leading-relaxed text-slate-700">${processInlineFormatting(line)}</div>`;
                 }
             }
         }
@@ -268,10 +269,15 @@ function formatAIMessage(text) {
 
     // Close final card
     if (isInsideCard) {
-        html += createCardHtml(currentCardTitle, currentCardContent);
+        timelineHtml += createCardHtml(currentCardTitle, currentCardContent);
     }
 
-    return html;
+    let finalHtml = introHtml;
+    if (timelineHtml) {
+        finalHtml += `<div class="relative border-l-4 border-indigo-100 ml-3 my-6 pr-2 space-y-8">${timelineHtml}</div>`;
+    }
+
+    return finalHtml;
 }
 
 function createCardHtml(title, contentRaw) {
@@ -295,7 +301,8 @@ function createCardHtml(title, contentRaw) {
         else if (trimmed.startsWith('### ')) {
             const subTitle = trimmed.replace(/^###\s+/, '');
             processedContent += `
-                <div class="mt-5 mb-2 text-md font-bold text-slate-700 flex items-center gap-2 border-b border-dashed border-slate-200 pb-1">
+                <div class="mt-4 mb-2 text-md font-bold text-slate-700 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                     ${processInlineFormatting(subTitle)}
                 </div>`;
         }
@@ -306,12 +313,17 @@ function createCardHtml(title, contentRaw) {
     });
 
     return `
-        <div class="mb-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-md transition-shadow duration-300">
-            <div class="bg-gradient-to-r from-slate-50 to-white px-4 py-3 border-b border-slate-100 flex items-center gap-3">
-                 <div class="w-1.5 h-6 bg-indigo-500 rounded-full shadow-sm"></div>
-                 <h2 class="font-bold text-slate-800 text-lg tracking-tight">${processInlineFormatting(title)}</h2>
-            </div>
-            <div class="p-4 bg-white">
+        <div class="relative pl-6 group">
+            <!-- Timeline Dot -->
+            <div class="absolute -left-[11px] top-1.5 w-5 h-5 rounded-full bg-white border-4 border-indigo-400 shadow-sm group-hover:border-indigo-600 transition-colors"></div>
+
+            <!-- Header (Date) -->
+            <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2 group-hover:text-indigo-700 transition-colors">
+                ${processInlineFormatting(title)}
+            </h3>
+
+            <!-- Content -->
+            <div class="text-slate-600 pl-1">
                 ${processedContent}
             </div>
         </div>
