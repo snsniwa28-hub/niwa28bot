@@ -360,16 +360,18 @@ function processInlineFormatting(text) {
 
     // Badge Base Style: Inline Flex to center content, no line-height impact
     // Use inline styles for specific values to avoid bracket conflict with regex
-    const badgeBase = "inline-flex items-center justify-center px-2 py-0.5 mx-0.5 rounded font-bold leading-none shadow-sm align-baseline transform";
+    const badgeBase = "inline-flex items-center justify-center px-2.5 py-0.5 mx-0.5 font-bold leading-none shadow-sm align-baseline transform transition-all";
     const badgeStyle = "font-size: 10px; transform: translateY(-1px);";
 
     return text
         // Clean Bold (No background)
         .replace(/\*\*(.+?)\*\*/g, '<span class="font-black text-slate-800">$1</span>')
-        // Style 1: 【】 Solid Slate (For Headers/Categories)
-        .replace(/【(.+?)】/g, `<span class="${badgeBase} bg-slate-100 text-slate-700 border border-slate-300" style="${badgeStyle}">$1</span>`)
-        // Style 2: [] Lighter Indigo (For Attributes/Tags)
-        .replace(/\[(.+?)\]/g, `<span class="${badgeBase} bg-indigo-50 text-indigo-600 border border-indigo-100" style="${badgeStyle}">$1</span>`);
+        // Style 1: 【】 Strong / Dark (For Headers/Categories)
+        // More rounded, darker background, white text
+        .replace(/【(.+?)】/g, `<span class="${badgeBase} rounded-md bg-slate-600 text-white border border-slate-600 shadow-sm" style="${badgeStyle}">$1</span>`)
+        // Style 2: [] Soft / Colorful (For Attributes/Tags)
+        // Rounded, colorful background, dark text
+        .replace(/\[(.+?)\]/g, `<span class="${badgeBase} rounded bg-indigo-50 text-indigo-600 border border-indigo-100" style="${badgeStyle}">$1</span>`);
 }
 
 function addMessageToUI(role, text, isLoading = false, id = null) {
