@@ -357,12 +357,18 @@ function createCardBodyHtml(contentRaw) {
 
 function processInlineFormatting(text) {
     if (!text) return "";
+
+    // Badge Base Style: Inline Flex to center content, no line-height impact
+    // translate-y-[-1px] to optical alignment with text
+    const badgeBase = "inline-flex items-center justify-center px-2 py-0.5 mx-0.5 rounded text-[10px] font-bold leading-none shadow-sm align-baseline transform translate-y-[-1px]";
+
     return text
         // Clean Bold (No background)
         .replace(/\*\*(.+?)\*\*/g, '<span class="font-black text-slate-800">$1</span>')
-        // Badges (Prominent Blue Style)
-        .replace(/【(.+?)】/g, '<span class="inline-block bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded border border-indigo-200 mx-1 align-middle shadow-sm" style="font-size: 10px;">$1</span>')
-        .replace(/\[(.+?)\]/g, '<span class="inline-block bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded border border-indigo-200 mx-1 align-middle shadow-sm" style="font-size: 10px;">$1</span>');
+        // Style 1: 【】 Solid Slate (For Headers/Categories)
+        .replace(/【(.+?)】/g, `<span class="${badgeBase} bg-slate-100 text-slate-700 border border-slate-300">$1</span>`)
+        // Style 2: [] Lighter Indigo (For Attributes/Tags)
+        .replace(/\[(.+?)\]/g, `<span class="${badgeBase} bg-indigo-50 text-indigo-600 border border-indigo-100">$1</span>`);
 }
 
 function addMessageToUI(role, text, isLoading = false, id = null) {
