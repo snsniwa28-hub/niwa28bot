@@ -291,17 +291,17 @@ function createCardHtml(title, contentRaw) {
     const bodyHtml = createCardBodyHtml(contentRaw);
 
     return `
-        <div class="mb-8 last:mb-0">
+        <div class="mb-6 last:mb-0">
             <!-- Header (Date) -->
-            <div class="flex items-center gap-2 mb-4 border-b border-indigo-100 pb-2">
-                <span class="text-2xl">🗓</span>
-                <h3 class="text-lg font-black text-indigo-600">
+            <div class="flex items-center gap-2 mb-3 border-b border-indigo-100 pb-1">
+                <span class="text-xl">🗓</span>
+                <h3 class="text-base font-black text-indigo-600">
                     ${processInlineFormatting(title)}
                 </h3>
             </div>
 
             <!-- Content -->
-            <div class="text-slate-700 pl-1 space-y-3">
+            <div class="pl-1 space-y-3">
                 ${bodyHtml}
             </div>
         </div>
@@ -311,93 +311,54 @@ function createCardHtml(title, contentRaw) {
 function createCardBodyHtml(contentRaw) {
     let processedContent = '';
     const lines = contentRaw.split('\n');
-    let inList = false;
 
     lines.forEach((line) => {
-        let trimmed = line.trim();
-        if (!trimmed) {
-            if (inList) {
-                processedContent += '</ul>';
-                inList = false;
-            }
-            return;
+        let text = line.trim();
+        if (!text) return;
+
+        // Clean up markdown bullets if they precede an emoji
+        if (text.match(/^[-*・]\s+(\p{Emoji_Presentation}|\p{Extended_Pictographic})/u)) {
+             text = text.replace(/^[-*・]\s+/, '');
         }
 
-        // 1. Alert Box (> ...)
-        if (trimmed.startsWith('&gt; ') || trimmed.startsWith('> ')) {
-             if (inList) { processedContent += '</ul>'; inList = false; }
-             const alertText = trimmed.replace(/^(&gt;|>)\s+/, '');
-             processedContent += `
-                <div class="my-3 p-3 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r text-sm font-bold shadow-sm flex gap-3 items-start animate-pulse-subtle">
-                    <span class="text-xl shrink-0">⚠️</span>
-                    <span class="pt-0.5">${processInlineFormatting(alertText)}</span>
-                </div>`;
+        // Convert specific prefixes
+        if (text.startsWith('&gt; ') || text.startsWith('> ')) {
+             text = '⚠️ ' + text.replace(/^(&gt;|>)\s*/, '');
         }
-        // 2. Sub-header (### ...)
-        else if (trimmed.startsWith('### ')) {
-            if (inList) { processedContent += '</ul>'; inList = false; }
-            const subTitle = trimmed.replace(/^###\s+/, '');
-            processedContent += `
-                <div class="mt-5 mb-3 text-base font-bold text-slate-700 flex items-center gap-2 border-b border-slate-100 pb-1">
-                    <span class="w-1.5 h-4 bg-indigo-500 rounded-full"></span>
-                    ${processInlineFormatting(subTitle)}
-                </div>`;
+
+        // Extract bullet (Emoji or Default)
+        let bullet = '';
+        let content = text;
+
+        const emojiMatch = text.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})/u);
+        if (emojiMatch) {
+            bullet = emojiMatch[0];
+            content = text.substring(emojiMatch[0].length).trim();
+        } else if (text.match(/^[-*・]/)) {
+            bullet = '<span class="text-indigo-400 text-[10px] relative top-[2px]">●</span>';
+            content = text.replace(/^[-*・]\s*/, '');
         }
-        // 3. Time Schedule (15:00 ..., 9時 ...)
-        else if (trimmed.match(/^(\d{1,2}:\d{2}|\d{1,2}時)\s+/)) {
-            if (inList) { processedContent += '</ul>'; inList = false; }
-            const match = trimmed.match(/^(\d{1,2}:\d{2}|\d{1,2}時)\s+(.*)/);
-            const timeStr = match[1];
-            const contentStr = match[2];
-            processedContent += `
-                <div class="flex gap-3 items-baseline mb-2 bg-indigo-50/50 p-2 rounded-lg">
-                    <div class="shrink-0 font-black text-indigo-600 text-sm">${timeStr}</div>
-                    <div class="text-sm text-slate-700 font-bold leading-relaxed">${processInlineFormatting(contentStr)}</div>
-                </div>`;
-        }
-        // 4. List Items with Emoji (Checking for emoji at start)
-        // Regex detects lines starting with emoji like ✅, ⚠️, ℹ️, etc.
-        else if (trimmed.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})/u)) {
-             if (!inList) {
-                processedContent += '<ul class="space-y-4 mb-3">';
-                inList = true;
-            }
-            // No bullet point needed, the emoji is the bullet
-             processedContent += `
-                <li class="flex items-start gap-3 text-sm text-slate-700 leading-relaxed">
-                    ${processInlineFormatting(trimmed)}
-                </li>`;
-        }
-        // 5. Standard List Items (- ..., ・ ..., * ...)
-        else if (trimmed.match(/^[-・*]\s+/)) {
-            if (!inList) {
-                processedContent += '<ul class="space-y-3 mb-3 ml-1">';
-                inList = true;
-            }
-            const listText = trimmed.replace(/^[-・*]\s+/, '');
-            processedContent += `
-                <li class="flex items-start gap-2 text-sm text-slate-600">
-                    <span class="text-indigo-400 mt-1.5 text-[8px]">●</span>
-                    <span class="flex-1 leading-relaxed">${processInlineFormatting(listText)}</span>
-                </li>`;
-        }
-        // 5. Standard Text
-        else {
-            if (inList) { processedContent += '</ul>'; inList = false; }
-            processedContent += `<div class="mb-2 leading-relaxed text-slate-600 text-[15px]">${processInlineFormatting(trimmed)}</div>`;
-        }
+
+        // Render Row
+        processedContent += `
+            <div class="flex items-start gap-3 text-sm text-slate-700 leading-relaxed group/item">
+                <span class="shrink-0 w-5 text-center select-none">${bullet}</span>
+                <span class="flex-1">${processInlineFormatting(content)}</span>
+            </div>
+        `;
     });
 
-    if (inList) { processedContent += '</ul>'; }
     return processedContent;
 }
 
 function processInlineFormatting(text) {
     if (!text) return "";
     return text
-        .replace(/\*\*(.+?)\*\*/g, '<span class="font-bold text-slate-800 bg-yellow-100 px-1 py-0.5 rounded mx-1">$1</span>')
-        .replace(/【(.+?)】/g, '<span class="inline-block bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded border border-slate-200 mx-1">$1</span>')
-        .replace(/\[(.+?)\]/g, '<span class="inline-block bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded border border-slate-200 mx-1">$1</span>');
+        // Clean Bold (No background)
+        .replace(/\*\*(.+?)\*\*/g, '<span class="font-black text-slate-800">$1</span>')
+        // Badges (Keep style but ensure it fits new clean look)
+        .replace(/【(.+?)】/g, '<span class="inline-block bg-slate-100 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-200 mx-1 align-middle">$1</span>')
+        .replace(/\[(.+?)\]/g, '<span class="inline-block bg-slate-100 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-200 mx-1 align-middle">$1</span>');
 }
 
 function addMessageToUI(role, text, isLoading = false, id = null) {
