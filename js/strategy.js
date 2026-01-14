@@ -6,7 +6,7 @@ import { parseFile } from './file_parser.js';
 // --- State ---
 let strategies = [];
 let editingId = null; // nullなら新規作成
-let currentCategory = 'all'; // 'all', 'pachinko', 'slot', 'cs', 'strategy'
+let currentCategory = 'unified'; // Default to unified
 let isStrategyAdmin = false;
 let isKnowledgeMode = false;
 let tempPdfImages = []; // Stores images converted from PDF
@@ -21,18 +21,9 @@ export async function loadStrategies() {
 }
 
 // Function to trigger global summary update
-async function updateCategorySummary(category) {
-    // If the category is one of the teams, we update the unified summary.
-    // We ignore CS as per user request.
+async function updateCategorySummary(ignoredCategory) {
+    // 常に 'unified' (全チーム統合) サマリーを更新する
     const targetCategories = ['pachinko', 'slot', 'strategy'];
-    const isUnifiedTarget = targetCategories.includes(category);
-
-    // If it's not a target category (and not forced 'unified'), we might skip or do legacy behavior.
-    // But for this request, we treat any update to these categories as a trigger for the Unified Summary.
-    const updateTarget = isUnifiedTarget ? 'unified' : category;
-
-    // If 'all' or 'cs' or unknown, we might return, but let's stick to the plan.
-    if (!updateTarget || updateTarget === 'all' || updateTarget === 'cs') return;
 
     try {
         updateLoadingMessage("全チームの情報を統合中...");
@@ -40,13 +31,13 @@ async function updateCategorySummary(category) {
         // 1. Fetch ALL valid strategies from target categories
         const todayStr = new Date().toISOString().split('T')[0];
 
-        // 最新50件を取得（リスト表示と同じロジックにする）
+        // 最新50件を取得
         const q = query(collection(db, "strategies"), orderBy("updatedAt", "desc"), limit(50));
         const snapshot = await getDocs(q);
 
-        // メモリ上でフィルタリング（カテゴリ未設定の場合は'strategy'とみなす）
+        // ターゲットカテゴリに含まれるドキュメントのみ抽出
         const validDocs = snapshot.docs.map(d => d.data()).filter(d => {
-            const cat = d.category || 'strategy';
+            const cat = d.category || 'strategy'; // デフォルトフォールバック（念のため）
             return targetCategories.includes(cat);
         });
 
@@ -124,13 +115,19 @@ export async function saveStrategy() {
     const textInput = document.getElementById('strategy-editor-text');
     const aiContextInput = document.getElementById('strategy-ai-context');
 
-    const category = categorySelect ? categorySelect.value : 'strategy';
+    const category = categorySelect ? categorySelect.value : '';
     const type = 'article';
+
+    // 必須チェック: カテゴリ選択
+    if (!category) {
+        alert("チーム（カテゴリ）を選択してください。");
+        return;
+    }
 
     // Auto-generate title if empty
     let titleVal = titleInput.value.trim();
+    const catMap = { 'pachinko': 'パチンコ', 'slot': 'スロット', 'strategy': '戦略' };
     if (!titleVal) {
-        const catMap = { 'pachinko': 'パチンコ', 'slot': 'スロット', 'strategy': '戦略' };
         titleVal = `【${catMap[category] || category}】共有事項`;
     }
 
@@ -210,8 +207,8 @@ export async function saveStrategy() {
         const docRef = editingId ? doc(db, "strategies", editingId) : doc(collection(db, "strategies"));
         await setDoc(docRef, data, { merge: true });
 
-        // --- Trigger Global Summary Update ---
-        await updateCategorySummary(category);
+        // --- Trigger Global Summary Update (Always Unified) ---
+        await updateCategorySummary('unified');
 
         hideLoadingOverlay();
         closeStrategyEditor();
@@ -225,16 +222,11 @@ export async function saveStrategy() {
 
 export async function deleteStrategy(id) {
     showConfirmModal("削除確認", "この記事を削除しますか？", async () => {
-        // Get category before deleting to update summary
-        const item = strategies.find(s => s.id === id);
-        const category = item ? item.category : null;
-
         await deleteDoc(doc(db, "strategies", id));
         showToast("削除しました");
 
-        if (category) {
-            await updateCategorySummary(category);
-        }
+        // 削除後もUnifiedサマリーを更新
+        await updateCategorySummary('unified');
 
         loadStrategies();
     });
@@ -243,7 +235,7 @@ export async function deleteStrategy(id) {
 // --- UI Rendering (Viewer) ---
 export function setStrategyCategory(category) {
     isKnowledgeMode = false;
-    currentCategory = category;
+    currentCategory = 'unified'; // Force unified
     renderStrategyList();
     updateHeaderUI();
 }
@@ -299,22 +291,12 @@ function updateHeaderUI() {
             knowledgeBtn.classList.remove('bg-white', 'text-slate-500');
         }
     } else {
-        const config = {
-            'pachinko': { title: 'パチンコ共有', icon: '🅿️', color: 'text-pink-600', bg: 'bg-pink-50' },
-            'slot': { title: 'スロット共有', icon: '🎰', color: 'text-purple-600', bg: 'bg-purple-50' },
-            'cs': { title: 'CSチーム共有', icon: '🤝', color: 'text-orange-600', bg: 'bg-orange-50' },
-            'strategy': { title: '月間戦略', icon: '📈', color: 'text-red-600', bg: 'bg-red-50' },
-            'unified': { title: '各チームの伝達', icon: '📋', color: 'text-slate-800', bg: 'bg-slate-50' },
-            'all': { title: '社内共有・戦略', icon: '📋', color: 'text-slate-800', bg: 'bg-slate-50' }
-        };
-
-        const c = config[currentCategory] || config['all'];
-
+        // Unified Header
         if(titleEl) {
-            titleEl.textContent = c.title;
-            titleEl.className = `font-black text-lg ${c.color}`;
+            titleEl.textContent = "社内共有・戦略（全体）";
+            titleEl.className = "font-black text-lg text-slate-800";
         }
-        if(iconEl) iconEl.textContent = c.icon;
+        if(iconEl) iconEl.textContent = "📋";
 
         if(knowledgeBtn) {
             knowledgeBtn.classList.remove('bg-indigo-100', 'text-indigo-700', 'border-indigo-300');
@@ -322,14 +304,10 @@ function updateHeaderUI() {
         }
     }
 
-    // AI Button Logic
+    // AI Button Logic - Always Open Unified
     if (aiBtn) {
         aiBtn.onclick = () => {
-            if (['pachinko', 'slot', 'strategy'].includes(currentCategory)) {
-                window.toggleAIChat('unified', '各チームの伝達');
-            } else {
-                window.toggleAIChat(currentCategory, isKnowledgeMode ? "知識ベース" : (currentCategory === 'all' ? '社内資料' : currentCategory));
-            }
+            window.toggleAIChat('unified', '各チームの伝達');
         };
     }
 
@@ -367,7 +345,6 @@ function renderStrategyList() {
             <button id="k-filter-strategy" onclick="window.setKnowledgeFilter('strategy')">戦略</button>
         `;
         container.appendChild(filterBar);
-        // Apply active styles after appending
         setTimeout(updateKnowledgeFilterUI, 0);
     }
 
@@ -375,23 +352,22 @@ function renderStrategyList() {
         const cat = s.category || 'strategy';
 
         if (isKnowledgeMode) {
-            // In Knowledge Mode, we show ALL items unless filtered by the new buttons
-            // AND ensure isKnowledge is true
             if (s.isKnowledge !== true) return false;
-
             if (knowledgeFilter === 'all') return true;
             return cat === knowledgeFilter;
         } else {
-            // Normal View Logic (per category)
-            let isCatMatch = false;
-            if (!currentCategory || currentCategory === 'all') {
-                isCatMatch = true;
-            } else if (currentCategory === 'unified') {
-                isCatMatch = ['pachinko', 'slot', 'strategy'].includes(cat);
-            } else {
-                isCatMatch = cat === currentCategory;
-            }
-            return isCatMatch;
+            // Unified View - Show all posts from target categories
+            // 'cs' is excluded from unified view as per original logic,
+            // but user said "Unified type... remove filtering".
+            // However, CS was explicitly separated usually.
+            // "Internal Sharing / Strategy" usually implies the 3 main ones.
+            // I will keep showing all strategies that are in the list.
+            // The list `strategies` is loaded from Firestore `strategies` collection.
+            // If CS is in there, it will show.
+            // Let's filter out 'cs' if it's strictly the "Strategy" modal?
+            // The user said "Eliminate filtering by currentCategory".
+            // So I will show everything in the collection.
+            return true;
         }
     });
 
@@ -406,24 +382,21 @@ function renderStrategyList() {
         return;
     }
 
+    const teamMap = { 'pachinko': 'パチンコ', 'slot': 'スロット', 'strategy': '戦略' };
+
     filtered.forEach(item => {
         const date = item.updatedAt ? new Date(item.updatedAt.toDate()).toLocaleDateString() : '---';
         const card = document.createElement('div');
         card.className = "bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden mb-4 transition hover:shadow-xl animate-fade-in";
         const showControls = isStrategyAdmin || isKnowledgeMode;
 
-        // Simplified Card for Management
         const aiStatus = item.ai_summary
             ? '<span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">✅ AI把握済</span>'
             : '<span class="text-[10px] bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full border border-yellow-200">⚠️ 未解析</span>';
 
-        // Team Badge for Knowledge Mode
-        let teamBadge = "";
-        if (isKnowledgeMode) {
-            const teamMap = { 'pachinko': 'パチンコ', 'slot': 'スロット', 'strategy': '戦略' };
-            const teamName = teamMap[item.category] || item.category;
-            teamBadge = `<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200 font-bold mr-2">[${teamName}]</span>`;
-        }
+        // Badge Logic - Always show badge in Unified View
+        const teamName = teamMap[item.category] || item.category;
+        const teamBadge = `<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200 font-bold mr-2">[${teamName}]</span>`;
 
         let html = `
             <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
@@ -461,13 +434,14 @@ export function openStrategyEditor(id = null) {
     const editorContainer = document.getElementById('strategy-article-editor');
     editorContainer.innerHTML = '';
 
-    // Inject New Simplified Form
+    // Inject Form with Strict Category Selection
     editorContainer.innerHTML = `
         <div class="space-y-6">
-            <!-- Category Selection -->
+            <!-- Category Selection (Strict) -->
             <div>
-                 <label class="block text-xs font-bold text-slate-400 mb-1">共有するチームを選択</label>
+                 <label class="block text-xs font-bold text-slate-400 mb-1">共有するチームを選択 <span class="text-red-500">*必須</span></label>
                  <select id="strategy-editor-category" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="" selected>チームを選択してください</option>
                     <option value="pachinko">🅿️ パチンコチーム</option>
                     <option value="slot">🎰 スロットチーム</option>
                     <option value="strategy">📈 戦略チーム</option>
@@ -509,26 +483,15 @@ export function openStrategyEditor(id = null) {
 
     tempPdfImages = [];
 
-    // Handle Category Locking
-    if (currentCategory && currentCategory !== 'all' && !id) {
-        categorySelect.value = currentCategory;
-        // In Knowledge Mode, allow changing category even if we were in a view
-        if(!isKnowledgeMode) {
-             categorySelect.disabled = true;
-             categorySelect.classList.add('opacity-50', 'cursor-not-allowed');
-        }
-    } else {
-        categorySelect.disabled = false;
-        categorySelect.classList.remove('opacity-50', 'cursor-not-allowed');
-    }
-
     if (id) {
         const item = strategies.find(s => s.id === id);
         if (item) {
             titleInput.value = item.title;
-            categorySelect.value = item.category || 'strategy';
+            categorySelect.value = item.category || ''; // If legacy data missing category, force select
+
+            // Allow changing category in edit mode if needed, or lock it?
+            // Usually edit allows correction.
             categorySelect.disabled = false;
-            categorySelect.classList.remove('opacity-50');
 
             if (item.text_content) textInput.value = item.text_content;
             if (item.ai_context) aiContextInput.value = item.ai_context;
@@ -539,6 +502,7 @@ export function openStrategyEditor(id = null) {
             }
         }
     } else {
+        // New Mode - Category defaults to empty (from HTML)
         titleInput.value = '';
         textInput.value = '';
         aiContextInput.value = '';
@@ -598,7 +562,8 @@ window.setKnowledgeFilter = setKnowledgeFilter;
 
 window.openInternalSharedModal = (category = 'unified') => {
     isStrategyAdmin = false;
-    setStrategyCategory(category);
+    // Always unified for viewers
+    setStrategyCategory('unified');
     const modal = document.getElementById('internalSharedModal');
     if (modal) {
         modal.classList.remove('hidden');
@@ -609,7 +574,7 @@ window.openInternalSharedModal = (category = 'unified') => {
 export function openStrategyAdmin(category) {
     isStrategyAdmin = true;
     isKnowledgeMode = true; // Force Knowledge Mode for Admin View from Chat
-    setStrategyCategory(category);
+    setStrategyCategory(category || 'unified');
     const modal = document.getElementById('internalSharedModal');
     if (modal) {
         modal.classList.remove('hidden');
