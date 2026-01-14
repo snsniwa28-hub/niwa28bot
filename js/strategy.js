@@ -6,14 +6,17 @@ import { parseFile } from './file_parser.js';
 // --- State ---
 let strategies = [];
 let editingId = null; // nullなら新規作成
-let currentCategory = 'all'; // 'all', 'pachinko', 'slot', 'cs', 'strategy'
+// currentCategoryは「表示フィルタ」としては廃止するが、
+// 以前のコードとの互換性や管理モード(isKnowledgeMode)の判定用に一応変数は残す（基本使わない）
+let currentCategory = 'all';
 let isStrategyAdmin = false;
 let isKnowledgeMode = false;
 let tempPdfImages = []; // Stores images converted from PDF
-let knowledgeFilter = 'all'; // 'all', 'pachinko', 'slot', 'strategy'
+let knowledgeFilter = 'all'; // 知識モード用のフィルタ
 
 // --- Firestore Operations ---
 export async function loadStrategies() {
+    // 常に全件取得（フィルタなし）
     const q = query(collection(db, "strategies"), orderBy("updatedAt", "desc"), limit(50));
     const snapshot = await getDocs(q);
     strategies = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -21,34 +24,19 @@ export async function loadStrategies() {
 }
 
 // Function to trigger global summary update
-async function updateCategorySummary(category) {
-    // If the category is one of the teams, we update the unified summary.
-    // We ignore CS as per user request.
-    const targetCategories = ['pachinko', 'slot', 'strategy'];
-    const isUnifiedTarget = targetCategories.includes(category);
-
-    // If it's not a target category (and not forced 'unified'), we might skip or do legacy behavior.
-    // But for this request, we treat any update to these categories as a trigger for the Unified Summary.
-    const updateTarget = isUnifiedTarget ? 'unified' : category;
-
-    // If 'all' or 'cs' or unknown, we might return, but let's stick to the plan.
-    if (!updateTarget || updateTarget === 'all' || updateTarget === 'cs') return;
-
+// 引数 category は互換性のために残すが、内部では無視して 'unified' を更新する
+async function updateCategorySummary(category_ignored) {
     try {
         updateLoadingMessage("全チームの情報を統合中...");
 
-        // 1. Fetch ALL valid strategies from target categories
+        // 1. Fetch ALL valid strategies (直近50件)
         const todayStr = new Date().toISOString().split('T')[0];
 
-        // 最新50件を取得（リスト表示と同じロジックにする）
         const q = query(collection(db, "strategies"), orderBy("updatedAt", "desc"), limit(50));
         const snapshot = await getDocs(q);
 
-        // メモリ上でフィルタリング（カテゴリ未設定の場合は'strategy'とみなす）
-        const validDocs = snapshot.docs.map(d => d.data()).filter(d => {
-            const cat = d.category || 'strategy';
-            return targetCategories.includes(cat);
-        });
+        // 全データを対象とする（ゴミデータ除外程度）
+        const validDocs = snapshot.docs.map(d => d.data()).filter(d => d.title);
 
         if (validDocs.length === 0) {
              await setDoc(doc(db, "category_summaries", "unified"), {
@@ -70,7 +58,7 @@ async function updateCategorySummary(category) {
         };
 
         validDocs.forEach(d => {
-            const catName = categoryMap[d.category] || d.category;
+            const catName = categoryMap[d.category] || d.category || '未分類';
             aggregatedContext += `\n--- 【${catName}】${d.title} (${d.relevant_date || "日付なし"}) ---\n`;
             if (d.ai_context) aggregatedContext += d.ai_context + "\n";
             if (d.text_content) aggregatedContext += d.text_content + "\n";
@@ -82,9 +70,9 @@ async function updateCategorySummary(category) {
             }
         });
 
-        updateLoadingMessage("AIがサマリーを執筆中...");
+        updateLoadingMessage("AIが全体サマリーを執筆中...");
 
-        // 3. Call Gemini
+        // 3. Call Gemini (常に unified モード)
         const payload = {
             contextData: aggregatedContext,
             contextImages: aggregatedImages,
@@ -102,9 +90,14 @@ async function updateCategorySummary(category) {
 
         if (resData.reply) {
             let cleanJson = resData.reply.replace(/```json/g, '').replace(/```/g, '').trim();
-            const summaryData = JSON.parse(cleanJson);
+            let summaryData = {};
+            try {
+                summaryData = JSON.parse(cleanJson);
+            } catch (e) {
+                summaryData = { short: resData.reply, full: resData.reply };
+            }
 
-            // 4. Save to Firestore
+            // 4. Save to Firestore (常に unified)
             await setDoc(doc(db, "category_summaries", "unified"), {
                 short: summaryData.short || "",
                 full: summaryData.full || "",
@@ -124,13 +117,21 @@ export async function saveStrategy() {
     const textInput = document.getElementById('strategy-editor-text');
     const aiContextInput = document.getElementById('strategy-ai-context');
 
-    const category = categorySelect ? categorySelect.value : 'strategy';
+    const category = categorySelect ? categorySelect.value : '';
     const type = 'article';
+
+    // --- 【変更点】カテゴリ必須チェック ---
+    if (!category) {
+        alert("【必須】共有するチーム（カテゴリ）を選択してください。");
+        categorySelect.focus();
+        return; // 保存中断
+    }
 
     // Auto-generate title if empty
     let titleVal = titleInput.value.trim();
+    const catMap = { 'pachinko': 'パチンコ', 'slot': 'スロット', 'strategy': '戦略' };
+
     if (!titleVal) {
-        const catMap = { 'pachinko': 'パチンコ', 'slot': 'スロット', 'strategy': '戦略' };
         titleVal = `【${catMap[category] || category}】共有事項`;
     }
 
@@ -175,14 +176,10 @@ export async function saveStrategy() {
 
         if (resData.reply) {
              try {
-                // More robust JSON cleaning
                 let cleanJson = resData.reply.trim();
-                // Remove code blocks
                 if (cleanJson.startsWith('```')) {
                     cleanJson = cleanJson.replace(/^```(json)?/, '').replace(/```$/, '').trim();
                 }
-
-                // Locate JSON object if surrounded by text
                 const jsonStart = cleanJson.indexOf('{');
                 const jsonEnd = cleanJson.lastIndexOf('}');
                 if (jsonStart !== -1 && jsonEnd !== -1) {
@@ -196,22 +193,20 @@ export async function saveStrategy() {
                     if(analysis.ai_details) data.ai_details = analysis.ai_details;
                 }
              } catch(e) {
-                 console.warn("JSON Parse Failed, falling back to raw text:", e);
-                 // Fallback: use the raw reply as summary if it's not JSON
+                 console.warn("JSON Parse Failed", e);
                  data.ai_summary = resData.reply.substring(0, 100) + "...";
                  data.ai_details = resData.reply;
                  data.relevant_date = null;
              }
         } else {
-            console.warn("No reply from AI");
             data.ai_summary = "AI解析応答なし";
         }
 
         const docRef = editingId ? doc(db, "strategies", editingId) : doc(collection(db, "strategies"));
         await setDoc(docRef, data, { merge: true });
 
-        // --- Trigger Global Summary Update ---
-        await updateCategorySummary(category);
+        // --- Trigger Global Summary Update (Always Unified) ---
+        await updateCategorySummary('unified');
 
         hideLoadingOverlay();
         closeStrategyEditor();
@@ -225,23 +220,17 @@ export async function saveStrategy() {
 
 export async function deleteStrategy(id) {
     showConfirmModal("削除確認", "この記事を削除しますか？", async () => {
-        // Get category before deleting to update summary
-        const item = strategies.find(s => s.id === id);
-        const category = item ? item.category : null;
-
         await deleteDoc(doc(db, "strategies", id));
         showToast("削除しました");
-
-        if (category) {
-            await updateCategorySummary(category);
-        }
-
+        // カテゴリに関わらず全体サマリーを更新
+        await updateCategorySummary('unified');
         loadStrategies();
     });
 }
 
 // --- UI Rendering (Viewer) ---
 export function setStrategyCategory(category) {
+    // カテゴリ変数は残すが、表示ロジックでは無視（全表示）する
     isKnowledgeMode = false;
     currentCategory = category;
     renderStrategyList();
@@ -250,9 +239,7 @@ export function setStrategyCategory(category) {
 
 export function toggleKnowledgeList() {
     isKnowledgeMode = !isKnowledgeMode;
-    // Reset filter when toggling mode
     if(isKnowledgeMode) knowledgeFilter = 'all';
-
     renderStrategyList();
     updateHeaderUI();
 }
@@ -299,22 +286,12 @@ function updateHeaderUI() {
             knowledgeBtn.classList.remove('bg-white', 'text-slate-500');
         }
     } else {
-        const config = {
-            'pachinko': { title: 'パチンコ共有', icon: '🅿️', color: 'text-pink-600', bg: 'bg-pink-50' },
-            'slot': { title: 'スロット共有', icon: '🎰', color: 'text-purple-600', bg: 'bg-purple-50' },
-            'cs': { title: 'CSチーム共有', icon: '🤝', color: 'text-orange-600', bg: 'bg-orange-50' },
-            'strategy': { title: '月間戦略', icon: '📈', color: 'text-red-600', bg: 'bg-red-50' },
-            'unified': { title: '各チームの伝達', icon: '📋', color: 'text-slate-800', bg: 'bg-slate-50' },
-            'all': { title: '社内共有・戦略', icon: '📋', color: 'text-slate-800', bg: 'bg-slate-50' }
-        };
-
-        const c = config[currentCategory] || config['all'];
-
+        // --- 【変更点】統合ビューのタイトル固定 ---
         if(titleEl) {
-            titleEl.textContent = c.title;
-            titleEl.className = `font-black text-lg ${c.color}`;
+            titleEl.textContent = "社内共有・戦略（全体）";
+            titleEl.className = "font-black text-lg text-slate-800";
         }
-        if(iconEl) iconEl.textContent = c.icon;
+        if(iconEl) iconEl.textContent = "📋";
 
         if(knowledgeBtn) {
             knowledgeBtn.classList.remove('bg-indigo-100', 'text-indigo-700', 'border-indigo-300');
@@ -322,14 +299,11 @@ function updateHeaderUI() {
         }
     }
 
-    // AI Button Logic
+    // AI Button Logic - Always Unified
     if (aiBtn) {
         aiBtn.onclick = () => {
-            if (['pachinko', 'slot', 'strategy'].includes(currentCategory)) {
-                window.toggleAIChat('unified', '各チームの伝達');
-            } else {
-                window.toggleAIChat(currentCategory, isKnowledgeMode ? "知識ベース" : (currentCategory === 'all' ? '社内資料' : currentCategory));
-            }
+            // 常に全体サマリーを開く
+            window.toggleAIChat('unified', '社内共有・戦略（全体）');
         };
     }
 
@@ -356,7 +330,7 @@ function renderStrategyList() {
     if (!container) return;
     container.innerHTML = '';
 
-    // --- Knowledge Mode Filter UI Injection ---
+    // Knowledge Mode Filter
     if (isKnowledgeMode) {
         const filterBar = document.createElement('div');
         filterBar.className = "flex justify-center gap-2 mb-6";
@@ -367,32 +341,18 @@ function renderStrategyList() {
             <button id="k-filter-strategy" onclick="window.setKnowledgeFilter('strategy')">戦略</button>
         `;
         container.appendChild(filterBar);
-        // Apply active styles after appending
         setTimeout(updateKnowledgeFilterUI, 0);
     }
 
     const filtered = strategies.filter(s => {
-        const cat = s.category || 'strategy';
-
+        // Knowledge Modeではフィルタに従う
         if (isKnowledgeMode) {
-            // In Knowledge Mode, we show ALL items unless filtered by the new buttons
-            // AND ensure isKnowledge is true
             if (s.isKnowledge !== true) return false;
-
             if (knowledgeFilter === 'all') return true;
-            return cat === knowledgeFilter;
-        } else {
-            // Normal View Logic (per category)
-            let isCatMatch = false;
-            if (!currentCategory || currentCategory === 'all') {
-                isCatMatch = true;
-            } else if (currentCategory === 'unified') {
-                isCatMatch = ['pachinko', 'slot', 'strategy'].includes(cat);
-            } else {
-                isCatMatch = cat === currentCategory;
-            }
-            return isCatMatch;
+            return s.category === knowledgeFilter;
         }
+        // --- 【変更点】通常モードは全件表示（フィルタなし） ---
+        return true;
     });
 
     if (filtered.length === 0) {
@@ -412,27 +372,33 @@ function renderStrategyList() {
         card.className = "bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden mb-4 transition hover:shadow-xl animate-fade-in";
         const showControls = isStrategyAdmin || isKnowledgeMode;
 
-        // Simplified Card for Management
         const aiStatus = item.ai_summary
             ? '<span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">✅ AI把握済</span>'
             : '<span class="text-[10px] bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full border border-yellow-200">⚠️ 未解析</span>';
 
-        // Team Badge for Knowledge Mode
-        let teamBadge = "";
-        if (isKnowledgeMode) {
-            const teamMap = { 'pachinko': 'パチンコ', 'slot': 'スロット', 'strategy': '戦略' };
-            const teamName = teamMap[item.category] || item.category;
-            teamBadge = `<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200 font-bold mr-2">[${teamName}]</span>`;
-        }
+        // --- 【変更点】バッジ表示の強化（常時表示） ---
+        const teamMap = { 'pachinko': 'パチンコ', 'slot': 'スロット', 'strategy': '戦略' };
+        const teamName = teamMap[item.category] || item.category || '未分類';
+
+        // カテゴリごとの色分け
+        let badgeColor = "bg-slate-100 text-slate-600 border-slate-200";
+        if (item.category === 'pachinko') badgeColor = "bg-pink-50 text-pink-600 border-pink-100";
+        if (item.category === 'slot') badgeColor = "bg-purple-50 text-purple-600 border-purple-100";
+        if (item.category === 'strategy') badgeColor = "bg-red-50 text-red-600 border-red-100";
+
+        const categoryBadge = `<span class="text-[10px] ${badgeColor} px-2 py-0.5 rounded-full border font-bold mr-2 align-middle">${teamName}</span>`;
 
         let html = `
             <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                     <span class="text-2xl">${item.relevant_date ? '📅' : '📌'}</span>
-                     <div>
-                        <h2 class="text-base font-black text-slate-800 leading-tight mb-1">${teamBadge}${item.title}</h2>
+                <div class="flex items-center gap-3 w-full overflow-hidden">
+                     <span class="text-2xl shrink-0">${item.relevant_date ? '📅' : '📌'}</span>
+                     <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                            ${categoryBadge}
+                            <h2 class="text-base font-black text-slate-800 leading-tight truncate">${item.title}</h2>
+                        </div>
                         <div class="flex items-center gap-2">
-                            <span class="text-[10px] font-bold text-slate-400">
+                            <span class="text-[10px] font-bold text-slate-400 shrink-0">
                                 ${item.relevant_date ? item.relevant_date : '日付なし'} | 更新: ${date}
                             </span>
                             ${aiStatus}
@@ -440,12 +406,17 @@ function renderStrategyList() {
                      </div>
                 </div>
                 ${showControls ? `
-                <div class="flex gap-2 items-center">
-                     <button class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold hover:bg-indigo-100 shadow-sm border border-indigo-100 transition" onclick="window.openStrategyEditor('${item.id}')">✏️ 編集</button>
-                     <button class="text-xs bg-rose-50 text-rose-600 px-3 py-1 rounded-full font-bold hover:bg-rose-100 shadow-sm border border-rose-100 transition" onclick="window.deleteStrategy('${item.id}')">🗑️ 削除</button>
+                <div class="flex gap-2 items-center shrink-0 ml-2">
+                     <button class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold hover:bg-indigo-100 shadow-sm border border-indigo-100 transition" onclick="window.openStrategyEditor('${item.id}')">✏️</button>
+                     <button class="text-xs bg-rose-50 text-rose-600 px-3 py-1 rounded-full font-bold hover:bg-rose-100 shadow-sm border border-rose-100 transition" onclick="window.deleteStrategy('${item.id}')">🗑️</button>
                 </div>
                 ` : ''}
             </div>
+            ${item.ai_summary && item.ai_summary !== 'AI解析応答なし' ? `
+            <div class="p-4 text-xs text-slate-600 bg-white leading-relaxed border-t border-slate-50">
+                <span class="font-bold text-indigo-500">AI要約:</span> ${item.ai_summary.substring(0, 80)}...
+            </div>
+            ` : ''}
         `;
         card.innerHTML = html;
         container.appendChild(card);
@@ -461,33 +432,31 @@ export function openStrategyEditor(id = null) {
     const editorContainer = document.getElementById('strategy-article-editor');
     editorContainer.innerHTML = '';
 
-    // Inject New Simplified Form
+    // --- 【変更点】カテゴリ選択の初期値を空（未選択）にし、必須化 ---
     editorContainer.innerHTML = `
         <div class="space-y-6">
-            <!-- Category Selection -->
-            <div>
-                 <label class="block text-xs font-bold text-slate-400 mb-1">共有するチームを選択</label>
-                 <select id="strategy-editor-category" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+            <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                 <label class="block text-xs font-bold text-indigo-600 mb-2">共有するチームを選択 <span class="text-rose-500">(必須)</span></label>
+                 <select id="strategy-editor-category" class="w-full bg-white border border-indigo-200 rounded-lg px-3 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
+                    <option value="" disabled selected>▼ チームを選択してください</option>
                     <option value="pachinko">🅿️ パチンコチーム</option>
                     <option value="slot">🎰 スロットチーム</option>
                     <option value="strategy">📈 戦略チーム</option>
                  </select>
             </div>
 
-             <!-- Manual Text Input -->
              <div>
                 <label class="block text-xs font-bold text-slate-400 mb-1">件名 (省略可)</label>
-                <input type="text" id="strategy-editor-title" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 mb-2" placeholder="未入力時はチーム名がタイトルになります">
+                <input type="text" id="strategy-editor-title" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 mb-2" placeholder="未入力時は[チーム名]共有事項になります">
 
                 <label class="block text-xs font-bold text-slate-400 mb-1">テキスト入力 (任意)</label>
                 <textarea id="strategy-editor-text" class="w-full bg-white border border-slate-200 rounded-lg p-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 h-32 resize-none" placeholder="伝えたい内容をここに入力..."></textarea>
             </div>
 
-            <!-- File Upload -->
-            <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                <label class="block text-xs font-bold text-indigo-600 mb-2">📂 資料アップロード (PDF / Excel / 画像 / テキスト)</label>
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <label class="block text-xs font-bold text-slate-500 mb-2">📂 資料アップロード (PDF / Excel / 画像 / テキスト)</label>
                 <div class="flex gap-2 items-center mb-2">
-                    <label class="cursor-pointer bg-white text-indigo-600 px-4 py-3 rounded-xl text-sm font-bold border border-indigo-200 hover:bg-indigo-50 transition shadow-sm flex items-center gap-2 w-full justify-center">
+                    <label class="cursor-pointer bg-white text-slate-600 px-4 py-3 rounded-xl text-sm font-bold border border-slate-200 hover:bg-slate-100 transition shadow-sm flex items-center gap-2 w-full justify-center">
                         <span>📄 ファイルを選択</span>
                         <input type="file" accept=".pdf, .xlsx, .xls, .txt, .md, .csv, image/*" class="hidden" onchange="window.handleContextFileUpload(this)">
                     </label>
@@ -495,7 +464,6 @@ export function openStrategyEditor(id = null) {
                 <div id="file-status" class="text-xs text-slate-500 font-bold text-center h-5"></div>
             </div>
 
-            <!-- Hidden Buffer for Extracted Text -->
             <textarea id="strategy-ai-context" class="hidden"></textarea>
         </div>
     `;
@@ -509,26 +477,13 @@ export function openStrategyEditor(id = null) {
 
     tempPdfImages = [];
 
-    // Handle Category Locking
-    if (currentCategory && currentCategory !== 'all' && !id) {
-        categorySelect.value = currentCategory;
-        // In Knowledge Mode, allow changing category even if we were in a view
-        if(!isKnowledgeMode) {
-             categorySelect.disabled = true;
-             categorySelect.classList.add('opacity-50', 'cursor-not-allowed');
-        }
-    } else {
-        categorySelect.disabled = false;
-        categorySelect.classList.remove('opacity-50', 'cursor-not-allowed');
-    }
-
+    // 編集時は既存の値をセット（もしあれば）
     if (id) {
         const item = strategies.find(s => s.id === id);
         if (item) {
             titleInput.value = item.title;
-            categorySelect.value = item.category || 'strategy';
-            categorySelect.disabled = false;
-            categorySelect.classList.remove('opacity-50');
+            // 既存データにカテゴリがない場合のケアは必須だが、基本はある前提
+            categorySelect.value = item.category || '';
 
             if (item.text_content) textInput.value = item.text_content;
             if (item.ai_context) aiContextInput.value = item.ai_context;
@@ -539,10 +494,7 @@ export function openStrategyEditor(id = null) {
             }
         }
     } else {
-        titleInput.value = '';
-        textInput.value = '';
-        aiContextInput.value = '';
-        fileStatus.textContent = '';
+        // 新規作成時は空（HTML側で設定済み）
     }
 }
 
@@ -558,7 +510,7 @@ window.handleContextFileUpload = async (input) => {
         const textarea = document.getElementById('strategy-ai-context');
 
         if(statusEl) statusEl.textContent = '読み込み中...';
-        tempPdfImages = []; // Clear previous images
+        tempPdfImages = [];
 
         try {
             const { text, images, pageCount } = await parseFile(file);
@@ -598,7 +550,8 @@ window.setKnowledgeFilter = setKnowledgeFilter;
 
 window.openInternalSharedModal = (category = 'unified') => {
     isStrategyAdmin = false;
-    setStrategyCategory(category);
+    // 常に統一カテゴリとして開く
+    setStrategyCategory('unified');
     const modal = document.getElementById('internalSharedModal');
     if (modal) {
         modal.classList.remove('hidden');
@@ -608,7 +561,7 @@ window.openInternalSharedModal = (category = 'unified') => {
 
 export function openStrategyAdmin(category) {
     isStrategyAdmin = true;
-    isKnowledgeMode = true; // Force Knowledge Mode for Admin View from Chat
+    isKnowledgeMode = true;
     setStrategyCategory(category);
     const modal = document.getElementById('internalSharedModal');
     if (modal) {
@@ -621,6 +574,7 @@ export function openStrategyAdminAuth(category) {
     showPasswordModal(() => openStrategyAdmin(category));
 }
 
+// 日次更新チェックも常に unified をターゲットにする
 export async function checkAndTriggerDailyUpdate() {
     try {
         const todayStr = new Date().toISOString().split('T')[0];
@@ -633,7 +587,6 @@ export async function checkAndTriggerDailyUpdate() {
             needsUpdate = true;
         } else {
             const data = docSnap.data();
-            // 既存の日付チェック
             if (!data.updatedAt) {
                 needsUpdate = true;
             } else {
@@ -643,15 +596,12 @@ export async function checkAndTriggerDailyUpdate() {
                     needsUpdate = true;
                 }
             }
-
-            // ★追加: もし内容が「情報はありません」なら、バグ等で失敗している可能性が高いので再生成させる
             if (data.short === "現在、共有されている情報はありません。") {
                 needsUpdate = true;
             }
         }
 
         if (needsUpdate) {
-            // Show special blocking overlay
             const overlay = document.createElement('div');
             overlay.id = "daily-update-overlay";
             overlay.className = "fixed inset-0 z-[9999] bg-slate-100 flex flex-col items-center justify-center transition-opacity duration-500";
@@ -661,7 +611,7 @@ export async function checkAndTriggerDailyUpdate() {
                         <span class="text-6xl animate-bounce inline-block">🌅</span>
                     </div>
                     <h2 class="text-2xl font-black text-slate-800 mb-2">おはようございます</h2>
-                    <p class="text-sm font-bold text-slate-500 mb-6">本日のチーム情報を準備中...</p>
+                    <p class="text-sm font-bold text-slate-500 mb-6">本日の全体情報を準備中...</p>
 
                     <div class="w-64 h-2 bg-slate-200 rounded-full overflow-hidden mx-auto mb-2">
                         <div class="h-full bg-gradient-to-r from-indigo-400 to-indigo-600 animate-pulse w-full"></div>
@@ -671,10 +621,9 @@ export async function checkAndTriggerDailyUpdate() {
             `;
             document.body.appendChild(overlay);
 
-            // Execute Update
+            // Execute Update (Unified)
             await updateCategorySummary('unified');
 
-            // Hide Overlay
             overlay.style.opacity = '0';
             setTimeout(() => {
                 overlay.remove();
