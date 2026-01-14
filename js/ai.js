@@ -417,4 +417,3 @@ window.toggleAIChat = toggleAIChat;
 window.closeAIChat = closeAIChat;
 window.sendAIMessage = sendAIMessage;
 window.openCategoryChat = (category, name) => toggleAIChat(category, name);
-window.showFullSummary = () => { /* Defined inside module but exposed for onclick */ };
