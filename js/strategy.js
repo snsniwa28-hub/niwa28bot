@@ -464,6 +464,11 @@ export function openStrategyEditor(id = null) {
                 <div id="file-status" class="text-xs text-slate-500 font-bold text-center h-5"></div>
             </div>
 
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <label class="block text-xs font-bold text-indigo-600 mb-2">AIによる要約結果</label>
+                <textarea id="strategy-editor-ai-summary" class="w-full bg-white border border-indigo-200 rounded-lg p-3 text-sm font-medium text-slate-700 outline-none h-24 resize-none" readonly placeholder="AIによる要約がここに表示されます..."></textarea>
+            </div>
+
             <textarea id="strategy-ai-context" class="hidden"></textarea>
         </div>
     `;
@@ -473,6 +478,7 @@ export function openStrategyEditor(id = null) {
     const categorySelect = document.getElementById('strategy-editor-category');
     const textInput = document.getElementById('strategy-editor-text');
     const aiContextInput = document.getElementById('strategy-ai-context');
+    const aiSummaryInput = document.getElementById('strategy-editor-ai-summary');
     const fileStatus = document.getElementById('file-status');
 
     tempPdfImages = [];
@@ -487,6 +493,7 @@ export function openStrategyEditor(id = null) {
 
             if (item.text_content) textInput.value = item.text_content;
             if (item.ai_context) aiContextInput.value = item.ai_context;
+            if (item.ai_summary) aiSummaryInput.value = item.ai_summary;
 
             if (item.ai_images && item.ai_images.length > 0) {
                  tempPdfImages = item.ai_images;
@@ -547,6 +554,7 @@ window.saveStrategy = saveStrategy;
 window.deleteStrategy = deleteStrategy;
 window.toggleKnowledgeList = toggleKnowledgeList;
 window.setKnowledgeFilter = setKnowledgeFilter;
+window.openStrategyAdmin = openStrategyAdmin;
 
 window.openInternalSharedModal = (category = 'unified') => {
     isStrategyAdmin = false;
