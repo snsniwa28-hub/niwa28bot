@@ -40,11 +40,15 @@ async function updateCategorySummary(category) {
         // 1. Fetch ALL valid strategies from target categories
         const todayStr = new Date().toISOString().split('T')[0];
 
-        // Firestore 'in' query supports up to 10 values
-        const q = query(collection(db, "strategies"), where("category", "in", targetCategories));
+        // 最新50件を取得（リスト表示と同じロジックにする）
+        const q = query(collection(db, "strategies"), orderBy("updatedAt", "desc"), limit(50));
         const snapshot = await getDocs(q);
 
-        const validDocs = snapshot.docs.map(d => d.data());
+        // メモリ上でフィルタリング（カテゴリ未設定の場合は'strategy'とみなす）
+        const validDocs = snapshot.docs.map(d => d.data()).filter(d => {
+            const cat = d.category || 'strategy';
+            return targetCategories.includes(cat);
+        });
 
         if (validDocs.length === 0) {
              await setDoc(doc(db, "category_summaries", "unified"), {
