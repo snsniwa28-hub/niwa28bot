@@ -335,10 +335,10 @@ function renderStrategyList() {
         const filterBar = document.createElement('div');
         filterBar.className = "flex justify-center gap-2 mb-6";
         filterBar.innerHTML = `
-            <button id="k-filter-all" onclick="window.setKnowledgeFilter('all')">全て</button>
-            <button id="k-filter-pachinko" onclick="window.setKnowledgeFilter('pachinko')">パチンコ</button>
-            <button id="k-filter-slot" onclick="window.setKnowledgeFilter('slot')">スロット</button>
-            <button id="k-filter-strategy" onclick="window.setKnowledgeFilter('strategy')">戦略</button>
+            <button id="k-filter-all" data-action="filter-knowledge" data-filter="all">全て</button>
+            <button id="k-filter-pachinko" data-action="filter-knowledge" data-filter="pachinko">パチンコ</button>
+            <button id="k-filter-slot" data-action="filter-knowledge" data-filter="slot">スロット</button>
+            <button id="k-filter-strategy" data-action="filter-knowledge" data-filter="strategy">戦略</button>
         `;
         container.appendChild(filterBar);
         setTimeout(updateKnowledgeFilterUI, 0);
@@ -407,8 +407,8 @@ function renderStrategyList() {
                 </div>
                 ${showControls ? `
                 <div class="flex gap-2 items-center shrink-0 ml-2">
-                     <button class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold hover:bg-indigo-100 shadow-sm border border-indigo-100 transition" onclick="window.openStrategyEditor('${item.id}')">✏️</button>
-                     <button class="text-xs bg-rose-50 text-rose-600 px-3 py-1 rounded-full font-bold hover:bg-rose-100 shadow-sm border border-rose-100 transition" onclick="window.deleteStrategy('${item.id}')">🗑️</button>
+                     <button class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold hover:bg-indigo-100 shadow-sm border border-indigo-100 transition" data-action="edit-strategy" data-id="${item.id}">✏️</button>
+                     <button class="text-xs bg-rose-50 text-rose-600 px-3 py-1 rounded-full font-bold hover:bg-rose-100 shadow-sm border border-rose-100 transition" data-action="delete-strategy" data-id="${item.id}">🗑️</button>
                 </div>
                 ` : ''}
             </div>
@@ -458,7 +458,7 @@ export function openStrategyEditor(id = null) {
                 <div class="flex gap-2 items-center mb-2">
                     <label class="cursor-pointer bg-white text-slate-600 px-4 py-3 rounded-xl text-sm font-bold border border-slate-200 hover:bg-slate-100 transition shadow-sm flex items-center gap-2 w-full justify-center">
                         <span>📄 ファイルを選択</span>
-                        <input type="file" accept=".pdf, .xlsx, .xls, .txt, .md, .csv, image/*" class="hidden" onchange="window.handleContextFileUpload(this)">
+                        <input type="file" id="strategy-context-file" accept=".pdf, .xlsx, .xls, .txt, .md, .csv, image/*" class="hidden">
                     </label>
                 </div>
                 <div id="file-status" class="text-xs text-slate-500 font-bold text-center h-5"></div>

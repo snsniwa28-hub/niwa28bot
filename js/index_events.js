@@ -259,4 +259,105 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('send-ai-message-btn')?.addEventListener('click', () => {
         window.sendAIMessage();
     });
+
+    // --- Part 3: Dynamic Content Delegation ---
+
+    // Internal Shared Modal Body Delegation (Strategies, etc.)
+    document.getElementById('internalSharedModal')?.addEventListener('click', (e) => {
+        // Strategy Slideshow
+        const slidePrev = e.target.closest('[data-action="strategy-slide-prev"]');
+        if (slidePrev) {
+            window.changeStrategySlide(-1);
+            return;
+        }
+        const slideNext = e.target.closest('[data-action="strategy-slide-next"]');
+        if (slideNext) {
+            window.changeStrategySlide(1);
+            return;
+        }
+
+        // Strategy Actions (Edit/Delete)
+        const editBtn = e.target.closest('[data-action="edit-strategy"]');
+        if (editBtn) {
+            window.openStrategyEditor(editBtn.dataset.id);
+            return;
+        }
+        const deleteBtn = e.target.closest('[data-action="delete-strategy"]');
+        if (deleteBtn) {
+            window.deleteStrategy(deleteBtn.dataset.id);
+            return;
+        }
+
+        // Knowledge Filter
+        const filterBtn = e.target.closest('[data-action="filter-knowledge"]');
+        if (filterBtn) {
+            window.setKnowledgeFilter(filterBtn.dataset.filter);
+            return;
+        }
+    });
+
+    // Strategy Context File Upload
+    // Since file inputs don't bubble change events reliably in delegated listeners in some cases,
+    // but here we can try attaching to body or a stable parent if id is not unique or present at init.
+    // However, the file input is inside 'strategy-article-editor' which is dynamic.
+    // We added ID 'strategy-context-file' to it. We can attach a delegated change listener to the modal or document.
+    document.addEventListener('change', (e) => {
+        if (e.target && e.target.id === 'strategy-context-file') {
+            window.handleContextFileUpload(e.target);
+        }
+        if (e.target && e.target.classList.contains('js-calc-trigger')) {
+             window.calcOpTotal(e.target.dataset.time);
+        }
+    });
+
+    // --- Dynamic Modal Delegation (via #modals-container) ---
+    const modalsContainer = document.getElementById('modals-container');
+    if (modalsContainer) {
+        modalsContainer.addEventListener('click', (e) => {
+            const target = e.target;
+
+            // Operations Modal
+            if (target.id === 'btn-cancel-op-input') window.closeOpInput();
+            if (target.id === 'btn-save-op-data') window.saveOpData();
+
+            // Calendar Modal
+            if (target.closest('#btn-close-calendar')) window.closeMonthlyCalendar();
+
+            // QSC Modal
+            if (target.id === 'btn-add-qsc-item') window.addQscItem();
+            if (target.id === 'qscEditButton') window.openQSCModal(); // Logic might differ if toggle
+            if (target.closest('#closeQscModal')) window.closeQscEditModal(); // Note: ID might be closeQscModal in HTML
+            // QSC Tabs
+            if (target.id === 'qscTabUnfinished') window.handleQscTab('未実施');
+            if (target.id === 'qscTabFinished') window.handleQscTab('完了');
+
+            // New Opening Modal
+            if (target.closest('#closeNewOpeningModal')) window.closeNewOpeningModal();
+
+            // Machine Detail Modal
+            if (target.closest('#closeDetailModal')) window.closeDetailModal();
+
+            // Bulk Delete Modal
+            const bulkBtn = target.closest('[data-action="bulk-delete"]');
+            if (bulkBtn) window.requestBulkDelete(bulkBtn.dataset.type, bulkBtn.dataset.shift);
+            if (target.id === 'btn-close-bulk-delete') window.closeBulkDeleteModal();
+
+            // Delete Modal
+            if (target.id === 'btn-cancel-delete') window.cancelDelete();
+            if (target.id === 'btn-confirm-delete') window.confirmDelete();
+
+            // Password Modal
+            if (target.id === 'btn-cancel-password') window.closePasswordModal();
+            if (target.id === 'btn-check-password') window.checkPassword();
+
+            // Select Modal
+            if (target.closest('#btn-close-select-modal-top') || target.id === 'btn-close-select-modal-bottom') {
+                window.closeSelectModal();
+            }
+            if (target.id === 'select-confirm-btn') window.confirmSelection();
+
+            // Remarks Modal
+            if (target.id === 'close-remarks-modal-btn') window.closeRemarksModal();
+        });
+    }
 });
