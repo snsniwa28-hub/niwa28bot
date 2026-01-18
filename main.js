@@ -12,6 +12,7 @@ import { renderModals, renderInfoSections, changeStrategySlide } from './js/comp
 import { getTodayDateString, getYesterdayDateString, getTaskColorClass } from './js/utils.js';
 import * as Auth from './js/auth.js';
 import * as AI from './js/ai.js';
+import './js/index_events.js';
 
 // --- Global Helpers Compatibility (Exposing to Window) ---
 // Many inline HTML onclick handlers expect these to be global.

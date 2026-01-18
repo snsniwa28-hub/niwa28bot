@@ -223,10 +223,10 @@ export function renderInfoSections() {
                 ${slidesHtml}
 
                 <!-- Controls -->
-                <button onclick="changeStrategySlide(-1)" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-10">
+                <button data-action="strategy-slide-prev" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-10">
                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
                 </button>
-                <button onclick="changeStrategySlide(1)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-10">
+                <button data-action="strategy-slide-next" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 z-10">
                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 </button>
             </div>
@@ -357,15 +357,15 @@ export function renderModals() {
                     <div class="grid grid-cols-3 gap-3">
                         <div class="op-input-group">
                             <label class="text-blue-500">4円パチンコ</label>
-                            <input type="number" id="in_4p_15" class="op-input" placeholder="0" oninput="window.calcOpTotal('15')">
+                            <input type="number" id="in_4p_15" class="op-input js-calc-trigger" data-time="15" placeholder="0">
                         </div>
                         <div class="op-input-group">
                             <label class="text-yellow-600">1円パチンコ</label>
-                            <input type="number" id="in_1p_15" class="op-input" placeholder="0" oninput="window.calcOpTotal('15')">
+                            <input type="number" id="in_1p_15" class="op-input js-calc-trigger" data-time="15" placeholder="0">
                         </div>
                         <div class="op-input-group">
                             <label class="text-emerald-600">20円スロット</label>
-                            <input type="number" id="in_20s_15" class="op-input" placeholder="0" oninput="window.calcOpTotal('15')">
+                            <input type="number" id="in_20s_15" class="op-input js-calc-trigger" data-time="15" placeholder="0">
                         </div>
                     </div>
                 </div>
@@ -387,23 +387,23 @@ export function renderModals() {
                     <div class="grid grid-cols-3 gap-3">
                         <div class="op-input-group">
                             <label class="text-blue-500">4円パチンコ</label>
-                            <input type="number" id="in_4p_19" class="op-input" placeholder="0" oninput="window.calcOpTotal('19')">
+                            <input type="number" id="in_4p_19" class="op-input js-calc-trigger" data-time="19" placeholder="0">
                         </div>
                         <div class="op-input-group">
                             <label class="text-yellow-600">1円パチンコ</label>
-                            <input type="number" id="in_1p_19" class="op-input" placeholder="0" oninput="window.calcOpTotal('19')">
+                            <input type="number" id="in_1p_19" class="op-input js-calc-trigger" data-time="19" placeholder="0">
                         </div>
                         <div class="op-input-group">
                             <label class="text-emerald-600">20円スロット</label>
-                            <input type="number" id="in_20s_19" class="op-input" placeholder="0" oninput="window.calcOpTotal('19')">
+                            <input type="number" id="in_20s_19" class="op-input js-calc-trigger" data-time="19" placeholder="0">
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="mt-6 flex gap-3">
-                <button onclick="closeOpInput()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl">キャンセル</button>
-                <button onclick="saveOpData()" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700">保存する</button>
+                <button id="btn-cancel-op-input" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl">キャンセル</button>
+                <button id="btn-save-op-data" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700">保存する</button>
             </div>
         </div>
     </div>
@@ -414,7 +414,7 @@ export function renderModals() {
                 <h3 class="text-xl font-black text-slate-800 flex items-center gap-2">
                     <span class="text-2xl">📅</span> 12月 月間稼働推移
                 </h3>
-                <button onclick="closeMonthlyCalendar()" class="p-2 bg-slate-50 rounded-full text-slate-400 hover:bg-slate-100">
+                <button id="btn-close-calendar" class="p-2 bg-slate-50 rounded-full text-slate-400 hover:bg-slate-100">
                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -424,24 +424,24 @@ export function renderModals() {
         </div>
     </div>
 
-    <div id="qscModal" class="modal-overlay hidden"><div class="modal-content w-full max-w-3xl h-[80vh] flex flex-col overflow-hidden"><div class="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0"><div class="flex items-center gap-2"><h3 class="font-bold text-xl text-slate-800">QSC チェックリスト</h3><div class="flex bg-slate-100 p-1 rounded-lg"><button id="qscTabUnfinished" class="px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm">未実施</button><button id="qscTabFinished" class="px-3 py-1 text-xs font-bold rounded-md text-slate-400">完了済</button></div></div><div class="flex items-center gap-2"><button id="qscEditButton" class="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition">⚙️ 管理</button><button id="closeQscModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div></div><div class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6"><div id="qscAddForm" class="hidden mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100"><h4 class="text-xs font-bold text-indigo-600 mb-2 uppercase tracking-widest">新規項目</h4><div class="flex flex-col gap-2"><div class="grid grid-cols-3 gap-2"><input type="number" id="newQscNo" placeholder="No." class="border border-slate-200 rounded p-2 text-sm" min="1"><input type="text" id="newQscArea" placeholder="エリア" class="col-span-2 border border-slate-200 rounded p-2 text-sm"></div><input type="text" id="newQscContent" placeholder="内容" class="border border-slate-200 rounded p-2 text-sm"><div class="flex gap-2"><input type="file" id="newQscImage" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-white file:text-indigo-600 hover:file:bg-indigo-50"><button onclick="addQscItem()" class="bg-indigo-600 text-white font-bold text-sm py-2 px-6 rounded-lg whitespace-nowrap">追加</button></div></div></div><div id="qscListContainer" class="space-y-3"></div></div><div class="p-3 bg-white border-t border-slate-100 text-center"><p class="text-xs text-slate-400 font-bold">チェックを入れると全員に反映されます</p></div></div></div>
+    <div id="qscModal" class="modal-overlay hidden"><div class="modal-content w-full max-w-3xl h-[80vh] flex flex-col overflow-hidden"><div class="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0"><div class="flex items-center gap-2"><h3 class="font-bold text-xl text-slate-800">QSC チェックリスト</h3><div class="flex bg-slate-100 p-1 rounded-lg"><button id="qscTabUnfinished" class="px-3 py-1 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm">未実施</button><button id="qscTabFinished" class="px-3 py-1 text-xs font-bold rounded-md text-slate-400">完了済</button></div></div><div class="flex items-center gap-2"><button id="qscEditButton" class="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition">⚙️ 管理</button><button id="closeQscModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div></div><div class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6"><div id="qscAddForm" class="hidden mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100"><h4 class="text-xs font-bold text-indigo-600 mb-2 uppercase tracking-widest">新規項目</h4><div class="flex flex-col gap-2"><div class="grid grid-cols-3 gap-2"><input type="number" id="newQscNo" placeholder="No." class="border border-slate-200 rounded p-2 text-sm" min="1"><input type="text" id="newQscArea" placeholder="エリア" class="col-span-2 border border-slate-200 rounded p-2 text-sm"></div><input type="text" id="newQscContent" placeholder="内容" class="border border-slate-200 rounded p-2 text-sm"><div class="flex gap-2"><input type="file" id="newQscImage" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-white file:text-indigo-600 hover:file:bg-indigo-50"><button id="btn-add-qsc-item" class="bg-indigo-600 text-white font-bold text-sm py-2 px-6 rounded-lg whitespace-nowrap">追加</button></div></div></div><div id="qscListContainer" class="space-y-3"></div></div><div class="p-3 bg-white border-t border-slate-100 text-center"><p class="text-xs text-slate-400 font-bold">チェックを入れると全員に反映されます</p></div></div></div>
     <div id="newOpeningModal" class="modal-overlay hidden"><div class="modal-content w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"><div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0"><h3 class="font-bold text-xl text-slate-800">導入機種リスト</h3><button id="closeNewOpeningModal" class="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div><div id="newOpeningInfo" class="p-5 overflow-y-auto bg-slate-50/50"></div></div></div>
     <div id="machineDetailModal" class="modal-overlay hidden"><div class="modal-content w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"><div class="bg-slate-800 p-6 sm:p-8 flex justify-between items-start shrink-0"><h3 id="detailName" class="text-xl sm:text-2xl font-bold text-white leading-tight pr-4"></h3><button id="closeDetailModal" class="text-slate-400 hover:text-white"><svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div><div class="p-6 sm:p-8 overflow-y-auto"><div class="mb-8 bg-slate-50 rounded-2xl p-6 border border-slate-200 relative overflow-hidden"><div class="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div><h4 class="flex items-center gap-2 text-xs font-black text-indigo-600 uppercase tracking-widest mb-4">SALES POINT</h4><p id="detailPitch" class="text-slate-700 text-base sm:text-lg font-medium leading-loose whitespace-pre-line"></p></div><div class="grid sm:grid-cols-2 gap-6"><div class="bg-emerald-50 p-5 rounded-2xl border border-emerald-100"><div class="flex items-center gap-2 mb-3 text-emerald-700 font-bold">GOOD</div><ul id="detailPros" class="space-y-2 text-sm font-bold text-emerald-800"></ul></div><div class="bg-rose-50 p-5 rounded-2xl border border-rose-100"><div class="flex items-center gap-2 mb-3 text-rose-700 font-bold">BAD</div><ul id="detailCons" class="space-y-2 text-sm font-bold text-rose-800"></ul></div></div></div></div></div>
 
-    <div id="password-modal" class="modal-overlay hidden" style="z-index: 200;"><div class="modal-content p-8 text-center"><h3 class="text-xl font-bold text-slate-800 mb-2">管理者認証</h3><p class="text-sm text-slate-500 mb-6">パスワードを入力してください。</p><input id="password-input" type="password" class="w-full p-3 border border-slate-200 rounded-lg mb-4 bg-slate-50 text-center font-bold focus:border-indigo-500 focus:outline-none" placeholder="Password"><p id="password-error" class="text-rose-500 text-xs font-bold mb-4 hidden">パスワードが違います</p><div class="flex gap-3 justify-center"><button onclick="closePasswordModal()" class="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100">キャンセル</button><button onclick="checkPassword()" class="px-6 py-3 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200">認証</button></div></div></div>
+    <div id="password-modal" class="modal-overlay hidden" style="z-index: 200;"><div class="modal-content p-8 text-center"><h3 class="text-xl font-bold text-slate-800 mb-2">管理者認証</h3><p class="text-sm text-slate-500 mb-6">パスワードを入力してください。</p><input id="password-input" type="password" class="w-full p-3 border border-slate-200 rounded-lg mb-4 bg-slate-50 text-center font-bold focus:border-indigo-500 focus:outline-none" placeholder="Password"><p id="password-error" class="text-rose-500 text-xs font-bold mb-4 hidden">パスワードが違います</p><div class="flex gap-3 justify-center"><button id="btn-cancel-password" class="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100">キャンセル</button><button id="btn-check-password" class="px-6 py-3 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200">認証</button></div></div></div>
 
     <div id="select-modal" class="select-modal-overlay hidden">
         <div class="select-modal-content flex flex-col max-h-[85vh]">
             <div class="p-4 border-b border-slate-100 bg-white flex justify-between items-center shrink-0">
                 <span class="font-black text-slate-700 text-lg" id="select-modal-title">選択</span>
-                <button onclick="closeSelectModal()" class="p-2 bg-slate-50 rounded-full text-slate-400 hover:bg-slate-100">
+                <button id="btn-close-select-modal-top" class="p-2 bg-slate-50 rounded-full text-slate-400 hover:bg-slate-100">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
             <div id="select-modal-body" class="select-modal-body flex-1 overflow-y-auto bg-slate-50 p-2"></div>
             <div class="select-modal-footer shrink-0">
-                <button onclick="closeSelectModal()" class="text-sm font-bold text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">キャンセル</button>
-                <button id="select-confirm-btn" onclick="confirmSelection()" class="confirm-btn" disabled>決定する</button>
+                <button id="btn-close-select-modal-bottom" class="text-sm font-bold text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">キャンセル</button>
+                <button id="select-confirm-btn" class="confirm-btn" disabled>決定する</button>
             </div>
         </div>
     </div>
@@ -455,24 +455,24 @@ export function renderModals() {
                 <div class="delete-menu-section">
                     <div class="delete-menu-title"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> ☀ 早番 (開店)</div>
                     <div class="delete-menu-buttons">
-                        <button onclick="requestBulkDelete('bulk_tasks', 'open')" class="btn-delete-task">タスクのみクリア</button>
-                        <button onclick="requestBulkDelete('bulk_staff', 'open')" class="btn-delete-staff">人員ごと削除</button>
+                        <button data-action="bulk-delete" data-type="bulk_tasks" data-shift="open" class="btn-delete-task">タスクのみクリア</button>
+                        <button data-action="bulk-delete" data-type="bulk_staff" data-shift="open" class="btn-delete-staff">人員ごと削除</button>
                     </div>
                 </div>
                 <div class="delete-menu-section">
                     <div class="delete-menu-title"><span class="w-2 h-2 rounded-full bg-purple-500"></span> 🌙 遅番 (閉店)</div>
                     <div class="delete-menu-buttons">
-                        <button onclick="requestBulkDelete('bulk_tasks', 'close')" class="btn-delete-task">タスクのみクリア</button>
-                        <button onclick="requestBulkDelete('bulk_staff', 'close')" class="btn-delete-staff">人員ごと削除</button>
+                        <button data-action="bulk-delete" data-type="bulk_tasks" data-shift="close" class="btn-delete-task">タスクのみクリア</button>
+                        <button data-action="bulk-delete" data-type="bulk_staff" data-shift="close" class="btn-delete-staff">人員ごと削除</button>
                     </div>
                 </div>
             </div>
             <div class="mt-8 border-t border-slate-100 pt-6">
-                 <button onclick="requestBulkDelete('reset_all', 'all')" class="btn-reset-all">
+                 <button data-action="bulk-delete" data-type="reset_all" data-shift="all" class="btn-reset-all">
                     ⚠️ 1日分をすべて完全削除
                 </button>
             </div>
-            <button onclick="closeBulkDeleteModal()" class="w-full mt-4 py-3 text-slate-400 font-bold hover:text-slate-600">キャンセル</button>
+            <button id="btn-close-bulk-delete" class="w-full mt-4 py-3 text-slate-400 font-bold hover:text-slate-600">キャンセル</button>
         </div>
     </div>
 
@@ -484,12 +484,12 @@ export function renderModals() {
             <h3 class="text-xl font-bold text-slate-800 mb-2">削除の確認</h3>
             <p id="delete-modal-message" class="text-sm text-slate-500 mb-6 whitespace-pre-line"></p>
             <div class="flex gap-3 justify-center">
-                <button onclick="cancelDelete()" class="px-6 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100">キャンセル</button>
-                <button onclick="confirmDelete()" class="px-6 py-2.5 rounded-xl font-bold bg-rose-600 text-white hover:bg-rose-700 shadow-lg shadow-rose-200">削除する</button>
+                <button id="btn-cancel-delete" class="px-6 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100">キャンセル</button>
+                <button id="btn-confirm-delete" class="px-6 py-2.5 rounded-xl font-bold bg-rose-600 text-white hover:bg-rose-700 shadow-lg shadow-rose-200">削除する</button>
             </div>
         </div>
     </div>
 
-    <div id="remarks-modal" class="modal-overlay hidden"><div class="modal-content p-6"><h3 class="text-lg font-bold text-slate-800 mb-1" id="remarks-modal-task"></h3><p class="text-xs font-bold text-slate-400 mb-4" id="remarks-modal-time"></p><div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-slate-700 text-sm font-medium leading-relaxed mb-6" id="remarks-modal-text"></div><button onclick="closeRemarksModal()" class="w-full py-3 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">閉じる</button></div></div>
+    <div id="remarks-modal" class="modal-overlay hidden"><div class="modal-content p-6"><h3 class="text-lg font-bold text-slate-800 mb-1" id="remarks-modal-task"></h3><p class="text-xs font-bold text-slate-400 mb-4" id="remarks-modal-time"></p><div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-slate-700 text-sm font-medium leading-relaxed mb-6" id="remarks-modal-text"></div><button id="close-remarks-modal-btn" class="w-full py-3 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">閉じる</button></div></div>
     `;
 }
