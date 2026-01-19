@@ -35,8 +35,8 @@ export function renderInfoSections() {
 
     // --- 1. PACHINKO TEAM (Blue) ---
     const section1 = `
-    <div class="bg-gradient-to-br from-white to-blue-50 rounded-2xl p-6 shadow-sm border border-blue-100 h-full">
-        <div class="flex items-center gap-3 mb-6">
+    <div class="bg-gradient-to-br from-white to-blue-50 rounded-2xl p-4 sm:p-6 shadow-sm border border-blue-100 h-full">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6">
             <div class="bg-blue-600 p-2 rounded-lg shadow-lg shadow-blue-200">
                 <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
             </div>
@@ -87,8 +87,8 @@ export function renderInfoSections() {
 
     // --- 2. SLOT TEAM (Purple) ---
     const section2 = `
-    <div class="bg-gradient-to-br from-white to-purple-50 rounded-2xl p-6 shadow-sm border border-purple-100 h-full">
-        <div class="flex items-center gap-3 mb-6">
+    <div class="bg-gradient-to-br from-white to-purple-50 rounded-2xl p-4 sm:p-6 shadow-sm border border-purple-100 h-full">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6">
             <div class="bg-purple-600 p-2 rounded-lg shadow-lg shadow-purple-200">
                 <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
             </div>
@@ -217,7 +217,7 @@ export function renderInfoSections() {
             <p class="text-xs font-bold opacity-90">周年月間 × エヴァ17大量導入「ヤシオ作戦」</p>
         </div>
 
-        <div class="p-4 flex-1 space-y-6">
+        <div class="p-4 sm:p-6 flex-1 space-y-6">
             <!-- SLIDESHOW CONTAINER -->
             <div id="strategy-slideshow-container" class="relative w-full h-[400px] rounded-xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100 group">
                 ${slidesHtml}
@@ -256,8 +256,8 @@ export function renderInfoSections() {
             <!-- WEEKLY ACTIONS -->
             <div class="space-y-4 px-1">
                 <!-- Week 1-2 -->
-                <div class="flex gap-4 items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <img src="senryaku3.jpg" class="w-24 h-auto object-contain rounded shadow-sm shrink-0" alt="Week 1-2">
+                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <img src="senryaku3.jpg" class="w-full sm:w-24 h-auto object-cover sm:object-contain rounded shadow-sm shrink-0" alt="Week 1-2">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <span class="bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded">第1〜2週</span>
@@ -269,8 +269,8 @@ export function renderInfoSections() {
                     </div>
                 </div>
                 <!-- Week 3 -->
-                <div class="flex gap-4 items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <img src="senryaku4.jpg" class="w-24 h-auto object-contain rounded shadow-sm shrink-0" alt="Week 3">
+                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <img src="senryaku4.jpg" class="w-full sm:w-24 h-auto object-cover sm:object-contain rounded shadow-sm shrink-0" alt="Week 3">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <span class="bg-red-100 text-red-700 text-[10px] font-black px-2 py-0.5 rounded">第3週</span>
@@ -282,8 +282,8 @@ export function renderInfoSections() {
                     </div>
                 </div>
                 <!-- Week 4 -->
-                <div class="flex gap-4 items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <img src="senryaku5.jpg" class="w-24 h-auto object-contain rounded shadow-sm shrink-0" alt="Week 4">
+                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <img src="senryaku5.jpg" class="w-full sm:w-24 h-auto object-cover sm:object-contain rounded shadow-sm shrink-0" alt="Week 4">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <span class="bg-purple-100 text-purple-700 text-[10px] font-black px-2 py-0.5 rounded">第4週</span>
