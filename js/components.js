@@ -401,6 +401,18 @@ export function renderModals() {
                 </div>
             </div>
 
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-6">
+                 <div class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2 justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-4 bg-amber-500 rounded-full"></span> 注目機種管理
+                    </div>
+                    <button id="btn-add-machine-detail" class="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition">+ 機種を追加</button>
+                </div>
+                <div id="machine-details-input-container" class="space-y-3">
+                    <!-- Dynamic rows will be added here -->
+                </div>
+            </div>
+
             <div class="mt-6 flex gap-3">
                 <button id="btn-cancel-op-input" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl">キャンセル</button>
                 <button id="btn-save-op-data" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700">保存する</button>
