@@ -35,6 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
         window.showPasswordModal(window.openDeadlineManagementModal);
     });
 
+    // Money Memo
+    document.getElementById('open-money-memo-btn')?.addEventListener('click', () => {
+        window.openMoneyMemoModal();
+    });
+
     // Member Race
     document.getElementById('prev-member-month-btn')?.addEventListener('click', (e) => {
         e.preventDefault();
@@ -159,6 +164,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('add-deadline-directly-btn')?.addEventListener('click', () => {
         window.addDeadlineDirectly();
+    });
+
+    // Money Memo Modal
+    document.getElementById('close-money-memo-modal-btn')?.addEventListener('click', () => {
+        window.closeMoneyMemoModal();
+    });
+
+    document.getElementById('save-money-memo-btn')?.addEventListener('click', () => {
+        window.saveMoneyMemo();
     });
 
     // Map Update Modal
