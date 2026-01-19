@@ -63,6 +63,21 @@
                         <p class="text-slate-400 text-xs font-bold animate-pulse">データ読み込み中...</p>
                     </div>
                 </div>
+
+                <div id="machine-date-nav" class="flex justify-between items-center mb-4 px-2 hidden">
+                    <button id="machine-prev-day" class="p-2 bg-white rounded-full shadow-sm border border-slate-100 text-slate-500 hover:text-indigo-600 transition">◀</button>
+                    <div class="flex items-center gap-3">
+                        <span id="machine-view-date" class="text-sm font-bold text-slate-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">----/--/--</span>
+                        <button id="machine-calendar-btn" class="p-2 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-500 hover:text-indigo-600 transition">📅</button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="machine-edit-btn" class="flex items-center gap-1 bg-indigo-600 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">
+                            <span>✏️</span> 編集
+                        </button>
+                        <button id="machine-next-day" class="p-2 bg-white rounded-full shadow-sm border border-slate-100 text-slate-500 hover:text-indigo-600 transition">▶</button>
+                    </div>
+                </div>
+
                 <div id="machine-details-container" class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <!-- Featured machines will be rendered here -->
                 </div>
