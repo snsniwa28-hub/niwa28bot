@@ -285,6 +285,68 @@ export function renderOperationsBoard() {
     // Zone B click to open input
     const zoneTargetPC = container.querySelector('#zone-target-pc');
     if (zoneTargetPC) zoneTargetPC.onclick = (e) => { e.stopPropagation(); openOpInput(); };
+
+    renderMachineDetails(todayOpData ? todayOpData.machine_details : []);
+}
+
+function renderMachineDetails(details) {
+    const container = $('#machine-details-container');
+    if (!container) return;
+
+    if (!details || details.length === 0) {
+        container.innerHTML = '';
+        container.classList.add('hidden');
+        return;
+    }
+
+    container.classList.remove('hidden');
+
+    // Create a DocumentFragment for better performance and safety
+    const fragment = document.createDocumentFragment();
+
+    details.forEach(item => {
+        const target = item.target ? parseInt(item.target) : 0;
+        const actual = item.actual ? parseInt(item.actual) : 0;
+        const rate = target > 0 ? Math.round((actual / target) * 100) : 0;
+        const isAchieved = target > 0 && actual >= target;
+
+        // Color based on achievement
+        const barColor = isAchieved ? 'bg-amber-400' : 'bg-indigo-500';
+        const cardBorder = isAchieved ? 'border-amber-200' : 'border-slate-100';
+        const icon = isAchieved ? '👑' : '📊';
+
+        const card = document.createElement('div');
+        card.className = `bg-white rounded-2xl border ${cardBorder} shadow-sm p-4 flex flex-col justify-between`;
+
+        card.innerHTML = `
+            <div class="flex justify-between items-start mb-3">
+                <h4 class="font-bold text-slate-700 truncate max-w-[70%] text-sm machine-title"></h4>
+                <span class="text-xs font-bold ${isAchieved ? 'text-amber-500' : 'text-slate-400'}">${icon}</span>
+            </div>
+
+            <div class="flex justify-between items-end mb-1">
+                <span class="text-xs font-bold text-slate-400">Target: ${target}</span>
+                <div class="text-right">
+                    <span class="text-xl font-black ${isAchieved ? 'text-amber-500' : 'text-slate-800'}">${actual}</span>
+                    <span class="text-[10px] text-slate-400">/ ${target}台</span>
+                </div>
+            </div>
+
+            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                <div class="${barColor} h-full rounded-full" style="width: ${Math.min(rate, 100)}%"></div>
+            </div>
+        `;
+
+        // Safely set the title text and attribute
+        const titleEl = card.querySelector('.machine-title');
+        titleEl.textContent = item.name;
+        titleEl.title = item.name;
+
+        fragment.appendChild(card);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(fragment);
 }
 
 export function changeOpMonth(offset) {
@@ -475,7 +537,76 @@ export function openOpInput(dateStr) {
     setVal('in_1p_19', data.actual_1p_19, '');
     setVal('in_20s_19', data.actual_20s_19, '');
 
+    // --- Machine Details Logic ---
+    const machineContainer = $('#machine-details-input-container');
+    machineContainer.innerHTML = '';
+
+    // 1. Existing data for the target date
+    let machineDetails = data.machine_details || [];
+
+    // 2. Smart Copy (Previous data if current is empty)
+    if (machineDetails.length === 0) {
+        let prevData = null;
+        if (dateStr === getTodayDateString()) {
+            prevData = yesterdayOpData;
+        } else {
+            // Try to find yesterday in monthlyOpData (not perfect for month boundaries but simplified)
+            const dObj = new Date(y, m - 1, dayNum - 1); // JS Date Month is 0-indexed
+            const prevDateStr = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(dObj.getDate()).padStart(2, '0')}`;
+            prevData = monthlyOpData[prevDateStr];
+        }
+
+        if (prevData && prevData.machine_details && prevData.machine_details.length > 0) {
+            // Copy Structure: Name & Target only (Actual is empty)
+            machineDetails = prevData.machine_details.map(item => ({
+                name: item.name,
+                target: item.target,
+                actual: '' // Reset actual
+            }));
+        }
+    }
+
+    // Render Rows
+    if (machineDetails.length > 0) {
+        machineDetails.forEach(item => addMachineDetailRow(item.name, item.target, item.actual));
+    } else {
+        // Add one empty row if absolutely no data found
+        addMachineDetailRow();
+    }
+
+    // Attach Add Button Listener
+    const addBtn = $('#btn-add-machine-detail');
+    // Remove old listener to avoid duplicates if any (though replacing innerHTML clears child listeners, the button is outside)
+    // Actually the button is static in HTML now. We need to assign onclick.
+    if(addBtn) addBtn.onclick = () => addMachineDetailRow();
+
     $('#operations-modal').classList.remove('hidden');
+}
+
+function addMachineDetailRow(name = '', target = '', actual = '') {
+    const container = $('#machine-details-input-container');
+    const div = document.createElement('div');
+    div.className = 'grid grid-cols-7 gap-2 items-center machine-detail-row';
+
+    div.innerHTML = `
+        <div class="col-span-3">
+            <input type="text" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-name" placeholder="機種名">
+        </div>
+        <div class="col-span-2">
+            <input type="number" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-target" placeholder="目標">
+        </div>
+        <div class="col-span-2 flex gap-1">
+            <input type="number" class="w-full bg-white border border-indigo-200 rounded px-2 py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-actual" placeholder="実績">
+            <button class="text-rose-400 hover:text-rose-600 px-1" onclick="this.parentElement.parentElement.remove()">✕</button>
+        </div>
+    `;
+
+    // Safely set values to avoid attribute injection
+    div.querySelector('.machine-name').value = name;
+    div.querySelector('.machine-target').value = target;
+    div.querySelector('.machine-actual').value = actual;
+
+    container.appendChild(div);
 }
 
 export function closeOpInput() {
@@ -495,7 +626,25 @@ export async function saveOpData() {
     const total15 = getNum('in_4p_15') + getNum('in_1p_15') + getNum('in_20s_15');
     const total19 = getNum('in_4p_19') + getNum('in_1p_19') + getNum('in_20s_19');
 
+    // Collect Machine Details
+    const machineRows = document.querySelectorAll('.machine-detail-row');
+    const machineDetails = [];
+    machineRows.forEach(row => {
+        const name = row.querySelector('.machine-name').value.trim();
+        const target = row.querySelector('.machine-target').value;
+        const actual = row.querySelector('.machine-actual').value;
+
+        if (name) { // Only save if name exists
+            machineDetails.push({
+                name: name,
+                target: target ? parseInt(target) : null,
+                actual: actual ? parseInt(actual) : null
+            });
+        }
+    });
+
     const d = {
+        machine_details: machineDetails, // Save machine details
         target_total_15: getVal('in_target_15'),
         today_target_total_15: total15, // Force overwrite with calculated sum
         actual_total_15: total15,       // Force overwrite with calculated sum
