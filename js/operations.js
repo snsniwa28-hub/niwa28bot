@@ -9,6 +9,7 @@ let yesterdayOpData = null;
 let monthlyOpData = {};
 let editingOpDate = null;
 let returnToCalendar = false;
+let viewingMachineDate = getTodayDateString(); // State for Machine View
 
 // Dynamic Date Management
 let currentOpYear = new Date().getFullYear();
@@ -45,11 +46,49 @@ export function subscribeOperations() {
         yesterdayOpData = doc.exists() ? doc.data() : {};
         renderOperationsBoard();
     });
+
+    // Attach Event Listeners for Date Navigation (Once)
+    const prevBtn = $('#machine-prev-day');
+    const nextBtn = $('#machine-next-day');
+    const editBtn = $('#machine-edit-btn');
+    const calBtn = $('#machine-calendar-btn');
+
+    if(prevBtn) prevBtn.onclick = () => changeMachineViewDate(-1);
+    if(nextBtn) nextBtn.onclick = () => changeMachineViewDate(1);
+    if(editBtn) editBtn.onclick = () => openOpInput(viewingMachineDate);
+    if(calBtn) calBtn.onclick = () => openMonthlyCalendar();
+}
+
+export function changeMachineViewDate(offset) {
+    const d = new Date(viewingMachineDate);
+    d.setDate(d.getDate() + offset);
+
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    viewingMachineDate = `${y}-${m}-${day}`;
+
+    updateMachineDateDisplay();
+    loadMachineDetailsForDate(viewingMachineDate);
+}
+
+export function updateMachineDateDisplay() {
+    const el = $('#machine-view-date');
+    if (el) {
+        const [y, m, d] = viewingMachineDate.split('-');
+        el.textContent = `${y}年${m}月${d}日`;
+    }
+    // Also remove hidden from nav if it's there
+    const nav = $('#machine-date-nav');
+    if (nav) nav.classList.remove('hidden');
 }
 
 export function renderOperationsBoard() {
     const container = $('#operationsBoardContainer');
     if (!container) return;
+
+    // Ensure Date Nav is visible and updated on first load
+    updateMachineDateDisplay();
 
     // Use default target as 0 since we removed the config
     const defaultTarget = { t15: 0, t19: 0 };
@@ -286,16 +325,91 @@ export function renderOperationsBoard() {
     const zoneTargetPC = container.querySelector('#zone-target-pc');
     if (zoneTargetPC) zoneTargetPC.onclick = (e) => { e.stopPropagation(); openOpInput(); };
 
-    renderMachineDetails(todayOpData ? todayOpData.machine_details : []);
+    // Initially load machine details for the viewing date (defaults to today)
+    // If viewingMachineDate is today, we can use todayOpData if available, but loadMachineDetailsForDate handles logic
+    loadMachineDetailsForDate(viewingMachineDate);
 }
 
-function renderMachineDetails(details) {
+async function loadMachineDetailsForDate(dateStr) {
+    // 1. Try to use live data for Today/Yesterday
+    if (dateStr === getTodayDateString() && todayOpData) {
+        renderMachineDetails(todayOpData.machine_details || []);
+        return;
+    }
+    if (dateStr === getYesterdayDateString() && yesterdayOpData) {
+        renderMachineDetails(yesterdayOpData.machine_details || []);
+        return;
+    }
+
+    // 2. Otherwise fetch from Firestore
+    try {
+        // Show loading state?
+        renderMachineDetails([], true); // Render loading skeleton or empty
+
+        const docRef = doc(db, "operations_data", dateStr);
+        const snapshot = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(mod => mod.getDoc(docRef));
+
+        if (snapshot.exists()) {
+            const data = snapshot.data();
+            renderMachineDetails(data.machine_details || []);
+        } else {
+            renderMachineDetails([]);
+        }
+    } catch (e) {
+        console.error("Error fetching machine details:", e);
+        renderMachineDetails([]);
+    }
+}
+
+async function findLatestMachineConfig(targetDate) {
+    // Search backward up to 7 days
+    const d = new Date(targetDate);
+
+    for (let i = 1; i <= 7; i++) {
+        d.setDate(d.getDate() - 1);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const searchDate = `${y}-${m}-${day}`;
+
+        // Check memory first (today/yesterday)
+        if (searchDate === getTodayDateString() && todayOpData && todayOpData.machine_details && todayOpData.machine_details.length > 0) {
+            return todayOpData.machine_details;
+        }
+        if (searchDate === getYesterdayDateString() && yesterdayOpData && yesterdayOpData.machine_details && yesterdayOpData.machine_details.length > 0) {
+             return yesterdayOpData.machine_details;
+        }
+
+        // Fetch
+        try {
+            const docRef = doc(db, "operations_data", searchDate);
+            const snapshot = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(mod => mod.getDoc(docRef));
+            if (snapshot.exists()) {
+                const data = snapshot.data();
+                if (data.machine_details && data.machine_details.length > 0) {
+                    return data.machine_details;
+                }
+            }
+        } catch (e) {
+            console.warn("Error searching past config:", e);
+        }
+    }
+    return null;
+}
+
+function renderMachineDetails(details, isLoading = false) {
     const container = $('#machine-details-container');
     if (!container) return;
 
+    if (isLoading) {
+        container.classList.remove('hidden');
+        container.innerHTML = '<p class="col-span-full text-center text-slate-400 py-10 font-bold animate-pulse">データ読み込み中...</p>';
+        return;
+    }
+
     if (!details || details.length === 0) {
-        container.innerHTML = '';
-        container.classList.add('hidden');
+        container.innerHTML = '<p class="col-span-full text-center text-slate-400 py-10 font-bold">データがありません</p>';
+        container.classList.remove('hidden'); // Keep visible to show "No Data" and layout
         return;
     }
 
@@ -498,7 +612,7 @@ function renderCalendarGrid() {
     });
 }
 
-export function openOpInput(dateStr) {
+export async function openOpInput(dateStr) {
     const calModal = $('#calendar-modal');
     if (calModal && !calModal.classList.contains('hidden')) {
         returnToCalendar = true;
@@ -507,23 +621,45 @@ export function openOpInput(dateStr) {
         returnToCalendar = false;
     }
 
-    if (!dateStr) dateStr = getTodayDateString();
+    if (!dateStr) {
+        // Default to current machine view date if not specified
+        dateStr = viewingMachineDate || getTodayDateString();
+    }
     editingOpDate = dateStr;
+
+    // Display Synchronization
+    if (viewingMachineDate !== dateStr) {
+        viewingMachineDate = dateStr;
+        updateMachineDateDisplay();
+        loadMachineDetailsForDate(viewingMachineDate);
+    }
 
     const [y, m, d] = dateStr.split('-');
     const displayDate = `${m}/${d}`;
     document.querySelector('#operations-modal h3').innerHTML = `<span class="text-2xl">📝</span> ${displayDate} の稼働入力`;
 
     let data = {};
-    if (dateStr === getTodayDateString()) data = todayOpData || {};
-    else if (dateStr === getYesterdayDateString()) data = yesterdayOpData || {};
-    else data = monthlyOpData[dateStr] || {};
 
-    const dayNum = parseInt(d);
+    // Fetch Data for Modal if not present
+    if (dateStr === getTodayDateString() && todayOpData) data = todayOpData;
+    else if (dateStr === getYesterdayDateString() && yesterdayOpData) data = yesterdayOpData;
+    else if (monthlyOpData[dateStr]) data = monthlyOpData[dateStr];
+    else {
+        // Fallback: Fetch single doc if not in memory
+         try {
+            const docRef = doc(db, "operations_data", dateStr);
+            const snapshot = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(mod => mod.getDoc(docRef));
+            if (snapshot.exists()) data = snapshot.data();
+        } catch(e) { console.error(e); }
+    }
+
     // Removed TARGET_DATA_DEC support
     const defaultTarget = { t15: 0, t19: 0 };
 
-    const setVal = (id, val, def) => $(`#${id}`).value = (val !== undefined && val !== null) ? val : def;
+    const setVal = (id, val, def) => {
+        const el = $(`#${id}`);
+        if(el) el.value = (val !== undefined && val !== null) ? val : def;
+    };
 
     setVal('in_target_15', data.target_total_15, defaultTarget.t15);
     setVal('in_today_target_15', data.today_target_total_15, '');
@@ -546,19 +682,11 @@ export function openOpInput(dateStr) {
 
     // 2. Smart Copy (Previous data if current is empty)
     if (machineDetails.length === 0) {
-        let prevData = null;
-        if (dateStr === getTodayDateString()) {
-            prevData = yesterdayOpData;
-        } else {
-            // Try to find yesterday in monthlyOpData (not perfect for month boundaries but simplified)
-            const dObj = new Date(y, m - 1, dayNum - 1); // JS Date Month is 0-indexed
-            const prevDateStr = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(dObj.getDate()).padStart(2, '0')}`;
-            prevData = monthlyOpData[prevDateStr];
-        }
-
-        if (prevData && prevData.machine_details && prevData.machine_details.length > 0) {
-            // Copy Structure: Name & Target only (Actual is empty)
-            machineDetails = prevData.machine_details.map(item => ({
+        // Use helper to find latest config
+        const prevDetails = await findLatestMachineConfig(dateStr);
+        if (prevDetails && prevDetails.length > 0) {
+             // Copy Structure: Name & Target only (Actual is empty)
+            machineDetails = prevDetails.map(item => ({
                 name: item.name,
                 target: item.target,
                 actual: '' // Reset actual
@@ -576,8 +704,6 @@ export function openOpInput(dateStr) {
 
     // Attach Add Button Listener
     const addBtn = $('#btn-add-machine-detail');
-    // Remove old listener to avoid duplicates if any (though replacing innerHTML clears child listeners, the button is outside)
-    // Actually the button is static in HTML now. We need to assign onclick.
     if(addBtn) addBtn.onclick = () => addMachineDetailRow();
 
     $('#operations-modal').classList.remove('hidden');
