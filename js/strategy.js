@@ -389,7 +389,7 @@ function renderStrategyList() {
         const categoryBadge = `<span class="text-[10px] ${badgeColor} px-2 py-0.5 rounded-full border font-bold mr-2 align-middle">${teamName}</span>`;
 
         let html = `
-            <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+            <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
                 <div class="flex items-center gap-3 w-full overflow-hidden">
                      <span class="text-2xl shrink-0">${item.relevant_date ? '📅' : '📌'}</span>
                      <div class="min-w-0 flex-1">
@@ -406,7 +406,7 @@ function renderStrategyList() {
                      </div>
                 </div>
                 ${showControls ? `
-                <div class="flex gap-2 items-center shrink-0 ml-2">
+                <div class="flex gap-2 items-center shrink-0 w-full sm:w-auto justify-end sm:justify-start sm:ml-2">
                      <button class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold hover:bg-indigo-100 shadow-sm border border-indigo-100 transition" data-action="edit-strategy" data-id="${item.id}">✏️</button>
                      <button class="text-xs bg-rose-50 text-rose-600 px-3 py-1 rounded-full font-bold hover:bg-rose-100 shadow-sm border border-rose-100 transition" data-action="delete-strategy" data-id="${item.id}">🗑️</button>
                 </div>
