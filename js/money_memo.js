@@ -48,17 +48,27 @@ async function fetchMoneyStaff() {
                 ...(data.alba_late || [])
             ];
 
-            const moneyStaff = allNames.filter(name => {
+            // Filter preserving order
+            const moneyStaff = [];
+            const seen = new Set();
+
+            allNames.forEach(name => {
+                if(seen.has(name)) return;
                 const d = details[name];
-                return d && d.allowed_roles && (d.allowed_roles.includes('money_main') || d.allowed_roles.includes('money_sub'));
+                if (d && d.allowed_roles && (d.allowed_roles.includes('money_main') || d.allowed_roles.includes('money_sub'))) {
+                     moneyStaff.push(name);
+                     seen.add(name);
+                }
             });
 
-            // Remove duplicates and sort
-            const uniqueStaff = [...new Set(moneyStaff)].sort();
-
-            const datalist = $('#money-memo-staff-list');
-            if (datalist) {
-                datalist.innerHTML = uniqueStaff.map(name => `<option value="${name}"></option>`).join('');
+            const selectEl = $('#money-memo-reporter-select');
+            if (selectEl) {
+                let html = '<option value="">選択してください</option>';
+                moneyStaff.forEach(name => {
+                    html += `<option value="${name}">${name}</option>`;
+                });
+                html += '<option value="__manual__">その他（手入力）</option>';
+                selectEl.innerHTML = html;
             }
         }
     } catch (e) {
@@ -99,12 +109,26 @@ export function openMoneyMemoModal() {
     const modal = $('#money-memo-modal');
     if (modal) {
         modal.classList.remove('hidden');
-        modal.classList.add('flex'); // Ensure flex display for centering if needed, or just remove hidden
+        modal.classList.add('flex');
+
+        // Initialize UI Elements
+        const selectEl = $('#money-memo-reporter-select');
+        const manualInput = $('#money-memo-reporter-manual');
+
+        // Setup Event Listener for Select (if not already attached properly, but doing it here ensures it works)
+        if (selectEl) {
+            selectEl.onchange = () => {
+                if (selectEl.value === '__manual__') {
+                    manualInput.classList.remove('hidden');
+                } else {
+                    manualInput.classList.add('hidden');
+                }
+            };
+        }
 
         // Set defaults
         const dateInput = $('#money-memo-date');
         const timeInput = $('#money-memo-time');
-        const reporterInput = $('#money-memo-reporter');
         const machineInput = $('#money-memo-machine');
 
         if (dateInput) dateInput.value = getTodayDateString();
@@ -115,10 +139,21 @@ export function openMoneyMemoModal() {
             timeInput.value = `${hours}:${minutes}`;
         }
 
-        if (reporterInput) {
-            const savedName = localStorage.getItem('money_memo_reporter');
-            if (savedName) reporterInput.value = savedName;
+        // Restore Reporter
+        const savedName = localStorage.getItem('money_memo_reporter');
+        if (selectEl && savedName) {
+            // Check if saved name exists in options
+            const options = Array.from(selectEl.options).map(o => o.value);
+            if (options.includes(savedName)) {
+                selectEl.value = savedName;
+                manualInput.classList.add('hidden');
+            } else {
+                selectEl.value = '__manual__';
+                manualInput.classList.remove('hidden');
+                manualInput.value = savedName;
+            }
         }
+
         if (machineInput) machineInput.value = '';
     }
 }
@@ -137,7 +172,18 @@ export function closeMoneyMemoModal() {
 export async function saveMoneyMemo() {
     const dateVal = $('#money-memo-date').value;
     const timeVal = $('#money-memo-time').value;
-    const reporterName = $('#money-memo-reporter').value;
+
+    // Logic to determine reporter name
+    const selectEl = $('#money-memo-reporter-select');
+    const manualInput = $('#money-memo-reporter-manual');
+    let reporterName = '';
+
+    if (selectEl.value === '__manual__') {
+        reporterName = manualInput.value;
+    } else {
+        reporterName = selectEl.value;
+    }
+
     const machineVal = $('#money-memo-machine').value;
     const category = $('#money-memo-category').value;
     const amountVal = $('#money-memo-amount').value;
@@ -170,7 +216,19 @@ export async function saveMoneyMemo() {
         $('#money-memo-date').value = getTodayDateString();
         const now = new Date();
         $('#money-memo-time').value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        $('#money-memo-reporter').value = reporterName; // Keep name
+
+        // Restore reporter selection
+        if (selectEl) {
+             const options = Array.from(selectEl.options).map(o => o.value);
+             if (options.includes(reporterName)) {
+                 selectEl.value = reporterName;
+                 manualInput.classList.add('hidden');
+             } else {
+                 selectEl.value = '__manual__';
+                 manualInput.classList.remove('hidden');
+                 manualInput.value = reporterName;
+             }
+        }
 
     } catch (e) {
         console.error("Error saving money memo: ", e);

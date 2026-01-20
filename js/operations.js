@@ -685,10 +685,20 @@ export async function openOpInput(dateStr) {
         // Use helper to find latest config
         const prevDetails = await findLatestMachineConfig(dateStr);
         if (prevDetails && prevDetails.length > 0) {
-             // Copy Structure: Name & Target only (Actual is empty)
-            machineDetails = prevDetails.map(item => ({
+            // Copy Structure: Name, Target & End Date (Actual is empty)
+            // Logic Check: Only include if current editingOpDate <= item.display_end_date
+            const currentDateObj = new Date(dateStr);
+            currentDateObj.setHours(0,0,0,0);
+
+            machineDetails = prevDetails.filter(item => {
+                if (!item.display_end_date) return false; // No end date -> don't copy
+                const endDateObj = new Date(item.display_end_date);
+                endDateObj.setHours(0,0,0,0);
+                return currentDateObj <= endDateObj;
+            }).map(item => ({
                 name: item.name,
                 target: item.target,
+                display_end_date: item.display_end_date,
                 actual: '' // Reset actual
             }));
         }
@@ -696,7 +706,7 @@ export async function openOpInput(dateStr) {
 
     // Render Rows
     if (machineDetails.length > 0) {
-        machineDetails.forEach(item => addMachineDetailRow(item.name, item.target, item.actual));
+        machineDetails.forEach(item => addMachineDetailRow(item.name, item.target, item.actual, item.display_end_date));
     } else {
         // Add one empty row if absolutely no data found
         addMachineDetailRow();
@@ -709,21 +719,30 @@ export async function openOpInput(dateStr) {
     $('#operations-modal').classList.remove('hidden');
 }
 
-function addMachineDetailRow(name = '', target = '', actual = '') {
+function addMachineDetailRow(name = '', target = '', actual = '', endDate = '') {
     const container = $('#machine-details-input-container');
     const div = document.createElement('div');
-    div.className = 'grid grid-cols-7 gap-2 items-center machine-detail-row';
+    div.className = 'grid grid-cols-10 gap-2 items-center machine-detail-row border-b border-slate-100 pb-2 mb-2';
 
     div.innerHTML = `
         <div class="col-span-3">
+            <label class="block text-[10px] text-slate-400 font-bold mb-0.5">機種名</label>
             <input type="text" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-name" placeholder="機種名">
         </div>
         <div class="col-span-2">
+            <label class="block text-[10px] text-slate-400 font-bold mb-0.5">目標</label>
             <input type="number" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-target" placeholder="目標">
         </div>
-        <div class="col-span-2 flex gap-1">
-            <input type="number" class="w-full bg-white border border-indigo-200 rounded px-2 py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-actual" placeholder="実績">
-            <button class="text-rose-400 hover:text-rose-600 px-1" onclick="this.parentElement.parentElement.remove()">✕</button>
+        <div class="col-span-3">
+             <label class="block text-[10px] text-slate-400 font-bold mb-0.5">表示終了日</label>
+             <input type="date" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-[10px] font-bold focus:border-indigo-500 outline-none machine-end-date">
+        </div>
+        <div class="col-span-2">
+            <label class="block text-[10px] text-indigo-300 font-bold mb-0.5">実績</label>
+            <div class="flex gap-1">
+                <input type="number" class="w-full bg-white border border-indigo-200 rounded px-2 py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-actual" placeholder="実績">
+                <button class="text-rose-400 hover:text-rose-600 px-1" onclick="this.parentElement.parentElement.parentElement.remove()">✕</button>
+            </div>
         </div>
     `;
 
@@ -731,6 +750,7 @@ function addMachineDetailRow(name = '', target = '', actual = '') {
     div.querySelector('.machine-name').value = name;
     div.querySelector('.machine-target').value = target;
     div.querySelector('.machine-actual').value = actual;
+    div.querySelector('.machine-end-date').value = endDate;
 
     container.appendChild(div);
 }
@@ -759,12 +779,14 @@ export async function saveOpData() {
         const name = row.querySelector('.machine-name').value.trim();
         const target = row.querySelector('.machine-target').value;
         const actual = row.querySelector('.machine-actual').value;
+        const endDate = row.querySelector('.machine-end-date').value;
 
         if (name) { // Only save if name exists
             machineDetails.push({
                 name: name,
                 target: target ? parseInt(target) : null,
-                actual: actual ? parseInt(actual) : null
+                actual: actual ? parseInt(actual) : null,
+                display_end_date: endDate || null
             });
         }
     });
