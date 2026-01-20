@@ -83,6 +83,25 @@
                 </div>
             </section>
 
+            <div class="mb-4 fade-in-up" style="animation-delay: 0.2s;">
+                 <div id="open-money-memo-btn" class="relative w-full rounded-3xl overflow-hidden shadow-lg shadow-indigo-900/5 border border-slate-100 group cursor-pointer transition-all hover:shadow-xl hover:-translate-y-1 bg-white">
+                    <button class="w-full text-left p-6 sm:p-8 flex items-center justify-between">
+                        <div class="flex items-center gap-5">
+                            <div class="bg-amber-50 p-4 rounded-2xl group-hover:bg-amber-100 transition-colors">
+                                <span class="text-3xl">💰</span>
+                            </div>
+                            <div>
+                                <h2 class="text-xl sm:text-2xl font-black text-slate-800 tracking-tight mb-1 group-hover:text-amber-600 transition-colors">金銭メモ・トラブル記録</h2>
+                                <p class="text-slate-400 text-xs sm:text-sm font-bold">Money Memo & Trouble Log</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 rounded-full p-2 group-hover:bg-slate-100 transition">
+                             <svg class="w-6 h-6 text-slate-400 group-hover:text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
 
                 <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.2s;">
@@ -146,19 +165,6 @@
                     </div>
                 </div>
 
-                <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.4s;">
-                    <div id="open-money-memo-btn" class="group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="bg-amber-50 text-amber-600 p-3 rounded-2xl group-hover:bg-amber-600 group-hover:text-white transition-colors duration-300">
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            </div>
-                        </div>
-                        <div>
-                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-amber-600 transition-colors">金銭メモ</h2>
-                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">トラブル・履歴</p>
-                        </div>
-                    </div>
-                </div>
 
             </div>
 
@@ -506,30 +512,16 @@
                              </div>
                         </div>
 
-                        <div class="flex gap-4">
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="money-memo-shift" value="早番" checked class="w-4 h-4 text-indigo-600 focus:ring-indigo-500">
-                                <span class="text-xs font-bold text-slate-600">早番</span>
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="money-memo-shift" value="遅番" class="w-4 h-4 text-indigo-600 focus:ring-indigo-500">
-                                <span class="text-xs font-bold text-slate-600">遅番</span>
-                            </label>
-                        </div>
-
-                        <div class="grid grid-cols-3 gap-3">
-                            <div class="col-span-1">
-                                <label class="block text-xs font-bold text-slate-400 mb-1">役職</label>
-                                <select id="money-memo-role" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
-                                    <option value="金メ">金メ</option>
-                                    <option value="金サブ">金サブ</option>
-                                    <option value="社員">社員</option>
-                                </select>
-                            </div>
-                            <div class="col-span-2">
+                        <div class="grid grid-cols-2 gap-3">
+                             <div class="col-span-1">
+                                <label class="block text-xs font-bold text-slate-400 mb-1">台番</label>
+                                <input type="text" id="money-memo-machine" inputmode="numeric" pattern="\d*" maxlength="4" placeholder="台番" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                             </div>
+                             <div class="col-span-1">
                                 <label class="block text-xs font-bold text-slate-400 mb-1">対応者名</label>
-                                <input type="text" id="money-memo-reporter" placeholder="氏名" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
-                            </div>
+                                <input type="text" id="money-memo-reporter" list="money-memo-staff-list" placeholder="氏名を選択/入力" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                                <datalist id="money-memo-staff-list"></datalist>
+                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
@@ -562,7 +554,10 @@
                     </form>
                 </div>
 
-                <h3 class="text-xs font-bold text-slate-400 uppercase mb-2 tracking-widest px-1">履歴リスト</h3>
+                <h3 class="text-xs font-bold text-slate-400 uppercase mb-2 tracking-widest px-1 flex justify-between items-center">
+                    <span>履歴リスト</span>
+                    <input type="date" id="money-memo-filter-date" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500">
+                </h3>
                 <div id="money-memo-list">
                     <p class="text-slate-400 text-sm text-center py-2">読み込み中...</p>
                 </div>
