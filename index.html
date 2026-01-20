@@ -611,24 +611,25 @@
 
     <div id="internalSharedModal" class="modal-overlay hidden" style="z-index: 90;">
         <div class="modal-content p-0 w-full max-w-2xl bg-slate-50 rounded-2xl shadow-2xl flex flex-col h-[90vh]">
-            <div class="p-4 bg-white border-b border-slate-200 flex justify-between items-center shrink-0 z-10 shadow-sm">
-                <div class="flex items-center gap-2">
-                    <span class="text-2xl">📋</span>
-                    <h3 class="font-black text-slate-800 text-lg">社内共有・戦略</h3>
+            <div class="bg-white border-b border-slate-200 flex flex-col shrink-0 z-10 shadow-sm">
+                <div class="p-4 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">📋</span>
+                        <h3 class="font-black text-slate-800 text-lg">社内共有・戦略</h3>
+                    </div>
+                    <button id="close-internal-shared-modal-btn" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 flex items-center justify-center transition">✕</button>
                 </div>
-                <div class="flex items-center gap-3">
-                    <button id="btn-knowledge-list" class="flex items-center gap-1 bg-white text-slate-500 px-3 py-1.5 rounded-full text-xs font-bold border border-slate-200 hover:bg-slate-50 transition shadow-sm">
+
+                <div class="px-4 pb-4 flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
+                    <button id="btn-knowledge-list" class="flex-shrink-0 flex items-center gap-1 bg-white text-slate-500 px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 hover:bg-slate-50 transition shadow-sm">
                         🧠 知識リスト
                     </button>
-                    <button id="btn-category-ai" class="flex items-center gap-1 bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition">
+                    <button id="btn-category-ai" class="flex-shrink-0 flex items-center gap-1 bg-indigo-50 text-indigo-600 px-3 py-2 rounded-lg text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition">
                         🤖 AIに聞く
                     </button>
-                    <button id="btn-create-strategy" class="hidden items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">
+                    <button id="btn-create-strategy" class="hidden flex-shrink-0 items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">
                         <span>＋</span> 新規作成
                     </button>
-                    <button id="btn-create-strategy-mobile" class="hidden md:hidden bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-lg shadow-indigo-200">+</button>
-
-                    <button id="close-internal-shared-modal-btn" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 flex items-center justify-center transition">✕</button>
                 </div>
             </div>
 

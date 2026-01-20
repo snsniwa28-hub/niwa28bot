@@ -265,15 +265,14 @@ function updateKnowledgeFilterUI() {
 }
 
 function updateHeaderUI() {
-    const header = document.querySelector('#internalSharedModal .modal-content > div:first-child');
+    // const header = document.querySelector('#internalSharedModal .modal-content > div:first-child'); // HTML側でクラス定義済みのため上書き不要
     const titleEl = document.querySelector('#internalSharedModal h3');
     const iconEl = document.querySelector('#internalSharedModal span.text-2xl');
     const createBtn = document.getElementById('btn-create-strategy');
-    const createBtnMobile = document.getElementById('btn-create-strategy-mobile');
     const aiBtn = document.getElementById('btn-category-ai');
     const knowledgeBtn = document.getElementById('btn-knowledge-list');
 
-    if (header) header.className = "p-4 border-b border-slate-200 flex justify-between items-center shrink-0 z-10 shadow-sm bg-white";
+    // if (header) header.className = "p-4 border-b border-slate-200 flex justify-between items-center shrink-0 z-10 shadow-sm bg-white";
 
     if (isKnowledgeMode) {
         if(titleEl) {
@@ -314,13 +313,6 @@ function updateHeaderUI() {
         } else {
             createBtn.classList.add('hidden');
             createBtn.classList.remove('inline-flex');
-        }
-    }
-    if(createBtnMobile) {
-        if (isStrategyAdmin) {
-            createBtnMobile.classList.remove('hidden');
-        } else {
-            createBtnMobile.classList.add('hidden');
         }
     }
 }
@@ -650,6 +642,4 @@ export function initStrategy() {
     loadStrategies();
     const createBtn = document.getElementById('btn-create-strategy');
     if(createBtn) createBtn.onclick = () => openStrategyEditor();
-    const createBtnMobile = document.getElementById('btn-create-strategy-mobile');
-    if(createBtnMobile) createBtnMobile.onclick = () => openStrategyEditor();
 }
