@@ -55,7 +55,7 @@ export function subscribeOperations() {
 
     if(prevBtn) prevBtn.onclick = () => changeMachineViewDate(-1);
     if(nextBtn) nextBtn.onclick = () => changeMachineViewDate(1);
-    if(editBtn) editBtn.onclick = () => openOpInput(viewingMachineDate);
+    if(editBtn) editBtn.onclick = () => openMachineDetailsEdit(viewingMachineDate);
     if(calBtn) calBtn.onclick = () => openMonthlyCalendar();
 }
 
@@ -673,25 +673,53 @@ export async function openOpInput(dateStr) {
     setVal('in_1p_19', data.actual_1p_19, '');
     setVal('in_20s_19', data.actual_20s_19, '');
 
-    // --- Machine Details Logic ---
-    const machineContainer = $('#machine-details-input-container');
-    machineContainer.innerHTML = '';
+    // Machine Details logic removed from here
 
-    // 1. Existing data for the target date
+    $('#operations-modal').classList.remove('hidden');
+}
+
+export async function openMachineDetailsEdit(dateStr) {
+    if (!dateStr) dateStr = viewingMachineDate || getTodayDateString();
+    editingOpDate = dateStr;
+
+    // Display Synchronization
+    if (viewingMachineDate !== dateStr) {
+        viewingMachineDate = dateStr;
+        updateMachineDateDisplay();
+        loadMachineDetailsForDate(viewingMachineDate);
+    }
+
+    const [y, m, d] = dateStr.split('-');
+    const displayDate = `${m}/${d}`;
+    document.querySelector('#machine-details-edit-modal h3').innerHTML = `<span class="text-2xl">🔥</span> ${displayDate} 注目の新台・重点機種`;
+
+    let data = {};
+    if (dateStr === getTodayDateString() && todayOpData) data = todayOpData;
+    else if (dateStr === getYesterdayDateString() && yesterdayOpData) data = yesterdayOpData;
+    else if (monthlyOpData[dateStr]) data = monthlyOpData[dateStr];
+    else {
+         try {
+            const docRef = doc(db, "operations_data", dateStr);
+            const snapshot = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(mod => mod.getDoc(docRef));
+            if (snapshot.exists()) data = snapshot.data();
+        } catch(e) { console.error(e); }
+    }
+
+    const container = $('#machine-details-edit-container');
+    container.innerHTML = '';
+
+    // 1. Existing data
     let machineDetails = data.machine_details || [];
 
-    // 2. Smart Copy (Previous data if current is empty)
+    // 2. Smart Copy
     if (machineDetails.length === 0) {
-        // Use helper to find latest config
         const prevDetails = await findLatestMachineConfig(dateStr);
         if (prevDetails && prevDetails.length > 0) {
-            // Copy Structure: Name, Target & End Date (Actual is empty)
-            // Logic Check: Only include if current editingOpDate <= item.display_end_date
             const currentDateObj = new Date(dateStr);
             currentDateObj.setHours(0,0,0,0);
 
             machineDetails = prevDetails.filter(item => {
-                if (!item.display_end_date) return false; // No end date -> don't copy
+                if (!item.display_end_date) return false;
                 const endDateObj = new Date(item.display_end_date);
                 endDateObj.setHours(0,0,0,0);
                 return currentDateObj <= endDateObj;
@@ -699,28 +727,64 @@ export async function openOpInput(dateStr) {
                 name: item.name,
                 target: item.target,
                 display_end_date: item.display_end_date,
-                actual: '' // Reset actual
+                actual: ''
             }));
         }
     }
 
-    // Render Rows
     if (machineDetails.length > 0) {
         machineDetails.forEach(item => addMachineDetailRow(item.name, item.target, item.actual, item.display_end_date));
     } else {
-        // Add one empty row if absolutely no data found
         addMachineDetailRow();
     }
 
-    // Attach Add Button Listener
-    const addBtn = $('#btn-add-machine-detail');
+    const addBtn = $('#btn-add-machine-detail-new');
     if(addBtn) addBtn.onclick = () => addMachineDetailRow();
 
-    $('#operations-modal').classList.remove('hidden');
+    const saveBtn = $('#btn-save-machine-details');
+    if(saveBtn) saveBtn.onclick = saveMachineDetails;
+
+    const cancelBtn = $('#btn-cancel-machine-details');
+    if(cancelBtn) cancelBtn.onclick = closeMachineDetailsEdit;
+
+    $('#machine-details-edit-modal').classList.remove('hidden');
+}
+
+export function closeMachineDetailsEdit() {
+    $('#machine-details-edit-modal').classList.add('hidden');
+}
+
+export async function saveMachineDetails() {
+    const machineRows = document.querySelectorAll('#machine-details-edit-container .machine-detail-row');
+    const machineDetails = [];
+    machineRows.forEach(row => {
+        const name = row.querySelector('.machine-name').value.trim();
+        const target = row.querySelector('.machine-target').value;
+        const actual = row.querySelector('.machine-actual').value;
+        const endDate = row.querySelector('.machine-end-date').value;
+
+        if (name) {
+            machineDetails.push({
+                name: name,
+                target: target ? parseInt(target) : null,
+                actual: actual ? parseInt(actual) : null,
+                display_end_date: endDate || null
+            });
+        }
+    });
+
+    const targetDate = editingOpDate || getTodayDateString();
+    try {
+        await setDoc(doc(db, "operations_data", targetDate), { machine_details: machineDetails }, { merge: true });
+        closeMachineDetailsEdit();
+        showToast("機種情報を保存しました！");
+    } catch (e) { alert("保存失敗: " + e.message); }
 }
 
 function addMachineDetailRow(name = '', target = '', actual = '', endDate = '') {
-    const container = $('#machine-details-input-container');
+    const container = $('#machine-details-edit-container');
+    if (!container) return;
+
     const div = document.createElement('div');
     div.className = 'grid grid-cols-10 gap-2 items-center machine-detail-row border-b border-slate-100 pb-2 mb-2';
 
@@ -772,27 +836,8 @@ export async function saveOpData() {
     const total15 = getNum('in_4p_15') + getNum('in_1p_15') + getNum('in_20s_15');
     const total19 = getNum('in_4p_19') + getNum('in_1p_19') + getNum('in_20s_19');
 
-    // Collect Machine Details
-    const machineRows = document.querySelectorAll('.machine-detail-row');
-    const machineDetails = [];
-    machineRows.forEach(row => {
-        const name = row.querySelector('.machine-name').value.trim();
-        const target = row.querySelector('.machine-target').value;
-        const actual = row.querySelector('.machine-actual').value;
-        const endDate = row.querySelector('.machine-end-date').value;
-
-        if (name) { // Only save if name exists
-            machineDetails.push({
-                name: name,
-                target: target ? parseInt(target) : null,
-                actual: actual ? parseInt(actual) : null,
-                display_end_date: endDate || null
-            });
-        }
-    });
-
     const d = {
-        machine_details: machineDetails, // Save machine details
+        // machine_details: machineDetails, // REMOVED
         target_total_15: getVal('in_target_15'),
         today_target_total_15: total15, // Force overwrite with calculated sum
         actual_total_15: total15,       // Force overwrite with calculated sum
@@ -813,7 +858,7 @@ export async function saveOpData() {
     try {
         await setDoc(doc(db, "operations_data", targetDate), d, { merge: true });
         closeOpInput();
-        showToast("保存しました！");
+        showToast("全体実績を保存しました！");
     } catch (e) { alert("保存失敗: " + e.message); }
 }
 

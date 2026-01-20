@@ -335,7 +335,7 @@ export function renderModals() {
     <div id="operations-modal" class="modal-overlay hidden">
         <div class="modal-content p-6 max-w-lg">
             <h3 class="text-lg font-black text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-4">
-                <span class="text-2xl">📝</span> 稼働実績の入力
+                <span class="text-2xl">📝</span> 稼働実績入力 (全体)
             </h3>
 
             <div class="space-y-6 max-h-[60vh] overflow-y-auto px-1">
@@ -400,21 +400,36 @@ export function renderModals() {
                 </div>
             </div>
 
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-6">
-                 <div class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2 justify-between">
-                    <div class="flex items-center gap-2">
-                        <span class="w-2 h-4 bg-amber-500 rounded-full"></span> 注目機種管理
+            <div class="mt-6 flex gap-3">
+                <button id="btn-cancel-op-input" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl">キャンセル</button>
+                <button id="btn-save-op-data" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700">保存する</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="machine-details-edit-modal" class="modal-overlay hidden">
+        <div class="modal-content p-6 max-w-lg">
+            <h3 class="text-lg font-black text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-4">
+                <span class="text-2xl">🔥</span> 注目の新台・重点機種入力
+            </h3>
+
+            <div class="space-y-6 max-h-[60vh] overflow-y-auto px-1">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                     <div class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2 justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-4 bg-amber-500 rounded-full"></span> 機種リスト
+                        </div>
+                        <button id="btn-add-machine-detail-new" class="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition">+ 機種を追加</button>
                     </div>
-                    <button id="btn-add-machine-detail" class="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition">+ 機種を追加</button>
-                </div>
-                <div id="machine-details-input-container" class="space-y-3">
-                    <!-- Dynamic rows will be added here -->
+                    <div id="machine-details-edit-container" class="space-y-3">
+                        <!-- Dynamic rows will be added here -->
+                    </div>
                 </div>
             </div>
 
             <div class="mt-6 flex gap-3">
-                <button id="btn-cancel-op-input" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl">キャンセル</button>
-                <button id="btn-save-op-data" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700">保存する</button>
+                <button id="btn-cancel-machine-details" class="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl">キャンセル</button>
+                <button id="btn-save-machine-details" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700">保存する</button>
             </div>
         </div>
     </div>
