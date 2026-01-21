@@ -17,7 +17,8 @@ let shiftState = {
     earlyWarehouseMode: false,
     adjustmentMode: false, // New Switch State
     prevMonthCache: null,
-    currentStaffTab: 'early'
+    currentStaffTab: 'early',
+    autoShiftSettings: { money: true, warehouse: true, hall_resp: true } // New
 };
 
 const RANKS = {
@@ -33,7 +34,12 @@ const ROLES = {
     HALL: 'ホ',
     OFF: '公休',
     GENERIC_A: 'A早',
-    GENERIC_B: 'B遅'
+    GENERIC_B: 'B遅',
+    PAID: '有休',
+    SPECIAL: '特休',
+    SLASH: '/',
+    WORK: '出勤',
+    BLANK: ''
 };
 
 const renderRoleBadges = (roles) => {
@@ -203,6 +209,9 @@ export function createShiftModals() {
 
                 <div class="hidden md:flex p-3 bg-white border-t border-slate-200 justify-end gap-3 shrink-0">
                     <button id="btn-clear-shift" class="text-xs font-bold text-rose-600 hover:bg-rose-50 px-4 py-2 rounded-lg border border-rose-200 transition">🗑️ 割り振りクリア</button>
+                    <button id="btn-shift-settings" class="text-xs font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition flex items-center gap-2">
+                        <span>⚙️</span> 設定
+                    </button>
                     <button id="btn-auto-create-shift" class="text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2">
                         <span>⚡</span> AI 自動作成
                     </button>
@@ -238,6 +247,14 @@ export function createShiftModals() {
                     <span class="text-xl">🏖️</span>
                     <span class="text-[10px] font-bold">公休 (休み)</span>
                 </button>
+                <button class="action-btn-role flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-pink-50 border border-pink-100 hover:bg-pink-100 hover:text-pink-600 transition" data-role="paid">
+                    <span class="text-xl">🎫</span>
+                    <span class="text-[10px] font-bold">有休希望</span>
+                </button>
+                <button class="action-btn-role flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-yellow-50 border border-yellow-100 hover:bg-yellow-100 hover:text-yellow-600 transition hidden" id="btn-req-special" data-role="special">
+                    <span class="text-xl">🌟</span>
+                    <span class="text-[10px] font-bold">特休希望</span>
+                </button>
                 <button class="action-btn-role flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-200 transition" data-role="clear">
                     <span class="text-xl">🔄</span>
                     <span class="text-[10px] font-bold">クリア</span>
@@ -249,6 +266,10 @@ export function createShiftModals() {
                  <button class="role-btn bg-slate-100 text-slate-600 border border-slate-200 font-bold py-2 rounded-lg text-[10px]" data-role="A早">A (早)</button>
                  <button class="role-btn bg-slate-100 text-slate-600 border border-slate-200 font-bold py-2 rounded-lg text-[10px]" data-role="B遅">B (遅)</button>
                  <button class="role-btn bg-rose-50 text-rose-600 border border-rose-200 font-bold py-2 rounded-lg text-[10px]" data-role="公休">公休</button>
+                 <button class="role-btn bg-pink-50 text-pink-600 border border-pink-200 font-bold py-2 rounded-lg text-[10px]" data-role="有休">有休</button>
+                 <button class="role-btn bg-yellow-50 text-yellow-600 border border-yellow-200 font-bold py-2 rounded-lg text-[10px]" data-role="特休">特休</button>
+                 <button class="role-btn bg-slate-100 text-slate-400 border border-slate-200 font-bold py-2 rounded-lg text-[10px]" data-role="/">/</button>
+                 <button class="role-btn bg-slate-50 text-slate-400 border border-slate-200 font-bold py-2 rounded-lg text-[10px]" data-role="revert">↩️ 戻す</button>
                  <button class="role-btn bg-slate-50 text-slate-400 border border-slate-200 font-bold py-2 rounded-lg text-[10px]" data-role="clear">クリア</button>
 
                  <div class="col-span-4 h-px bg-slate-100 my-1"></div>
@@ -322,8 +343,36 @@ export function createShiftModals() {
             <h4 class="text-center font-black text-slate-800 mb-6">管理者メニュー</h4>
             <div class="grid grid-cols-1 gap-3">
                 <button id="btn-mobile-clear" class="w-full py-4 bg-rose-50 text-rose-600 font-bold rounded-xl border border-rose-100">割り振りをクリア</button>
+                <button id="btn-mobile-settings" class="w-full py-4 bg-slate-50 text-slate-600 font-bold rounded-xl border border-slate-100">⚙️ 自動割り振り設定</button>
                 <button id="btn-mobile-auto" class="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200">AI 自動作成を実行</button>
                 <button onclick="document.getElementById('mobile-admin-menu').classList.add('hidden')" class="w-full py-4 text-slate-400 font-bold">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUTO SHIFT SETTINGS MODAL -->
+    <div id="auto-shift-settings-modal" class="modal-overlay hidden" style="z-index: 100;">
+        <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl">
+            <h3 class="font-bold text-slate-800 text-lg mb-4">⚙️ 自動割り振り設定</h3>
+            <p class="text-xs font-bold text-slate-400 mb-6">AIが割り振りを行う役割を選択してください。</p>
+
+            <div class="space-y-4">
+                <label class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition">
+                    <span class="text-sm font-bold text-slate-700">金銭業務 (金メ・金サブ)</span>
+                    <input type="checkbox" id="chk-as-money" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500" checked>
+                </label>
+                <label class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition">
+                    <span class="text-sm font-bold text-slate-700">倉庫番</span>
+                    <input type="checkbox" id="chk-as-warehouse" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500" checked>
+                </label>
+                <label class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition">
+                    <span class="text-sm font-bold text-slate-700">ホール責任者</span>
+                    <input type="checkbox" id="chk-as-hall-resp" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500" checked>
+                </label>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-100">
+                <button onclick="document.getElementById('auto-shift-settings-modal').classList.add('hidden')" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition">閉じる</button>
             </div>
         </div>
     </div>
@@ -530,8 +579,16 @@ function setupShiftEventListeners() {
     $('#btn-clear-shift').onclick = clearShiftAssignments;
     $('#btn-auto-create-shift').onclick = generateAutoShift;
     $('#btn-mobile-clear').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); clearShiftAssignments(); };
+    $('#btn-shift-settings').onclick = () => document.getElementById('auto-shift-settings-modal').classList.remove('hidden');
+    $('#btn-mobile-settings').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); document.getElementById('auto-shift-settings-modal').classList.remove('hidden'); };
     $('#btn-mobile-auto').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); generateAutoShift(); };
     $('#mobile-fab-menu').onclick = () => $('#mobile-admin-menu').classList.remove('hidden');
+
+    // Auto Shift Settings Listeners
+    $('#chk-as-money').onchange = (e) => { shiftState.autoShiftSettings.money = e.target.checked; };
+    $('#chk-as-warehouse').onchange = (e) => { shiftState.autoShiftSettings.warehouse = e.target.checked; };
+    $('#chk-as-hall-resp').onchange = (e) => { shiftState.autoShiftSettings.hall_resp = e.target.checked; };
+
     $('#btn-add-staff').onclick = () => openStaffEditModal(null);
     $('#btn-se-save').onclick = saveStaffDetails;
     $('#btn-se-delete').onclick = deleteStaff;
@@ -587,6 +644,7 @@ function setupShiftEventListeners() {
         btn.onclick = () => {
             const role = btn.dataset.role;
             if (role === 'clear') handleActionPanelClick('clear');
+            else if (role === 'revert') handleActionPanelClick('revert');
             else if (role === '公休') handleActionPanelClick('公休');
             else setAdminRole(role);
         };
@@ -815,7 +873,7 @@ export function renderShiftCalendar() {
         let statusText = '';
 
         // UPDATED: User Mode Logic - Ignore Assignments completely if not admin
-        const showAssignment = shiftState.isAdminMode && assignedRole;
+        const showAssignment = shiftState.isAdminMode && (assignedRole !== undefined); // Allow empty string to pass through logic
 
         if (showAssignment) {
             if (assignedRole === '公休') {
@@ -823,6 +881,26 @@ export function renderShiftCalendar() {
                 bgClass = "bg-rose-500";
                 label = '<span class="text-[10px] text-white font-bold leading-none mt-1">公休</span>';
                 statusText = '公休';
+            } else if (assignedRole === '有休' || assignedRole === 'PAID') {
+                numColor = "text-white";
+                bgClass = "bg-pink-500";
+                label = '<span class="text-[10px] text-white font-bold leading-none mt-1">有休</span>';
+                statusText = '有休';
+            } else if (assignedRole === '特休' || assignedRole === 'SPECIAL') {
+                numColor = "text-white";
+                bgClass = "bg-yellow-500";
+                label = '<span class="text-[10px] text-white font-bold leading-none mt-1">特休</span>';
+                statusText = '特休';
+            } else if (assignedRole === '' || assignedRole === undefined) {
+                // Completely Blank
+                bgClass = 'bg-white';
+                label = '';
+                statusText = '未設定';
+            } else if (assignedRole === '/') {
+                numColor = "text-slate-400";
+                bgClass = "bg-slate-50";
+                label = '<span class="text-[10px] text-slate-400 font-bold leading-none mt-1">/</span>';
+                statusText = '/';
             } else {
                 numColor = "text-white";
                 bgClass = "bg-indigo-600";
@@ -841,6 +919,8 @@ export function renderShiftCalendar() {
                 // Color based on request type
                 if(reqType === 'early') { bgClass = "bg-orange-400 opacity-80"; label = '<span class="text-[10px] text-white font-bold leading-none mt-1">早番希</span>'; statusText = '早番希望'; }
                 else if(reqType === 'late') { bgClass = "bg-purple-500 opacity-80"; label = '<span class="text-[10px] text-white font-bold leading-none mt-1">遅番希</span>'; statusText = '遅番希望'; }
+                else if(reqType === 'PAID') { bgClass = "bg-pink-400 opacity-80"; label = '<span class="text-[10px] text-white font-bold leading-none mt-1">有休希</span>'; statusText = '有休希望'; }
+                else if(reqType === 'SPECIAL') { bgClass = "bg-yellow-400 opacity-80"; label = '<span class="text-[10px] text-white font-bold leading-none mt-1">特休希</span>'; statusText = '特休希望'; }
                 else { bgClass = "bg-blue-400 opacity-80"; label = '<span class="text-[10px] text-white font-bold leading-none mt-1">出勤希</span>'; statusText = '出勤希望'; }
             }
         }
@@ -914,7 +994,14 @@ export function renderShiftAdminTable() {
             const hasAnyRemark = (data.remarks && data.remarks.trim() !== "") || (data.daily_remarks && Object.keys(data.daily_remarks).length > 0);
 
             // Calculate Actual Assigned Count
-            const actualCount = Object.values(data.assignments || {}).filter(r => r !== '公休').length;
+            // Logic: Contract Days includes Paid/Special. Physical Days is Work only.
+            // Here "Actual" usually means "Assigned Days against Contract".
+            const actualCount = Object.values(data.assignments || {}).filter(r => r && r !== '公休' && r !== '/').length; // Includes Paid/Special if they are in assignments?
+            // Wait, r could be '有休' or '特休'.
+            // If we count them for contract, they should be included.
+            // If r is '', it's not counted.
+            // If r is '/', it's not counted.
+            // So: r exists AND r != '公休' AND r != '/'.
 
             const tdName = document.createElement('td');
             // UPDATED: Name cell layout (narrow on mobile)
@@ -968,10 +1055,23 @@ export function renderShiftAdminTable() {
                 let bgCell = '';
                 let cellContent = '';
 
-                if (assignment) {
+                if (assignment || assignment === '') { // Allow empty string
                     if (assignment === '公休') {
                          if (isOffReq) { bgCell = 'bg-rose-50 hover:bg-rose-100'; cellContent = '<span class="text-rose-500 font-bold text-[10px] select-none">(休)</span>'; }
                          else { bgCell = 'bg-white hover:bg-slate-100'; cellContent = '<span class="text-slate-300 font-bold text-[10px] select-none">/</span>'; }
+                    } else if (assignment === '有休' || assignment === 'PAID') {
+                         bgCell = 'bg-pink-100 hover:bg-pink-200';
+                         cellContent = '<span class="text-pink-600 font-bold text-[10px] select-none">有休</span>';
+                    } else if (assignment === '特休' || assignment === 'SPECIAL') {
+                         bgCell = 'bg-yellow-100 hover:bg-yellow-200';
+                         cellContent = '<span class="text-yellow-600 font-bold text-[10px] select-none">特休</span>';
+                    } else if (assignment === '') {
+                         // Explicit Blank
+                         bgCell = 'bg-white hover:bg-slate-50';
+                         cellContent = '';
+                    } else if (assignment === '/') {
+                         bgCell = 'bg-slate-50 hover:bg-slate-100';
+                         cellContent = '<span class="text-slate-400 font-bold text-[10px] select-none">/</span>';
                     } else {
                          let roleColor = 'text-slate-800';
 
@@ -1072,7 +1172,9 @@ export function renderShiftAdminTable() {
 
         for(let d=1; d<=daysInMonth; d++) {
             const role = assignments[d];
-            if(role && role !== '公休') {
+            // Actual Count for Staffing (Physical Presence)
+            // Exclude Paid/Special/Blank/Slash
+            if(role && role !== '公休' && role !== '有休' && role !== 'PAID' && role !== '特休' && role !== 'SPECIAL' && role !== '/') {
                 if(shiftType === 'A') actualA[d]++;
                 else actualB[d]++;
             }
@@ -1156,6 +1258,17 @@ export function showActionSelectModal(day, currentStatusText) {
     } else {
         userReqButtons.classList.remove('hidden');
         adminRoles.classList.add('hidden');
+
+        // Toggle Special Leave Button for Employees
+        const details = shiftState.staffDetails[name] || {};
+        const btnSpecial = document.getElementById('btn-req-special');
+        if (btnSpecial) {
+            if (details.type === 'employee') {
+                btnSpecial.classList.remove('hidden');
+            } else {
+                btnSpecial.classList.add('hidden');
+            }
+        }
     }
 }
 
@@ -1171,19 +1284,53 @@ function handleActionPanelClick(role) {
         if (role === 'clear') {
              const day = shiftState.selectedDay;
              const name = shiftState.selectedStaff;
-             if(shiftState.shiftDataCache[name]) {
-                 delete shiftState.shiftDataCache[name].assignments[day];
-                 delete shiftState.shiftDataCache[name].daily_remarks[day];
-             }
+             if(!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { assignments: {}, daily_remarks: {} };
+             if(!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
+
+             // DELETE assignment to reset to unassigned/blank state (NOT counting as work)
+             delete shiftState.shiftDataCache[name].assignments[day];
+             delete shiftState.shiftDataCache[name].daily_remarks[day];
+
              updateViewAfterAction();
+             showToast("✅ 変更しました", "black");
+             closeShiftActionModal();
+        } else if (role === 'revert') {
+             const day = shiftState.selectedDay;
+             const name = shiftState.selectedStaff;
+             const data = shiftState.shiftDataCache[name];
+             const req = data?.shift_requests?.[day];
+             const isOff = data?.off_days?.includes(day);
+             const isWork = data?.work_days?.includes(day);
+
+             let newVal = '';
+             if (isOff) {
+                 newVal = '公休';
+             } else if (isWork) {
+                 // Check precise request type
+                 if (req === 'PAID') newVal = '有休';
+                 else if (req === 'SPECIAL') newVal = '特休';
+                 else newVal = '出勤';
+             }
+
+             // If no request -> '' (Blank).
+             if (!isOff && !isWork) newVal = '';
+
+             if(!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { assignments: {} };
+             if(!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
+
+             shiftState.shiftDataCache[name].assignments[day] = newVal;
+
+             updateViewAfterAction();
+             showToast("✅ 変更しました", "black");
              closeShiftActionModal();
         } else {
             setAdminRole(role);
+            showToast("✅ 変更しました", "black");
             closeShiftActionModal();
         }
     } else {
         // User Mode
-        updateShiftRequest(role); // 'early', 'late', 'any', 'off', 'clear'
+        updateShiftRequest(role); // 'early', 'late', 'any', 'off', 'clear', 'paid', 'special'
         closeShiftActionModal();
     }
 }
@@ -1206,6 +1353,21 @@ function updateShiftRequest(type) {
         if(!offList.includes(day)) offList.push(day);
         workList = workList.filter(d => d !== day);
         delete data.shift_requests[day];
+    } else if (type === 'paid') {
+        // Paid Leave - Treated like work in contract, but technically a request here?
+        // User instructions say: [有休希望] ... 選択時はあくまで「希望」として保存する
+        // For logic simplicity, treat as Work Day with special request type 'paid'
+        // But wait, the system logic uses assignments for calculations mostly.
+        // For requests, we can just store 'paid' in shift_requests.
+        // And ensure it counts as "Work Day" (contract) but maybe handle differently in logic.
+        // Let's store as work_day + request 'paid'.
+        if(!workList.includes(day)) workList.push(day);
+        offList = offList.filter(d => d !== day);
+        data.shift_requests[day] = 'PAID';
+    } else if (type === 'special') {
+        if(!workList.includes(day)) workList.push(day);
+        offList = offList.filter(d => d !== day);
+        data.shift_requests[day] = 'SPECIAL';
     } else {
         // work (early, late, any)
         if(!workList.includes(day)) workList.push(day);
@@ -1255,7 +1417,13 @@ function moveDay(delta) {
         let status = assign;
         if(!status) {
             if(isOff) status = '公休希望';
-            else if(isWork) status = req === 'early' ? '早番希望' : req === 'late' ? '遅番希望' : '出勤希望';
+            else if(isWork) {
+                if (req === 'early') status = '早番希望';
+                else if (req === 'late') status = '遅番希望';
+                else if (req === 'PAID') status = '有休希望';
+                else if (req === 'SPECIAL') status = '特休希望';
+                else status = '出勤希望';
+            }
             else status = '未設定';
         }
         showActionSelectModal(nextDay, status);
@@ -1354,10 +1522,32 @@ async function prepareShiftAnalysisContext(year, month, currentShiftData, staffD
         }
 
         // Build assignedDays array from current assignments
+        // assignedDays = Contract Days (Work + Paid + Special)
+        // physicalWorkDays = Physical Presence (Work only)
+
         const assignedDays = [];
+        const physicalWorkDays = [];
+
         for(let day=1; day<=daysInMonth; day++) {
-            if (assignments[day] && assignments[day] !== '公休') {
-                assignedDays.push(day);
+            const role = assignments[day];
+
+            // Skip Public Holiday ('公休') and Slash ('/')
+            // Note: Undefined/Null is usually treated as 'Not assigned yet', but usually implies 'Work' if we are counting towards contract?
+            // Wait, undefined usually means "Empty slot", which in this system defaults to "Day off" if not filled?
+            // Actually, in this system, unassigned slots are usually filled by AI.
+            // But if we are counting "Assigned Days", we only count what is set.
+            // The requirement says: "assignedDays (契約用): 物理出勤('出勤','') + 有休 + 特休".
+            // So we must count '' (Empty String) which is "Cleared but counts as work".
+            // We skip '公休', '/', and undefined (truly empty).
+
+            if (role === '公休' || role === '/' || role === undefined) continue;
+
+            // All others (Work, Blank '', Paid, Special) count for contract
+            assignedDays.push(day);
+
+            // Physical Work: Work ('出勤') and Blank (''). Paid/Special excluded.
+            if (role !== '有休' && role !== 'PAID' && role !== '特休' && role !== 'SPECIAL') {
+                physicalWorkDays.push(day);
             }
         }
 
@@ -1375,6 +1565,7 @@ async function prepareShiftAnalysisContext(year, month, currentShiftData, staffD
                 types: s.shift_requests || {}
             },
             assignedDays: assignedDays,
+            physicalWorkDays: physicalWorkDays,
             history,
             roleCounts: {
                 [ROLES.MONEY]: 0,
@@ -1392,18 +1583,44 @@ async function prepareShiftAnalysisContext(year, month, currentShiftData, staffD
 // --- SHARED HELPER: CHECK ASSIGNMENT CONSTRAINT ---
 // Can we assign 'day' to 'staff'?
 function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, strictContractMode = false, isAdjustmentMode = false) {
-    // Helper: Check Work Status (Current & History)
-    const checkWork = (s, d) => {
-        if (d <= 0) return !!s.history[d];
-        return s.assignedDays.includes(d);
+    // Helper: Check Work Status (Physical Work Only) for Consecutive Checks
+    // UPDATED: Pre-month Paid/Special counts as NO WORK (false)
+    const checkPhysicalWork = (s, d) => {
+        if (d <= 0) {
+            // Check History (Prev Month)
+            // history[d] was boolean (true if worked).
+            // We need to know if it was PAID/SPECIAL to return false.
+            // But currently history only stores boolean "isWork".
+            // However, prepareShiftAnalysisContext logic:
+            // "const role = prevAssigns[dVal]; history[offset] = (role && role !== '公休');"
+            // This is problematic. We need to check exact role in prev assignments.
+
+            const prevD = prevDaysCount + d; // d is negative or 0
+            const role = prevMonthAssignments[s.name]?.[prevD];
+
+            // Logic: Count as Physical Work unless it's explicitly Leave, Public Holiday, Slash, or Undefined (Empty Slot).
+            // Manual Clear ('') COUNTS as Work.
+
+            if (role === undefined || role === '公休' || role === '/' || role === '有休' || role === 'PAID' || role === '特休' || role === 'SPECIAL') return false;
+
+            // If role is '' (empty string), it falls through and returns true (Work).
+            // If role is '出勤', '金メ', etc., it returns true (Work).
+            return true;
+        }
+        return s.physicalWorkDays.includes(d);
     };
 
     // 0. Strict Contract Enforcement (Highest Priority)
+    // Uses assignedDays (includes Paid/Special)
     if (!strictContractMode && !isAdjustmentMode && staff.assignedDays.length >= staff.contractDays) return false;
 
     // 1. Strict Interval (Absolute): No Late -> Early
+    // Uses physicalWorkDays for "Prev Day" check? Or assignedDays?
+    // Usually Paid Leave doesn't cause interval issues. So use physicalWorkDays.
+    // If I took Paid Leave yesterday, I can work Early today regardless of my shift type.
+
     if (day > 1) {
-        if (staff.assignedDays.includes(day - 1)) {
+        if (staff.physicalWorkDays.includes(day - 1)) {
                 let prevEffective = staff.shiftType;
                 if (staff.requests.types[day-1] === 'early') prevEffective = 'A';
                 if (staff.requests.types[day-1] === 'late') prevEffective = 'B';
@@ -1415,12 +1632,18 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
                 if (prevEffective === 'B' && currentEffective === 'A') return false;
         }
     } else if (day === 1) {
+            // Check Prev Month Last Day
             const lastRole = prevMonthAssignments[staff.name]?.[prevDaysCount];
+            // Only strictly forbid if last day was Late WORK. (Not Paid/Special)
             if (lastRole && (lastRole.includes('遅') || lastRole.includes('B'))) {
-                let currentEffective = staff.shiftType;
-                if (staff.requests.types[day] === 'early') currentEffective = 'A';
-                if (staff.requests.types[day] === 'late') currentEffective = 'B';
-                if (currentEffective === 'A') return false;
+                // If it was Paid/Special, lastRole wouldn't include '遅'/'B' usually unless role string is messy.
+                // Assuming '有休' doesn't contain '遅'.
+                if (lastRole !== '有休' && lastRole !== 'PAID' && lastRole !== '特休' && lastRole !== 'SPECIAL') {
+                    let currentEffective = staff.shiftType;
+                    if (staff.requests.types[day] === 'early') currentEffective = 'A';
+                    if (staff.requests.types[day] === 'late') currentEffective = 'B';
+                    if (currentEffective === 'A') return false;
+                }
             }
     }
 
@@ -1429,30 +1652,35 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
             if (staff.requests.off.includes(day)) return false;
     }
 
-    // 3. Consecutive Days (UPDATED for Cross-Month)
+    // 3. Consecutive Days (UPDATED: Uses physicalWorkDays)
     let currentSeq = 1;
     // Scan Backwards
     let b = day - 1;
-    while(checkWork(staff, b)) {
+    while(checkPhysicalWork(staff, b)) {
         currentSeq++;
         b--;
         if (day - b > 30) break;
     }
     // Scan Forwards
     let f = day + 1;
-    while(checkWork(staff, f)) {
+    while(checkPhysicalWork(staff, f)) {
         currentSeq++;
         f++;
     }
 
     if (currentSeq > staff.maxConsecutive) return false;
 
-    // 4. Sandwich Check
-    if (!checkWork(staff, day - 1)) {
+    // HARD CONSTRAINT: Absolutely Block 6 Consecutive Days (Max Streak = 5)
+    // regardless of user settings.
+    // If assigning this day results in 6 days streak, return false.
+    if (currentSeq >= 6) return false;
+
+    // 4. Sandwich Check (Uses physicalWorkDays)
+    if (!checkPhysicalWork(staff, day - 1)) {
         // day-1 is a Gap. Check streak ending at day-2.
         let prevStreak = 0;
         let k = day - 2;
-        while (checkWork(staff, k)) {
+        while (checkPhysicalWork(staff, k)) {
             prevStreak++;
             k--;
             if ((day - 2) - k > 30) break;
@@ -1460,7 +1688,7 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
         if (prevStreak >= staff.maxConsecutive) return false;
     }
 
-    // 5. Already assigned
+    // 5. Already assigned (Check assignedDays to prevent double booking even with Paid)
     if (staff.assignedDays.includes(day)) return false;
 
     return true;
@@ -1535,7 +1763,10 @@ async function executeAutoShiftLogic() {
                         const reqB = b.requests.work.includes(d) ? 1 : 0;
                         return reqB - reqA;
                     });
-                    if (candidates.length > 0) candidates[0].assignedDays.push(d);
+                    if (candidates.length > 0) {
+                        candidates[0].assignedDays.push(d);
+                        candidates[0].physicalWorkDays.push(d);
+                    }
                 }
             });
         });
@@ -1558,11 +1789,50 @@ async function executeAutoShiftLogic() {
                          if (count >= 4) break;
                          if (c.assignedDays.length >= c.contractDays) continue;
                          c.assignedDays.push(d);
+                         c.physicalWorkDays.push(d);
                          count++;
                      }
                 }
             });
         });
+
+        // Helper: Calculate potential streak if assigned
+        // Note: canAssign already calls checkAssignmentConstraint which checks HARD limits (>=6).
+        // This helper is for SOFT limit (avoid 5 if possible).
+        const getPotentialStreak = (staff, day) => {
+            // Need access to checkPhysicalWork logic. We can reuse the one from context if we extract it or just duplicate simple logic.
+            // Simplified Streak Calc:
+            // Backwards
+            let seq = 1;
+            let b = day - 1;
+            while(true) {
+                if (b <= 0) {
+                    // History check
+                    const prevD = prevDaysCount + b;
+                    const role = prevMonthAssignments[staff.name]?.[prevD];
+                    if (role === undefined || role === '公休' || role === '/' || role === '有休' || role === 'PAID' || role === '特休' || role === 'SPECIAL') break;
+                    // else it is Work or ''(deleted -> wait, deleted is undefined in history obj? No, history obj is from DB).
+                    // In DB '' is stored as ''. undefined is missing key.
+                    // If DB has '', it is work. If DB has no key, it is undefined -> break.
+                    seq++;
+                    b--;
+                } else {
+                    if (staff.physicalWorkDays.includes(b)) {
+                        seq++;
+                        b--;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            // Forwards
+            let f = day + 1;
+            while(staff.physicalWorkDays.includes(f)) {
+                seq++;
+                f++;
+            }
+            return seq;
+        };
 
         // --- PHASE 3: Employee Contract Fill (Normal) ---
         let changed = true;
@@ -1578,7 +1848,17 @@ async function executeAutoShiftLogic() {
                      validDays = days.filter(d => !emp.requests.work.includes(d) && canAssign(emp, d));
                  }
                  if (validDays.length > 0) {
+                     // Filter/Sort by Streak Preference (Avoid 5)
+                     // Soft Constraint: Prefer days where streak <= 4. Backup: Streak == 5.
+                     // (Streak >= 6 blocked by canAssign)
+
                      validDays.sort((d1, d2) => {
+                         const s1 = getPotentialStreak(emp, d1);
+                         const s2 = getPotentialStreak(emp, d2);
+                         const bad1 = s1 >= 5 ? 1 : 0;
+                         const bad2 = s2 >= 5 ? 1 : 0;
+                         if (bad1 !== bad2) return bad1 - bad2; // Prioritize low streak
+
                          const t1 = getTarget(d1, emp.shiftType);
                          const c1 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d1)).length;
                          const fill1 = c1 / t1;
@@ -1587,7 +1867,11 @@ async function executeAutoShiftLogic() {
                          const fill2 = c2 / t2;
                          return fill1 - fill2;
                      });
-                     emp.assignedDays.push(validDays[0]);
+
+                     const bestDay = validDays[0];
+                     emp.assignedDays.push(bestDay);
+                     // Update physicalWorkDays if not leave (here we assume Work for contract fill)
+                     emp.physicalWorkDays.push(bestDay);
                      changed = true;
                  }
             }
@@ -1604,6 +1888,13 @@ async function executeAutoShiftLogic() {
                         s.shiftType === st && s.type === 'byte' && canAssign(s, d)
                     );
                      candidates.sort((a,b) => {
+                         // Primary Sort: Streak Preference (Soft Limit)
+                         const sA = getPotentialStreak(a, d);
+                         const sB = getPotentialStreak(b, d);
+                         const badA = sA >= 5 ? 1 : 0;
+                         const badB = sB >= 5 ? 1 : 0;
+                         if (badA !== badB) return badA - badB;
+
                          const reqA = a.requests.work.includes(d) ? 1 : 0;
                          const reqB = b.requests.work.includes(d) ? 1 : 0;
                          if(reqA !== reqB) return reqB - reqA;
@@ -1611,10 +1902,12 @@ async function executeAutoShiftLogic() {
                          const needB = b.contractDays - b.assignedDays.length;
                          return needB - needA;
                      });
+
                      for(const c of candidates) {
                          if (current >= target) break;
                          if (c.assignedDays.length >= c.contractDays) continue;
                          c.assignedDays.push(d);
+                         c.physicalWorkDays.push(d); // Track physical work
                          current++;
                      }
                 }
@@ -1635,6 +1928,7 @@ async function executeAutoShiftLogic() {
                          return c1 - c2;
                      });
                      alba.assignedDays.push(validDays[0]);
+                     alba.physicalWorkDays.push(validDays[0]);
                      changed = true;
                  }
             }
@@ -1652,48 +1946,74 @@ async function executeAutoShiftLogic() {
                      return c1 - c2;
                  });
                  emp.assignedDays.push(candidates[0]);
+                 emp.physicalWorkDays.push(candidates[0]);
             }
         }
 
         // --- PHASE 7: Role Assignment ---
         ['A', 'B'].forEach(st => {
             days.forEach(d => {
-                const workers = staffObjects.filter(s => s.shiftType === st && s.assignedDays.includes(d));
-                let unassigned = [...workers];
+                // Identify all staff assigned to this day (Contract fulfilled)
+                const allAssigned = staffObjects.filter(s => s.shiftType === st && s.assignedDays.includes(d));
 
-                // Helper to assign role
+                const leaveGroup = [];
+                let workGroup = [];
+
+                // Split into Leave vs Work based on Requests
+                allAssigned.forEach(s => {
+                    const req = s.requests.types[d];
+                    if (req === 'PAID') {
+                        leaveGroup.push(s);
+                        shifts[s.name].assignments[d] = '有休';
+                    } else if (req === 'SPECIAL') {
+                        leaveGroup.push(s);
+                        shifts[s.name].assignments[d] = '特休';
+                    } else {
+                        workGroup.push(s);
+                    }
+                });
+
+                // Helper to assign role (Operates on workGroup only)
                 const assign = (roleKey, filterFn) => {
-                    const candidates = unassigned.filter(filterFn);
+                    const candidates = workGroup.filter(filterFn);
                     if (candidates.length === 0) return;
                     candidates.sort((a,b) => a.roleCounts[roleKey] - b.roleCounts[roleKey]);
                     const picked = candidates[0];
                     shifts[picked.name].assignments[d] = roleKey;
                     picked.roleCounts[roleKey]++;
-                    unassigned = unassigned.filter(u => u !== picked);
+                    workGroup = workGroup.filter(u => u !== picked); // Remove from pool
                 };
 
                 // 1. Money Main
-                assign(ROLES.MONEY, s => s.allowedRoles.includes('money_main'));
+                if (shiftState.autoShiftSettings.money) {
+                    assign(ROLES.MONEY, s => s.allowedRoles.includes('money_main'));
+                }
 
                 // 2. Money Sub
-                assign(ROLES.MONEY_SUB, s => s.allowedRoles.includes('money_sub'));
+                if (shiftState.autoShiftSettings.money) {
+                    assign(ROLES.MONEY_SUB, s => s.allowedRoles.includes('money_sub'));
+                }
 
                 // 3. Hall Resp
-                assign(ROLES.HALL_RESP, s => s.allowedRoles.includes('hall_resp'));
+                if (shiftState.autoShiftSettings.hall_resp) {
+                    assign(ROLES.HALL_RESP, s => s.allowedRoles.includes('hall_resp'));
+                }
 
                 // 4. Warehouse
-                assign(ROLES.WAREHOUSE, s => {
-                    if (!s.allowedRoles.includes('warehouse')) return false;
-                    if (shiftState.earlyWarehouseMode && s.type === 'employee' && s.shiftType === 'A') return false;
-                    return true;
+                if (shiftState.autoShiftSettings.warehouse) {
+                    assign(ROLES.WAREHOUSE, s => {
+                        if (!s.allowedRoles.includes('warehouse')) return false;
+                        if (shiftState.earlyWarehouseMode && s.type === 'employee' && s.shiftType === 'A') return false;
+                        return true;
+                    });
+                }
+
+                // 5. Others -> Work ('出勤')
+                workGroup.forEach(s => {
+                    shifts[s.name].assignments[d] = '出勤';
                 });
 
-                // 5. Others -> Hall or Generic
-                unassigned.forEach(s => {
-                    shifts[s.name].assignments[d] = 'ホ';
-                });
-
-                // Mark Off days
+                // Mark Off days (Anyone NOT in allAssigned)
                 const offStaff = staffObjects.filter(s => s.shiftType === st && !s.assignedDays.includes(d));
                 offStaff.forEach(s => {
                     shifts[s.name].assignments[d] = '公休';
@@ -1786,15 +2106,38 @@ async function openAdjustmentCandidateModal(day, currentStaffName, currentRole) 
     const shiftType = targetStaffObj.shiftType || 'A'; // Default to A if not found
 
     // 2. Filter Candidates
+    // Requirements:
+    // 1. Current assignment is Undefined OR '' OR '/'
+    // 2. Not requested Off (Public Holiday Request)
+
     const candidates = staffObjects.filter(staff => {
         if (staff.name === currentStaffName) return false;
-        if (staff.assignedDays.includes(day)) return false;
+
+        // Condition 1: Must be "Available" (No valid assignment)
+        // assignedDays includes Work, Paid, Special.
+        // If I am working, I can't be a candidate.
+        // Wait, "adjustment candidate" means someone who can TAKE the shift.
+        // So they shouldn't be working that day.
+
+        // Check actual assignment string
+        const currentAssign = shiftState.shiftDataCache[staff.name]?.assignments?.[day];
+        // Strictly: Undefined, '', or '/' (removed '公休' per rigorous requirement)
+        const isFree = (currentAssign === undefined || currentAssign === '' || currentAssign === '/');
+
+        // Note: '公休' (Holiday) assignment is usually because they Requested Off or were just not assigned.
+        // Requirement says: "かつ、公休希望を出していないこと" (And must NOT have requested Off).
+
+        // Condition 2: No Public Holiday Request
+        const requestedOff = staff.requests.off.includes(day);
+
+        if (!isFree) return false;
+        if (requestedOff) return false;
 
         // シフトタイプ(A/B)が違う人は候補に出さない（ここは維持）
         if (staff.shiftType !== shiftType) return false;
 
-        // 【修正】第6引数に true を渡し、「調整モードである」ことを伝えます。
-        // これにより、checkAssignmentConstraint 内で契約日数のチェックがスキップされます。
+        // Check Constraints (Consecutive days, interval, etc)
+        // Passing isAdjustmentMode = true to ignore Contract Limits
         return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, false, true);
     });
 
