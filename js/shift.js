@@ -1763,7 +1763,10 @@ async function executeAutoShiftLogic() {
                         const reqB = b.requests.work.includes(d) ? 1 : 0;
                         return reqB - reqA;
                     });
-                    if (candidates.length > 0) candidates[0].assignedDays.push(d);
+                    if (candidates.length > 0) {
+                        candidates[0].assignedDays.push(d);
+                        candidates[0].physicalWorkDays.push(d);
+                    }
                 }
             });
         });
@@ -1786,6 +1789,7 @@ async function executeAutoShiftLogic() {
                          if (count >= 4) break;
                          if (c.assignedDays.length >= c.contractDays) continue;
                          c.assignedDays.push(d);
+                         c.physicalWorkDays.push(d);
                          count++;
                      }
                 }
@@ -1924,6 +1928,7 @@ async function executeAutoShiftLogic() {
                          return c1 - c2;
                      });
                      alba.assignedDays.push(validDays[0]);
+                     alba.physicalWorkDays.push(validDays[0]);
                      changed = true;
                  }
             }
@@ -1941,6 +1946,7 @@ async function executeAutoShiftLogic() {
                      return c1 - c2;
                  });
                  emp.assignedDays.push(candidates[0]);
+                 emp.physicalWorkDays.push(candidates[0]);
             }
         }
 
