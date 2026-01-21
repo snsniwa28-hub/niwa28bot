@@ -9,11 +9,16 @@ let yesterdayOpData = null;
 let monthlyOpData = {};
 let editingOpDate = null;
 let returnToCalendar = false;
+let returnToMachineCalendar = false;
 let viewingMachineDate = getTodayDateString(); // State for Machine View
 
-// Dynamic Date Management
+// Dynamic Date Management (Operations)
 let currentOpYear = new Date().getFullYear();
 let currentOpMonth = new Date().getMonth(); // 0-indexed
+
+// Dynamic Date Management (Machine)
+let currentMachineYear = new Date().getFullYear();
+let currentMachineMonth = new Date().getMonth(); // 0-indexed
 
 // Auto-calculation logic exposed to global scope
 window.calcOpTotal = (time) => {
@@ -51,12 +56,11 @@ export function subscribeOperations() {
     const prevBtn = $('#machine-prev-day');
     const nextBtn = $('#machine-next-day');
     const editBtn = $('#machine-edit-btn');
-    const calBtn = $('#machine-calendar-btn');
+    // Removed old calBtn listener
 
     if(prevBtn) prevBtn.onclick = () => changeMachineViewDate(-1);
     if(nextBtn) nextBtn.onclick = () => changeMachineViewDate(1);
     if(editBtn) editBtn.onclick = () => openMachineDetailsEdit(viewingMachineDate);
-    if(calBtn) calBtn.onclick = () => openMonthlyCalendar();
 }
 
 export function changeMachineViewDate(offset) {
@@ -90,6 +94,10 @@ export function renderOperationsBoard() {
     // Ensure Date Nav is visible and updated on first load
     updateMachineDateDisplay();
 
+    // Machine Calendar Listener
+    const btnMachineCalPC = $('#btn-machine-cal-pc-nav');
+    if(btnMachineCalPC) btnMachineCalPC.onclick = (e) => { e.stopPropagation(); openMachineCalendar(); };
+
     // Use default target as 0 since we removed the config
     const defaultTarget = { t15: 0, t19: 0 };
 
@@ -106,14 +114,11 @@ export function renderOperationsBoard() {
     const effTarget19 = daily19 !== null ? daily19 : expected19;
 
     // Logic Update: Prioritize "today_target_total_XX" (Actual Input) > "actual_total_XX" (Calculated/Saved)
-    // The field `today_target_total_XX` was previously used as "Daily Target" but is now "Confirmed Actual".
     const calcTotal = (d, time) => {
         if (!d) return null;
-        // If "Actual Input" (formerly daily target) exists, use it as the definitive actual.
         if (d[`today_target_total_${time}`] !== undefined && d[`today_target_total_${time}`] !== null && d[`today_target_total_${time}`] !== "") {
             return parseInt(d[`today_target_total_${time}`]);
         }
-        // Fallback to breakdowns
         if (d[`actual_total_${time}`]) return d[`actual_total_${time}`];
         const p4 = parseInt(d[`actual_4p_${time}`]) || 0;
         const p1 = parseInt(d[`actual_1p_${time}`]) || 0;
@@ -123,10 +128,9 @@ export function renderOperationsBoard() {
 
     const today15 = calcTotal(t, '15');
     const today19 = calcTotal(t, '19');
-    const yester15 = calcTotal(y, '15'); // Yesterday 15:00
-    const yester19 = calcTotal(y, '19'); // Yesterday 19:00
+    const yester15 = calcTotal(y, '15');
+    const yester19 = calcTotal(y, '19');
 
-    // Logic Update: Smart Display - Check if target reached (Target > 0 and Actual >= Target)
     const is19Reached = effTarget19 > 0 && today19 !== null && today19 >= effTarget19;
     const is15Reached = effTarget15 > 0 && today15 !== null && today15 >= effTarget15;
 
@@ -325,13 +329,43 @@ export function renderOperationsBoard() {
     const zoneTargetPC = container.querySelector('#zone-target-pc');
     if (zoneTargetPC) zoneTargetPC.onclick = (e) => { e.stopPropagation(); openOpInput(); };
 
-    // Initially load machine details for the viewing date (defaults to today)
-    // If viewingMachineDate is today, we can use todayOpData if available, but loadMachineDetailsForDate handles logic
+    // Re-Inject Machine Calendar Button into Machine Details Section
+    const machineDateNav = $('#machine-date-nav');
+    if (machineDateNav) {
+        machineDateNav.innerHTML = `
+            <button id="machine-prev-day" class="p-2 bg-white rounded-full shadow-sm border border-slate-100 text-slate-500 hover:text-indigo-600 transition">◀</button>
+            <div class="flex items-center gap-3">
+                <span id="machine-view-date" class="text-sm font-bold text-slate-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">----/--/--</span>
+            </div>
+            <div class="flex items-center gap-2">
+                 <button id="btn-machine-cal-pc-nav" class="bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                    <span>月間推移</span>
+                </button>
+                <button id="machine-edit-btn" class="flex items-center gap-1 bg-indigo-600 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">
+                    <span>✏️</span> 編集
+                </button>
+                <button id="machine-next-day" class="p-2 bg-white rounded-full shadow-sm border border-slate-100 text-slate-500 hover:text-indigo-600 transition">▶</button>
+            </div>
+        `;
+
+        // Re-attach listeners for these newly created buttons
+        setTimeout(() => {
+            const p = document.getElementById('machine-prev-day');
+            const n = document.getElementById('machine-next-day');
+            const e = document.getElementById('machine-edit-btn');
+            const c = document.getElementById('btn-machine-cal-pc-nav');
+            if(p) p.onclick = () => changeMachineViewDate(-1);
+            if(n) n.onclick = () => changeMachineViewDate(1);
+            if(e) e.onclick = () => openMachineDetailsEdit(viewingMachineDate);
+            if(c) c.onclick = () => openMachineCalendar();
+        }, 0);
+    }
+
     loadMachineDetailsForDate(viewingMachineDate);
 }
 
 async function loadMachineDetailsForDate(dateStr) {
-    // 1. Try to use live data for Today/Yesterday
     if (dateStr === getTodayDateString() && todayOpData) {
         renderMachineDetails(todayOpData.machine_details || []);
         return;
@@ -341,10 +375,8 @@ async function loadMachineDetailsForDate(dateStr) {
         return;
     }
 
-    // 2. Otherwise fetch from Firestore
     try {
-        // Show loading state?
-        renderMachineDetails([], true); // Render loading skeleton or empty
+        renderMachineDetails([], true);
 
         const docRef = doc(db, "operations_data", dateStr);
         const snapshot = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(mod => mod.getDoc(docRef));
@@ -362,7 +394,6 @@ async function loadMachineDetailsForDate(dateStr) {
 }
 
 async function findLatestMachineConfig(targetDate) {
-    // Search backward up to 7 days
     const d = new Date(targetDate);
 
     for (let i = 1; i <= 7; i++) {
@@ -372,7 +403,6 @@ async function findLatestMachineConfig(targetDate) {
         const day = String(d.getDate()).padStart(2, '0');
         const searchDate = `${y}-${m}-${day}`;
 
-        // Check memory first (today/yesterday)
         if (searchDate === getTodayDateString() && todayOpData && todayOpData.machine_details && todayOpData.machine_details.length > 0) {
             return todayOpData.machine_details;
         }
@@ -380,7 +410,6 @@ async function findLatestMachineConfig(targetDate) {
              return yesterdayOpData.machine_details;
         }
 
-        // Fetch
         try {
             const docRef = doc(db, "operations_data", searchDate);
             const snapshot = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(mod => mod.getDoc(docRef));
@@ -409,13 +438,12 @@ function renderMachineDetails(details, isLoading = false) {
 
     if (!details || details.length === 0) {
         container.innerHTML = '<p class="col-span-full text-center text-slate-400 py-10 font-bold">データがありません</p>';
-        container.classList.remove('hidden'); // Keep visible to show "No Data" and layout
+        container.classList.remove('hidden');
         return;
     }
 
     container.classList.remove('hidden');
 
-    // Create a DocumentFragment for better performance and safety
     const fragment = document.createDocumentFragment();
 
     details.forEach(item => {
@@ -424,7 +452,6 @@ function renderMachineDetails(details, isLoading = false) {
         const rate = target > 0 ? Math.round((actual / target) * 100) : 0;
         const isAchieved = target > 0 && actual >= target;
 
-        // Color based on achievement
         const barColor = isAchieved ? 'bg-amber-400' : 'bg-indigo-500';
         const cardBorder = isAchieved ? 'border-amber-200' : 'border-slate-100';
         const icon = isAchieved ? '👑' : '📊';
@@ -451,7 +478,6 @@ function renderMachineDetails(details, isLoading = false) {
             </div>
         `;
 
-        // Safely set the title text and attribute
         const titleEl = card.querySelector('.machine-title');
         titleEl.textContent = item.name;
         titleEl.title = item.name;
@@ -481,18 +507,12 @@ export async function openMonthlyCalendar() {
     modal.classList.remove('hidden');
     returnToCalendar = false;
 
-    // Reset to current month on open if desired, or keep last viewed
-    // currentOpYear = new Date().getFullYear();
-    // currentOpMonth = new Date().getMonth();
+    renderCalendarGrid();
 
-    renderCalendarGrid(); // Render skeletal grid first with current selection
-
-    // Refresh data
     const container = $('#calendar-grid-body');
     if (container) container.innerHTML = '<p class="text-center py-10 text-slate-400">データ読込中...</p>';
 
     try {
-        // Optimization: Fetch all for now as per original code, or refine later.
         const snapshot = await getDocs(collection(db, "operations_data"));
         monthlyOpData = {};
         snapshot.forEach(doc => {
@@ -513,7 +533,6 @@ function renderCalendarGrid() {
     if (!container) return;
     container.innerHTML = '';
 
-    // Update Header with Month Navigation
     const headerContainer = $('#calendar-modal h3');
     if (headerContainer) {
         headerContainer.innerHTML = `
@@ -523,7 +542,6 @@ function renderCalendarGrid() {
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <!-- Navigation -->
                     <div class="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
                         <button id="op-prev-month" class="px-3 py-1 text-slate-400 hover:text-indigo-600 transition font-bold">◀</button>
                         <span class="text-sm font-black text-slate-700 px-2 min-w-[90px] text-center">${currentOpYear}年${currentOpMonth + 1}月</span>
@@ -532,7 +550,6 @@ function renderCalendarGrid() {
                 </div>
             </div>
         `;
-        // Re-attach listeners
         setTimeout(() => {
             const prev = document.getElementById('op-prev-month');
             const next = document.getElementById('op-next-month');
@@ -556,18 +573,14 @@ function renderCalendarGrid() {
         html += `<div></div>`;
     }
 
-    // Helper to add listener after html injection
     const clickHandlers = [];
 
     for(let d=1; d<=daysInMonth; d++) {
         const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        // Fallback or data from DB
         const actual = monthlyOpData[dateStr] || {};
 
-        // Removed TARGET_DATA_DEC logic
         const baseTarget = { t15:0, t19:0 };
 
-        // Determine effective target
         const exp15 = (actual.target_total_15 !== undefined && actual.target_total_15 !== null) ? actual.target_total_15 : baseTarget.t15;
         const effTarget15 = exp15;
 
@@ -605,7 +618,6 @@ function renderCalendarGrid() {
     html += `</div>`;
     container.innerHTML = html;
 
-    // Attach listeners
     clickHandlers.forEach(h => {
         const el = document.getElementById(h.id);
         if(el) el.onclick = () => openOpInput(h.date);
@@ -621,13 +633,14 @@ export async function openOpInput(dateStr) {
         returnToCalendar = false;
     }
 
+    // Fix: Ensure Machine Modal is hidden
+    $('#machine-details-edit-modal').classList.add('hidden');
+
     if (!dateStr) {
-        // Default to current machine view date if not specified
         dateStr = viewingMachineDate || getTodayDateString();
     }
     editingOpDate = dateStr;
 
-    // Display Synchronization
     if (viewingMachineDate !== dateStr) {
         viewingMachineDate = dateStr;
         updateMachineDateDisplay();
@@ -640,12 +653,10 @@ export async function openOpInput(dateStr) {
 
     let data = {};
 
-    // Fetch Data for Modal if not present
     if (dateStr === getTodayDateString() && todayOpData) data = todayOpData;
     else if (dateStr === getYesterdayDateString() && yesterdayOpData) data = yesterdayOpData;
     else if (monthlyOpData[dateStr]) data = monthlyOpData[dateStr];
     else {
-        // Fallback: Fetch single doc if not in memory
          try {
             const docRef = doc(db, "operations_data", dateStr);
             const snapshot = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(mod => mod.getDoc(docRef));
@@ -653,7 +664,6 @@ export async function openOpInput(dateStr) {
         } catch(e) { console.error(e); }
     }
 
-    // Removed TARGET_DATA_DEC support
     const defaultTarget = { t15: 0, t19: 0 };
 
     const setVal = (id, val, def) => {
@@ -673,16 +683,24 @@ export async function openOpInput(dateStr) {
     setVal('in_1p_19', data.actual_1p_19, '');
     setVal('in_20s_19', data.actual_20s_19, '');
 
-    // Machine Details logic removed from here
-
     $('#operations-modal').classList.remove('hidden');
 }
 
 export async function openMachineDetailsEdit(dateStr) {
+    const machCalModal = $('#machine-calendar-modal');
+    if (machCalModal && !machCalModal.classList.contains('hidden')) {
+        returnToMachineCalendar = true;
+        machCalModal.classList.add('hidden');
+    } else {
+        returnToMachineCalendar = false;
+    }
+
+    // Fix: Ensure Operations Modal is hidden
+    $('#operations-modal').classList.add('hidden');
+
     if (!dateStr) dateStr = viewingMachineDate || getTodayDateString();
     editingOpDate = dateStr;
 
-    // Display Synchronization
     if (viewingMachineDate !== dateStr) {
         viewingMachineDate = dateStr;
         updateMachineDateDisplay();
@@ -708,10 +726,8 @@ export async function openMachineDetailsEdit(dateStr) {
     const container = $('#machine-details-edit-container');
     container.innerHTML = '';
 
-    // 1. Existing data
     let machineDetails = data.machine_details || [];
 
-    // 2. Smart Copy
     if (machineDetails.length === 0) {
         const prevDetails = await findLatestMachineConfig(dateStr);
         if (prevDetails && prevDetails.length > 0) {
@@ -752,6 +768,136 @@ export async function openMachineDetailsEdit(dateStr) {
 
 export function closeMachineDetailsEdit() {
     $('#machine-details-edit-modal').classList.add('hidden');
+
+    if (returnToMachineCalendar) {
+        openMachineCalendar();
+        returnToMachineCalendar = false;
+    }
+}
+
+// --- Machine Calendar Logic ---
+
+export function changeMachineMonth(offset) {
+    currentMachineMonth += offset;
+    if (currentMachineMonth > 11) {
+        currentMachineMonth = 0;
+        currentMachineYear++;
+    } else if (currentMachineMonth < 0) {
+        currentMachineMonth = 11;
+        currentMachineYear--;
+    }
+    renderMachineCalendarGrid();
+}
+
+export async function openMachineCalendar() {
+    const modal = $('#machine-calendar-modal');
+    if (!modal) { alert("注目機種カレンダー画面が見つかりません"); return; }
+    modal.classList.remove('hidden');
+    returnToMachineCalendar = false;
+
+    renderMachineCalendarGrid();
+
+    const container = $('#machine-calendar-grid-body');
+    if (container) container.innerHTML = '<p class="text-center py-10 text-slate-400">データ読込中...</p>';
+
+    try {
+        // Shared data source with Ops Calendar
+        if (Object.keys(monthlyOpData).length === 0) {
+            const snapshot = await getDocs(collection(db, "operations_data"));
+            monthlyOpData = {};
+            snapshot.forEach(doc => {
+                monthlyOpData[doc.id] = doc.data();
+            });
+        }
+        renderMachineCalendarGrid();
+    } catch (e) {
+        alert("データ読込に失敗しました: " + e.message);
+    }
+
+    const closeBtn = $('#btn-close-machine-calendar');
+    if(closeBtn) closeBtn.onclick = () => modal.classList.add('hidden');
+}
+
+function renderMachineCalendarGrid() {
+    const container = $('#machine-calendar-grid-body');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const year = currentMachineYear;
+    const month = currentMachineMonth;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const headerContainer = $('#machine-calendar-modal h3');
+    if (headerContainer) {
+         headerContainer.innerHTML = `
+            <div class="flex flex-col sm:flex-row items-center justify-between w-full gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">📅 注目機種カレンダー</span>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                    <button id="mach-prev-month" class="px-3 py-1 text-slate-400 hover:text-indigo-600 transition font-bold">◀</button>
+                    <span class="text-sm font-black text-slate-700 px-2 min-w-[90px] text-center">${year}年${month + 1}月</span>
+                    <button id="mach-next-month" class="px-3 py-1 text-slate-400 hover:text-indigo-600 transition font-bold">▶</button>
+                </div>
+            </div>
+        `;
+        setTimeout(() => {
+            const prev = document.getElementById('mach-prev-month');
+            const next = document.getElementById('mach-next-month');
+            if (prev) prev.onclick = (e) => { e.stopPropagation(); changeMachineMonth(-1); };
+            if (next) next.onclick = (e) => { e.stopPropagation(); changeMachineMonth(1); };
+        }, 0);
+    }
+
+    const headers = ['日','月','火','水','木','金','土'];
+    let html = `<div class="grid grid-cols-7 gap-1 mb-2 text-center text-xs font-bold text-slate-400">`;
+    headers.forEach(h => html += `<div>${h}</div>`);
+    html += `</div><div class="grid grid-cols-7 gap-1">`;
+
+    const firstDay = new Date(year, month, 1).getDay();
+    for(let i=0; i<firstDay; i++) {
+        html += `<div></div>`;
+    }
+
+    const clickHandlers = [];
+
+    for(let d=1; d<=daysInMonth; d++) {
+        const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const data = monthlyOpData[dateStr] || {};
+        const details = data.machine_details || [];
+        const hasData = details.length > 0;
+
+        let content = '';
+        if(hasData) {
+            // Display first 2 items
+            const limit = 2;
+            details.slice(0, limit).forEach(item => {
+                 content += `<span class="block text-[9px] bg-indigo-50 text-indigo-700 px-1 py-0.5 rounded mb-0.5 font-bold truncate">${item.name}</span>`;
+            });
+            if (details.length > limit) {
+                content += `<span class="block text-[8px] text-slate-400 font-bold">+${details.length - limit}件</span>`;
+            }
+        } else {
+             content = `<span class="text-[9px] text-slate-300">-</span>`;
+        }
+
+        const divId = `mach-cal-day-${d}`;
+        html += `
+        <div id="${divId}" class="cursor-pointer hover:bg-slate-50 hover:ring-2 ring-indigo-200 transition border border-slate-100 rounded-lg p-1 bg-white min-h-[80px] flex flex-col justify-start">
+            <div class="text-[10px] font-black text-slate-300 mb-1">${d}</div>
+            <div class="w-full overflow-hidden">
+                ${content}
+            </div>
+        </div>`;
+        clickHandlers.push({ id: divId, date: dateStr });
+    }
+    html += `</div>`;
+    container.innerHTML = html;
+
+    clickHandlers.forEach(h => {
+        const el = document.getElementById(h.id);
+        if(el) el.onclick = () => openMachineDetailsEdit(h.date);
+    });
 }
 
 export async function saveMachineDetails() {
@@ -810,7 +956,6 @@ function addMachineDetailRow(name = '', target = '', actual = '', endDate = '') 
         </div>
     `;
 
-    // Safely set values to avoid attribute injection
     div.querySelector('.machine-name').value = name;
     div.querySelector('.machine-target').value = target;
     div.querySelector('.machine-actual').value = actual;
@@ -819,35 +964,24 @@ function addMachineDetailRow(name = '', target = '', actual = '', endDate = '') 
     container.appendChild(div);
 }
 
-export function closeOpInput() {
-    $('#operations-modal').classList.add('hidden');
-
-    if (returnToCalendar) {
-        openMonthlyCalendar();
-        returnToCalendar = false;
-    }
-}
-
 export async function saveOpData() {
     const getVal = (id) => { const v = $(`#${id}`).value; return v ? parseInt(v) : null; };
     const getNum = (id) => { const v = $(`#${id}`).value; return v ? parseInt(v) : 0; };
 
-    // Calculate sums forcibly from breakdown
     const total15 = getNum('in_4p_15') + getNum('in_1p_15') + getNum('in_20s_15');
     const total19 = getNum('in_4p_19') + getNum('in_1p_19') + getNum('in_20s_19');
 
     const d = {
-        // machine_details: machineDetails, // REMOVED
         target_total_15: getVal('in_target_15'),
-        today_target_total_15: total15, // Force overwrite with calculated sum
-        actual_total_15: total15,       // Force overwrite with calculated sum
+        today_target_total_15: total15,
+        actual_total_15: total15,
         actual_4p_15: getVal('in_4p_15'),
         actual_1p_15: getVal('in_1p_15'),
         actual_20s_15: getVal('in_20s_15'),
 
         target_total_19: getVal('in_target_19'),
-        today_target_total_19: total19, // Force overwrite with calculated sum
-        actual_total_19: total19,       // Force overwrite with calculated sum
+        today_target_total_19: total19,
+        actual_total_19: total19,
         actual_4p_19: getVal('in_4p_19'),
         actual_1p_19: getVal('in_1p_19'),
         actual_20s_19: getVal('in_20s_19'),
@@ -866,7 +1000,6 @@ async function handleOpImportFile(e) {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Reset input
     e.target.value = '';
 
     showToast("AI解析中...", 5000);
@@ -874,7 +1007,6 @@ async function handleOpImportFile(e) {
     try {
         const { text, images } = await parseFile(file);
 
-        // Send to Gemini
         const response = await fetch('/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -889,12 +1021,9 @@ async function handleOpImportFile(e) {
 
         if (data.error) throw new Error(data.error);
 
-        // Clean JSON (remove potential markdown code blocks)
         let jsonStr = data.reply.replace(/```json/g, '').replace(/```/g, '').trim();
         const targets = JSON.parse(jsonStr);
 
-        // Filter by currently viewed month (currentOpYear, currentOpMonth)
-        // Note: currentOpMonth is 0-indexed (0=Jan, 11=Dec)
         const targetMonthPrefix = `${currentOpYear}-${String(currentOpMonth + 1).padStart(2, '0')}`;
         const filteredTargets = Object.entries(targets).filter(([date, val]) => {
             return date.startsWith(targetMonthPrefix);
@@ -907,7 +1036,6 @@ async function handleOpImportFile(e) {
         }
 
         if (confirm(`${currentOpYear}年${currentOpMonth + 1}月のデータ ${count}日分を検出しました。\n一括登録しますか？`)) {
-            // Batch Write
             const batch = writeBatch(db);
 
             filteredTargets.forEach(([date, val]) => {
@@ -923,7 +1051,6 @@ async function handleOpImportFile(e) {
 
             await batch.commit();
             showToast(`${count}件の目標を更新しました！`);
-            // Refresh calendar if open
             if (!$('#calendar-modal').classList.contains('hidden')) {
                 openMonthlyCalendar();
             }
