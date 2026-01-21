@@ -330,9 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalsContainer.addEventListener('click', (e) => {
             const target = e.target;
 
-            // Operations Modal
-            if (target.id === 'btn-cancel-op-input') window.closeOpInput();
-            if (target.id === 'btn-save-op-data') window.saveOpData();
+            // Operations Modal handled in operations.js
 
             // Calendar Modal
             if (target.closest('#btn-close-calendar')) window.closeMonthlyCalendar();

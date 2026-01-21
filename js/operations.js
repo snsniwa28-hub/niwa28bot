@@ -61,6 +61,15 @@ export function subscribeOperations() {
     if(prevBtn) prevBtn.onclick = () => changeMachineViewDate(-1);
     if(nextBtn) nextBtn.onclick = () => changeMachineViewDate(1);
     if(editBtn) editBtn.onclick = () => openMachineDetailsEdit(viewingMachineDate);
+
+    // Operations Modal Listeners
+    const opSaveBtn = $('#btn-save-op-data');
+    const opCancelBtn = $('#btn-cancel-op-input');
+
+    console.log("Attaching OP Listeners:", opSaveBtn, opCancelBtn); // DEBUG
+
+    if(opSaveBtn) opSaveBtn.onclick = saveOpData;
+    if(opCancelBtn) opCancelBtn.onclick = closeOpInput;
 }
 
 export function changeMachineViewDate(offset) {
@@ -772,6 +781,19 @@ export function closeMachineDetailsEdit() {
     if (returnToMachineCalendar) {
         openMachineCalendar();
         returnToMachineCalendar = false;
+    }
+}
+
+export function closeOpInput() {
+    console.log("Closing OP Input"); // DEBUG
+    const el = $('#operations-modal');
+    console.log("Modal Element:", el);
+    el.classList.add('hidden');
+    console.log("Classes:", el.className);
+
+    if (returnToCalendar) {
+        openMonthlyCalendar();
+        returnToCalendar = false;
     }
 }
 
