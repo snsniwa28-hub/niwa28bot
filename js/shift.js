@@ -1287,8 +1287,8 @@ function handleActionPanelClick(role) {
              if(!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { assignments: {}, daily_remarks: {} };
              if(!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
 
-             // Explicitly set to empty string for "Blank" state
-             shiftState.shiftDataCache[name].assignments[day] = '';
+             // DELETE assignment to reset to unassigned/blank state (NOT counting as work)
+             delete shiftState.shiftDataCache[name].assignments[day];
              delete shiftState.shiftDataCache[name].daily_remarks[day];
 
              updateViewAfterAction();
@@ -1670,6 +1670,11 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
 
     if (currentSeq > staff.maxConsecutive) return false;
 
+    // HARD CONSTRAINT: Absolutely Block 6 Consecutive Days (Max Streak = 5)
+    // regardless of user settings.
+    // If assigning this day results in 6 days streak, return false.
+    if (currentSeq >= 6) return false;
+
     // 4. Sandwich Check (Uses physicalWorkDays)
     if (!checkPhysicalWork(staff, day - 1)) {
         // day-1 is a Gap. Check streak ending at day-2.
@@ -1787,6 +1792,44 @@ async function executeAutoShiftLogic() {
             });
         });
 
+        // Helper: Calculate potential streak if assigned
+        // Note: canAssign already calls checkAssignmentConstraint which checks HARD limits (>=6).
+        // This helper is for SOFT limit (avoid 5 if possible).
+        const getPotentialStreak = (staff, day) => {
+            // Need access to checkPhysicalWork logic. We can reuse the one from context if we extract it or just duplicate simple logic.
+            // Simplified Streak Calc:
+            // Backwards
+            let seq = 1;
+            let b = day - 1;
+            while(true) {
+                if (b <= 0) {
+                    // History check
+                    const prevD = prevDaysCount + b;
+                    const role = prevMonthAssignments[staff.name]?.[prevD];
+                    if (role === undefined || role === '公休' || role === '/' || role === '有休' || role === 'PAID' || role === '特休' || role === 'SPECIAL') break;
+                    // else it is Work or ''(deleted -> wait, deleted is undefined in history obj? No, history obj is from DB).
+                    // In DB '' is stored as ''. undefined is missing key.
+                    // If DB has '', it is work. If DB has no key, it is undefined -> break.
+                    seq++;
+                    b--;
+                } else {
+                    if (staff.physicalWorkDays.includes(b)) {
+                        seq++;
+                        b--;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            // Forwards
+            let f = day + 1;
+            while(staff.physicalWorkDays.includes(f)) {
+                seq++;
+                f++;
+            }
+            return seq;
+        };
+
         // --- PHASE 3: Employee Contract Fill (Normal) ---
         let changed = true;
         while(changed) {
@@ -1801,7 +1844,17 @@ async function executeAutoShiftLogic() {
                      validDays = days.filter(d => !emp.requests.work.includes(d) && canAssign(emp, d));
                  }
                  if (validDays.length > 0) {
+                     // Filter/Sort by Streak Preference (Avoid 5)
+                     // Soft Constraint: Prefer days where streak <= 4. Backup: Streak == 5.
+                     // (Streak >= 6 blocked by canAssign)
+
                      validDays.sort((d1, d2) => {
+                         const s1 = getPotentialStreak(emp, d1);
+                         const s2 = getPotentialStreak(emp, d2);
+                         const bad1 = s1 >= 5 ? 1 : 0;
+                         const bad2 = s2 >= 5 ? 1 : 0;
+                         if (bad1 !== bad2) return bad1 - bad2; // Prioritize low streak
+
                          const t1 = getTarget(d1, emp.shiftType);
                          const c1 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d1)).length;
                          const fill1 = c1 / t1;
@@ -1810,7 +1863,11 @@ async function executeAutoShiftLogic() {
                          const fill2 = c2 / t2;
                          return fill1 - fill2;
                      });
-                     emp.assignedDays.push(validDays[0]);
+
+                     const bestDay = validDays[0];
+                     emp.assignedDays.push(bestDay);
+                     // Update physicalWorkDays if not leave (here we assume Work for contract fill)
+                     emp.physicalWorkDays.push(bestDay);
                      changed = true;
                  }
             }
@@ -1827,6 +1884,13 @@ async function executeAutoShiftLogic() {
                         s.shiftType === st && s.type === 'byte' && canAssign(s, d)
                     );
                      candidates.sort((a,b) => {
+                         // Primary Sort: Streak Preference (Soft Limit)
+                         const sA = getPotentialStreak(a, d);
+                         const sB = getPotentialStreak(b, d);
+                         const badA = sA >= 5 ? 1 : 0;
+                         const badB = sB >= 5 ? 1 : 0;
+                         if (badA !== badB) return badA - badB;
+
                          const reqA = a.requests.work.includes(d) ? 1 : 0;
                          const reqB = b.requests.work.includes(d) ? 1 : 0;
                          if(reqA !== reqB) return reqB - reqA;
@@ -1834,10 +1898,12 @@ async function executeAutoShiftLogic() {
                          const needB = b.contractDays - b.assignedDays.length;
                          return needB - needA;
                      });
+
                      for(const c of candidates) {
                          if (current >= target) break;
                          if (c.assignedDays.length >= c.contractDays) continue;
                          c.assignedDays.push(d);
+                         c.physicalWorkDays.push(d); // Track physical work
                          current++;
                      }
                 }
