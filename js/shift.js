@@ -1881,38 +1881,53 @@ async function executeAutoShiftLogic() {
         // --- PHASE 7: Role Assignment ---
         ['A', 'B'].forEach(st => {
             days.forEach(d => {
-                // Only consider staff physically working (assignedDays might include PAID/SPECIAL, filter them out)
-                const workers = staffObjects.filter(s => s.shiftType === st && s.physicalWorkDays.includes(d));
-                let unassigned = [...workers];
+                // Identify all staff assigned to this day (Contract fulfilled)
+                const allAssigned = staffObjects.filter(s => s.shiftType === st && s.assignedDays.includes(d));
 
-                // Helper to assign role
+                const leaveGroup = [];
+                let workGroup = [];
+
+                // Split into Leave vs Work based on Requests
+                allAssigned.forEach(s => {
+                    const req = s.requests.types[d];
+                    if (req === 'PAID') {
+                        leaveGroup.push(s);
+                        shifts[s.name].assignments[d] = '有休';
+                    } else if (req === 'SPECIAL') {
+                        leaveGroup.push(s);
+                        shifts[s.name].assignments[d] = '特休';
+                    } else {
+                        workGroup.push(s);
+                    }
+                });
+
+                // Helper to assign role (Operates on workGroup only)
                 const assign = (roleKey, filterFn) => {
-                    const candidates = unassigned.filter(filterFn);
+                    const candidates = workGroup.filter(filterFn);
                     if (candidates.length === 0) return;
                     candidates.sort((a,b) => a.roleCounts[roleKey] - b.roleCounts[roleKey]);
                     const picked = candidates[0];
                     shifts[picked.name].assignments[d] = roleKey;
                     picked.roleCounts[roleKey]++;
-                    unassigned = unassigned.filter(u => u !== picked);
+                    workGroup = workGroup.filter(u => u !== picked); // Remove from pool
                 };
 
-                // 1. Money Main (Toggleable)
+                // 1. Money Main
                 if (shiftState.autoShiftSettings.money) {
                     assign(ROLES.MONEY, s => s.allowedRoles.includes('money_main'));
                 }
 
-                // 2. Money Sub (Toggleable - linked to money setting for now or implicit?)
-                // User instruction said "金銭業務 (chk-as-money)" implies both.
+                // 2. Money Sub
                 if (shiftState.autoShiftSettings.money) {
                     assign(ROLES.MONEY_SUB, s => s.allowedRoles.includes('money_sub'));
                 }
 
-                // 3. Hall Resp (Toggleable)
+                // 3. Hall Resp
                 if (shiftState.autoShiftSettings.hall_resp) {
                     assign(ROLES.HALL_RESP, s => s.allowedRoles.includes('hall_resp'));
                 }
 
-                // 4. Warehouse (Toggleable)
+                // 4. Warehouse
                 if (shiftState.autoShiftSettings.warehouse) {
                     assign(ROLES.WAREHOUSE, s => {
                         if (!s.allowedRoles.includes('warehouse')) return false;
@@ -1921,34 +1936,15 @@ async function executeAutoShiftLogic() {
                     });
                 }
 
-                // 5. Others -> Work ('出勤') - User requested default '出勤' not 'ホ'
-                // This fills unassigned workers with '出勤'
-                unassigned.forEach(s => {
+                // 5. Others -> Work ('出勤')
+                workGroup.forEach(s => {
                     shifts[s.name].assignments[d] = '出勤';
                 });
 
-                // Mark Off days
-                // Only mark off if not Assigned (checking assignedDays which includes Paid/Special)
+                // Mark Off days (Anyone NOT in allAssigned)
                 const offStaff = staffObjects.filter(s => s.shiftType === st && !s.assignedDays.includes(d));
                 offStaff.forEach(s => {
                     shifts[s.name].assignments[d] = '公休';
-                });
-
-                // Mark Paid/Special explicitly in assignments if they are in assignedDays but not physicalWorkDays?
-                // Phase 1-6 pushes to assignedDays.
-                // If I have Paid Leave on day D, I am in assignedDays, but NOT in physicalWorkDays.
-                // So I am NOT in 'workers' list above.
-                // So I am NOT in 'offStaff' list above.
-                // So I get NO assignment string set here?
-                // We need to explicitly set '有休' or '特休' string in assignments for those days.
-
-                const specialLeaveStaff = staffObjects.filter(s => s.shiftType === st && s.assignedDays.includes(d) && !s.physicalWorkDays.includes(d));
-                specialLeaveStaff.forEach(s => {
-                    // Check Request Type to decide string
-                    const req = s.requests.types[d];
-                    if (req === 'PAID') shifts[s.name].assignments[d] = '有休';
-                    else if (req === 'SPECIAL') shifts[s.name].assignments[d] = '特休';
-                    else shifts[s.name].assignments[d] = '有休'; // Default fallback
                 });
             });
         });
