@@ -218,9 +218,6 @@ export function createShiftModals() {
                     <button id="btn-hybrid-create-shift" class="text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2 ml-2">
                         <span>🤖⚡</span> ハイブリッド作成
                     </button>
-                    <button onclick="window.generateAiShift()" class="text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2 ml-2">
-                        <span>🤖</span> 完全AIモード
-                    </button>
                     <button id="btn-shift-ai-chat" class="text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition flex items-center gap-2 ml-2">
                         <span>💬</span> AI相談
                     </button>
@@ -356,9 +353,6 @@ export function createShiftModals() {
                 <button id="btn-mobile-auto" class="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200">AI 自動作成を実行</button>
                 <button id="btn-mobile-hybrid" class="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2">
                     <span>🤖⚡</span> ハイブリッド作成
-                </button>
-                <button onclick="window.generateAiShift(); document.getElementById('mobile-admin-menu').classList.add('hidden');" class="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2">
-                    <span>🤖</span> 完全AIモード (Gemini)
                 </button>
                 <button id="btn-mobile-ai-chat" class="w-full py-4 bg-white text-slate-600 font-bold rounded-xl border border-slate-200 mt-2 flex items-center justify-center gap-2">
                     <span>💬</span> AI相談
@@ -574,9 +568,8 @@ export function createShiftModals() {
         </div>
     </div>
 
-    <!-- SHIFT AI CHAT MODAL -->
-    <div id="shift-ai-chat-modal" class="modal-overlay hidden" style="z-index: 110; align-items: flex-end; sm:align-items: center;">
-        <div class="modal-content w-full h-[80vh] sm:h-[600px] sm:max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+    <!-- SHIFT AI CHAT MODAL (Right Sidebar) -->
+    <div id="shift-ai-chat-modal" class="fixed top-0 right-0 h-full w-full sm:w-[350px] bg-white shadow-2xl z-[110] transform transition-transform duration-300 translate-x-full border-l border-slate-200 flex flex-col">
             <!-- Header -->
             <div class="bg-white border-b border-slate-100 p-4 flex items-center justify-between shrink-0">
                 <div class="flex items-center gap-3">
@@ -606,7 +599,6 @@ export function createShiftModals() {
                 </div>
             </div>
         </div>
-    </div>
     `;
 
     document.body.insertAdjacentHTML('beforeend', html);
@@ -2865,78 +2857,7 @@ window.finalizeAutoShift = async () => {
 };
 window.activateShiftAdminMode = activateShiftAdminMode;
 
-// ============================================================
-//  🤖 AI シフト自動作成機能 (完全AI版)
-// ============================================================
-
-/**
- * AIシフト作成のメインエントリーポイント
- * 管理者メニューの新しいボタンから呼ばれる
- */
-async function generateAiShift() {
-    showConfirmModal(
-        "🤖 完全AIモード (Gemini)",
-        `Geminiがゼロからシフトを作成します。\n(既存のルールベース作成とは異なるロジックです)\n\n【適用ルール】\n・平日(余剰)から土日(不足)への積極移動\n・契約日数と日別定員の遵守\n・5連勤は必要なら許容\n\n※実行すると現在のシフト表は上書きされます。\n実行しますか？`,
-        async () => {
-            await executeAiShiftGeneration();
-        },
-        'bg-purple-600' // 区別するために色を変える
-    );
-}
-
-async function executeAiShiftGeneration() {
-    showLoading();
-    pushHistory();
-
-    try {
-        const Y = shiftState.currentYear;
-        const M = shiftState.currentMonth;
-        const daysInMonth = new Date(Y, M, 0).getDate();
-        const holidays = getHolidays(Y, M);
-
-        // 1. 全データを収集
-        const contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
-
-        // 2. プロンプト作成
-        const prompt = constructFullAiPrompt(contextData);
-
-        // 3. Gemini API送信
-        const apiKey = localStorage.getItem('gemini_api_key');
-        if (!apiKey) throw new Error("Gemini APIキーが未設定です。");
-
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.4,
-                    responseMimeType: "application/json"
-                }
-            })
-        });
-
-        const result = await response.json();
-        if (!result.candidates || !result.candidates[0].content) throw new Error("AI応答エラー");
-
-        const aiText = result.candidates[0].content.parts[0].text;
-        const generatedShift = JSON.parse(aiText);
-
-        // 4. 結果反映
-        applyAiShiftResult(generatedShift);
-
-        showToast("✅ AIモードによる作成が完了しました");
-        renderShiftAdminTable();
-
-    } catch (e) {
-        console.error(e);
-        alert("AI作成エラー: " + e.message);
-    } finally {
-        hideLoading();
-    }
-}
-
-// ヘルパー関数群
+// ヘルパー関数群 (ハイブリッド・Chat共用)
 function gatherFullShiftContext(year, month, daysInMonth, holidays) {
     const dailyTargets = {};
     for(let d=1; d<=daysInMonth; d++) {
@@ -2958,20 +2879,6 @@ function gatherFullShiftContext(year, month, daysInMonth, holidays) {
     return { meta: { year, month, days_in_month: daysInMonth, holidays, daily_targets: dailyTargets }, staff: staffData };
 }
 
-function constructFullAiPrompt(context) {
-    return `
-あなたは熟練のシフト管理者です。以下のデータに基づき、スタッフの1ヶ月分のシフト表(JSON)を作成してください。
-【最重要ルール】
-1. 平日(月~金)の人員が余っている場合、人手不足の土日祝へ積極的に移動させてください。
-2. 人員確保のためなら、5連勤になっても許容してください。
-3. 希望休(requests.off)は絶対に入れてはいけません。
-4. シフト区分(type A/B)は変更しないでください。
-【出力形式】
-JSONのみ。役割は割り当てず "出勤" または "公休" としてください。
-入力データ: ${JSON.stringify(context)}
-`;
-}
-
 function applyAiShiftResult(generatedShift) {
     Object.keys(generatedShift).forEach(name => {
         if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = {};
@@ -2982,8 +2889,6 @@ function applyAiShiftResult(generatedShift) {
         });
     });
 }
-
-window.generateAiShift = generateAiShift;
 
 // ============================================================
 //  🤖⚡ ハイブリッド自動作成機能
@@ -3002,80 +2907,119 @@ async function generateHybridShift() {
 
 async function executeHybridShiftLogic() {
     showLoading();
-    // 1. 土台作成 (バックグラウンド実行)
-    // 履歴はここで一度保存しておく（ハイブリッド全体で1つの操作とするため、executeAutoShiftLogic内のpushHistoryはskipされている）
-    pushHistory();
+    pushHistory(); // Save state before starting
 
     try {
-        await executeAutoShiftLogic(false); // isPreview = false
+        // 1. Create Base (Rule-based)
+        await executeAutoShiftLogic(false);
 
-        // 2. データ収集
         const Y = shiftState.currentYear;
         const M = shiftState.currentMonth;
         const daysInMonth = new Date(Y, M, 0).getDate();
         const holidays = getHolidays(Y, M);
-        const contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
 
-        // 3. プロンプト作成
-        const prompt = `
+        // Split into periods
+        const periods = [
+            { start: 1, end: 7 },
+            { start: 8, end: 14 },
+            { start: 15, end: 21 },
+            { start: 22, end: daysInMonth }
+        ];
+
+        for (let i = 0; i < periods.length; i++) {
+            const period = periods[i];
+            const pNum = i + 1;
+
+            // Update Loading Text
+            const loadingEl = document.getElementById('shift-loading-overlay');
+            if (loadingEl) {
+                let textEl = loadingEl.querySelector('p');
+                if (!textEl) {
+                    textEl = document.createElement('p');
+                    textEl.className = "absolute mt-16 text-white font-bold text-lg drop-shadow-md";
+                    loadingEl.appendChild(textEl);
+                }
+                textEl.textContent = `AI最適化中... (${pNum}/4 週目)`;
+            }
+
+            // 2. Gather Data (Re-gather to reflect latest changes)
+            const contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
+
+            // 3. Construct Prompt with Specific Period Instruction
+            const prompt = `
 以下のシフトデータ(JSON)をもとに、修正版のシフト表を作成してください。
+【今回の修正対象期間】
+${period.start}日 〜 ${period.end}日
+※この期間のシフトのみを最適化し、JSONで出力してください。
+
 【目的】
 ルールベースで作成された「土台」をAIが最適化します。
 特に「平日（月〜金）の人員が余っている場合、不足しがちな土日祝へ移動させる」ことを意識してください。
+文脈を理解するために全期間のデータを渡しますが、変更・出力は指定期間内だけに留めてください。
 
 【絶対厳守の制約】
 1. 契約日数（target）を超過させないこと。
 2. 本人の希望休（requests.off）を無視して出勤にしないこと。
-3. 6連勤以上（physical work streak >= 6）を発生させないこと。
+3. 6連勤以上（physical work streak >= 6）を発生させないこと（前後の期間との接続も考慮すること）。
 4. シフト区分（A/B）を変更しないこと。
 5. 役割（assignmentsの中身）は変更せず、単に「出勤」の日程だけを移動させてください。移動先の日付には "出勤" を設定してください。
 
 【出力形式】
 JSONのみを出力してください。
-キーはスタッフ名、値は { "日付": "出勤" or "公休" } の形式。変更がない日も含めても良いし、変更分だけでも良いですが、全体の一貫性を保ってください。
+キーはスタッフ名、値は { "日付": "出勤" or "公休" } の形式。
+出力例:
+{
+  "スタッフA": { "1": "公休", "2": "出勤" },
+  "スタッフB": { "3": "出勤" }
+}
 `;
 
-        // 4. Gemini API送信 (Cloudflare Endpoint)
-        const response = await fetch('/gemini', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prompt: prompt,
-                contextData: JSON.stringify(contextData), // Context as string
-                mode: 'shift_hybrid' // Explicit mode if needed, or just rely on prompt
-            })
-        });
+            // 4. API Call
+            const response = await fetch('/gemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    contextData: JSON.stringify(contextData),
+                    mode: 'shift_hybrid'
+                })
+            });
 
-        const result = await response.json();
-        if (result.error) throw new Error(result.error);
+            const result = await response.json();
+            if (result.error) throw new Error(`Week ${pNum} Error: ${result.error}`);
 
-        let generatedShift;
-        if (result.reply) {
-             // Try to parse JSON from reply if it contains markdown code blocks
-             const text = result.reply;
-             const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
-             if (jsonMatch) {
-                 generatedShift = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-             } else {
-                 throw new Error("AIからの応答がJSON形式ではありませんでした。");
-             }
-        } else {
-             throw new Error("AIからの応答が不正です。");
+            let generatedShift;
+            if (result.reply) {
+                 const text = result.reply;
+                 const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+                 if (jsonMatch) {
+                     generatedShift = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+                 } else {
+                     console.warn(`Week ${pNum}: Invalid JSON format`, text);
+                     continue;
+                 }
+            } else {
+                 throw new Error("AI response invalid");
+            }
+
+            // 5. Apply Partial Result
+            applyAiShiftResult(generatedShift);
         }
-
-        // 5. 結果反映
-        applyAiShiftResult(generatedShift);
 
         showToast("🤖⚡ ハイブリッド作成完了！");
         renderShiftAdminTable();
 
     } catch (e) {
         console.error("Hybrid Gen Error:", e);
-        alert("ハイブリッド作成エラー: " + e.message);
-        // Error happened, maybe revert?
-        undoShiftAction(); // Revert the base creation if failed
+        alert("ハイブリッド作成エラー: " + e.message + "\n(途中までの変更は保持されています)");
     } finally {
         hideLoading();
+        // Clean up loading text
+        const loadingEl = document.getElementById('shift-loading-overlay');
+        if (loadingEl) {
+             const textEl = loadingEl.querySelector('p');
+             if(textEl) textEl.remove();
+        }
     }
 }
 
@@ -3086,8 +3030,9 @@ JSONのみを出力してください。
 let shiftChatHistory = [];
 
 async function openShiftAiChat() {
-    document.getElementById('shift-ai-chat-modal').classList.remove('hidden');
-    document.getElementById('shift-ai-chat-modal').classList.add('flex');
+    // UPDATED: Right Sidebar Slide-in
+    const modal = document.getElementById('shift-ai-chat-modal');
+    modal.classList.remove('translate-x-full');
 
     // Init Chat
     const msgContainer = document.getElementById('shift-ai-messages');
@@ -3098,8 +3043,8 @@ async function openShiftAiChat() {
 }
 
 window.closeShiftAiChat = () => {
-    document.getElementById('shift-ai-chat-modal').classList.add('hidden');
-    document.getElementById('shift-ai-chat-modal').classList.remove('flex');
+    // UPDATED: Right Sidebar Slide-out
+    document.getElementById('shift-ai-chat-modal').classList.add('translate-x-full');
 };
 
 window.sendShiftAiMessage = async () => {
