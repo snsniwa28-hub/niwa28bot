@@ -54,9 +54,10 @@ export function subscribeOperations() {
 
     // Attach Event Listeners for Date Navigation (Once)
     const editBtn = $('#machine-edit-btn');
-    // Removed old calBtn listener
+    const calBtn = $('#machine-calendar-btn');
 
     if(editBtn) editBtn.onclick = () => openMachineDetailsEdit(viewingMachineDate);
+    if(calBtn) calBtn.onclick = openMachineCalendar;
 
     // Operations Modal Listeners
     const opSaveBtn = $('#btn-save-op-data');
