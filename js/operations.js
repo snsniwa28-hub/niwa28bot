@@ -53,13 +53,9 @@ export function subscribeOperations() {
     });
 
     // Attach Event Listeners for Date Navigation (Once)
-    const prevBtn = $('#machine-prev-day');
-    const nextBtn = $('#machine-next-day');
     const editBtn = $('#machine-edit-btn');
     // Removed old calBtn listener
 
-    if(prevBtn) prevBtn.onclick = () => changeMachineViewDate(-1);
-    if(nextBtn) nextBtn.onclick = () => changeMachineViewDate(1);
     if(editBtn) editBtn.onclick = () => openMachineDetailsEdit(viewingMachineDate);
 
     // Operations Modal Listeners
@@ -86,14 +82,7 @@ export function changeMachineViewDate(offset) {
 }
 
 export function updateMachineDateDisplay() {
-    const el = $('#machine-view-date');
-    if (el) {
-        const [y, m, d] = viewingMachineDate.split('-');
-        el.textContent = `${y}年${m}月${d}日`;
-    }
-    // Also remove hidden from nav if it's there
-    const nav = $('#machine-date-nav');
-    if (nav) nav.classList.remove('hidden');
+    // Deprecated date display update, removed nav interaction
 }
 
 export function renderOperationsBoard() {
@@ -102,10 +91,6 @@ export function renderOperationsBoard() {
 
     // Ensure Date Nav is visible and updated on first load
     updateMachineDateDisplay();
-
-    // Machine Calendar Listener
-    const btnMachineCalPC = $('#btn-machine-cal-pc-nav');
-    if(btnMachineCalPC) btnMachineCalPC.onclick = (e) => { e.stopPropagation(); openMachineCalendar(); };
 
     // Use default target as 0 since we removed the config
     const defaultTarget = { t15: 0, t19: 0 };
@@ -338,64 +323,56 @@ export function renderOperationsBoard() {
     const zoneTargetPC = container.querySelector('#zone-target-pc');
     if (zoneTargetPC) zoneTargetPC.onclick = (e) => { e.stopPropagation(); openOpInput(); };
 
-    // Re-Inject Machine Calendar Button into Machine Details Section
-    const machineDateNav = $('#machine-date-nav');
-    if (machineDateNav) {
-        machineDateNav.innerHTML = `
-            <button id="machine-prev-day" class="p-2 bg-white rounded-full shadow-sm border border-slate-100 text-slate-500 hover:text-indigo-600 transition">◀</button>
-            <div class="flex items-center gap-3">
-                <span id="machine-view-date" class="text-sm font-bold text-slate-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">----/--/--</span>
-            </div>
-            <div class="flex items-center gap-2">
-                 <button id="btn-machine-cal-pc-nav" class="bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                    <span>月間推移</span>
-                </button>
-                <button id="machine-edit-btn" class="flex items-center gap-1 bg-indigo-600 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">
-                    <span>✏️</span> 編集
-                </button>
-                <button id="machine-next-day" class="p-2 bg-white rounded-full shadow-sm border border-slate-100 text-slate-500 hover:text-indigo-600 transition">▶</button>
-            </div>
-        `;
-
-        // Re-attach listeners for these newly created buttons
-        setTimeout(() => {
-            const p = document.getElementById('machine-prev-day');
-            const n = document.getElementById('machine-next-day');
-            const e = document.getElementById('machine-edit-btn');
-            const c = document.getElementById('btn-machine-cal-pc-nav');
-            if(p) p.onclick = () => changeMachineViewDate(-1);
-            if(n) n.onclick = () => changeMachineViewDate(1);
-            if(e) e.onclick = () => openMachineDetailsEdit(viewingMachineDate);
-            if(c) c.onclick = () => openMachineCalendar();
-        }, 0);
-    }
+    // Re-Inject Edit Button into Header if needed, but primarily relying on static HTML or initial bind
+    // Ensuring the edit button works if re-rendered
+    const editBtn = document.getElementById('machine-edit-btn');
+    if(editBtn) editBtn.onclick = () => openMachineDetailsEdit(viewingMachineDate);
 
     loadMachineDetailsForDate(viewingMachineDate);
 }
 
 async function loadMachineDetailsForDate(dateStr) {
-    if (dateStr === getTodayDateString() && todayOpData) {
-        renderMachineDetails(todayOpData.machine_details || []);
-        return;
-    }
-    if (dateStr === getYesterdayDateString() && yesterdayOpData) {
-        renderMachineDetails(yesterdayOpData.machine_details || []);
-        return;
-    }
-
     try {
         renderMachineDetails([], true);
 
-        const docRef = doc(db, "operations_data", dateStr);
-        const snapshot = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(mod => mod.getDoc(docRef));
+        let details = [];
+        let data = null;
 
-        if (snapshot.exists()) {
-            const data = snapshot.data();
-            renderMachineDetails(data.machine_details || []);
+        // 1. Try to get data from cache or fetch
+        if (dateStr === getTodayDateString() && todayOpData) {
+            data = todayOpData;
+        } else if (dateStr === getYesterdayDateString() && yesterdayOpData) {
+            data = yesterdayOpData;
         } else {
-            renderMachineDetails([]);
+            const docRef = doc(db, "operations_data", dateStr);
+            const snapshot = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(mod => mod.getDoc(docRef));
+            if (snapshot.exists()) data = snapshot.data();
         }
+
+        if (data && data.machine_details && data.machine_details.length > 0) {
+            // Found direct data
+            details = data.machine_details;
+        } else {
+            // 2. Not found, search backwards
+            const prevDetails = await findLatestMachineConfig(dateStr);
+            if (prevDetails && prevDetails.length > 0) {
+                 const currentDateObj = new Date(dateStr);
+                 currentDateObj.setHours(0,0,0,0);
+
+                 // Filter by date validity
+                 details = prevDetails.filter(item => {
+                    // If no end date is set, it remains valid indefinitely (or until replaced)
+                    if (!item.display_end_date) return true;
+
+                    const endDateObj = new Date(item.display_end_date);
+                    endDateObj.setHours(0,0,0,0);
+                    return currentDateObj <= endDateObj;
+                 });
+            }
+        }
+
+        renderMachineDetails(details || []);
+
     } catch (e) {
         console.error("Error fetching machine details:", e);
         renderMachineDetails([]);
@@ -954,27 +931,39 @@ function addMachineDetailRow(name = '', target = '', actual = '', endDate = '') 
     if (!container) return;
 
     const div = document.createElement('div');
-    div.className = 'grid grid-cols-10 gap-2 items-center machine-detail-row border-b border-slate-100 pb-2 mb-2';
+    // Responsive Grid: 2 columns on mobile, 10 columns on desktop
+    div.className = 'grid grid-cols-2 sm:grid-cols-10 gap-x-3 gap-y-3 sm:gap-2 items-start sm:items-center machine-detail-row border-b border-slate-100 pb-4 sm:pb-2 mb-2';
 
     div.innerHTML = `
-        <div class="col-span-3">
+        <!-- Name: Full width on mobile (2/2), 30% on PC (3/10) -->
+        <div class="col-span-2 sm:col-span-3">
             <label class="block text-[10px] text-slate-400 font-bold mb-0.5">機種名</label>
-            <input type="text" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-name" placeholder="機種名">
+            <input type="text" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-2 sm:py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-name" placeholder="機種名">
         </div>
-        <div class="col-span-2">
+
+        <!-- Target: Half width on mobile (1/2), 20% on PC (2/10) -->
+        <div class="col-span-1 sm:col-span-2">
             <label class="block text-[10px] text-slate-400 font-bold mb-0.5">目標</label>
-            <input type="number" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-target" placeholder="目標">
+            <input type="number" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-2 sm:py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-target" placeholder="目標">
         </div>
-        <div class="col-span-3">
-             <label class="block text-[10px] text-slate-400 font-bold mb-0.5">表示終了日</label>
-             <input type="date" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-[10px] font-bold focus:border-indigo-500 outline-none machine-end-date">
-        </div>
-        <div class="col-span-2">
+
+        <!-- Actual: Half width on mobile (1/2), 20% on PC (2/10) -->
+        <!-- Note: Moved up for better mobile layout flow (Target & Actual side-by-side) -->
+        <div class="col-span-1 sm:col-span-2">
             <label class="block text-[10px] text-indigo-300 font-bold mb-0.5">実績</label>
-            <div class="flex gap-1">
-                <input type="number" class="w-full bg-white border border-indigo-200 rounded px-2 py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-actual" placeholder="実績">
-                <button class="text-rose-400 hover:text-rose-600 px-1" onclick="this.parentElement.parentElement.parentElement.remove()">✕</button>
-            </div>
+            <input type="number" class="w-full bg-white border border-indigo-200 rounded px-2 py-2 sm:py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-actual" placeholder="実績">
+        </div>
+
+        <!-- End Date: Full width on mobile (2/2), 30% on PC (3/10) -->
+        <div class="col-span-2 sm:col-span-3 flex gap-1 items-end">
+             <div class="flex-1">
+                <label class="block text-[10px] text-slate-400 font-bold mb-0.5">表示終了日</label>
+                <input type="date" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-2 sm:py-1.5 text-[10px] font-bold focus:border-indigo-500 outline-none machine-end-date">
+             </div>
+             <button class="text-rose-400 hover:text-rose-600 px-2 py-2 sm:py-1 h-[34px] sm:h-auto flex items-center justify-center bg-rose-50 sm:bg-transparent rounded-lg sm:rounded-none" onclick="this.parentElement.parentElement.remove()">
+                <svg class="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                <span class="hidden sm:inline">✕</span>
+             </button>
         </div>
     `;
 
