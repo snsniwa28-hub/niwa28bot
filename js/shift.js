@@ -215,8 +215,14 @@ export function createShiftModals() {
                     <button id="btn-auto-create-shift" class="text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2">
                         <span>⚡</span> AI 自動作成
                     </button>
+                    <button id="btn-hybrid-create-shift" class="text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2 ml-2">
+                        <span>🤖⚡</span> ハイブリッド作成
+                    </button>
                     <button onclick="window.generateAiShift()" class="text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2 ml-2">
                         <span>🤖</span> 完全AIモード
+                    </button>
+                    <button id="btn-shift-ai-chat" class="text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition flex items-center gap-2 ml-2">
+                        <span>💬</span> AI相談
                     </button>
                 </div>
             </div>
@@ -348,8 +354,14 @@ export function createShiftModals() {
                 <button id="btn-mobile-clear" class="w-full py-4 bg-rose-50 text-rose-600 font-bold rounded-xl border border-rose-100">割り振りをクリア</button>
                 <button id="btn-mobile-settings" class="w-full py-4 bg-slate-50 text-slate-600 font-bold rounded-xl border border-slate-100">⚙️ 自動割り振り設定</button>
                 <button id="btn-mobile-auto" class="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200">AI 自動作成を実行</button>
+                <button id="btn-mobile-hybrid" class="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2">
+                    <span>🤖⚡</span> ハイブリッド作成
+                </button>
                 <button onclick="window.generateAiShift(); document.getElementById('mobile-admin-menu').classList.add('hidden');" class="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2">
                     <span>🤖</span> 完全AIモード (Gemini)
+                </button>
+                <button id="btn-mobile-ai-chat" class="w-full py-4 bg-white text-slate-600 font-bold rounded-xl border border-slate-200 mt-2 flex items-center justify-center gap-2">
+                    <span>💬</span> AI相談
                 </button>
                 <button onclick="document.getElementById('mobile-admin-menu').classList.add('hidden')" class="w-full py-4 text-slate-400 font-bold">キャンセル</button>
             </div>
@@ -561,6 +573,40 @@ export function createShiftModals() {
             </div>
         </div>
     </div>
+
+    <!-- SHIFT AI CHAT MODAL -->
+    <div id="shift-ai-chat-modal" class="modal-overlay hidden" style="z-index: 110; align-items: flex-end; sm:align-items: center;">
+        <div class="modal-content w-full h-[80vh] sm:h-[600px] sm:max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+            <!-- Header -->
+            <div class="bg-white border-b border-slate-100 p-4 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl shadow-md">🤖</div>
+                    <div>
+                        <h3 class="font-bold text-slate-800">AIシフト相談</h3>
+                        <p class="text-[10px] text-slate-400 font-bold">現在のシフト状況を認識しています</p>
+                    </div>
+                </div>
+                <button onclick="closeShiftAiChat()" class="p-2 hover:bg-slate-100 rounded-full transition text-slate-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Chat Area -->
+            <div id="shift-ai-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+                <!-- Messages will be injected here -->
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-4 bg-white border-t border-slate-100 shrink-0">
+                <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-200 focus-within:ring-2 focus-within:ring-indigo-500 transition">
+                    <input type="text" id="shift-ai-input" class="flex-1 bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-700 px-2" placeholder="例: 20日の人が足りない、どうすればいい？" onkeydown="if(event.key === 'Enter') sendShiftAiMessage()">
+                    <button onclick="sendShiftAiMessage()" class="p-2 bg-indigo-600 text-white rounded-xl shadow-md hover:bg-indigo-700 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     `;
 
     document.body.insertAdjacentHTML('beforeend', html);
@@ -588,6 +634,10 @@ function setupShiftEventListeners() {
     $('#btn-shift-settings').onclick = () => document.getElementById('auto-shift-settings-modal').classList.remove('hidden');
     $('#btn-mobile-settings').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); document.getElementById('auto-shift-settings-modal').classList.remove('hidden'); };
     $('#btn-mobile-auto').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); generateAutoShift(); };
+    $('#btn-mobile-hybrid').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); generateHybridShift(); };
+    $('#btn-hybrid-create-shift').onclick = generateHybridShift;
+    $('#btn-shift-ai-chat').onclick = openShiftAiChat;
+    $('#btn-mobile-ai-chat').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); openShiftAiChat(); };
     $('#mobile-fab-menu').onclick = () => $('#mobile-admin-menu').classList.remove('hidden');
 
     // Auto Shift Settings Listeners
@@ -1709,9 +1759,11 @@ async function generateAutoShift() {
     );
 }
 
-async function executeAutoShiftLogic() {
-    pushHistory();
-    showLoading();
+async function executeAutoShiftLogic(isPreview = true) {
+    if (isPreview) {
+        pushHistory();
+        showLoading();
+    }
 
     try {
         const Y = shiftState.currentYear;
@@ -2078,13 +2130,16 @@ async function executeAutoShiftLogic() {
              });
         });
 
-        showAutoShiftPreviewModal(filledCount, staffSet.size);
+        if (isPreview) {
+            showAutoShiftPreviewModal(filledCount, staffSet.size);
+        }
 
     } catch(e) {
         console.error("Auto Generation Error:", e);
-        alert("自動作成中にエラーが発生しました:\n" + e.message);
+        if (isPreview) alert("自動作成中にエラーが発生しました:\n" + e.message);
+        else throw e;
     } finally {
-        hideLoading();
+        if (isPreview) hideLoading();
     }
 }
 
@@ -2896,7 +2951,8 @@ function gatherFullShiftContext(year, month, daysInMonth, holidays) {
         staffData[name] = {
             type: (sData.monthly_settings && sData.monthly_settings.shift_type) || details.basic_shift || 'A',
             contract_target: details.contract_days || 20,
-            requests: { off: sData.off_days || [], work: sData.work_days || [] }
+            requests: { off: sData.off_days || [], work: sData.work_days || [] },
+            assignments: sData.assignments || {} // Include assignments for Hybrid/Chat context
         };
     });
     return { meta: { year, month, days_in_month: daysInMonth, holidays, daily_targets: dailyTargets }, staff: staffData };
@@ -2928,3 +2984,207 @@ function applyAiShiftResult(generatedShift) {
 }
 
 window.generateAiShift = generateAiShift;
+
+// ============================================================
+//  🤖⚡ ハイブリッド自動作成機能
+// ============================================================
+
+async function generateHybridShift() {
+    showConfirmModal(
+        "🤖⚡ ハイブリッド自動作成",
+        "まずルールベースで土台を作成し、その後AIが人員配置を最適化します。\n（平日余剰 → 土日不足への移動など）\n\n実行しますか？",
+        async () => {
+            await executeHybridShiftLogic();
+        },
+        'bg-gradient-to-r from-cyan-600 to-blue-600'
+    );
+}
+
+async function executeHybridShiftLogic() {
+    showLoading();
+    // 1. 土台作成 (バックグラウンド実行)
+    // 履歴はここで一度保存しておく（ハイブリッド全体で1つの操作とするため、executeAutoShiftLogic内のpushHistoryはskipされている）
+    pushHistory();
+
+    try {
+        await executeAutoShiftLogic(false); // isPreview = false
+
+        // 2. データ収集
+        const Y = shiftState.currentYear;
+        const M = shiftState.currentMonth;
+        const daysInMonth = new Date(Y, M, 0).getDate();
+        const holidays = getHolidays(Y, M);
+        const contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
+
+        // 3. プロンプト作成
+        const prompt = `
+以下のシフトデータ(JSON)をもとに、修正版のシフト表を作成してください。
+【目的】
+ルールベースで作成された「土台」をAIが最適化します。
+特に「平日（月〜金）の人員が余っている場合、不足しがちな土日祝へ移動させる」ことを意識してください。
+
+【絶対厳守の制約】
+1. 契約日数（target）を超過させないこと。
+2. 本人の希望休（requests.off）を無視して出勤にしないこと。
+3. 6連勤以上（physical work streak >= 6）を発生させないこと。
+4. シフト区分（A/B）を変更しないこと。
+5. 役割（assignmentsの中身）は変更せず、単に「出勤」の日程だけを移動させてください。移動先の日付には "出勤" を設定してください。
+
+【出力形式】
+JSONのみを出力してください。
+キーはスタッフ名、値は { "日付": "出勤" or "公休" } の形式。変更がない日も含めても良いし、変更分だけでも良いですが、全体の一貫性を保ってください。
+`;
+
+        // 4. Gemini API送信 (Cloudflare Endpoint)
+        const response = await fetch('/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: prompt,
+                contextData: JSON.stringify(contextData), // Context as string
+                mode: 'shift_hybrid' // Explicit mode if needed, or just rely on prompt
+            })
+        });
+
+        const result = await response.json();
+        if (result.error) throw new Error(result.error);
+
+        let generatedShift;
+        if (result.reply) {
+             // Try to parse JSON from reply if it contains markdown code blocks
+             const text = result.reply;
+             const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+             if (jsonMatch) {
+                 generatedShift = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+             } else {
+                 throw new Error("AIからの応答がJSON形式ではありませんでした。");
+             }
+        } else {
+             throw new Error("AIからの応答が不正です。");
+        }
+
+        // 5. 結果反映
+        applyAiShiftResult(generatedShift);
+
+        showToast("🤖⚡ ハイブリッド作成完了！");
+        renderShiftAdminTable();
+
+    } catch (e) {
+        console.error("Hybrid Gen Error:", e);
+        alert("ハイブリッド作成エラー: " + e.message);
+        // Error happened, maybe revert?
+        undoShiftAction(); // Revert the base creation if failed
+    } finally {
+        hideLoading();
+    }
+}
+
+// ============================================================
+//  💬 AIシフト相談チャット
+// ============================================================
+
+let shiftChatHistory = [];
+
+async function openShiftAiChat() {
+    document.getElementById('shift-ai-chat-modal').classList.remove('hidden');
+    document.getElementById('shift-ai-chat-modal').classList.add('flex');
+
+    // Init Chat
+    const msgContainer = document.getElementById('shift-ai-messages');
+    msgContainer.innerHTML = '';
+    shiftChatHistory = [];
+
+    addShiftAiMessageUI('ai', 'こんにちは！現在のシフト状況を読み込みました。\n「20日の人が足りない」や「Aさんのシフトを確認して」など、何でも聞いてください。');
+}
+
+window.closeShiftAiChat = () => {
+    document.getElementById('shift-ai-chat-modal').classList.add('hidden');
+    document.getElementById('shift-ai-chat-modal').classList.remove('flex');
+};
+
+window.sendShiftAiMessage = async () => {
+    const input = document.getElementById('shift-ai-input');
+    const msg = input.value.trim();
+    if(!msg) return;
+
+    input.value = '';
+    addShiftAiMessageUI('user', msg);
+
+    // Loading
+    const loadingId = addShiftAiMessageUI('ai', '思考中...', true);
+
+    try {
+        // Gather Context
+        const Y = shiftState.currentYear;
+        const M = shiftState.currentMonth;
+        const daysInMonth = new Date(Y, M, 0).getDate();
+        const holidays = getHolidays(Y, M);
+        const contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
+
+        // Prepare Payload
+        const payload = {
+            prompt: msg,
+            contextData: JSON.stringify(contextData),
+            history: shiftChatHistory,
+            mode: 'shift_chat'
+        };
+
+        const response = await fetch('/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        // Remove Loading
+        document.getElementById(loadingId).remove();
+
+        if (result.error) {
+            addShiftAiMessageUI('ai', 'エラー: ' + result.error);
+        } else {
+            addShiftAiMessageUI('ai', result.reply);
+            shiftChatHistory.push({ role: 'user', parts: [{ text: msg }] });
+            shiftChatHistory.push({ role: 'model', parts: [{ text: result.reply }] });
+        }
+
+    } catch(e) {
+        console.error(e);
+        document.getElementById(loadingId).remove();
+        addShiftAiMessageUI('ai', '通信エラーが発生しました。');
+    }
+};
+
+function addShiftAiMessageUI(role, text, isLoading = false) {
+    const container = document.getElementById('shift-ai-messages');
+    const div = document.createElement('div');
+    const id = 'msg-' + Date.now() + Math.random();
+    div.id = id;
+    div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`;
+
+    const bg = role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-slate-700 border border-slate-200 rounded-bl-none';
+
+    const bubble = document.createElement('div');
+    bubble.className = `max-w-[85%] p-3 rounded-2xl text-sm font-bold shadow-sm ${bg}`;
+
+    if (role === 'user') {
+        bubble.textContent = text;
+    } else {
+        // AI message - simple HTML escaping
+        const safeText = text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+        bubble.innerHTML = safeText.replace(/\n/g, '<br>');
+    }
+
+    div.appendChild(bubble);
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    return id;
+}
+
+window.generateHybridShift = generateHybridShift;
+window.openShiftAiChat = openShiftAiChat;
