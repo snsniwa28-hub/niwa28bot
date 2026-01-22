@@ -215,6 +215,9 @@ export function createShiftModals() {
                     <button id="btn-auto-create-shift" class="text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2">
                         <span>⚡</span> AI 自動作成
                     </button>
+                    <button onclick="window.generateAiShift()" class="text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2 ml-2">
+                        <span>🤖</span> 完全AIモード
+                    </button>
                 </div>
             </div>
         </div>
@@ -345,6 +348,9 @@ export function createShiftModals() {
                 <button id="btn-mobile-clear" class="w-full py-4 bg-rose-50 text-rose-600 font-bold rounded-xl border border-rose-100">割り振りをクリア</button>
                 <button id="btn-mobile-settings" class="w-full py-4 bg-slate-50 text-slate-600 font-bold rounded-xl border border-slate-100">⚙️ 自動割り振り設定</button>
                 <button id="btn-mobile-auto" class="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200">AI 自動作成を実行</button>
+                <button onclick="window.generateAiShift(); document.getElementById('mobile-admin-menu').classList.add('hidden');" class="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2">
+                    <span>🤖</span> 完全AIモード (Gemini)
+                </button>
                 <button onclick="document.getElementById('mobile-admin-menu').classList.add('hidden')" class="w-full py-4 text-slate-400 font-bold">キャンセル</button>
             </div>
         </div>
@@ -2803,3 +2809,122 @@ window.finalizeAutoShift = async () => {
     }
 };
 window.activateShiftAdminMode = activateShiftAdminMode;
+
+// ============================================================
+//  🤖 AI シフト自動作成機能 (完全AI版)
+// ============================================================
+
+/**
+ * AIシフト作成のメインエントリーポイント
+ * 管理者メニューの新しいボタンから呼ばれる
+ */
+async function generateAiShift() {
+    showConfirmModal(
+        "🤖 完全AIモード (Gemini)",
+        `Geminiがゼロからシフトを作成します。\n(既存のルールベース作成とは異なるロジックです)\n\n【適用ルール】\n・平日(余剰)から土日(不足)への積極移動\n・契約日数と日別定員の遵守\n・5連勤は必要なら許容\n\n※実行すると現在のシフト表は上書きされます。\n実行しますか？`,
+        async () => {
+            await executeAiShiftGeneration();
+        },
+        'bg-purple-600' // 区別するために色を変える
+    );
+}
+
+async function executeAiShiftGeneration() {
+    showLoading();
+    pushHistory();
+
+    try {
+        const Y = shiftState.currentYear;
+        const M = shiftState.currentMonth;
+        const daysInMonth = new Date(Y, M, 0).getDate();
+        const holidays = getHolidays(Y, M);
+
+        // 1. 全データを収集
+        const contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
+
+        // 2. プロンプト作成
+        const prompt = constructFullAiPrompt(contextData);
+
+        // 3. Gemini API送信
+        const apiKey = localStorage.getItem('gemini_api_key');
+        if (!apiKey) throw new Error("Gemini APIキーが未設定です。");
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    temperature: 0.4,
+                    responseMimeType: "application/json"
+                }
+            })
+        });
+
+        const result = await response.json();
+        if (!result.candidates || !result.candidates[0].content) throw new Error("AI応答エラー");
+
+        const aiText = result.candidates[0].content.parts[0].text;
+        const generatedShift = JSON.parse(aiText);
+
+        // 4. 結果反映
+        applyAiShiftResult(generatedShift);
+
+        showToast("✅ AIモードによる作成が完了しました");
+        renderShiftAdminTable();
+
+    } catch (e) {
+        console.error(e);
+        alert("AI作成エラー: " + e.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// ヘルパー関数群
+function gatherFullShiftContext(year, month, daysInMonth, holidays) {
+    const dailyTargets = {};
+    for(let d=1; d<=daysInMonth; d++) {
+        const t = (shiftState.shiftDataCache._daily_targets && shiftState.shiftDataCache._daily_targets[d]) || {};
+        dailyTargets[d] = { A: t.A !== undefined ? t.A : 9, B: t.B !== undefined ? t.B : 9 };
+    }
+    const staffList = [...shiftState.staffListLists.employees, ...shiftState.staffListLists.alba_early, ...shiftState.staffListLists.alba_late];
+    const staffData = {};
+    staffList.forEach(name => {
+        const sData = shiftState.shiftDataCache[name] || {};
+        const details = shiftState.staffDetails[name] || {};
+        staffData[name] = {
+            type: (sData.monthly_settings && sData.monthly_settings.shift_type) || details.basic_shift || 'A',
+            contract_target: details.contract_days || 20,
+            requests: { off: sData.off_days || [], work: sData.work_days || [] }
+        };
+    });
+    return { meta: { year, month, days_in_month: daysInMonth, holidays, daily_targets: dailyTargets }, staff: staffData };
+}
+
+function constructFullAiPrompt(context) {
+    return `
+あなたは熟練のシフト管理者です。以下のデータに基づき、スタッフの1ヶ月分のシフト表(JSON)を作成してください。
+【最重要ルール】
+1. 平日(月~金)の人員が余っている場合、人手不足の土日祝へ積極的に移動させてください。
+2. 人員確保のためなら、5連勤になっても許容してください。
+3. 希望休(requests.off)は絶対に入れてはいけません。
+4. シフト区分(type A/B)は変更しないでください。
+【出力形式】
+JSONのみ。役割は割り当てず "出勤" または "公休" としてください。
+入力データ: ${JSON.stringify(context)}
+`;
+}
+
+function applyAiShiftResult(generatedShift) {
+    Object.keys(generatedShift).forEach(name => {
+        if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = {};
+        if (!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
+        const schedule = generatedShift[name];
+        Object.keys(schedule).forEach(day => {
+            shiftState.shiftDataCache[name].assignments[day] = schedule[day];
+        });
+    });
+}
+
+window.generateAiShift = generateAiShift;
