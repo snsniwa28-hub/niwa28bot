@@ -75,6 +75,11 @@ window.closeMonthlyCalendar = Operations.closeMonthlyCalendar;
 window.openOpInput = Operations.openOpInput;
 window.closeOpInput = Operations.closeOpInput;
 window.saveOpData = Operations.saveOpData;
+window.openMachineDetailsEdit = Operations.openMachineDetailsEdit;
+window.closeMachineDetailsEdit = Operations.closeMachineDetailsEdit;
+window.saveMachineDetails = Operations.saveMachineDetails;
+window.changeMachineViewDate = Operations.changeMachineViewDate;
+window.openMachineCalendar = Operations.openMachineCalendar;
 
 // QSC
 window.subscribeQSC = QSC.subscribeQSC;
