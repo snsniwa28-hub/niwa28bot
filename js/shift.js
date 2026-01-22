@@ -2909,109 +2909,144 @@ async function executeHybridShiftLogic() {
     showLoading();
     pushHistory(); // Save state before starting
 
-    try {
-        // 1. Create Base (Rule-based)
-        await executeAutoShiftLogic(false);
+    // Helper to update loading text
+    const updateLoadingText = (text) => {
+        const loadingEl = document.getElementById('shift-loading-overlay');
+        if (loadingEl) {
+            let textEl = loadingEl.querySelector('p');
+            if (!textEl) {
+                textEl = document.createElement('p');
+                textEl.className = "absolute mt-16 text-white font-bold text-lg drop-shadow-md";
+                loadingEl.appendChild(textEl);
+            }
+            textEl.textContent = text;
+        }
+    };
 
+    try {
         const Y = shiftState.currentYear;
         const M = shiftState.currentMonth;
         const daysInMonth = new Date(Y, M, 0).getDate();
         const holidays = getHolidays(Y, M);
 
-        // Split into periods
-        const periods = [
-            { start: 1, end: 7 },
-            { start: 8, end: 14 },
-            { start: 15, end: 21 },
-            { start: 22, end: daysInMonth }
-        ];
+        // 1. 土台作成 (Rule-based Base)
+        await executeAutoShiftLogic(false);
+        renderShiftAdminTable(); // Update UI to show base
 
-        for (let i = 0; i < periods.length; i++) {
-            const period = periods[i];
-            const pNum = i + 1;
+        // 2. 前半戦 (1st Half: 1-15)
+        updateLoadingText("AI最適化中... (50% 前半作成中)");
 
-            // Update Loading Text
-            const loadingEl = document.getElementById('shift-loading-overlay');
-            if (loadingEl) {
-                let textEl = loadingEl.querySelector('p');
-                if (!textEl) {
-                    textEl = document.createElement('p');
-                    textEl.className = "absolute mt-16 text-white font-bold text-lg drop-shadow-md";
-                    loadingEl.appendChild(textEl);
-                }
-                textEl.textContent = `AI最適化中... (${pNum}/4 週目)`;
-            }
+        // Context for 1st Half
+        let contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
 
-            // 2. Gather Data (Re-gather to reflect latest changes)
-            const contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
-
-            // 3. Construct Prompt with Specific Period Instruction
-            const prompt = `
+        const prompt1 = `
 以下のシフトデータ(JSON)をもとに、修正版のシフト表を作成してください。
-【今回の修正対象期間】
-${period.start}日 〜 ${period.end}日
-※この期間のシフトのみを最適化し、JSONで出力してください。
+【対象期間】
+1日 〜 15日
+※この期間のみを最適化してください。
 
-【目的】
-ルールベースで作成された「土台」をAIが最適化します。
-特に「平日（月〜金）の人員が余っている場合、不足しがちな土日祝へ移動させる」ことを意識してください。
-文脈を理解するために全期間のデータを渡しますが、変更・出力は指定期間内だけに留めてください。
+【重要方針】
+後半（16日以降）に人手不足になりがちな土日祝が控えています。前半で人員を使いすぎないよう、余力を残す配分にしてください。
 
 【絶対厳守の制約】
 1. 契約日数（target）を超過させないこと。
 2. 本人の希望休（requests.off）を無視して出勤にしないこと。
-3. 6連勤以上（physical work streak >= 6）を発生させないこと（前後の期間との接続も考慮すること）。
+3. 6連勤以上（physical work streak >= 6）を発生させないこと。
 4. シフト区分（A/B）を変更しないこと。
 5. 役割（assignmentsの中身）は変更せず、単に「出勤」の日程だけを移動させてください。移動先の日付には "出勤" を設定してください。
 
 【出力形式】
 JSONのみを出力してください。
 キーはスタッフ名、値は { "日付": "出勤" or "公休" } の形式。
-出力例:
-{
-  "スタッフA": { "1": "公休", "2": "出勤" },
-  "スタッフB": { "3": "出勤" }
-}
 `;
 
-            // 4. API Call
-            const response = await fetch('/gemini', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: prompt,
-                    contextData: JSON.stringify(contextData),
-                    mode: 'shift_hybrid'
-                })
-            });
+        const res1 = await fetch('/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: prompt1,
+                contextData: JSON.stringify(contextData),
+                mode: 'shift_hybrid'
+            })
+        });
 
-            const result = await response.json();
-            if (result.error) throw new Error(`Week ${pNum} Error: ${result.error}`);
+        const result1 = await res1.json();
+        if (result1.error) throw new Error("前半作成エラー: " + result1.error);
 
-            let generatedShift;
-            if (result.reply) {
-                 const text = result.reply;
-                 const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
-                 if (jsonMatch) {
-                     generatedShift = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-                 } else {
-                     console.warn(`Week ${pNum}: Invalid JSON format`, text);
-                     continue;
-                 }
-            } else {
-                 throw new Error("AI response invalid");
-            }
-
-            // 5. Apply Partial Result
-            applyAiShiftResult(generatedShift);
+        if (result1.reply) {
+             const text = result1.reply;
+             const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+             if (jsonMatch) {
+                 const generatedShift1 = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+                 applyAiShiftResult(generatedShift1);
+             } else {
+                 throw new Error("前半のAI応答がJSON形式ではありませんでした。");
+             }
+        } else {
+             throw new Error("前半のAI応答が不正です。");
         }
 
-        showToast("🤖⚡ ハイブリッド作成完了！");
+        // 3. 後半戦 (2nd Half: 16-End)
+        updateLoadingText("AI最適化中... (100% 後半仕上げ中)");
+
+        // Re-gather context to include changes from 1st half
+        contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
+
+        const prompt2 = `
+以下のシフトデータ(JSON)をもとに、修正版のシフト表を作成してください。
+【対象期間】
+16日 〜 ${daysInMonth}日 (月末)
+※この期間を最適化してください。
+
+【重要方針】
+前半（15日まで）のシフトは確定済みです。前半の勤務状況（連勤や出勤数）を踏まえて、月全体のバランスが取れるように後半を埋めてください。
+
+【絶対厳守の制約】
+1. 契約日数（target）を超過させないこと。
+2. 本人の希望休（requests.off）を無視して出勤にしないこと。
+3. 6連勤以上（physical work streak >= 6）を発生させないこと（前半との接続も考慮）。
+4. シフト区分（A/B）を変更しないこと。
+5. 役割（assignmentsの中身）は変更せず、単に「出勤」の日程だけを移動させてください。移動先の日付には "出勤" を設定してください。
+
+【出力形式】
+JSONのみを出力してください。
+キーはスタッフ名、値は { "日付": "出勤" or "公休" } の形式。
+`;
+
+        const res2 = await fetch('/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: prompt2,
+                contextData: JSON.stringify(contextData),
+                mode: 'shift_hybrid'
+            })
+        });
+
+        const result2 = await res2.json();
+        if (result2.error) throw new Error("後半作成エラー: " + result2.error);
+
+        if (result2.reply) {
+             const text = result2.reply;
+             const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+             if (jsonMatch) {
+                 const generatedShift2 = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+                 applyAiShiftResult(generatedShift2);
+             } else {
+                 throw new Error("後半のAI応答がJSON形式ではありませんでした。");
+             }
+        } else {
+             throw new Error("後半のAI応答が不正です。");
+        }
+
+        // Completion
         renderShiftAdminTable();
+        showToast("🤖⚡ ハイブリッド作成完了！");
 
     } catch (e) {
         console.error("Hybrid Gen Error:", e);
-        alert("ハイブリッド作成エラー: " + e.message + "\n(途中までの変更は保持されています)");
+        alert("ハイブリッド作成エラー: " + e.message);
+        undoShiftAction(); // Revert to before base creation (clean slate)
     } finally {
         hideLoading();
         // Clean up loading text
