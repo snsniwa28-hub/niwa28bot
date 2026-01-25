@@ -1771,9 +1771,23 @@ async function executeAutoShiftLogic(isPreview = true) {
 
         // Clear assignments for simulation
         staffObjects.forEach(s => {
-            s.assignedDays = [];
+            const oldAssignments = shifts[s.name]?.assignments || {};
+            const newAssignments = {};
+            const newAssignedDays = [];
+
+            Object.keys(oldAssignments).forEach(dayKey => {
+                const day = parseInt(dayKey);
+                const role = oldAssignments[dayKey];
+                // Preserve Paid/Special Leave
+                if (role === '有休' || role === '特休' || role === 'PAID' || role === 'SPECIAL') {
+                    newAssignments[dayKey] = role;
+                    newAssignedDays.push(day);
+                }
+            });
+
+            s.assignedDays = newAssignedDays;
             if(!shifts[s.name]) shifts[s.name] = {};
-            shifts[s.name].assignments = {};
+            shifts[s.name].assignments = newAssignments;
         });
 
         const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
