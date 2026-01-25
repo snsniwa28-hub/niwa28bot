@@ -271,6 +271,7 @@ export function createShiftModals() {
             <div id="admin-role-grid" class="hidden px-6 pb-2 grid grid-cols-4 gap-2 mt-4">
                  <button class="role-btn bg-slate-100 text-slate-600 border border-slate-200 font-bold py-2 rounded-lg text-[10px]" data-role="A早">A (早)</button>
                  <button class="role-btn bg-slate-100 text-slate-600 border border-slate-200 font-bold py-2 rounded-lg text-[10px]" data-role="B遅">B (遅)</button>
+                 <button class="role-btn bg-amber-100 text-amber-700 border border-amber-300 font-bold py-2 rounded-lg text-[10px]" data-role="中番">中番</button>
                  <button class="role-btn bg-rose-50 text-rose-600 border border-rose-200 font-bold py-2 rounded-lg text-[10px]" data-role="公休">公休</button>
                  <button class="role-btn bg-pink-50 text-pink-600 border border-pink-200 font-bold py-2 rounded-lg text-[10px]" data-role="有休">有休</button>
                  <button class="role-btn bg-yellow-50 text-yellow-600 border border-yellow-200 font-bold py-2 rounded-lg text-[10px]" data-role="特休">特休</button>
@@ -1126,7 +1127,14 @@ export function renderShiftAdminTable() {
                          // Check for special roles
                          const isSpecial = assignment.includes('金メ') || assignment.includes('金サブ') || assignment.includes('ホ責') || assignment.includes('倉庫');
 
-                         if (isSpecial) {
+                         if (assignment === '中番') {
+                             bgCell = 'bg-white border-2 border-yellow-400 box-border z-10'; // Yellow border for Middle shift
+                             cellContent = `
+                                <div class="flex flex-col items-center justify-center leading-none">
+                                    <span class="text-yellow-600 font-bold text-[9px] md:text-[10px] leading-none">中番</span>
+                                </div>
+                             `;
+                         } else if (isSpecial) {
                              if(assignment.includes('金メ')) { bgCell = 'bg-yellow-50'; roleColor = 'text-yellow-600'; }
                              else if(assignment.includes('金サブ')) { bgCell = 'bg-amber-50'; roleColor = 'text-amber-600'; }
                              else if(assignment.includes('ホ責')) { bgCell = 'bg-orange-50'; roleColor = 'text-orange-600'; }
@@ -1223,8 +1231,14 @@ export function renderShiftAdminTable() {
             // Actual Count for Staffing (Physical Presence)
             // Exclude Paid/Special/Blank/Slash
             if(role && role !== '公休' && role !== '有休' && role !== 'PAID' && role !== '特休' && role !== 'SPECIAL' && role !== '/') {
-                if(shiftType === 'A') actualA[d]++;
-                else actualB[d]++;
+                if (role === '中番') {
+                    // Middle shift counts for BOTH A and B
+                    actualA[d]++;
+                    actualB[d]++;
+                } else {
+                    if(shiftType === 'A') actualA[d]++;
+                    else actualB[d]++;
+                }
             }
         }
     });
@@ -1723,18 +1737,9 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
     // If assigning this day results in 6 days streak, return false.
     if (currentSeq >= 6) return false;
 
-    // 4. Sandwich Check (Uses physicalWorkDays)
-    if (!checkPhysicalWork(staff, day - 1)) {
-        // day-1 is a Gap. Check streak ending at day-2.
-        let prevStreak = 0;
-        let k = day - 2;
-        while (checkPhysicalWork(staff, k)) {
-            prevStreak++;
-            k--;
-            if ((day - 2) - k > 30) break;
-        }
-        if (prevStreak >= staff.maxConsecutive) return false;
-    }
+    // 4. Sandwich Check (Removed as per new requirements)
+    // AI or Logic is allowed to create Sandwich shifts if necessary.
+    // if (!checkPhysicalWork(staff, day - 1)) { ... }
 
     // 5. Already assigned (Check assignedDays to prevent double booking even with Paid)
     if (staff.assignedDays.includes(day)) return false;
@@ -1798,7 +1803,8 @@ async function executeAutoShiftLogic(isPreview = true) {
         };
 
         // Helper: Is Responsible?
-        const isResponsible = (s) => s.allowedRoles.includes('money_main');
+        // UPDATED: Use Rank instead of Allowed Roles for Responsibility Check
+        const isResponsible = (s) => ['マネージャー', '主任', '副主任'].includes(s.rank);
 
         // Helper: Get Target for Day
         const getTarget = (day, type) => {
@@ -1815,12 +1821,14 @@ async function executeAutoShiftLogic(isPreview = true) {
         // --- PHASE 1: Employee Baseline (Ensure Responsibility) ---
         ['A', 'B'].forEach(st => {
             days.forEach(d => {
+                // Check if we have at least one responsible person (Manager/Chief/Deputy)
                 const assignedResp = staffObjects.some(s =>
-                    s.shiftType === st && s.type === 'employee' && isResponsible(s) && s.assignedDays.includes(d)
+                    s.shiftType === st && isResponsible(s) && s.assignedDays.includes(d)
                 );
                 if (!assignedResp) {
+                    // Try to find a responsible employee
                     const candidates = staffObjects.filter(s =>
-                        s.shiftType === st && s.type === 'employee' && isResponsible(s) && canAssign(s, d)
+                        s.shiftType === st && isResponsible(s) && canAssign(s, d)
                     );
                     candidates.sort((a,b) => {
                         const reqA = a.requests.work.includes(d) ? 1 : 0;
@@ -2965,14 +2973,20 @@ async function executeHybridShiftLogic() {
 【絶対厳守の制約】
 1. **【固定・変更禁止】** 現在割り当てられている「有休」「特休」は、移動・変更・削除を一切禁止します。これらは既に確定した予定として扱い、絶対にいじらないでください。
 2. **【固定・変更禁止】** 本人の希望休（requests.off）に基づく「公休」は、絶対に出勤に変更しないでください。
-3. **【操作許容範囲】** あなたが操作してよいのは、上記以外の「出勤」と「（希望ではない）公休」の入れ替えのみです。
+3. **【操作許容範囲】** あなたが操作してよいのは、上記以外の「出勤」と「（希望ではない）公休」の入れ替え、および「中番」への変更のみです。
 4. 契約日数（target）を超過させないこと。
-5. 6連勤以上（physical work streak >= 6）を発生させないこと（前半との接続も考慮）。
-6. シフト区分（A/B）を変更しないこと。
+5. 6連勤以上（physical work streak >= 6）を発生させないこと。
+6. 基本的なシフト区分（A/B）は勝手に変更しないこと（中番への変更は除く）。
+
+【推奨・調整ルール】
+1. **中番（Nakaban）の活用:** 早番(A)が不足し、かつ遅番(B)が足りている（または余っている）日は、遅番のスタッフを **"中番"** に変更することを検討してください。"中番"はAとBの両方の人員としてカウントされます。
+   - これを「提案」として行いたいので、該当する日は値に "中番" をセットしてください。
+2. **サンドイッチ出勤:** 飛び石連休（出-休-出）はなるべく避けてくださいが、人員確保のために必要な場合は許容します。
+3. **連勤の平準化:** 特定の人に連勤が集中しないよう、全体を見て分散させてください。
 
 【出力形式】
 JSONのみを出力してください。
-キーはスタッフ名、値は { "日付": "出勤" or "公休" } の形式。
+キーはスタッフ名、値は { "日付": "出勤" or "公休" or "中番" } の形式。
 `;
 
         const res1 = await fetch('/gemini', {
@@ -3019,14 +3033,20 @@ JSONのみを出力してください。
 【絶対厳守の制約】
 1. **【固定・変更禁止】** 現在割り当てられている「有休」「特休」は、移動・変更・削除を一切禁止します。これらは既に確定した予定として扱い、絶対にいじらないでください。
 2. **【固定・変更禁止】** 本人の希望休（requests.off）に基づく「公休」は、絶対に出勤に変更しないでください。
-3. **【操作許容範囲】** あなたが操作してよいのは、上記以外の「出勤」と「（希望ではない）公休」の入れ替えのみです。
+3. **【操作許容範囲】** あなたが操作してよいのは、上記以外の「出勤」と「（希望ではない）公休」の入れ替え、および「中番」への変更のみです。
 4. 契約日数（target）を超過させないこと。
-5. 6連勤以上（physical work streak >= 6）を発生させないこと（前半との接続も考慮）。
-6. シフト区分（A/B）を変更しないこと。
+5. 6連勤以上（physical work streak >= 6）を発生させないこと。
+6. 基本的なシフト区分（A/B）は勝手に変更しないこと（中番への変更は除く）。
+
+【推奨・調整ルール】
+1. **中番（Nakaban）の活用:** 早番(A)が不足し、かつ遅番(B)が足りている（または余っている）日は、遅番のスタッフを **"中番"** に変更することを検討してください。"中番"はAとBの両方の人員としてカウントされます。
+   - これを「提案」として行いたいので、該当する日は値に "中番" をセットしてください。
+2. **サンドイッチ出勤:** 飛び石連休（出-休-出）はなるべく避けてくださいが、人員確保のために必要な場合は許容します。
+3. **連勤の平準化:** 特定の人に連勤が集中しないよう、全体を見て分散させてください。
 
 【出力形式】
 JSONのみを出力してください。
-キーはスタッフ名、値は { "日付": "出勤" or "公休" } の形式。
+キーはスタッフ名、値は { "日付": "出勤" or "公休" or "中番" } の形式。
 `;
 
         const res2 = await fetch('/gemini', {
@@ -3184,3 +3204,4 @@ function addShiftAiMessageUI(role, text, isLoading = false) {
 
 window.generateHybridShift = generateHybridShift;
 window.openShiftAiChat = openShiftAiChat;
+window.shiftState = shiftState;
