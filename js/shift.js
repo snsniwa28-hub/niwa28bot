@@ -1108,11 +1108,6 @@ export function renderShiftAdminTable() {
                 let bgCell = '';
                 let cellContent = '';
 
-                // NEW: Check for AI Proposal in remarks
-                if (dailyRemark && dailyRemark.includes("AI提案:中番")) {
-                    bgCell += ' border-2 border-yellow-400 box-border z-10';
-                }
-
                 if (assignment || assignment === '') { // Allow empty string
                     if (assignment === '公休') {
                          if (isOffReq) { bgCell = 'bg-rose-50 hover:bg-rose-100'; cellContent = '<span class="text-rose-500 font-bold text-[10px] select-none">(休)</span>'; }
@@ -1185,6 +1180,11 @@ export function renderShiftAdminTable() {
                 }
 
                 if (dailyRemark) cellContent += `<span class="absolute top-0 right-0 text-[8px] text-yellow-600">●</span>`;
+
+                // NEW: Check for AI Proposal in remarks (Applied AFTER base style)
+                if (dailyRemark && dailyRemark.includes("AI提案:中番")) {
+                    bgCell += ' border-2 border-yellow-400 box-border z-10';
+                }
 
                 // UPDATED: Cell padding
                 td.className = `border-b border-r border-slate-200 text-center cursor-pointer transition relative ${bgCell} p-0.5 md:p-1 h-8 md:h-auto align-middle`;
