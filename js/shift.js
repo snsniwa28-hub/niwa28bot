@@ -1108,6 +1108,11 @@ export function renderShiftAdminTable() {
                 let bgCell = '';
                 let cellContent = '';
 
+                // NEW: Check for AI Proposal in remarks
+                if (dailyRemark && dailyRemark.includes("AI提案:中番")) {
+                    bgCell += ' border-2 border-yellow-400 box-border z-10';
+                }
+
                 if (assignment || assignment === '') { // Allow empty string
                     if (assignment === '公休') {
                          if (isOffReq) { bgCell = 'bg-rose-50 hover:bg-rose-100'; cellContent = '<span class="text-rose-500 font-bold text-[10px] select-none">(休)</span>'; }
