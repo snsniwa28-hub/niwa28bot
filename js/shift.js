@@ -464,6 +464,10 @@ export function createShiftModals() {
                             <input type="checkbox" id="se-allow-hall-resp" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
                             <span class="text-sm text-slate-700 font-bold">ホ責</span>
                         </label>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="se-allow-nakaban" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
+                            <span class="text-sm text-slate-700 font-bold">中番可</span>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -1672,11 +1676,15 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
         return s.physicalWorkDays.includes(d);
     };
 
-    // 0. Strict Contract Enforcement (Highest Priority)
+    // 0. Absolute Request Protection (Move to TOP)
+    // どんなモード（厳格モード）であっても、本人の希望休は絶対に出勤にしない
+    if (staff.requests.off.includes(day)) return false;
+
+    // 1. Strict Contract Enforcement (Highest Priority)
     // Uses assignedDays (includes Paid/Special)
     if (!strictContractMode && !isAdjustmentMode && staff.assignedDays.length >= staff.contractDays) return false;
 
-    // 1. Strict Interval (Absolute): No Late -> Early
+    // 2. Strict Interval (Absolute): No Late -> Early
     // Uses physicalWorkDays for "Prev Day" check? Or assignedDays?
     // Usually Paid Leave doesn't cause interval issues. So use physicalWorkDays.
     // If I took Paid Leave yesterday, I can work Early today regardless of my shift type.
@@ -1707,11 +1715,6 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
                     if (currentEffective === 'A') return false;
                 }
             }
-    }
-
-    // 2. Off Days Check
-    if (!strictContractMode) {
-            if (staff.requests.off.includes(day)) return false;
     }
 
     // 3. Consecutive Days (UPDATED: Uses physicalWorkDays)
@@ -2429,6 +2432,7 @@ window.openStaffEditModal = (name) => {
     document.getElementById('se-allow-money-sub').checked = allowed.includes('money_sub');
     document.getElementById('se-allow-warehouse').checked = allowed.includes('warehouse');
     document.getElementById('se-allow-hall-resp').checked = allowed.includes('hall_resp');
+    document.getElementById('se-allow-nakaban').checked = allowed.includes('nakaban');
 };
 
 // --- Staff List Rendering with Reorder ---
@@ -2527,6 +2531,7 @@ async function saveStaffDetails() {
     if(document.getElementById('se-allow-money-sub').checked) allowedRoles.push('money_sub');
     if(document.getElementById('se-allow-warehouse').checked) allowedRoles.push('warehouse');
     if(document.getElementById('se-allow-hall-resp').checked) allowedRoles.push('hall_resp');
+    if(document.getElementById('se-allow-nakaban').checked) allowedRoles.push('nakaban');
 
     const newDetails = {
         rank, type, basic_shift: basicShift,
@@ -2894,6 +2899,7 @@ function gatherFullShiftContext(year, month, daysInMonth, holidays) {
         staffData[name] = {
             type: (sData.monthly_settings && sData.monthly_settings.shift_type) || details.basic_shift || 'A',
             contract_target: details.contract_days || 20,
+            allowedRoles: details.allowed_roles || [],
             requests: { off: sData.off_days || [], work: sData.work_days || [] },
             assignments: sData.assignments || {} // Include assignments for Hybrid/Chat context
         };
@@ -2981,6 +2987,7 @@ async function executeHybridShiftLogic() {
 【推奨・調整ルール】
 1. **中番（Nakaban）の活用:** 早番(A)が不足し、かつ遅番(B)が足りている（または余っている）日は、遅番のスタッフを **"中番"** に変更することを検討してください。"中番"はAとBの両方の人員としてカウントされます。
    - これを「提案」として行いたいので、該当する日は値に "中番" をセットしてください。
+   - ただし、中番の提案は、allowedRoles に "nakaban" (中番可) が含まれているスタッフに限定してください。許可されていないスタッフを中番にしてはいけません。
 2. **サンドイッチ出勤:** 飛び石連休（出-休-出）はなるべく避けてくださいが、人員確保のために必要な場合は許容します。
 3. **連勤の平準化:** 特定の人に連勤が集中しないよう、全体を見て分散させてください。
 
@@ -3041,6 +3048,7 @@ JSONのみを出力してください。
 【推奨・調整ルール】
 1. **中番（Nakaban）の活用:** 早番(A)が不足し、かつ遅番(B)が足りている（または余っている）日は、遅番のスタッフを **"中番"** に変更することを検討してください。"中番"はAとBの両方の人員としてカウントされます。
    - これを「提案」として行いたいので、該当する日は値に "中番" をセットしてください。
+   - ただし、中番の提案は、allowedRoles に "nakaban" (中番可) が含まれているスタッフに限定してください。許可されていないスタッフを中番にしてはいけません。
 2. **サンドイッチ出勤:** 飛び石連休（出-休-出）はなるべく避けてくださいが、人員確保のために必要な場合は許容します。
 3. **連勤の平準化:** 特定の人に連勤が集中しないよう、全体を見て分散させてください。
 
