@@ -1824,23 +1824,38 @@ async function executeAutoShiftLogic(isPreview = true) {
         // --- PHASE 1: Employee Baseline (Ensure Responsibility) ---
         ['A', 'B'].forEach(st => {
             days.forEach(d => {
-                // Check if we have at least one responsible person (Manager/Chief/Deputy)
-                const assignedResp = staffObjects.some(s =>
+                // Determine target count: 2 for Sat/Sun/Holiday, 1 for Weekday
+                const dateObj = new Date(Y, M - 1, d);
+                const dayOfWeek = dateObj.getDay(); // 0:Sun, 6:Sat
+                const isHoliday = holidays.includes(d);
+                const targetRespCount = (dayOfWeek === 0 || dayOfWeek === 6 || isHoliday) ? 2 : 1;
+
+                // Check current responsible count
+                let currentRespCount = staffObjects.filter(s =>
                     s.shiftType === st && isResponsible(s) && s.assignedDays.includes(d)
-                );
-                if (!assignedResp) {
-                    // Try to find a responsible employee
+                ).length;
+
+                if (currentRespCount < targetRespCount) {
+                    // Try to find responsible employees to fill the gap
                     const candidates = staffObjects.filter(s =>
                         s.shiftType === st && isResponsible(s) && canAssign(s, d)
                     );
+                    // Sort by request priority, then by fewer assignments
                     candidates.sort((a,b) => {
                         const reqA = a.requests.work.includes(d) ? 1 : 0;
                         const reqB = b.requests.work.includes(d) ? 1 : 0;
-                        return reqB - reqA;
+                        if (reqA !== reqB) return reqB - reqA;
+                        return a.assignedDays.length - b.assignedDays.length;
                     });
-                    if (candidates.length > 0) {
-                        candidates[0].assignedDays.push(d);
-                        candidates[0].physicalWorkDays.push(d);
+
+                    for (const cand of candidates) {
+                        if (currentRespCount >= targetRespCount) break;
+                        // Avoid double assignment if not handled by canAssign (it is handled but safe to check)
+                        if (!cand.assignedDays.includes(d)) {
+                            cand.assignedDays.push(d);
+                            cand.physicalWorkDays.push(d);
+                            currentRespCount++;
+                        }
                     }
                 }
             });
@@ -2985,9 +3000,17 @@ async function executeHybridShiftLogic() {
 6. 基本的なシフト区分（A/B）は勝手に変更しないこと（中番への変更は除く）。
 
 【推奨・調整ルール】
-1. **中番（Nakaban）の活用:** 早番(A)が不足し、かつ遅番(B)が足りている（または余っている）日は、遅番のスタッフを **"中番"** に変更することを検討してください。"中番"はAとBの両方の人員としてカウントされます。
-   - これを「提案」として行いたいので、該当する日は値に "中番" をセットしてください。
-   - ただし、中番の提案は、allowedRoles に "nakaban" (中番可) が含まれているスタッフに限定してください。許可されていないスタッフを中番にしてはいけません。
+1. **中番（Nakaban）の活用ルール（絶対遵守）:**
+   - 中番を提案してよいのは、`allowedRoles` に "nakaban" が含まれているスタッフのみです。
+   - **【早番(A)のスタッフの場合】:**
+     - 「連勤の最後」かつ「翌日が休み」の場合のみ、その連勤最終日を中番にできます。
+     - 条件: 当日が「中番」 AND 翌日が「公休」
+     - （意図: 連勤の締めくくりとして中番に入り、翌日から休むパターンのみ許可）
+   - **【遅番(B)のスタッフの場合】:**
+     - 「休みの翌日」の場合のみ、中番にできます。
+     - 条件: 前日が「公休」 AND 当日が「中番」
+     - （意図: 休み明けの初日、または単発出勤として中番に入るパターンのみ許可）
+   - ※これら以外のタイミング（例：連勤の途中など）で中番を入れることは禁止します。
 2. **サンドイッチ出勤:** 飛び石連休（出-休-出）はなるべく避けてくださいが、人員確保のために必要な場合は許容します。
 3. **連勤の平準化:** 特定の人に連勤が集中しないよう、全体を見て分散させてください。
 
@@ -3046,9 +3069,17 @@ JSONのみを出力してください。
 6. 基本的なシフト区分（A/B）は勝手に変更しないこと（中番への変更は除く）。
 
 【推奨・調整ルール】
-1. **中番（Nakaban）の活用:** 早番(A)が不足し、かつ遅番(B)が足りている（または余っている）日は、遅番のスタッフを **"中番"** に変更することを検討してください。"中番"はAとBの両方の人員としてカウントされます。
-   - これを「提案」として行いたいので、該当する日は値に "中番" をセットしてください。
-   - ただし、中番の提案は、allowedRoles に "nakaban" (中番可) が含まれているスタッフに限定してください。許可されていないスタッフを中番にしてはいけません。
+1. **中番（Nakaban）の活用ルール（絶対遵守）:**
+   - 中番を提案してよいのは、`allowedRoles` に "nakaban" が含まれているスタッフのみです。
+   - **【早番(A)のスタッフの場合】:**
+     - 「連勤の最後」かつ「翌日が休み」の場合のみ、その連勤最終日を中番にできます。
+     - 条件: 当日が「中番」 AND 翌日が「公休」
+     - （意図: 連勤の締めくくりとして中番に入り、翌日から休むパターンのみ許可）
+   - **【遅番(B)のスタッフの場合】:**
+     - 「休みの翌日」の場合のみ、中番にできます。
+     - 条件: 前日が「公休」 AND 当日が「中番」
+     - （意図: 休み明けの初日、または単発出勤として中番に入るパターンのみ許可）
+   - ※これら以外のタイミング（例：連勤の途中など）で中番を入れることは禁止します。
 2. **サンドイッチ出勤:** 飛び石連休（出-休-出）はなるべく避けてくださいが、人員確保のために必要な場合は許容します。
 3. **連勤の平準化:** 特定の人に連勤が集中しないよう、全体を見て分散させてください。
 
