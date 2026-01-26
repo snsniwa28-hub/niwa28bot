@@ -58,8 +58,8 @@ function showLoading() {
     if(!el) {
         el = document.createElement('div');
         el.id = 'shift-loading-overlay';
-        el.className = 'fixed inset-0 z-[100] bg-white/50 backdrop-blur-sm flex items-center justify-center';
-        el.innerHTML = `<div class="animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-emerald-500"></div>`;
+        el.className = 'loading-overlay hidden';
+        el.innerHTML = `<div class="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-emerald-500"></div>`;
         document.body.appendChild(el);
     }
     el.classList.remove('hidden');
