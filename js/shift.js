@@ -3084,8 +3084,14 @@ JSONのみを出力してください。
         }
 
         // Completion
+
+        // Save to Firestore
+        const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+        const docRef = doc(db, "shift_submissions", docId);
+        await setDoc(docRef, shiftState.shiftDataCache, { merge: true });
+
         renderShiftAdminTable();
-        showToast("🤖⚡ ハイブリッド作成完了！");
+        showToast("🤖⚡ ハイブリッド作成完了！(保存しました)");
 
     } catch (e) {
         console.error("Hybrid Gen Error:", e);
