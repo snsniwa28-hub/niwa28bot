@@ -3045,20 +3045,32 @@ async function executeHybridShiftLogic() {
         await executeAutoShiftLogic(false);
         renderShiftAdminTable(); // Update UI to show base
 
-        // 2. 前半戦 (1st Half: 1-15)
-        updateLoadingText("AI最適化中... (50% 前半作成中)");
+        // 2. 3分割最適化 (上旬:1-10, 中旬:11-20, 下旬:21-End)
+        const periods = [
+            { start: 1, end: 10, label: "上旬", progress: 33 },
+            { start: 11, end: 20, label: "中旬", progress: 66 },
+            { start: 21, end: daysInMonth, label: "下旬", progress: 100 }
+        ];
 
-        // Context for 1st Half
-        let contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
+        for (let i = 0; i < periods.length; i++) {
+            const period = periods[i];
+            updateLoadingText(`AI最適化中... (${period.progress}% ${period.label}作成中)`);
 
-        const prompt1 = `
+            // Gather Context (Always get latest including previous updates)
+            const contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
+
+            const isLast = (i === periods.length - 1);
+
+            // Construct Prompt
+            const prompt = `
 以下のシフトデータ(JSON)をもとに、修正版のシフト表を作成してください。
 【対象期間】
-1日 〜 15日
+${period.start}日 〜 ${period.end}日
 ※この期間のみを最適化してください。
 
 【重要方針】
-後半（16日以降）に人手不足になりがちな土日祝が控えています。前半で人員を使いすぎないよう、余力を残す配分にしてください。
+月全体の目標（target）とバランスを考慮しつつ、指定期間（${period.start}日〜${period.end}日）を最適化してください。
+${isLast ? "これまでの期間の勤務状況を踏まえて、月全体の最終調整を行ってください。" : "後続の期間のために人員を使いすぎないよう、全体最適を意識して配分してください。"}
 
 【絶対厳守の制約】
 1. **【固定・変更禁止】** 現在割り当てられている「有休」「特休」は、移動・変更・削除を一切禁止します。これらは既に確定した予定として扱い、絶対にいじらないでください。
@@ -3088,99 +3100,31 @@ JSONのみを出力してください。
 キーはスタッフ名、値は { "日付": "出勤" or "公休" or "中番" } の形式。
 `;
 
-        const res1 = await fetch('/gemini', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prompt: prompt1,
-                contextData: JSON.stringify(contextData),
-                mode: 'shift_hybrid'
-            })
-        });
+            const res = await fetch('/gemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    contextData: JSON.stringify(contextData),
+                    mode: 'shift_hybrid'
+                })
+            });
 
-        const result1 = await res1.json();
-        if (result1.error) throw new Error("前半作成エラー: " + result1.error);
+            const result = await res.json();
+            if (result.error) throw new Error(`${period.label}作成エラー: ` + result.error);
 
-        if (result1.reply) {
-             const text = result1.reply;
-             const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
-             if (jsonMatch) {
-                 const generatedShift1 = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-                 applyAiShiftResult(generatedShift1);
-             } else {
-                 throw new Error("前半のAI応答がJSON形式ではありませんでした。");
-             }
-        } else {
-             throw new Error("前半のAI応答が不正です。");
-        }
-
-        // 3. 後半戦 (2nd Half: 16-End)
-        updateLoadingText("AI最適化中... (100% 後半仕上げ中)");
-
-        // Re-gather context to include changes from 1st half
-        contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
-
-        const prompt2 = `
-以下のシフトデータ(JSON)をもとに、修正版のシフト表を作成してください。
-【対象期間】
-16日 〜 ${daysInMonth}日 (月末)
-※この期間を最適化してください。
-
-【重要方針】
-前半（15日まで）のシフトは確定済みです。前半の勤務状況（連勤や出勤数）を踏まえて、月全体のバランスが取れるように後半を埋めてください。
-
-【絶対厳守の制約】
-1. **【固定・変更禁止】** 現在割り当てられている「有休」「特休」は、移動・変更・削除を一切禁止します。これらは既に確定した予定として扱い、絶対にいじらないでください。
-2. **【固定・変更禁止】** 本人の希望休（requests.off）に基づく「公休」は、絶対に出勤に変更しないでください。
-3. **【操作許容範囲】** あなたが操作してよいのは、上記以外の「出勤」と「（希望ではない）公休」の入れ替え、および「中番」への変更のみです。
-4. 契約日数（target）を超過させないこと。
-5. 6連勤以上（physical work streak >= 6）を発生させないこと。
-6. 基本的なシフト区分（A/B）は勝手に変更しないこと（中番への変更は除く）。
-
-【推奨・調整ルール】
-1. **中番（Nakaban）の活用ルール（絶対遵守）:**
-   - 中番を提案してよいのは、\`allowedRoles\` に "nakaban" が含まれているスタッフのみです。
-   - **【早番(A)のスタッフの場合】:**
-     - 「連勤の最後」かつ「翌日が休み」の場合のみ、その連勤最終日を中番にできます。
-     - 条件: 当日が「中番」 AND 翌日が「公休」
-     - （意図: 連勤の締めくくりとして中番に入り、翌日から休むパターンのみ許可）
-   - **【遅番(B)のスタッフの場合】:**
-     - 「休みの翌日」の場合のみ、中番にできます。
-     - 条件: 前日が「公休」 AND 当日が「中番」
-     - （意図: 休み明けの初日、または単発出勤として中番に入るパターンのみ許可）
-   - ※これら以外のタイミング（例：連勤の途中など）で中番を入れることは禁止します。
-2. **サンドイッチ出勤:** 飛び石連休（出-休-出）はなるべく避けてくださいが、人員確保のために必要な場合は許容します。
-3. **連勤の平準化:** 特定の人に連勤が集中しないよう、全体を見て分散させてください。
-
-【出力形式】
-JSONのみを出力してください。
-キーはスタッフ名、値は { "日付": "出勤" or "公休" or "中番" } の形式。
-`;
-
-        const res2 = await fetch('/gemini', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prompt: prompt2,
-                contextData: JSON.stringify(contextData),
-                mode: 'shift_hybrid'
-            })
-        });
-
-        const result2 = await res2.json();
-        if (result2.error) throw new Error("後半作成エラー: " + result2.error);
-
-        if (result2.reply) {
-             const text = result2.reply;
-             const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
-             if (jsonMatch) {
-                 const generatedShift2 = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-                 applyAiShiftResult(generatedShift2);
-             } else {
-                 throw new Error("後半のAI応答がJSON形式ではありませんでした。");
-             }
-        } else {
-             throw new Error("後半のAI応答が不正です。");
+            if (result.reply) {
+                 const text = result.reply;
+                 const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+                 if (jsonMatch) {
+                     const generatedShift = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+                     applyAiShiftResult(generatedShift);
+                 } else {
+                     throw new Error(`${period.label}のAI応答がJSON形式ではありませんでした。`);
+                 }
+            } else {
+                 throw new Error(`${period.label}のAI応答が不正です。`);
+            }
         }
 
         // Completion
