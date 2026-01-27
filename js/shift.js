@@ -1819,6 +1819,7 @@ async function executeAutoShiftLogic(isPreview = true) {
             });
 
             s.assignedDays = newAssignedDays;
+            s.physicalWorkDays = []; // Reset physical work for simulation
             if(!shifts[s.name]) shifts[s.name] = {};
             shifts[s.name].assignments = newAssignments;
         });
@@ -1857,7 +1858,7 @@ async function executeAutoShiftLogic(isPreview = true) {
 
                 // Check current responsible count
                 let currentRespCount = staffObjects.filter(s =>
-                    s.shiftType === st && isResponsible(s) && s.assignedDays.includes(d)
+                    s.shiftType === st && isResponsible(s) && s.physicalWorkDays.includes(d)
                 ).length;
 
                 if (currentRespCount < targetRespCount) {
@@ -1889,7 +1890,7 @@ async function executeAutoShiftLogic(isPreview = true) {
         // --- PHASE 2: Fill Employees to Baseline (Approx 4) ---
         ['A', 'B'].forEach(st => {
             days.forEach(d => {
-                let count = staffObjects.filter(s => s.shiftType === st && s.type === 'employee' && s.assignedDays.includes(d)).length;
+                let count = staffObjects.filter(s => s.shiftType === st && s.type === 'employee' && s.physicalWorkDays.includes(d)).length;
                 if (count < 4) {
                      const candidates = staffObjects.filter(s =>
                         s.shiftType === st && s.type === 'employee' && canAssign(s, d)
@@ -1996,7 +1997,7 @@ async function executeAutoShiftLogic(isPreview = true) {
         ['A', 'B'].forEach(st => {
             days.forEach(d => {
                 const target = getTarget(d, st);
-                let current = staffObjects.filter(s => s.shiftType === st && s.assignedDays.includes(d)).length;
+                let current = staffObjects.filter(s => s.shiftType === st && s.physicalWorkDays.includes(d)).length;
 
                 if (current < target) {
                      const candidates = staffObjects.filter(s =>
