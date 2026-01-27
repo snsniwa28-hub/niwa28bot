@@ -3106,24 +3106,44 @@ JSONのみを出力してください。
                 body: JSON.stringify({
                     prompt: prompt,
                     contextData: JSON.stringify(contextData),
-                    mode: 'shift_hybrid'
+                    mode: 'shift_hybrid',
+                    stream: true
                 })
             });
 
-            const result = await res.json();
-            if (result.error) throw new Error(`${period.label}作成エラー: ` + result.error);
+            if (!res.ok) {
+                let errMsg = res.statusText;
+                try {
+                    const errJson = await res.json();
+                    if (errJson.error) errMsg = errJson.error;
+                } catch(e) {}
+                throw new Error(`${period.label}作成エラー: ` + errMsg);
+            }
 
-            if (result.reply) {
-                 const text = result.reply;
-                 const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
-                 if (jsonMatch) {
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let fullText = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                fullText += chunk;
+                updateLoadingText(`AI最適化中... (${period.label}生成中: ${fullText.length}文字)`);
+            }
+            fullText += decoder.decode(); // Flush
+
+            const text = fullText;
+            const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                 try {
                      const generatedShift = JSON.parse(jsonMatch[1] || jsonMatch[0]);
                      applyAiShiftResult(generatedShift);
-                 } else {
-                     throw new Error(`${period.label}のAI応答がJSON形式ではありませんでした。`);
+                 } catch (e) {
+                     throw new Error(`${period.label}のJSONパースに失敗しました: ` + e.message);
                  }
             } else {
-                 throw new Error(`${period.label}のAI応答が不正です。`);
+                 throw new Error(`${period.label}のAI応答がJSON形式ではありませんでした。`);
             }
         }
 
