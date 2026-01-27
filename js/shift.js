@@ -694,12 +694,15 @@ function setupShiftEventListeners() {
         };
     });
     document.querySelectorAll('.role-btn').forEach(btn => {
-        btn.onclick = () => {
+        btn.onclick = async () => {
             const role = btn.dataset.role;
             if (role === 'clear') handleActionPanelClick('clear');
             else if (role === 'revert') handleActionPanelClick('revert');
             else if (role === '公休') handleActionPanelClick('公休');
-            else setAdminRole(role);
+            else {
+                await setAdminRole(role);
+                showToast("✅ 変更しました", "black");
+            }
         };
     });
     $('#btn-action-next').onclick = () => moveDay(1);
@@ -1115,8 +1118,9 @@ export function renderShiftAdminTable() {
 
                 if (assignment || assignment === '') { // Allow empty string
                     if (assignment === '公休') {
-                         if (isOffReq) { bgCell = 'bg-rose-50 hover:bg-rose-100'; cellContent = '<span class="text-rose-500 font-bold text-[10px] select-none">(休)</span>'; }
-                         else { bgCell = 'bg-white hover:bg-slate-100'; cellContent = '<span class="text-slate-300 font-bold text-[10px] select-none">/</span>'; }
+                         // Always show Pink/Holiday style regardless of request
+                         bgCell = 'bg-rose-50 hover:bg-rose-100';
+                         cellContent = '<span class="text-rose-500 font-bold text-[10px] select-none">(休)</span>';
                     } else if (assignment === '有休' || assignment === 'PAID') {
                          bgCell = 'bg-pink-100 hover:bg-pink-200';
                          cellContent = '<span class="text-pink-600 font-bold text-[10px] select-none">有休</span>';
@@ -1289,22 +1293,38 @@ export function renderShiftAdminTable() {
     createFooterRow("実績 (A番)", 'A', actualA, dailyTargets);
     createFooterRow("実績 (B番)", 'B', actualB, dailyTargets);
 
-    const trTarget = document.createElement('tr');
-    // UPDATED: Target row title cell
-    trTarget.innerHTML = `<td class="sticky left-0 z-20 bg-slate-800 text-white p-1 md:p-2 border-b border-r border-slate-600 font-bold text-[10px] md:text-xs shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-20 md:w-auto md:min-w-[140px] truncate">定員設定 (A/B)</td>`;
-    for(let d=1; d<=daysInMonth; d++) {
-        const td = document.createElement('td');
-        const t = dailyTargets[d] || {};
-        const ta = t.A !== undefined ? t.A : 9;
-        const tb = t.B !== undefined ? t.B : 9;
-        // UPDATED: Target cell styling
-        td.className = "border-b border-r border-slate-200 text-center font-bold text-[10px] md:text-xs p-0.5 md:p-1 h-8 md:h-auto align-middle cursor-pointer hover:bg-indigo-50 bg-slate-50 transition";
-        td.innerHTML = `<span class="text-slate-500">${ta}</span> / <span class="text-slate-500">${tb}</span>`;
-        td.dataset.type = 'target-cell';
-        td.dataset.day = d;
-        trTarget.appendChild(td);
-    }
-    fragment.appendChild(trTarget);
+    // --- New Inline Input Target Rows ---
+    const createInputTargetRow = (typeLabel, typeKey) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="sticky left-0 z-20 bg-slate-800 text-white p-1 md:p-2 border-b border-r border-slate-600 font-bold text-[10px] md:text-xs shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-20 md:w-auto md:min-w-[140px] truncate">定員 (${typeLabel})</td>`;
+
+        for(let d=1; d<=daysInMonth; d++) {
+            const td = document.createElement('td');
+            const t = dailyTargets[d] || {};
+            const val = t[typeKey] !== undefined ? t[typeKey] : 9;
+
+            td.className = "border-b border-r border-slate-200 p-0.5 md:p-1 h-8 md:h-auto align-middle bg-slate-50";
+
+            const input = document.createElement('input');
+            input.type = "number";
+            input.id = `target-input-${typeKey}-${d}`;
+            input.className = "w-full h-full bg-transparent text-center font-bold text-[10px] md:text-xs text-slate-600 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 rounded px-0";
+            input.value = val;
+            input.min = 0;
+
+            // Event Handlers
+            input.onblur = () => window.saveDailyTargetInline(d, typeKey, input);
+            input.onkeydown = (e) => window.handleDailyTargetKeydown(e, d, typeKey);
+            input.onclick = (e) => e.stopPropagation(); // Prevent row click if any
+
+            td.appendChild(input);
+            tr.appendChild(td);
+        }
+        fragment.appendChild(tr);
+    };
+
+    createInputTargetRow("A", "A");
+    createInputTargetRow("B", "B");
 
     // Append the entire fragment to the table body
     tbody.appendChild(fragment);
@@ -2687,6 +2707,49 @@ window.saveDailyTarget = async () => {
         renderShiftAdminTable();
     } catch(e) {
         alert("保存失敗: " + e.message);
+    }
+};
+
+// --- New Inline Saving Logic ---
+window.saveDailyTargetInline = async (day, type, inputElement) => {
+    const val = parseInt(inputElement.value) || 0;
+    if (!shiftState.shiftDataCache._daily_targets) shiftState.shiftDataCache._daily_targets = {};
+    if (!shiftState.shiftDataCache._daily_targets[day]) shiftState.shiftDataCache._daily_targets[day] = {};
+
+    // Check if changed to avoid unnecessary writes
+    const current = shiftState.shiftDataCache._daily_targets[day][type];
+
+    if (current === val) return;
+
+    // Ensure object structure
+    if(shiftState.shiftDataCache._daily_targets[day].A === undefined) shiftState.shiftDataCache._daily_targets[day].A = 9;
+    if(shiftState.shiftDataCache._daily_targets[day].B === undefined) shiftState.shiftDataCache._daily_targets[day].B = 9;
+
+    shiftState.shiftDataCache._daily_targets[day][type] = val;
+
+    const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+    const docRef = doc(db, "shift_submissions", docId);
+    try {
+        // Silent Save
+        await setDoc(docRef, { _daily_targets: shiftState.shiftDataCache._daily_targets }, { merge: true });
+    } catch(e) {
+        console.error("Inline Save Error:", e);
+        showToast("定員保存エラー", "red");
+    }
+};
+
+window.handleDailyTargetKeydown = (event, day, type) => {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        event.target.blur(); // Trigger save via blur
+
+        // Find next input
+        const nextDay = day + 1;
+        const nextInput = document.getElementById(`target-input-${type}-${nextDay}`);
+        if (nextInput) {
+            nextInput.focus();
+            nextInput.select();
+        }
     }
 };
 
