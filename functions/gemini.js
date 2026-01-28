@@ -6,7 +6,7 @@ export async function onRequest(context) {
   }
 
   try {
-    const { prompt, contextData, contextImages, mode, history, currentDate } = await request.json();
+    const { prompt, contextData, contextImages, mode, history, currentDate, stream } = await request.json();
     const apiKey = env.GEMINI_API_KEY;
     const model = env.GEMINI_MODEL || "gemini-2.0-flash";
 
@@ -124,7 +124,7 @@ ${contextData}
    - **【項目】**: チーム名やカテゴリ名は「隅付き括弧」で。（例: 【パチンコ】）
    - **[タグ]**: 時間や属性は「大括弧」で。（例: [9:00集合]）
 4. **重要アラート**: 引用記号(\`>\`)は使わず、 \`⚠️ 重要: ...\` のように絵文字で表現してください。
-5. **強調**: 重要なキーワードは \`**\` で囲んでください。
+5. **強調**: 重要なキーワードは \`**\` で囲ってください。
 
 【内容の振り分け】
 - **short (全体要約版 - パッと見重視)**:
@@ -232,6 +232,64 @@ ${contextData || "（資料なし）"}
              // Fallback if no user message found (rare)
              contents.unshift({ role: 'user', parts: [{ text: systemPrompt }] });
         }
+    }
+
+    if (stream) {
+        const streamUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+        const response = await fetch(streamUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                contents: contents
+            }),
+        });
+
+        const geminiBody = response.body;
+        const reader = geminiBody.getReader();
+        const decoder = new TextDecoder();
+        const encoder = new TextEncoder();
+
+        const readable = new ReadableStream({
+            async start(controller) {
+                try {
+                    let buffer = "";
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        buffer += chunk;
+                        const lines = buffer.split("\n");
+                        buffer = lines.pop(); // Keep incomplete line
+
+                        for (const line of lines) {
+                            if (line.startsWith("data: ")) {
+                                const jsonStr = line.slice(6).trim();
+                                if (jsonStr === "[DONE]") continue;
+                                try {
+                                    const json = JSON.parse(jsonStr);
+                                    const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+                                    if (text) {
+                                        controller.enqueue(encoder.encode(text));
+                                    }
+                                } catch (e) {
+                                    // ignore JSON parse errors for intermediate chunks
+                                }
+                            }
+                        }
+                    }
+                    controller.close();
+                } catch (e) {
+                    controller.error(e);
+                }
+            }
+        });
+
+        return new Response(readable, {
+            headers: { "Content-Type": "text/plain; charset=utf-8" }
+        });
     }
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
