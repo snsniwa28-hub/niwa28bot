@@ -1807,19 +1807,30 @@ async function executeAutoShiftLogic(isPreview = true) {
             const oldAssignments = shifts[s.name]?.assignments || {};
             const newAssignments = {};
             const newAssignedDays = [];
+            const newPhysicalWorkDays = [];
 
             Object.keys(oldAssignments).forEach(dayKey => {
                 const day = parseInt(dayKey);
                 const role = oldAssignments[dayKey];
-                // Preserve Paid/Special Leave
-                if (role === '有休' || role === '特休' || role === 'PAID' || role === 'SPECIAL') {
+
+                // Keep everything except '/' or empty
+                if (role && role !== '/') {
                     newAssignments[dayKey] = role;
-                    newAssignedDays.push(day);
+
+                    // Count for contract (everything except Holiday)
+                    if (role !== '公休') {
+                        newAssignedDays.push(day);
+
+                        // Physical Work (everything except Leave/Holiday)
+                        if (role !== '有休' && role !== '特休' && role !== 'PAID' && role !== 'SPECIAL') {
+                            newPhysicalWorkDays.push(day);
+                        }
+                    }
                 }
             });
 
             s.assignedDays = newAssignedDays;
-            s.physicalWorkDays = []; // Reset physical work for simulation
+            s.physicalWorkDays = newPhysicalWorkDays;
             if(!shifts[s.name]) shifts[s.name] = {};
             shifts[s.name].assignments = newAssignments;
         });
@@ -2078,6 +2089,9 @@ async function executeAutoShiftLogic(isPreview = true) {
                 // Split into Leave vs Work based on Requests
                 allAssigned.forEach(s => {
                     const req = s.requests.types[d];
+                    // Check if already has a fixed assignment (from carryover)
+                    const existing = shifts[s.name].assignments[d];
+
                     if (req === 'PAID') {
                         leaveGroup.push(s);
                         shifts[s.name].assignments[d] = '有休';
@@ -2085,7 +2099,10 @@ async function executeAutoShiftLogic(isPreview = true) {
                         leaveGroup.push(s);
                         shifts[s.name].assignments[d] = '特休';
                     } else {
-                        workGroup.push(s);
+                        // Only add to workGroup for AI role assignment if no existing fixed assignment
+                        if (!existing) {
+                            workGroup.push(s);
+                        }
                     }
                 });
 
@@ -2132,7 +2149,10 @@ async function executeAutoShiftLogic(isPreview = true) {
                 // Mark Off days (Anyone NOT in allAssigned)
                 const offStaff = staffObjects.filter(s => s.shiftType === st && !s.assignedDays.includes(d));
                 offStaff.forEach(s => {
-                    shifts[s.name].assignments[d] = '公休';
+                    // Only set if not already set (though usually undefined here)
+                    if (!shifts[s.name].assignments[d]) {
+                        shifts[s.name].assignments[d] = '/';
+                    }
                 });
             });
         });
@@ -2149,7 +2169,7 @@ async function executeAutoShiftLogic(isPreview = true) {
             if (!shifts[name].assignments) shifts[name].assignments = {};
             for (let d = 1; d <= daysInMonth; d++) {
                 if (!shifts[name].assignments[d]) {
-                    shifts[name].assignments[d] = '公休';
+                    shifts[name].assignments[d] = '/';
                 }
             }
         });
