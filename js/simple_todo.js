@@ -11,14 +11,45 @@ import {
     where,
     writeBatch,
     serverTimestamp,
-    getDocs
+    getDocs,
+    getDoc
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { showToast } from './ui.js';
 
 let unsubscribe = null;
 
-export function initSimpleTodo() {
-    // Optional initialization if needed
+export async function initSimpleTodo() {
+    try {
+        const staffDocRef = doc(db, 'masters', 'staff_data');
+        const staffSnap = await getDoc(staffDocRef);
+
+        if (staffSnap.exists()) {
+            const data = staffSnap.data();
+            const allStaff = [
+                ...(data.employees || []),
+                ...(data.alba_early || []),
+                ...(data.alba_late || [])
+            ];
+
+            // Deduplicate and filter empty
+            const uniqueStaff = [...new Set(allStaff)].filter(name => name).sort();
+
+            const select = document.getElementById('todo-assignee');
+            if (select) {
+                // Keep the first option "担当者未定"
+                select.innerHTML = '<option value="">担当者未定</option>';
+
+                uniqueStaff.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    select.appendChild(option);
+                });
+            }
+        }
+    } catch (error) {
+        console.error("Error fetching staff for todo:", error);
+    }
 }
 
 export function openSimpleTodoModal() {
@@ -75,7 +106,20 @@ function renderTodos(todos) {
     activeList.innerHTML = '';
     completedList.innerHTML = '';
 
-    const activeTodos = todos.filter(t => !t.isCompleted);
+    const activeTodos = todos
+        .filter(t => !t.isCompleted)
+        .sort((a, b) => {
+            // 1. Due Date (ASC)
+            if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+            if (a.dueDate && !b.dueDate) return -1;
+            if (!a.dueDate && b.dueDate) return 1;
+
+            // 2. CreatedAt (ASC) - old to new
+            const tA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
+            const tB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
+            return tA - tB;
+        });
+
     const completedTodos = todos.filter(t => t.isCompleted);
 
     // Render Active
@@ -110,16 +154,72 @@ function createTodoElement(todo) {
     checkbox.innerHTML = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>';
     checkbox.onclick = () => toggleTodoStatus(todo.id, todo.isCompleted);
 
-    // Text
-    const text = document.createElement('p');
-    text.className = `flex-1 text-sm font-bold leading-relaxed break-words ${
+    // Content Container
+    const content = document.createElement('div');
+    content.className = "flex-1 min-w-0";
+
+    // 1. Header Row (Title + Assignee)
+    const header = document.createElement('div');
+    header.className = "flex flex-wrap items-center gap-2 mb-1";
+
+    const text = document.createElement('span');
+    text.className = `text-sm font-bold leading-relaxed break-words ${
         todo.isCompleted ? 'text-slate-400 line-through' : 'text-slate-700'
     }`;
     text.textContent = todo.text;
+    header.appendChild(text);
+
+    if (todo.assignee) {
+        const badge = document.createElement('span');
+        badge.className = "bg-indigo-50 text-indigo-600 text-[10px] font-bold px-1.5 py-0.5 rounded border border-indigo-100 whitespace-nowrap";
+        badge.textContent = todo.assignee;
+        header.appendChild(badge);
+    }
+    content.appendChild(header);
+
+    // 2. Detail Text
+    if (todo.detail) {
+        const detail = document.createElement('p');
+        detail.className = "text-xs text-slate-500 leading-relaxed whitespace-pre-wrap break-words mb-1";
+        detail.textContent = todo.detail;
+        content.appendChild(detail);
+    }
+
+    // 3. Due Date
+    if (todo.dueDate) {
+        const dateDiv = document.createElement('div');
+
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const due = new Date(todo.dueDate);
+        due.setHours(0,0,0,0);
+
+        // Format M/D
+        const dateStr = `${due.getMonth() + 1}/${due.getDate()}`;
+
+        let dateClass = "text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full inline-flex items-center gap-1";
+        let icon = "📅";
+        let label = `${dateStr} まで`;
+
+        if (due < today) {
+            // Overdue
+            dateClass = "text-xs font-bold bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full inline-flex items-center gap-1";
+            icon = "⚠️";
+            label = `${dateStr} (期限切れ)`;
+        } else if (due.getTime() === today.getTime()) {
+            // Today
+            dateClass = "text-xs font-bold bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full inline-flex items-center gap-1";
+            icon = "🔥";
+            label = "今日まで";
+        }
+
+        dateDiv.innerHTML = `<span class="${dateClass}"><span>${icon}</span> ${label}</span>`;
+        content.appendChild(dateDiv);
+    }
 
     // Delete Button (visible on hover)
     const deleteBtn = document.createElement('button');
-    deleteBtn.className = "text-slate-300 hover:text-rose-500 transition opacity-0 group-hover:opacity-100 p-1";
+    deleteBtn.className = "text-slate-300 hover:text-rose-500 transition opacity-0 group-hover:opacity-100 p-1 shrink-0 self-start";
     deleteBtn.innerHTML = '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
     deleteBtn.onclick = (e) => {
         e.stopPropagation();
@@ -129,7 +229,7 @@ function createTodoElement(todo) {
     };
 
     div.appendChild(checkbox);
-    div.appendChild(text);
+    div.appendChild(content);
     div.appendChild(deleteBtn);
 
     return div;
@@ -137,13 +237,29 @@ function createTodoElement(todo) {
 
 export async function addSimpleTodo() {
     const input = document.getElementById('todo-input');
+    const assigneeInput = document.getElementById('todo-assignee');
+    const dateInput = document.getElementById('todo-due-date');
+    const detailInput = document.getElementById('todo-detail');
+
     const text = input.value.trim();
+    const assignee = assigneeInput ? assigneeInput.value : '';
+    const dueDate = dateInput ? dateInput.value : '';
+    const detail = detailInput ? detailInput.value.trim() : '';
+
     if (!text) return;
 
     try {
-        input.value = ''; // Clear immediately
+        // Clear immediately
+        input.value = '';
+        if (assigneeInput) assigneeInput.value = '';
+        if (dateInput) dateInput.value = '';
+        if (detailInput) detailInput.value = '';
+
         await addDoc(collection(db, 'simple_todos'), {
             text: text,
+            assignee: assignee,
+            dueDate: dueDate,
+            detail: detail,
             isCompleted: false,
             createdAt: serverTimestamp()
         });
