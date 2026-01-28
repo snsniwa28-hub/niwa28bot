@@ -35,9 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
         window.showPasswordModal(window.openDeadlineManagementModal);
     });
 
-    // Money Memo
-    document.getElementById('open-money-memo-btn')?.addEventListener('click', () => {
-        window.openMoneyMemoModal();
+    // Simple ToDo
+    document.getElementById('open-simple-todo-btn')?.addEventListener('click', () => {
+        window.openSimpleTodoModal();
     });
 
     // Member Race
@@ -166,13 +166,23 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addDeadlineDirectly();
     });
 
-    // Money Memo Modal
-    document.getElementById('close-money-memo-modal-btn')?.addEventListener('click', () => {
-        window.closeMoneyMemoModal();
+    // Simple ToDo Modal
+    document.getElementById('close-simple-todo-modal-btn')?.addEventListener('click', () => {
+        window.closeSimpleTodoModal();
     });
 
-    document.getElementById('save-money-memo-btn')?.addEventListener('click', () => {
-        window.saveMoneyMemo();
+    document.getElementById('add-todo-btn')?.addEventListener('click', () => {
+        window.addSimpleTodo();
+    });
+
+    document.getElementById('todo-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+             window.addSimpleTodo();
+        }
+    });
+
+    document.getElementById('clear-completed-todos-btn')?.addEventListener('click', () => {
+        window.clearCompletedTodos();
     });
 
     // Map Update Modal
