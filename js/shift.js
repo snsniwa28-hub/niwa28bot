@@ -3133,17 +3133,58 @@ JSONのみを出力してください。
             }
             fullText += decoder.decode(); // Flush
 
-            const text = fullText;
-            const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                 try {
-                     const generatedShift = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-                     applyAiShiftResult(generatedShift);
-                 } catch (e) {
-                     throw new Error(`${period.label}のJSONパースに失敗しました: ` + e.message);
-                 }
+            // --- JSON Auto-Repair & Extraction ---
+            let jsonString = null;
+            let generatedShift = null;
+
+            // 1. Markdown extraction
+            const codeBlockMatch = fullText.match(/```json\s*([\s\S]*?)\s*```/);
+            if (codeBlockMatch) {
+                jsonString = codeBlockMatch[1];
             } else {
-                 throw new Error(`${period.label}のAI応答がJSON形式ではありませんでした。`);
+                // 2. Fallback: find { and }
+                const firstBrace = fullText.indexOf('{');
+                const lastBrace = fullText.lastIndexOf('}');
+
+                if (firstBrace !== -1) {
+                    if (lastBrace !== -1 && lastBrace > firstBrace) {
+                        jsonString = fullText.substring(firstBrace, lastBrace + 1);
+                    } else {
+                        // If no closing brace found (or it's before start?), take to end
+                        // This enables repair logic to work on truncated JSON
+                        jsonString = fullText.substring(firstBrace);
+                    }
+                }
+            }
+
+            // 3. Parse and Repair
+            if (jsonString) {
+                try {
+                    generatedShift = JSON.parse(jsonString);
+                } catch (e) {
+                    console.warn("JSON Parse Error. Attempting repair...", e);
+                    try {
+                        generatedShift = JSON.parse(jsonString + "}");
+                    } catch (e2) {
+                        try {
+                             generatedShift = JSON.parse(jsonString + "]}");
+                        } catch (e3) {
+                             try {
+                                 generatedShift = JSON.parse(jsonString + "\"}");
+                             } catch (e4) {
+                                 console.error("AI Response Text:", fullText);
+                                 throw new Error(`${period.label}のJSONパースに失敗しました (修復不可): ` + e.message);
+                             }
+                        }
+                    }
+                }
+            } else {
+                console.error("AI Response Text:", fullText);
+                throw new Error(`${period.label}のAI応答からJSONが見つかりませんでした。`);
+            }
+
+            if (generatedShift) {
+                applyAiShiftResult(generatedShift);
             }
         }
 
