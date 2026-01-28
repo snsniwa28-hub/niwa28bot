@@ -8,7 +8,7 @@ import * as Tasks from './js/tasks.js';
 import * as MemberRace from './js/member_race.js';
 import * as Deadlines from './js/deadlines.js';
 import * as Strategy from './js/strategy.js';
-import * as MoneyMemo from './js/money_memo.js';
+import * as SimpleTodo from './js/simple_todo.js';
 import { renderModals, renderInfoSections, changeStrategySlide } from './js/components.js';
 import { getTodayDateString, getYesterdayDateString, getTaskColorClass } from './js/utils.js';
 import * as Auth from './js/auth.js';
@@ -190,11 +190,12 @@ document.addEventListener("DOMContentLoaded", () => {
     window.closeDeadlineManagementModal = Deadlines.closeDeadlineManagementModal;
     window.addDeadlineDirectly = Deadlines.addDeadlineDirectly;
 
-    // Expose Money Memo functions
-    window.openMoneyMemoModal = MoneyMemo.openMoneyMemoModal;
-    window.closeMoneyMemoModal = MoneyMemo.closeMoneyMemoModal;
-    window.saveMoneyMemo = MoneyMemo.saveMoneyMemo;
-    MoneyMemo.initMoneyMemo();
+    // Expose Simple ToDo functions
+    window.openSimpleTodoModal = SimpleTodo.openSimpleTodoModal;
+    window.closeSimpleTodoModal = SimpleTodo.closeSimpleTodoModal;
+    window.addSimpleTodo = SimpleTodo.addSimpleTodo;
+    window.clearCompletedTodos = SimpleTodo.clearCompletedTodos;
+    SimpleTodo.initSimpleTodo();
 
     // ★追加: 戦略共有の初期化
     Strategy.initStrategy();
