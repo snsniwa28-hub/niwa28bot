@@ -1839,6 +1839,10 @@ async function executeAutoShiftLogic(isPreview = true) {
 
         // Wrapper for shared constraint check
         const canAssign = (staff, day, strictContractMode = false) => {
+            // Check if manually assigned (Manual Shift Protection)
+            const currentAssign = shifts[staff.name].assignments[day];
+            if (currentAssign && currentAssign !== '/') return false;
+
             return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, strictContractMode);
         };
 
@@ -2100,7 +2104,7 @@ async function executeAutoShiftLogic(isPreview = true) {
                         shifts[s.name].assignments[d] = '特休';
                     } else {
                         // Only add to workGroup for AI role assignment if no existing fixed assignment
-                        if (!existing) {
+                        if (!existing || existing === '/') {
                             workGroup.push(s);
                         }
                     }
@@ -2143,15 +2147,9 @@ async function executeAutoShiftLogic(isPreview = true) {
 
                 // 5. Others -> Work ('出勤')
                 workGroup.forEach(s => {
-                    shifts[s.name].assignments[d] = '出勤';
-                });
-
-                // Mark Off days (Anyone NOT in allAssigned)
-                const offStaff = staffObjects.filter(s => s.shiftType === st && !s.assignedDays.includes(d));
-                offStaff.forEach(s => {
-                    // Only set if not already set (though usually undefined here)
-                    if (!shifts[s.name].assignments[d]) {
-                        shifts[s.name].assignments[d] = '/';
+                    const current = shifts[s.name].assignments[d];
+                    if (!current || current === '/') {
+                        shifts[s.name].assignments[d] = '出勤';
                     }
                 });
             });
