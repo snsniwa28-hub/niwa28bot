@@ -1730,7 +1730,11 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
             // Check Prev Month Last Day
             const lastRole = prevMonthAssignments[staff.name]?.[prevDaysCount];
             // Only strictly forbid if last day was Late WORK. (Not Paid/Special)
-            if (lastRole && (lastRole.includes('遅') || lastRole.includes('B'))) {
+
+            const isPrevLate = lastRole && (lastRole.includes('遅') || lastRole.includes('B'));
+            const isPrevGenericWorkAsLate = lastRole === '出勤' && staff.shiftType === 'B';
+
+            if (isPrevLate || isPrevGenericWorkAsLate) {
                 // If it was Paid/Special, lastRole wouldn't include '遅'/'B' usually unless role string is messy.
                 // Assuming '有休' doesn't contain '遅'.
                 if (lastRole !== '有休' && lastRole !== 'PAID' && lastRole !== '特休' && lastRole !== 'SPECIAL') {
@@ -1841,7 +1845,8 @@ async function executeAutoShiftLogic(isPreview = true) {
         const canAssign = (staff, day, strictContractMode = false) => {
             // Check if manually assigned (Manual Shift Protection)
             const currentAssign = shifts[staff.name].assignments[day];
-            if (currentAssign && currentAssign !== '/') return false;
+            // Fix: Protect manual blank ("") as well. Only allow overwriting if undefined or '/'
+            if (currentAssign !== undefined && currentAssign !== '/') return false;
 
             return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, strictContractMode);
         };
@@ -2148,7 +2153,8 @@ async function executeAutoShiftLogic(isPreview = true) {
                 // 5. Others -> Work ('出勤')
                 workGroup.forEach(s => {
                     const current = shifts[s.name].assignments[d];
-                    if (!current || current === '/') {
+                    // Fix: Protect manual blank (""). Only assign if undefined or '/'
+                    if (current === undefined || current === '/') {
                         shifts[s.name].assignments[d] = '出勤';
                     }
                 });
@@ -2166,7 +2172,8 @@ async function executeAutoShiftLogic(isPreview = true) {
             if (!shifts[name]) shifts[name] = {};
             if (!shifts[name].assignments) shifts[name].assignments = {};
             for (let d = 1; d <= daysInMonth; d++) {
-                if (!shifts[name].assignments[d]) {
+                // Fix: Only fill strict undefined with '/'
+                if (shifts[name].assignments[d] === undefined) {
                     shifts[name].assignments[d] = '/';
                 }
             }
@@ -2993,17 +3000,37 @@ function gatherFullShiftContext(year, month, daysInMonth, holidays) {
         const t = (shiftState.shiftDataCache._daily_targets && shiftState.shiftDataCache._daily_targets[d]) || {};
         dailyTargets[d] = { A: t.A !== undefined ? t.A : 9, B: t.B !== undefined ? t.B : 9 };
     }
+
+    // Prepare Prev Month Info
+    const prevDate = new Date(year, month - 1, 0);
+    const prevDaysCount = prevDate.getDate();
+
     const staffList = [...shiftState.staffListLists.employees, ...shiftState.staffListLists.alba_early, ...shiftState.staffListLists.alba_late];
     const staffData = {};
     staffList.forEach(name => {
         const sData = shiftState.shiftDataCache[name] || {};
         const details = shiftState.staffDetails[name] || {};
+
+        // Extract History (Last 7 days of prev month)
+        const history = {};
+        if (shiftState.prevMonthCache && shiftState.prevMonthCache[name]) {
+            const pMap = shiftState.prevMonthCache[name];
+            for(let i=0; i<7; i++) {
+                const dVal = prevDaysCount - i;
+                const role = pMap[dVal];
+                if (role !== undefined && role !== '/') {
+                     history[String(dVal)] = role;
+                }
+            }
+        }
+
         staffData[name] = {
             type: (sData.monthly_settings && sData.monthly_settings.shift_type) || details.basic_shift || 'A',
             contract_target: details.contract_days || 20,
             allowedRoles: details.allowed_roles || [],
             requests: { off: sData.off_days || [], work: sData.work_days || [] },
-            assignments: sData.assignments || {} // Include assignments for Hybrid/Chat context
+            assignments: sData.assignments || {}, // Include assignments for Hybrid/Chat context
+            history: history
         };
     });
     return { meta: { year, month, days_in_month: daysInMonth, holidays, daily_targets: dailyTargets }, staff: staffData };
