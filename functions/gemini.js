@@ -8,7 +8,7 @@ export async function onRequest(context) {
   try {
     const { prompt, contextData, contextImages, mode, history, currentDate, stream } = await request.json();
     const apiKey = env.GEMINI_API_KEY;
-    const model = env.GEMINI_MODEL || "gemini-2.0-flash";
+    const model = env.GEMINI_MODEL || "gemini-2.5-flash";
 
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "API Key not configured" }), {

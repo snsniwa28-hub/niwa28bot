@@ -2985,6 +2985,10 @@ async function generateHybridShift() {
     );
 }
 
+// ============================================================
+//  🤖⚡ ハイブリッド自動作成機能（A/B分割・一括生成版）
+// ============================================================
+
 async function executeHybridShiftLogic() {
     showLoading();
     pushHistory(); // Save state before starting
@@ -3010,7 +3014,7 @@ async function executeHybridShiftLogic() {
         const holidays = getHolidays(Y, M);
 
         // =========================================================
-        // 🗑️ パターンA: 聖域（休み）以外を全削除（リセット）
+        // 🗑️ STEP 0: 聖域（休み）以外を全削除（リセット）
         // =========================================================
         updateLoadingText("既存のシフトをクリア中...");
 
@@ -3018,41 +3022,75 @@ async function executeHybridShiftLogic() {
 
         Object.keys(shiftState.shiftDataCache).forEach(name => {
             const data = shiftState.shiftDataCache[name];
-            if (data.assignments) {
+            if (data && data.assignments) {
                 Object.keys(data.assignments).forEach(day => {
                     const role = data.assignments[day];
-                    // 聖域以外は削除（undefinedにする）
                     if (!preservedRoles.includes(role)) {
                         delete data.assignments[day];
                     }
                 });
             }
         });
-
-        // UI更新（一瞬クリアされた状態を見せることでリセット感が出る）
         renderShiftAdminTable();
 
         // =========================================================
-        // 1. 土台作成 (Rule-based Base)
+        // 🧱 STEP 1: 土台作成 (Rule-based Base)
         // =========================================================
         updateLoadingText("土台を作成中...");
-        // クリアされた状態で実行するため、必要な人員がゼロから再配置される
-        await executeAutoShiftLogic(false); // isPreview=false
+        // 全員分をルールベースで仮埋めする
+        await executeAutoShiftLogic(false);
         renderShiftAdminTable();
 
         // =========================================================
-        // 2. AI最適化 (全期間一括実行)
+        // 🤖 STEP 2: グループ別 AI最適化 (Aチーム -> Bチーム)
         // =========================================================
-        updateLoadingText(`AI最適化中... (月間シフトを一括生成中)`);
 
-        // Gather Context
-        const contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
+        // 全スタッフのリストを取得
+        const allStaffNames = [
+            ...shiftState.staffListLists.employees,
+            ...shiftState.staffListLists.alba_early,
+            ...shiftState.staffListLists.alba_late
+        ];
 
-        // Prompt: 期間分割をやめ、月全体を指定
-        const prompt = `
+        // グループ定義 (A=早番系, B=遅番系)
+        const groups = [
+            { id: 'A', label: '早番(A)チーム' },
+            { id: 'B', label: '遅番(B)チーム' }
+        ];
+
+        // 全体のコンテキストを取得（休日の情報などは共通）
+        const fullContext = gatherFullShiftContext(Y, M, daysInMonth, holidays);
+
+        for (const group of groups) {
+            updateLoadingText(`AI最適化中... (${group.label} 生成中)`);
+
+            // 1. このグループに属するスタッフを抽出
+            const targetStaffNames = allStaffNames.filter(name => {
+                const details = shiftState.staffDetails[name] || {};
+                const settings = shiftState.shiftDataCache[name]?.monthly_settings || {};
+                const type = settings.shift_type || details.basic_shift || 'A';
+                return type === group.id;
+            });
+
+            if (targetStaffNames.length === 0) continue;
+
+            // 2. コンテキストデータの軽量化（対象スタッフのみに絞る）
+            // これによりトークン数を削減し、人数が多くてもエラーにならないようにする
+            const partialContext = {
+                meta: fullContext.meta,
+                staff: {}
+            };
+            targetStaffNames.forEach(name => {
+                if (fullContext.staff[name]) {
+                    partialContext.staff[name] = fullContext.staff[name];
+                }
+            });
+
+            // 3. プロンプト作成
+            const prompt = `
 以下のシフトデータ(JSON)をもとに、修正版のシフト表を作成してください。
-【対象期間】1日 〜 ${daysInMonth}日
-※月全体を最適化してください。
+【対象】**${group.label}** のスタッフのみ
+【期間】1日 〜 ${daysInMonth}日 (月全体)
 
 【記号の定義（絶対理解すること）】
 - **"公休"**: スタッフ本人が提出した希望休です。**絶対に移動・変更しないでください。**
@@ -3069,10 +3107,6 @@ async function executeHybridShiftLogic() {
 3. **【連勤ブロック】** 6連勤以上（physical work streak >= 6）は絶対に作らないでください。
 4. **【出力ルール】** システム休日は必ず **"/"** で出力してください。
 
-【推奨・調整ルール】
-1. **サンドイッチ出勤:** 飛び石連休（出 "/" 出）はなるべく避けてください。
-2. **連勤の平準化:** 特定の人に連勤が集中しないよう分散させてください。
-
 【出力形式】
 必ずMarkdownのコードブロックで囲ったJSON形式のみを出力してください。
 挨拶や解説は不要です。
@@ -3084,95 +3118,94 @@ async function executeHybridShiftLogic() {
 \`\`\`
 `;
 
-        const res = await fetch('/gemini', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prompt: prompt,
-                contextData: JSON.stringify(contextData),
-                mode: 'shift_hybrid',
-                stream: true
-            })
-        });
+            // 4. APIコール (Gemini 2.5 Flash想定)
+            const res = await fetch('/gemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    contextData: JSON.stringify(partialContext), // 絞り込んだデータを送信
+                    mode: 'shift_hybrid',
+                    stream: true
+                })
+            });
 
-        if (!res.ok) {
-            let errMsg = res.statusText;
-            try {
-                const errJson = await res.json();
-                if (errJson.error) errMsg = errJson.error;
-            } catch(e) {}
-            throw new Error(`AI生成エラー: ` + errMsg);
-        }
+            if (!res.ok) {
+                let errMsg = res.statusText;
+                try {
+                    const errJson = await res.json();
+                    if (errJson.error) errMsg = errJson.error;
+                } catch(e) {}
+                throw new Error(`${group.label} 生成エラー: ` + errMsg);
+            }
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let fullText = "";
+            // 5. ストリーム受信
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let fullText = "";
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            fullText += chunk;
-            // 進捗表示: 文字数で動いている感を見せる
-            updateLoadingText(`AI最適化中... (生成中: ${fullText.length}文字)`);
-        }
-        fullText += decoder.decode(); // Flush
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                fullText += chunk;
+                updateLoadingText(`AI最適化中... (${group.label}: ${fullText.length}文字)`);
+            }
+            fullText += decoder.decode();
 
-        // --- JSON Auto-Repair & Extraction ---
-        let jsonString = null;
-        let generatedShift = null;
+            // 6. JSON抽出と反映
+            let jsonString = null;
+            const codeBlockMatch = fullText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
 
-        const codeBlockMatch = fullText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-
-        if (codeBlockMatch) {
-            jsonString = codeBlockMatch[1];
-        } else {
-            const firstBrace = fullText.indexOf('{');
-            const lastBrace = fullText.lastIndexOf('}');
-            if (firstBrace !== -1) {
-                if (lastBrace !== -1 && lastBrace > firstBrace) {
-                    jsonString = fullText.substring(firstBrace, lastBrace + 1);
-                } else {
-                    jsonString = fullText.substring(firstBrace);
+            if (codeBlockMatch) {
+                jsonString = codeBlockMatch[1];
+            } else {
+                const firstBrace = fullText.indexOf('{');
+                const lastBrace = fullText.lastIndexOf('}');
+                if (firstBrace !== -1) {
+                    jsonString = fullText.substring(firstBrace, (lastBrace !== -1 && lastBrace > firstBrace) ? lastBrace + 1 : undefined);
                 }
             }
-        }
 
-        if (jsonString) {
-            try {
-                generatedShift = JSON.parse(jsonString);
-            } catch (e) {
-                console.warn("JSON Parse Error. Attempting repair...", e);
-                try { generatedShift = JSON.parse(jsonString + "}"); }
-                catch (e2) {
-                    try { generatedShift = JSON.parse(jsonString + "]}"); }
-                    catch (e3) {
-                         console.error("AI Response Text:", fullText);
-                         throw new Error(`JSONパース失敗: ` + e.message);
+            if (jsonString) {
+                try {
+                    // 壊れたJSONの簡易修復試行
+                    let generatedShift;
+                    try { generatedShift = JSON.parse(jsonString); }
+                    catch (e) {
+                        try { generatedShift = JSON.parse(jsonString + "}"); }
+                        catch (e2) { generatedShift = JSON.parse(jsonString + "]}"); }
                     }
+
+                    if (generatedShift) {
+                        applyAiShiftResult(generatedShift);
+                    }
+                } catch (e) {
+                    console.error(`${group.label} JSON Parse Error:`, e);
+                    // 致命的エラーにはせず、このグループの最適化をスキップして次へ進む（土台は残るため）
+                    showToast(`⚠️ ${group.label}の最適化に失敗しました（土台を使用します）`, "orange");
                 }
+            } else {
+                 console.warn(`${group.label} Output invalid:`, fullText);
             }
-        } else {
-            console.error("AI Response Text:", fullText);
-            throw new Error(`AI応答からJSONが見つかりませんでした。`);
+
+            // グループごとの進捗を画面に反映
+            renderShiftAdminTable();
         }
 
-        if (generatedShift) {
-            applyAiShiftResult(generatedShift);
-        }
-
-        // Completion & Save
+        // =========================================================
+        // 🏁 完了処理
+        // =========================================================
         const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
         const docRef = doc(db, "shift_submissions", docId);
         await setDoc(docRef, shiftState.shiftDataCache, { merge: true });
 
-        renderShiftAdminTable();
         showToast("🤖⚡ AIシフト一括作成完了！");
 
     } catch (e) {
         console.error("Hybrid Gen Error:", e);
         alert("作成エラー: " + e.message);
-        undoShiftAction(); // Revert to start
+        undoShiftAction(); // Revert
     } finally {
         hideLoading();
         const loadingEl = document.getElementById('shift-loading-overlay');
@@ -3182,6 +3215,5 @@ async function executeHybridShiftLogic() {
         }
     }
 }
-
 window.generateHybridShift = generateHybridShift;
 window.shiftState = shiftState;
