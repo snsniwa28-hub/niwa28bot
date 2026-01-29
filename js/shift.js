@@ -15,7 +15,6 @@ let shiftState = {
     staffListLists: { employees: [], alba_early: [], alba_late: [] },
     historyStack: [],
     earlyWarehouseMode: false,
-    adjustmentMode: false, // New Switch State
     prevMonthCache: null,
     currentStaffTab: 'early',
     autoShiftSettings: { money: true, warehouse: true, hall_resp: true } // New
@@ -169,10 +168,6 @@ export function createShiftModals() {
                         <!-- UPDATED: Flex container for checkboxes to sit on one line on mobile -->
                         <div class="flex items-center gap-2">
                              <label class="flex items-center gap-1.5 text-[10px] md:text-xs font-bold bg-slate-700 px-2 py-2 rounded-lg border border-slate-600 cursor-pointer select-none whitespace-nowrap">
-                                <input type="checkbox" id="chk-adjustment-mode" class="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-500 rounded focus:ring-emerald-600 bg-slate-600 border-slate-500">
-                                <span>調整モード</span>
-                             </label>
-                             <label class="flex items-center gap-1.5 text-[10px] md:text-xs font-bold bg-slate-700 px-2 py-2 rounded-lg border border-slate-600 cursor-pointer select-none whitespace-nowrap">
                                 <input type="checkbox" id="chk-early-warehouse-auto" class="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-500 rounded focus:ring-emerald-600 bg-slate-600 border-slate-500">
                                 <span>早番倉庫お任せ</span>
                              </label>
@@ -212,14 +207,8 @@ export function createShiftModals() {
                     <button id="btn-shift-settings" class="text-xs font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition flex items-center gap-2">
                         <span>⚙️</span> 設定
                     </button>
-                    <button id="btn-auto-create-shift" class="text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2">
-                        <span>⚡</span> AI 自動作成
-                    </button>
                     <button id="btn-hybrid-create-shift" class="text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2 ml-2">
-                        <span>🤖⚡</span> ハイブリッド作成
-                    </button>
-                    <button id="btn-shift-ai-chat" class="text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition flex items-center gap-2 ml-2">
-                        <span>💬</span> AI相談
+                        <span>🤖</span> AIシフト作成
                     </button>
                 </div>
             </div>
@@ -307,42 +296,6 @@ export function createShiftModals() {
         </div>
     </div>
 
-    <!-- ADJUSTMENT CANDIDATE MODAL -->
-    <div id="adjustment-candidate-modal" class="modal-overlay hidden" style="z-index: 80;">
-        <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-xl flex flex-col max-h-[80vh]">
-            <h3 class="font-bold text-slate-800 text-lg mb-2">代わりのスタッフを選択</h3>
-            <p id="adj-modal-desc" class="text-xs text-slate-400 font-bold mb-4"></p>
-            <div id="adj-candidate-list" class="flex-1 overflow-y-auto space-y-2 pr-2"></div>
-            <div class="mt-4 pt-4 border-t border-slate-100 flex justify-end">
-                <button onclick="document.getElementById('adjustment-candidate-modal').classList.add('hidden')" class="px-4 py-2 bg-slate-100 text-slate-500 font-bold rounded-lg text-xs">キャンセル</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ADJUSTMENT CONFIRM MODAL -->
-    <div id="adjustment-confirm-modal" class="modal-overlay hidden" style="z-index: 90;">
-        <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl flex flex-col items-center text-center">
-            <h3 class="font-bold text-slate-800 text-lg mb-2">スタッフ交代の確認</h3>
-            <p class="text-sm text-slate-500 font-bold mb-6">以下の内容で交代を実行しますか？</p>
-
-            <div class="flex items-center gap-3 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 w-full justify-center">
-                <div class="text-center">
-                    <div class="text-xs text-slate-400 font-bold mb-1">現在の担当</div>
-                    <div class="text-lg font-black text-slate-700" id="adj-confirm-old"></div>
-                </div>
-                <div class="text-slate-300 font-bold text-xl">➡</div>
-                 <div class="text-center">
-                    <div class="text-xs text-slate-400 font-bold mb-1">新しい担当</div>
-                    <div class="text-lg font-black text-indigo-600" id="adj-confirm-new"></div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 w-full">
-                <button onclick="document.getElementById('adjustment-confirm-modal').classList.add('hidden')" class="py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 transition">キャンセル</button>
-                <button id="btn-exec-adjustment" class="py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition">実行する</button>
-            </div>
-        </div>
-    </div>
 
     <!-- Mobile Admin Menu -->
     <div id="mobile-admin-menu" class="modal-overlay hidden" style="z-index: 80; align-items: flex-end;">
@@ -351,12 +304,8 @@ export function createShiftModals() {
             <div class="grid grid-cols-1 gap-3">
                 <button id="btn-mobile-clear" class="w-full py-4 bg-rose-50 text-rose-600 font-bold rounded-xl border border-rose-100">割り振りをクリア</button>
                 <button id="btn-mobile-settings" class="w-full py-4 bg-slate-50 text-slate-600 font-bold rounded-xl border border-slate-100">⚙️ 自動割り振り設定</button>
-                <button id="btn-mobile-auto" class="w-full py-4 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200">AI 自動作成を実行</button>
                 <button id="btn-mobile-hybrid" class="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2">
-                    <span>🤖⚡</span> ハイブリッド作成
-                </button>
-                <button id="btn-mobile-ai-chat" class="w-full py-4 bg-white text-slate-600 font-bold rounded-xl border border-slate-200 mt-2 flex items-center justify-center gap-2">
-                    <span>💬</span> AI相談
+                    <span>🤖</span> AIシフト作成
                 </button>
                 <button onclick="document.getElementById('mobile-admin-menu').classList.add('hidden')" class="w-full py-4 text-slate-400 font-bold">キャンセル</button>
             </div>
@@ -569,37 +518,6 @@ export function createShiftModals() {
         </div>
     </div>
 
-    <!-- SHIFT AI CHAT MODAL (Right Sidebar) -->
-    <div id="shift-ai-chat-modal" class="fixed top-0 right-0 h-full w-full sm:w-[350px] bg-white shadow-2xl z-[110] transform transition-transform duration-300 translate-x-full border-l border-slate-200 flex flex-col">
-            <!-- Header -->
-            <div class="bg-white border-b border-slate-100 p-4 flex items-center justify-between shrink-0">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl shadow-md">🤖</div>
-                    <div>
-                        <h3 class="font-bold text-slate-800">AIシフト相談</h3>
-                        <p class="text-[10px] text-slate-400 font-bold">現在のシフト状況を認識しています</p>
-                    </div>
-                </div>
-                <button onclick="closeShiftAiChat()" class="p-2 hover:bg-slate-100 rounded-full transition text-slate-400">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
-
-            <!-- Chat Area -->
-            <div id="shift-ai-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-                <!-- Messages will be injected here -->
-            </div>
-
-            <!-- Input Area -->
-            <div class="p-4 bg-white border-t border-slate-100 shrink-0">
-                <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-200 focus-within:ring-2 focus-within:ring-indigo-500 transition">
-                    <input type="text" id="shift-ai-input" class="flex-1 bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-700 px-2" placeholder="例: 20日の人が足りない、どうすればいい？" onkeydown="if(event.key === 'Enter') sendShiftAiMessage()">
-                    <button onclick="sendShiftAiMessage()" class="p-2 bg-indigo-600 text-white rounded-xl shadow-md hover:bg-indigo-700 transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                    </button>
-                </div>
-            </div>
-        </div>
     `;
 
     document.body.insertAdjacentHTML('beforeend', html);
@@ -622,15 +540,11 @@ function setupShiftEventListeners() {
     };
     $('#btn-undo-action').onclick = undoShiftAction;
     $('#btn-clear-shift').onclick = clearShiftAssignments;
-    $('#btn-auto-create-shift').onclick = generateAutoShift;
     $('#btn-mobile-clear').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); clearShiftAssignments(); };
     $('#btn-shift-settings').onclick = () => document.getElementById('auto-shift-settings-modal').classList.remove('hidden');
     $('#btn-mobile-settings').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); document.getElementById('auto-shift-settings-modal').classList.remove('hidden'); };
-    $('#btn-mobile-auto').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); generateAutoShift(); };
     $('#btn-mobile-hybrid').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); generateHybridShift(); };
     $('#btn-hybrid-create-shift').onclick = generateHybridShift;
-    $('#btn-shift-ai-chat').onclick = openShiftAiChat;
-    $('#btn-mobile-ai-chat').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); openShiftAiChat(); };
     $('#mobile-fab-menu').onclick = () => $('#mobile-admin-menu').classList.remove('hidden');
 
     // Auto Shift Settings Listeners
@@ -643,7 +557,6 @@ function setupShiftEventListeners() {
     $('#btn-se-delete').onclick = deleteStaff;
     $('#btn-save-daily-target').onclick = saveDailyTarget;
     $('#chk-early-warehouse-auto').onchange = (e) => { shiftState.earlyWarehouseMode = e.target.checked; };
-    $('#chk-adjustment-mode').onchange = (e) => { shiftState.adjustmentMode = e.target.checked; };
 
     // Event Delegation for Shift Admin Table
     const adminBody = document.getElementById('shift-admin-body');
@@ -665,13 +578,8 @@ function setupShiftEventListeners() {
                 const name = td.dataset.name;
                 const status = td.dataset.status;
                 if(name && day) {
-                    if (shiftState.adjustmentMode && status && status !== '公休' && status !== '未設定' && !status.includes('希望')) {
-                        // In adjustment mode, clicking an assigned slot triggers candidate search
-                        openAdjustmentCandidateModal(day, name, status);
-                    } else {
-                        shiftState.selectedStaff = name;
-                        showActionSelectModal(day, status);
-                    }
+                    shiftState.selectedStaff = name;
+                    showActionSelectModal(day, status);
                 }
                 return;
             }
@@ -1776,14 +1684,6 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
 }
 
 // --- NEW AUTO SHIFT LOGIC (AI) ---
-async function generateAutoShift() {
-    showConfirmModal(
-        "AI自動作成",
-        `${shiftState.currentYear}年${shiftState.currentMonth}月のシフトを自動作成します。\n既存の確定済みシフトは上書きされます（希望休などは保持）。\nよろしいですか？`,
-        () => executeAutoShiftLogic()
-    );
-}
-
 async function executeAutoShiftLogic(isPreview = true) {
     if (isPreview) {
         pushHistory();
@@ -2423,7 +2323,6 @@ export async function changeShiftMonth(delta) {
 window.showActionSelectModal = showActionSelectModal;
 window.closeShiftActionModal = closeShiftActionModal;
 window.clearShiftAssignments = clearShiftAssignments;
-window.generateAutoShift = generateAutoShift;
 
 // --- Rank Options Logic ---
 window.updateRankOptions = () => {
@@ -3048,7 +2947,6 @@ function gatherFullShiftContext(year, month, daysInMonth, holidays) {
 // AIの結果を反映する関数（安全装置付き）
 function applyAiShiftResult(generatedShift) {
     Object.keys(generatedShift).forEach(name => {
-        // スタッフデータが存在しない場合のガード
         if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = {};
         if (!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
 
@@ -3056,20 +2954,16 @@ function applyAiShiftResult(generatedShift) {
         Object.keys(schedule).forEach(day => {
             let role = schedule[day];
 
-            // ★消毒処理: AIが指示を守らず「休み」「NULL」などを返してきた場合、強制的に「/」に戻す
-            if (role === '休み' || role === '休' || role === '' || role === null) {
-                role = '/';
-            }
+            // 消毒: 不正な値は '/' に置換
+            if (role === '休み' || role === '休' || role === '' || role === null) role = '/';
 
-            // 許可された値（出勤, /, 公休, 有休...）だけを通す
+            // 許可リスト
             const allowed = ['出勤', '/', '公休', '有休', '特休', '金メ', '金サブ', 'ホ責', '倉庫'];
 
-            // 役割が正しいか、または早番/遅番などの文字が含まれている場合のみ適用
             if (allowed.includes(role) || (role && (role.includes('早') || role.includes('遅')))) {
                 shiftState.shiftDataCache[name].assignments[day] = role;
             } else {
-                // 変な値が来たら、安全のため '/'（休み）にしてエラー回避
-                console.warn(`AI returned invalid role: ${role}. Falling back to '/'.`);
+                console.warn(`Invalid role: ${role} -> /`);
                 shiftState.shiftDataCache[name].assignments[day] = '/';
             }
         });
@@ -3138,8 +3032,7 @@ async function executeHybridShiftLogic() {
             // Promptの修正: 「/」と「公休」の区別をAIに叩き込む
             const prompt = `
 以下のシフトデータ(JSON)をもとに、修正版のシフト表を作成してください。
-【対象期間】
-${period.start}日 〜 ${period.end}日
+【対象期間】${period.start}日 〜 ${period.end}日
 ※この期間のみを最適化してください。
 
 【記号の定義（絶対理解すること）】
@@ -3148,14 +3041,13 @@ ${period.start}日 〜 ${period.end}日
 - **"出勤"**: 通常の勤務です。これを "/" と入れ替えて調整することができます。
 
 【重要方針】
-月全体の目標（contract_target）を守りながら、人員配置を最適化してください。
-${isLast ? "これまでの期間の勤務状況を踏まえて、月全体の最終調整を行ってください。" : "後続の期間のために人員を使いすぎないよう、ペース配分を意識してください。"}
+契約日数（contract_target）を**上限目標として厳守**し、人員配置を最適化してください。${isLast ? "これまでの期間の勤務状況を踏まえて、月全体の最終調整を行ってください。" : "後続の期間のために人員を使いすぎないよう、ペース配分を意識してください。"}
 
 【絶対厳守の制約】
 1. **【固定・変更禁止】** 「有休」「特休」「公休」は、移動・変更・削除を一切禁止します。
-2. **【契約日数の厳守】** スタッフごとの contract_target（契約日数）を大きく超える出勤をさせないでください。**「/」を無闇に出勤に変えてはいけません。**
+2. **【契約日数の完全厳守】** contract_target（契約日数）は**絶対的な上限**です。これを超える出勤追加は**一切許可しません**。不足分を埋める目的以外で「/」を「出勤」に変えることは禁止です。
 3. **【連勤ブロック】** 6連勤以上（physical work streak >= 6）は絶対に作らないでください。
-4. **【出力ルール】** システム休日は必ず **"/"** で出力してください。"公休" と出力すると希望休に変わってしまうため禁止です。
+4. **【出力ルール】** システム休日は必ず **"/"** で出力してください。
 
 【推奨・調整ルール】
 1. **サンドイッチ出勤:** 飛び石連休（出 "/" 出）はなるべく避けてください。
@@ -3286,114 +3178,5 @@ ${isLast ? "これまでの期間の勤務状況を踏まえて、月全体の�
     }
 }
 
-// ============================================================
-//  💬 AIシフト相談チャット
-// ============================================================
-
-let shiftChatHistory = [];
-
-async function openShiftAiChat() {
-    // UPDATED: Right Sidebar Slide-in
-    const modal = document.getElementById('shift-ai-chat-modal');
-    modal.classList.remove('translate-x-full');
-
-    // Init Chat
-    const msgContainer = document.getElementById('shift-ai-messages');
-    msgContainer.innerHTML = '';
-    shiftChatHistory = [];
-
-    addShiftAiMessageUI('ai', 'こんにちは！現在のシフト状況を読み込みました。\n「20日の人が足りない」や「Aさんのシフトを確認して」など、何でも聞いてください。');
-}
-
-window.closeShiftAiChat = () => {
-    // UPDATED: Right Sidebar Slide-out
-    document.getElementById('shift-ai-chat-modal').classList.add('translate-x-full');
-};
-
-window.sendShiftAiMessage = async () => {
-    const input = document.getElementById('shift-ai-input');
-    const msg = input.value.trim();
-    if(!msg) return;
-
-    input.value = '';
-    addShiftAiMessageUI('user', msg);
-
-    // Loading
-    const loadingId = addShiftAiMessageUI('ai', '思考中...', true);
-
-    try {
-        // Gather Context
-        const Y = shiftState.currentYear;
-        const M = shiftState.currentMonth;
-        const daysInMonth = new Date(Y, M, 0).getDate();
-        const holidays = getHolidays(Y, M);
-        const contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
-
-        // Prepare Payload
-        const payload = {
-            prompt: msg,
-            contextData: JSON.stringify(contextData),
-            history: shiftChatHistory,
-            mode: 'shift_chat'
-        };
-
-        const response = await fetch('/gemini', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-
-        // Remove Loading
-        document.getElementById(loadingId).remove();
-
-        if (result.error) {
-            addShiftAiMessageUI('ai', 'エラー: ' + result.error);
-        } else {
-            addShiftAiMessageUI('ai', result.reply);
-            shiftChatHistory.push({ role: 'user', parts: [{ text: msg }] });
-            shiftChatHistory.push({ role: 'model', parts: [{ text: result.reply }] });
-        }
-
-    } catch(e) {
-        console.error(e);
-        document.getElementById(loadingId).remove();
-        addShiftAiMessageUI('ai', '通信エラーが発生しました。');
-    }
-};
-
-function addShiftAiMessageUI(role, text, isLoading = false) {
-    const container = document.getElementById('shift-ai-messages');
-    const div = document.createElement('div');
-    const id = 'msg-' + Date.now() + Math.random();
-    div.id = id;
-    div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`;
-
-    const bg = role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-slate-700 border border-slate-200 rounded-bl-none';
-
-    const bubble = document.createElement('div');
-    bubble.className = `max-w-[85%] p-3 rounded-2xl text-sm font-bold shadow-sm ${bg}`;
-
-    if (role === 'user') {
-        bubble.textContent = text;
-    } else {
-        // AI message - simple HTML escaping
-        const safeText = text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-        bubble.innerHTML = safeText.replace(/\n/g, '<br>');
-    }
-
-    div.appendChild(bubble);
-    container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
-    return id;
-}
-
 window.generateHybridShift = generateHybridShift;
-window.openShiftAiChat = openShiftAiChat;
 window.shiftState = shiftState;
