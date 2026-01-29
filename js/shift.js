@@ -3009,31 +3009,50 @@ async function executeHybridShiftLogic() {
         const daysInMonth = new Date(Y, M, 0).getDate();
         const holidays = getHolidays(Y, M);
 
+        // =========================================================
+        // 🗑️ パターンA: 聖域（休み）以外を全削除（リセット）
+        // =========================================================
+        updateLoadingText("既存のシフトをクリア中...");
+
+        const preservedRoles = ['公休', '有休', '特休'];
+
+        Object.keys(shiftState.shiftDataCache).forEach(name => {
+            const data = shiftState.shiftDataCache[name];
+            if (data.assignments) {
+                Object.keys(data.assignments).forEach(day => {
+                    const role = data.assignments[day];
+                    // 聖域以外は削除（undefinedにする）
+                    if (!preservedRoles.includes(role)) {
+                        delete data.assignments[day];
+                    }
+                });
+            }
+        });
+
+        // UI更新（一瞬クリアされた状態を見せることでリセット感が出る）
+        renderShiftAdminTable();
+
+        // =========================================================
         // 1. 土台作成 (Rule-based Base)
-        await executeAutoShiftLogic(false);
-        renderShiftAdminTable(); // Update UI to show base
+        // =========================================================
+        updateLoadingText("土台を作成中...");
+        // クリアされた状態で実行するため、必要な人員がゼロから再配置される
+        await executeAutoShiftLogic(false); // isPreview=false
+        renderShiftAdminTable();
 
-        // 2. 3分割最適化 (上旬:1-10, 中旬:11-20, 下旬:21-End)
-        const periods = [
-            { start: 1, end: 10, label: "上旬", progress: 33 },
-            { start: 11, end: 20, label: "中旬", progress: 66 },
-            { start: 21, end: daysInMonth, label: "下旬", progress: 100 }
-        ];
+        // =========================================================
+        // 2. AI最適化 (全期間一括実行)
+        // =========================================================
+        updateLoadingText(`AI最適化中... (月間シフトを一括生成中)`);
 
-        for (let i = 0; i < periods.length; i++) {
-            const period = periods[i];
-            updateLoadingText(`AI最適化中... (${period.progress}% ${period.label}作成中)`);
+        // Gather Context
+        const contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
 
-            // Gather Context (Always get latest including previous updates)
-            const contextData = gatherFullShiftContext(Y, M, daysInMonth, holidays);
-
-            const isLast = (i === periods.length - 1);
-
-            // Promptの修正: 「/」と「公休」の区別をAIに叩き込む
-            const prompt = `
+        // Prompt: 期間分割をやめ、月全体を指定
+        const prompt = `
 以下のシフトデータ(JSON)をもとに、修正版のシフト表を作成してください。
-【対象期間】${period.start}日 〜 ${period.end}日
-※この期間のみを最適化してください。
+【対象期間】1日 〜 ${daysInMonth}日
+※月全体を最適化してください。
 
 【記号の定義（絶対理解すること）】
 - **"公休"**: スタッフ本人が提出した希望休です。**絶対に移動・変更しないでください。**
@@ -3041,7 +3060,8 @@ async function executeHybridShiftLogic() {
 - **"出勤"**: 通常の勤務です。これを "/" と入れ替えて調整することができます。
 
 【重要方針】
-契約日数（contract_target）を**上限目標として厳守**し、人員配置を最適化してください。${isLast ? "これまでの期間の勤務状況を踏まえて、月全体の最終調整を行ってください。" : "後続の期間のために人員を使いすぎないよう、ペース配分を意識してください。"}
+契約日数（contract_target）を**上限目標として厳守**し、月全体のバランスを見ながら人員配置を最適化してください。
+前半・後半の偏りをなくし、特定の人に連勤が集中しないようにしてください。
 
 【絶対厳守の制約】
 1. **【固定・変更禁止】** 「有休」「特休」「公休」は、移動・変更・削除を一切禁止します。
@@ -3059,117 +3079,102 @@ async function executeHybridShiftLogic() {
 
 \`\`\`json
 {
-  "スタッフ名": { "日付": "出勤", "日付": "/" ... }
+  "スタッフ名": { "1": "出勤", "2": "/", ... "31": "出勤" }
 }
 \`\`\`
 `;
 
-            const res = await fetch('/gemini', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: prompt,
-                    contextData: JSON.stringify(contextData),
-                    mode: 'shift_hybrid',
-                    stream: true
-                })
-            });
+        const res = await fetch('/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: prompt,
+                contextData: JSON.stringify(contextData),
+                mode: 'shift_hybrid',
+                stream: true
+            })
+        });
 
-            if (!res.ok) {
-                let errMsg = res.statusText;
-                try {
-                    const errJson = await res.json();
-                    if (errJson.error) errMsg = errJson.error;
-                } catch(e) {}
-                throw new Error(`${period.label}作成エラー: ` + errMsg);
-            }
+        if (!res.ok) {
+            let errMsg = res.statusText;
+            try {
+                const errJson = await res.json();
+                if (errJson.error) errMsg = errJson.error;
+            } catch(e) {}
+            throw new Error(`AI生成エラー: ` + errMsg);
+        }
 
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder();
-            let fullText = "";
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = "";
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value, { stream: true });
-                fullText += chunk;
-                updateLoadingText(`AI最適化中... (${period.label}生成中: ${fullText.length}文字)`);
-            }
-            fullText += decoder.decode(); // Flush
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            fullText += chunk;
+            // 進捗表示: 文字数で動いている感を見せる
+            updateLoadingText(`AI最適化中... (生成中: ${fullText.length}文字)`);
+        }
+        fullText += decoder.decode(); // Flush
 
-            // --- JSON Auto-Repair & Extraction ---
-            let jsonString = null;
-            let generatedShift = null;
+        // --- JSON Auto-Repair & Extraction ---
+        let jsonString = null;
+        let generatedShift = null;
 
-            // ★修正: 正規表現を緩くして、```json だけでなく ``` だけでも拾えるようにする
-            const codeBlockMatch = fullText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+        const codeBlockMatch = fullText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
 
-            if (codeBlockMatch) {
-                jsonString = codeBlockMatch[1];
-            } else {
-                // 2. Fallback: find { and }
-                const firstBrace = fullText.indexOf('{');
-                const lastBrace = fullText.lastIndexOf('}');
-
-                if (firstBrace !== -1) {
-                    if (lastBrace !== -1 && lastBrace > firstBrace) {
-                        jsonString = fullText.substring(firstBrace, lastBrace + 1);
-                    } else {
-                        // If no closing brace found (or it's before start?), take to end
-                        // This enables repair logic to work on truncated JSON
-                        jsonString = fullText.substring(firstBrace);
-                    }
+        if (codeBlockMatch) {
+            jsonString = codeBlockMatch[1];
+        } else {
+            const firstBrace = fullText.indexOf('{');
+            const lastBrace = fullText.lastIndexOf('}');
+            if (firstBrace !== -1) {
+                if (lastBrace !== -1 && lastBrace > firstBrace) {
+                    jsonString = fullText.substring(firstBrace, lastBrace + 1);
+                } else {
+                    jsonString = fullText.substring(firstBrace);
                 }
-            }
-
-            // 3. Parse and Repair
-            if (jsonString) {
-                try {
-                    generatedShift = JSON.parse(jsonString);
-                } catch (e) {
-                    console.warn("JSON Parse Error. Attempting repair...", e);
-                    try {
-                        generatedShift = JSON.parse(jsonString + "}");
-                    } catch (e2) {
-                        try {
-                             generatedShift = JSON.parse(jsonString + "]}");
-                        } catch (e3) {
-                             try {
-                                 generatedShift = JSON.parse(jsonString + "\"}");
-                             } catch (e4) {
-                                 console.error("AI Response Text:", fullText);
-                                 throw new Error(`${period.label}のJSONパースに失敗しました (修復不可): ` + e.message);
-                             }
-                        }
-                    }
-                }
-            } else {
-                console.error("AI Response Text:", fullText);
-                throw new Error(`${period.label}のAI応答からJSONが見つかりませんでした。`);
-            }
-
-            if (generatedShift) {
-                applyAiShiftResult(generatedShift);
             }
         }
 
-        // Completion
+        if (jsonString) {
+            try {
+                generatedShift = JSON.parse(jsonString);
+            } catch (e) {
+                console.warn("JSON Parse Error. Attempting repair...", e);
+                try { generatedShift = JSON.parse(jsonString + "}"); }
+                catch (e2) {
+                    try { generatedShift = JSON.parse(jsonString + "]}"); }
+                    catch (e3) {
+                         console.error("AI Response Text:", fullText);
+                         throw new Error(`JSONパース失敗: ` + e.message);
+                    }
+                }
+            }
+        } else {
+            console.error("AI Response Text:", fullText);
+            throw new Error(`AI応答からJSONが見つかりませんでした。`);
+        }
 
-        // Save to Firestore
+        if (generatedShift) {
+            applyAiShiftResult(generatedShift);
+        }
+
+        // Completion & Save
         const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
         const docRef = doc(db, "shift_submissions", docId);
         await setDoc(docRef, shiftState.shiftDataCache, { merge: true });
 
         renderShiftAdminTable();
-        showToast("🤖⚡ ハイブリッド作成完了！(保存しました)");
+        showToast("🤖⚡ AIシフト一括作成完了！");
 
     } catch (e) {
         console.error("Hybrid Gen Error:", e);
-        alert("ハイブリッド作成エラー: " + e.message);
-        undoShiftAction(); // Revert to before base creation (clean slate)
+        alert("作成エラー: " + e.message);
+        undoShiftAction(); // Revert to start
     } finally {
         hideLoading();
-        // Clean up loading text
         const loadingEl = document.getElementById('shift-loading-overlay');
         if (loadingEl) {
              const textEl = loadingEl.querySelector('p');
