@@ -1723,23 +1723,23 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
                 if (prevEffective === 'B' && currentEffective === 'A') return false;
         }
     } else if (day === 1) {
-            // Check Prev Month Last Day
-            const lastRole = prevMonthAssignments[staff.name]?.[prevDaysCount];
-            // Only strictly forbid if last day was Late WORK. (Not Paid/Special)
+        const lastRole = prevMonthAssignments[staff.name]?.[prevDaysCount];
 
-            const isPrevLate = lastRole && (lastRole.includes('遅') || lastRole.includes('B'));
-            const isPrevGenericWorkAsLate = lastRole === '出勤' && staff.shiftType === 'B';
+        // 明示的な遅番、または「出勤」かつ「B番スタッフ」の場合も遅番とみなす
+        const isExplicitLate = lastRole && (lastRole.includes('遅') || lastRole.includes('B'));
+        const isImplicitLate = lastRole &&
+                               lastRole !== '公休' && lastRole !== '/' &&
+                               lastRole !== '有休' && lastRole !== 'PAID' &&
+                               lastRole !== '特休' && lastRole !== 'SPECIAL' &&
+                               staff.shiftType === 'B';
 
-            if (isPrevLate || isPrevGenericWorkAsLate) {
-                // If it was Paid/Special, lastRole wouldn't include '遅'/'B' usually unless role string is messy.
-                // Assuming '有休' doesn't contain '遅'.
-                if (lastRole !== '有休' && lastRole !== 'PAID' && lastRole !== '特休' && lastRole !== 'SPECIAL') {
-                    let currentEffective = staff.shiftType;
-                    if (staff.requests.types[day] === 'early') currentEffective = 'A';
-                    if (staff.requests.types[day] === 'late') currentEffective = 'B';
-                    if (currentEffective === 'A') return false;
-                }
-            }
+        if (isExplicitLate || isImplicitLate) {
+            let currentEffective = staff.shiftType;
+            if (staff.requests.types[day] === 'early') currentEffective = 'A';
+
+            // 遅番明けの早番(A)は禁止
+            if (currentEffective === 'A') return false;
+        }
     }
 
     // 3. Consecutive Days (UPDATED: Uses physicalWorkDays)
@@ -3019,12 +3019,14 @@ function gatherFullShiftContext(year, month, daysInMonth, holidays) {
         const details = shiftState.staffDetails[name] || {};
 
         // Extract History (Last 7 days of prev month)
+        // AI needs exact role names (strings) to detect late shifts etc.
         const history = {};
         if (shiftState.prevMonthCache && shiftState.prevMonthCache[name]) {
             const pMap = shiftState.prevMonthCache[name];
             for(let i=0; i<7; i++) {
                 const dVal = prevDaysCount - i;
                 const role = pMap[dVal];
+                // Pass specific role name (string) as requested
                 if (role !== undefined && role !== '/') {
                      history[String(dVal)] = role;
                 }
