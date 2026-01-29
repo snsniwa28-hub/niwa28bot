@@ -464,10 +464,6 @@ export function createShiftModals() {
                             <input type="checkbox" id="se-allow-hall-resp" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
                             <span class="text-sm text-slate-700 font-bold">ホ責</span>
                         </label>
-                        <label class="flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" id="se-allow-nakaban" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
-                            <span class="text-sm text-slate-700 font-bold">中番可</span>
-                        </label>
                     </div>
                 </div>
             </div>
@@ -2161,6 +2157,19 @@ async function executeAutoShiftLogic(isPreview = true) {
             });
         });
 
+        // ★追加: 本人の希望休(requests.off)は明示的に '公休' として確定させる
+        staffObjects.forEach(s => {
+            if (s.requests && s.requests.off) {
+                s.requests.off.forEach(day => {
+                    const current = shifts[s.name].assignments[day];
+                    // 既に有休などが設定されていなければ、希望通りの '公休' をセット
+                    if (!current || current === '/') {
+                        shifts[s.name].assignments[day] = '公休';
+                    }
+                });
+            }
+        });
+
         // Cleanup and Save
         const staffNames = [
             ...shiftState.staffListLists.employees,
@@ -2498,7 +2507,6 @@ window.openStaffEditModal = (name) => {
     document.getElementById('se-allow-money-sub').checked = allowed.includes('money_sub');
     document.getElementById('se-allow-warehouse').checked = allowed.includes('warehouse');
     document.getElementById('se-allow-hall-resp').checked = allowed.includes('hall_resp');
-    document.getElementById('se-allow-nakaban').checked = allowed.includes('nakaban');
 };
 
 // --- Staff List Rendering with Reorder ---
@@ -2597,7 +2605,6 @@ async function saveStaffDetails() {
     if(document.getElementById('se-allow-money-sub').checked) allowedRoles.push('money_sub');
     if(document.getElementById('se-allow-warehouse').checked) allowedRoles.push('warehouse');
     if(document.getElementById('se-allow-hall-resp').checked) allowedRoles.push('hall_resp');
-    if(document.getElementById('se-allow-nakaban').checked) allowedRoles.push('nakaban');
 
     const newDetails = {
         rank, type, basic_shift: basicShift,
@@ -3120,29 +3127,18 @@ ${isLast ? "これまでの期間の勤務状況を踏まえて、月全体の�
 【絶対厳守の制約】
 1. **【固定・変更禁止】** 現在割り当てられている「有休」「特休」は、移動・変更・削除を一切禁止します。これらは既に確定した予定として扱い、絶対にいじらないでください。
 2. **【固定・変更禁止】** 本人の希望休（requests.off）に基づく「公休」は、絶対に出勤に変更しないでください。
-3. **【操作許容範囲】** あなたが操作してよいのは、上記以外の「出勤」と「（希望ではない）公休」の入れ替え、および「中番」への変更のみです。
+3. **【操作許容範囲】** あなたが操作してよいのは、上記以外の「出勤」と「（希望ではない）公休」の入れ替えのみです。
 4. 契約日数（target）を超過させないこと。
 5. 6連勤以上（physical work streak >= 6）を発生させないこと。
-6. 基本的なシフト区分（A/B）は勝手に変更しないこと（中番への変更は除く）。
+6. 基本的なシフト区分（A/B）は勝手に変更しないこと。
 
 【推奨・調整ルール】
-1. **中番（Nakaban）の活用ルール（絶対遵守）:**
-   - 中番を提案してよいのは、\`allowedRoles\` に "nakaban" が含まれているスタッフのみです。
-   - **【早番(A)のスタッフの場合】:**
-     - 「連勤の最後」かつ「翌日が休み」の場合のみ、その連勤最終日を中番にできます。
-     - 条件: 当日が「中番」 AND 翌日が「公休」
-     - （意図: 連勤の締めくくりとして中番に入り、翌日から休むパターンのみ許可）
-   - **【遅番(B)のスタッフの場合】:**
-     - 「休みの翌日」の場合のみ、中番にできます。
-     - 条件: 前日が「公休」 AND 当日が「中番」
-     - （意図: 休み明けの初日、または単発出勤として中番に入るパターンのみ許可）
-   - ※これら以外のタイミング（例：連勤の途中など）で中番を入れることは禁止します。
-2. **サンドイッチ出勤:** 飛び石連休（出-休-出）はなるべく避けてくださいが、人員確保のために必要な場合は許容します。
-3. **連勤の平準化:** 特定の人に連勤が集中しないよう、全体を見て分散させてください。
+1. **サンドイッチ出勤:** 飛び石連休（出-休-出）はなるべく避けてくださいが、人員確保のために必要な場合は許容します。
+2. **連勤の平準化:** 特定の人に連勤が集中しないよう、全体を見て分散させてください。
 
 【出力形式】
 JSONのみを出力してください。
-キーはスタッフ名、値は { "日付": "出勤" or "公休" or "中番" } の形式。
+キーはスタッフ名、値は { "日付": "出勤" or "公休" } の形式。
 `;
 
             const res = await fetch('/gemini', {
