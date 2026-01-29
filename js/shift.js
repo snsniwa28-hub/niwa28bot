@@ -3045,13 +3045,33 @@ function gatherFullShiftContext(year, month, daysInMonth, holidays) {
     return { meta: { year, month, days_in_month: daysInMonth, holidays, daily_targets: dailyTargets }, staff: staffData };
 }
 
+// AIの結果を反映する関数（安全装置付き）
 function applyAiShiftResult(generatedShift) {
     Object.keys(generatedShift).forEach(name => {
+        // スタッフデータが存在しない場合のガード
         if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = {};
         if (!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
+
         const schedule = generatedShift[name];
         Object.keys(schedule).forEach(day => {
-            shiftState.shiftDataCache[name].assignments[day] = schedule[day];
+            let role = schedule[day];
+
+            // ★消毒処理: AIが指示を守らず「休み」「NULL」などを返してきた場合、強制的に「/」に戻す
+            if (role === '休み' || role === '休' || role === '' || role === null) {
+                role = '/';
+            }
+
+            // 許可された値（出勤, /, 公休, 有休...）だけを通す
+            const allowed = ['出勤', '/', '公休', '有休', '特休', '金メ', '金サブ', 'ホ責', '倉庫'];
+
+            // 役割が正しいか、または早番/遅番などの文字が含まれている場合のみ適用
+            if (allowed.includes(role) || (role && (role.includes('早') || role.includes('遅')))) {
+                shiftState.shiftDataCache[name].assignments[day] = role;
+            } else {
+                // 変な値が来たら、安全のため '/'（休み）にしてエラー回避
+                console.warn(`AI returned invalid role: ${role}. Falling back to '/'.`);
+                shiftState.shiftDataCache[name].assignments[day] = '/';
+            }
         });
     });
 }
@@ -3115,27 +3135,30 @@ async function executeHybridShiftLogic() {
 
             const isLast = (i === periods.length - 1);
 
-            // Promptの修正: 出力形式をより厳格に指定
+            // Promptの修正: 「/」と「公休」の区別をAIに叩き込む
             const prompt = `
 以下のシフトデータ(JSON)をもとに、修正版のシフト表を作成してください。
 【対象期間】
 ${period.start}日 〜 ${period.end}日
 ※この期間のみを最適化してください。
 
+【記号の定義（絶対理解すること）】
+- **"公休"**: スタッフ本人が提出した希望休です。**絶対に移動・変更しないでください。**
+- **"/"**: システムが割り当てた休日です。あなたはこれを "出勤" と入れ替えて調整することができます。
+- **"出勤"**: 通常の勤務です。これを "/" と入れ替えて調整することができます。
+
 【重要方針】
-月全体の目標（target）とバランスを考慮しつつ、指定期間（${period.start}日〜${period.end}日）を最適化してください。
-${isLast ? "これまでの期間の勤務状況を踏まえて、月全体の最終調整を行ってください。" : "後続の期間のために人員を使いすぎないよう、全体最適を意識して配分してください。"}
+月全体の目標（contract_target）を守りながら、人員配置を最適化してください。
+${isLast ? "これまでの期間の勤務状況を踏まえて、月全体の最終調整を行ってください。" : "後続の期間のために人員を使いすぎないよう、ペース配分を意識してください。"}
 
 【絶対厳守の制約】
-1. **【固定・変更禁止】** 現在割り当てられている「有休」「特休」は、移動・変更・削除を一切禁止します。
-2. **【固定・変更禁止】** 本人の希望休（requests.off）に基づく「公休」は、絶対に出勤に変更しないでください。
-3. **【操作許容範囲】** あなたが操作してよいのは、上記以外の「出勤」と「（希望ではない）公休」の入れ替えのみです。
-4. 契約日数（target）を超過させないこと。
-5. 6連勤以上（physical work streak >= 6）を発生させないこと。
-6. 基本的なシフト区分（A/B）は勝手に変更しないこと。
+1. **【固定・変更禁止】** 「有休」「特休」「公休」は、移動・変更・削除を一切禁止します。
+2. **【契約日数の厳守】** スタッフごとの contract_target（契約日数）を大きく超える出勤をさせないでください。**「/」を無闇に出勤に変えてはいけません。**
+3. **【連勤ブロック】** 6連勤以上（physical work streak >= 6）は絶対に作らないでください。
+4. **【出力ルール】** システム休日は必ず **"/"** で出力してください。"公休" と出力すると希望休に変わってしまうため禁止です。
 
 【推奨・調整ルール】
-1. **サンドイッチ出勤:** 飛び石連休（出-休-出）はなるべく避けてください。
+1. **サンドイッチ出勤:** 飛び石連休（出 "/" 出）はなるべく避けてください。
 2. **連勤の平準化:** 特定の人に連勤が集中しないよう分散させてください。
 
 【出力形式】
@@ -3144,7 +3167,7 @@ ${isLast ? "これまでの期間の勤務状況を踏まえて、月全体の�
 
 \`\`\`json
 {
-  "スタッフ名": { "日付": "出勤", "日付": "公休" ... }
+  "スタッフ名": { "日付": "出勤", "日付": "/" ... }
 }
 \`\`\`
 `;
