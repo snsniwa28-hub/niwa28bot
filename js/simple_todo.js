@@ -12,14 +12,39 @@ import {
     writeBatch,
     serverTimestamp,
     getDocs,
-    getDoc
+    getDoc,
+    setDoc,
+    arrayUnion
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { showToast } from './ui.js';
 
-let unsubscribe = null;
+let unsubscribeTodos = null;
+let unsubscribeCategories = null;
+export let categories = [];
+export let currentCategory = null;
 
 export async function initSimpleTodo() {
     try {
+        // Ensure Categories
+        const todoDataRef = doc(db, 'masters', 'todo_data');
+        const todoDataSnap = await getDoc(todoDataRef);
+
+        if (!todoDataSnap.exists()) {
+            await setDoc(todoDataRef, {
+                categories: ['店内オペレーション', 'カウンター関係', '接客', '会員', '抽選']
+            });
+        }
+
+        unsubscribeCategories = onSnapshot(todoDataRef, (doc) => {
+            if (doc.exists()) {
+                categories = doc.data().categories || [];
+                const modal = document.getElementById('simple-todo-modal');
+                if (modal && !modal.classList.contains('hidden') && !currentCategory) {
+                    renderCategoryView();
+                }
+            }
+        });
+
         const staffDocRef = doc(db, 'masters', 'staff_data');
         const staffSnap = await getDoc(staffDocRef);
 
@@ -47,9 +72,41 @@ export async function initSimpleTodo() {
                 });
             }
         }
+
+        setupModalStructure();
+
     } catch (error) {
         console.error("Error fetching staff for todo:", error);
     }
+}
+
+function setupModalStructure() {
+    const modal = document.getElementById('simple-todo-modal');
+    if (!modal) return;
+    const content = modal.querySelector('.modal-content');
+    if (!content) return;
+
+    if (document.getElementById('simple-todo-view-tasks')) return;
+
+    // Get Header (first child)
+    const header = content.firstElementChild;
+
+    // Collect other children (Input, List, Footer)
+    const children = Array.from(content.children).slice(1);
+
+    // Create Views
+    const viewTasks = document.createElement('div');
+    viewTasks.id = 'simple-todo-view-tasks';
+    viewTasks.className = 'flex flex-col flex-1 overflow-hidden h-full';
+
+    children.forEach(child => viewTasks.appendChild(child));
+
+    const viewCategories = document.createElement('div');
+    viewCategories.id = 'simple-todo-view-categories';
+    viewCategories.className = 'p-4 overflow-y-auto flex-1 bg-slate-50/50 hidden';
+
+    content.appendChild(viewCategories);
+    content.appendChild(viewTasks);
 }
 
 export function openSimpleTodoModal() {
@@ -58,13 +115,10 @@ export function openSimpleTodoModal() {
     modal.classList.remove('hidden');
     modal.classList.add('flex');
 
-    // Focus input
-    setTimeout(() => {
-        document.getElementById('todo-input')?.focus();
-    }, 100);
+    setupModalStructure();
 
-    // Start Realtime Listener
-    subscribeTodos();
+    currentCategory = null;
+    renderCategoryView();
 }
 
 export function closeSimpleTodoModal() {
@@ -73,18 +127,28 @@ export function closeSimpleTodoModal() {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
     }
-    if (unsubscribe) {
-        unsubscribe();
-        unsubscribe = null;
+    if (unsubscribeTodos) {
+        unsubscribeTodos();
+        unsubscribeTodos = null;
     }
 }
 
-function subscribeTodos() {
-    if (unsubscribe) return;
+function subscribeTodos(category) {
+    if (unsubscribeTodos) {
+        unsubscribeTodos();
+        unsubscribeTodos = null;
+    }
 
-    const q = query(collection(db, 'simple_todos'), orderBy('createdAt', 'asc'));
+    let q;
+    if (category) {
+        // Note: Client-side sorting is performed in renderTodos, so we can omit orderBy here
+        // to avoid requiring a composite index (category + createdAt) immediately.
+        q = query(collection(db, 'simple_todos'), where('category', '==', category));
+    } else {
+        q = query(collection(db, 'simple_todos'), orderBy('createdAt', 'asc'));
+    }
 
-    unsubscribe = onSnapshot(q, (snapshot) => {
+    unsubscribeTodos = onSnapshot(q, (snapshot) => {
         const todos = [];
         snapshot.forEach((doc) => {
             todos.push({ id: doc.id, ...doc.data() });
@@ -260,6 +324,7 @@ export async function addSimpleTodo() {
             assignee: assignee,
             dueDate: dueDate,
             detail: detail,
+            category: currentCategory,
             isCompleted: false,
             createdAt: serverTimestamp()
         });
@@ -296,6 +361,7 @@ export async function clearCompletedTodos() {
     if (!confirm('完了済みのタスクをすべて削除しますか？')) return;
 
     try {
+        // Query all completed todos first (to avoid composite index requirement)
         const q = query(collection(db, 'simple_todos'), where('isCompleted', '==', true));
         const snapshot = await getDocs(q);
 
@@ -305,14 +371,133 @@ export async function clearCompletedTodos() {
         }
 
         const batch = writeBatch(db);
+        let count = 0;
         snapshot.forEach((doc) => {
+            const data = doc.data();
+            // Filter by current category if set
+            if (currentCategory && data.category !== currentCategory) {
+                return;
+            }
             batch.delete(doc.ref);
+            count++;
         });
+
+        if (count === 0) {
+            showToast('このカテゴリに完了済みのタスクはありません');
+            return;
+        }
 
         await batch.commit();
         showToast('完了済みタスクを一括削除しました');
     } catch (error) {
         console.error("Error clearing todos:", error);
         showToast('一括削除に失敗しました', true);
+    }
+}
+
+export function renderCategoryView() {
+    const viewCategories = document.getElementById('simple-todo-view-categories');
+    const viewTasks = document.getElementById('simple-todo-view-tasks');
+    if (!viewCategories || !viewTasks) return;
+
+    // Unsubscribe from todos as we are in menu
+    if (unsubscribeTodos) {
+        unsubscribeTodos();
+        unsubscribeTodos = null;
+    }
+
+    viewTasks.classList.add('hidden');
+    viewCategories.classList.remove('hidden');
+
+    updateHeader('チームToDoリスト');
+
+    viewCategories.innerHTML = '';
+    const grid = document.createElement('div');
+    grid.className = 'grid grid-cols-2 gap-3';
+
+    categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = 'bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-500 transition text-left flex flex-col gap-2 group';
+        btn.innerHTML = `
+            <span class="text-2xl">📁</span>
+            <span class="font-bold text-slate-700 group-hover:text-blue-600">${cat}</span>
+        `;
+        btn.onclick = () => {
+            currentCategory = cat;
+            renderTaskView();
+        };
+        grid.appendChild(btn);
+    });
+
+    // Add Category Button
+    const addBtn = document.createElement('button');
+    addBtn.className = 'bg-slate-100 border border-slate-200 border-dashed rounded-xl p-4 text-slate-400 font-bold flex items-center justify-center gap-2 hover:bg-slate-200 hover:text-slate-600 transition';
+    addBtn.innerHTML = `<span>＋</span> カテゴリ追加`;
+    addBtn.onclick = addNewCategory;
+
+    grid.appendChild(addBtn);
+    viewCategories.appendChild(grid);
+}
+
+export function renderTaskView() {
+    const viewCategories = document.getElementById('simple-todo-view-categories');
+    const viewTasks = document.getElementById('simple-todo-view-tasks');
+    if (!viewCategories || !viewTasks) return;
+
+    viewCategories.classList.add('hidden');
+    viewTasks.classList.remove('hidden');
+
+    updateHeader(null, true);
+
+    setTimeout(() => {
+        document.getElementById('todo-input')?.focus();
+    }, 100);
+
+    subscribeTodos(currentCategory);
+}
+
+function updateHeader(titleText, showBack = false) {
+    const modal = document.getElementById('simple-todo-modal');
+    if (!modal) return;
+    const h2 = modal.querySelector('h2');
+    if (!h2) return;
+
+    if (showBack) {
+        h2.innerHTML = `
+            <button id="todo-back-btn" class="mr-2 text-slate-400 hover:text-blue-600 transition">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <span>${currentCategory}</span>
+        `;
+        const backBtn = h2.querySelector('#todo-back-btn');
+        if (backBtn) {
+            backBtn.onclick = () => {
+                currentCategory = null;
+                renderCategoryView();
+            };
+        }
+    } else {
+        h2.innerHTML = `<span>✅</span> ${titleText}`;
+    }
+}
+
+async function addNewCategory() {
+    const name = prompt('新しいカテゴリ名を入力してください:');
+    if (!name || !name.trim()) return;
+
+    if (categories.includes(name.trim())) {
+        showToast('そのカテゴリは既に存在します', true);
+        return;
+    }
+
+    try {
+        const todoDataRef = doc(db, 'masters', 'todo_data');
+        await updateDoc(todoDataRef, {
+            categories: arrayUnion(name.trim())
+        });
+        showToast(`カテゴリ「${name}」を追加しました`);
+    } catch (error) {
+        console.error("Error adding category:", error);
+        showToast('カテゴリの追加に失敗しました', true);
     }
 }
