@@ -3045,13 +3045,33 @@ function gatherFullShiftContext(year, month, daysInMonth, holidays) {
     return { meta: { year, month, days_in_month: daysInMonth, holidays, daily_targets: dailyTargets }, staff: staffData };
 }
 
+// AIの結果を反映する関数（安全装置付き）
 function applyAiShiftResult(generatedShift) {
     Object.keys(generatedShift).forEach(name => {
+        // スタッフデータが存在しない場合のガード
         if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = {};
         if (!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
+
         const schedule = generatedShift[name];
         Object.keys(schedule).forEach(day => {
-            shiftState.shiftDataCache[name].assignments[day] = schedule[day];
+            let role = schedule[day];
+
+            // ★消毒処理: AIが指示を守らず「休み」「NULL」などを返してきた場合、強制的に「/」に戻す
+            if (role === '休み' || role === '休' || role === '' || role === null) {
+                role = '/';
+            }
+
+            // 許可された値（出勤, /, 公休, 有休...）だけを通す
+            const allowed = ['出勤', '/', '公休', '有休', '特休', '金メ', '金サブ', 'ホ責', '倉庫'];
+
+            // 役割が正しいか、または早番/遅番などの文字が含まれている場合のみ適用
+            if (allowed.includes(role) || (role && (role.includes('早') || role.includes('遅')))) {
+                shiftState.shiftDataCache[name].assignments[day] = role;
+            } else {
+                // 変な値が来たら、安全のため '/'（休み）にしてエラー回避
+                console.warn(`AI returned invalid role: ${role}. Falling back to '/'.`);
+                shiftState.shiftDataCache[name].assignments[day] = '/';
+            }
         });
     });
 }
