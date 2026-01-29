@@ -86,10 +86,6 @@ export function createShiftModals() {
     <div id="shift-main-view" class="fixed inset-0 z-[60] bg-slate-50 transform transition-transform duration-300 translate-x-full flex flex-col font-main font-sans">
 
         <header class="bg-white border-b border-slate-200 h-16 shrink-0 flex items-center justify-between px-4 sm:px-6 z-20 shadow-sm">
-            <button id="btn-close-shift-view" class="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition py-2">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-                <span class="font-bold text-sm hidden sm:inline">戻る</span>
-            </button>
             <div class="flex items-center gap-2 sm:gap-4">
                 <div class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">
                     <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
@@ -165,13 +161,6 @@ export function createShiftModals() {
                          </div>
                     </div>
                     <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
-                        <!-- UPDATED: Flex container for checkboxes to sit on one line on mobile -->
-                        <div class="flex items-center gap-2">
-                             <label class="flex items-center gap-1.5 text-[10px] md:text-xs font-bold bg-slate-700 px-2 py-2 rounded-lg border border-slate-600 cursor-pointer select-none whitespace-nowrap">
-                                <input type="checkbox" id="chk-early-warehouse-auto" class="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-500 rounded focus:ring-emerald-600 bg-slate-600 border-slate-500">
-                                <span>早番倉庫お任せ</span>
-                             </label>
-                        </div>
                          <button id="btn-undo-action" class="hidden flex items-center gap-1 text-xs font-bold bg-slate-600 hover:bg-slate-500 px-3 py-2 rounded-lg transition border border-slate-500">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
                         </button>
@@ -207,8 +196,11 @@ export function createShiftModals() {
                     <button id="btn-shift-settings" class="text-xs font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition flex items-center gap-2">
                         <span>⚙️</span> 設定
                     </button>
-                    <button id="btn-hybrid-create-shift" class="text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2 ml-2">
-                        <span>🤖</span> AIシフト作成
+                    <button id="btn-ai-early" class="text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2 ml-2">
+                        <span>🤖</span> 早番(A)作成
+                    </button>
+                    <button id="btn-ai-late" class="text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2 ml-2">
+                        <span>🤖</span> 遅番(B)作成
                     </button>
                 </div>
             </div>
@@ -265,7 +257,6 @@ export function createShiftModals() {
                  <button class="role-btn bg-pink-50 text-pink-600 border border-pink-200 font-bold py-2 rounded-lg text-[10px]" data-role="有休">有休</button>
                  <button class="role-btn bg-yellow-50 text-yellow-600 border border-yellow-200 font-bold py-2 rounded-lg text-[10px]" data-role="特休">特休</button>
                  <button class="role-btn bg-slate-100 text-slate-400 border border-slate-200 font-bold py-2 rounded-lg text-[10px]" data-role="/">/</button>
-                 <button class="role-btn bg-slate-50 text-slate-400 border border-slate-200 font-bold py-2 rounded-lg text-[10px]" data-role="revert">↩️ 戻す</button>
                  <button class="role-btn bg-slate-50 text-slate-400 border border-slate-200 font-bold py-2 rounded-lg text-[10px]" data-role="clear">クリア</button>
 
                  <div class="col-span-4 h-px bg-slate-100 my-1"></div>
@@ -304,8 +295,11 @@ export function createShiftModals() {
             <div class="grid grid-cols-1 gap-3">
                 <button id="btn-mobile-clear" class="w-full py-4 bg-rose-50 text-rose-600 font-bold rounded-xl border border-rose-100">割り振りをクリア</button>
                 <button id="btn-mobile-settings" class="w-full py-4 bg-slate-50 text-slate-600 font-bold rounded-xl border border-slate-100">⚙️ 自動割り振り設定</button>
-                <button id="btn-mobile-hybrid" class="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2">
-                    <span>🤖</span> AIシフト作成
+                <button id="btn-mobile-ai-early" class="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2">
+                    <span>🤖</span> 早番(A)作成
+                </button>
+                <button id="btn-mobile-ai-late" class="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2">
+                    <span>🤖</span> 遅番(B)作成
                 </button>
                 <button onclick="document.getElementById('mobile-admin-menu').classList.add('hidden')" class="w-full py-4 text-slate-400 font-bold">キャンセル</button>
             </div>
@@ -315,21 +309,25 @@ export function createShiftModals() {
     <!-- AUTO SHIFT SETTINGS MODAL -->
     <div id="auto-shift-settings-modal" class="modal-overlay hidden" style="z-index: 100;">
         <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl">
-            <h3 class="font-bold text-slate-800 text-lg mb-4">⚙️ 自動割り振り設定</h3>
+            <h3 class="font-bold text-slate-800 text-lg mb-4">⚙️ 役職割り振り設定</h3>
             <p class="text-xs font-bold text-slate-400 mb-6">AIが割り振りを行う役割を選択してください。</p>
 
             <div class="space-y-4">
                 <label class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition">
                     <span class="text-sm font-bold text-slate-700">金銭業務 (金メ・金サブ)</span>
-                    <input type="checkbox" id="chk-as-money" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500" checked>
+                    <input type="checkbox" id="chk-as-money" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500">
                 </label>
                 <label class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition">
                     <span class="text-sm font-bold text-slate-700">倉庫番</span>
-                    <input type="checkbox" id="chk-as-warehouse" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500" checked>
+                    <input type="checkbox" id="chk-as-warehouse" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500">
                 </label>
                 <label class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition">
                     <span class="text-sm font-bold text-slate-700">ホール責任者</span>
-                    <input type="checkbox" id="chk-as-hall-resp" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500" checked>
+                    <input type="checkbox" id="chk-as-hall-resp" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500">
+                </label>
+                <label class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition">
+                    <span class="text-sm font-bold text-slate-700">早番倉庫お任せ</span>
+                    <input type="checkbox" id="chk-early-warehouse-auto" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500">
                 </label>
             </div>
 
@@ -526,7 +524,7 @@ export function createShiftModals() {
 
 function setupShiftEventListeners() {
     $('#btn-shift-admin-login').onclick = checkShiftAdminPassword;
-    $('#btn-close-shift-view').onclick = closeShiftModal;
+    // $('#btn-close-shift-view').onclick = closeShiftModal; // Removed
     $('#btn-shift-cal-back').onclick = backToShiftList;
     $('#shift-prev-month').onclick = () => changeShiftMonth(-1);
     $('#shift-next-month').onclick = () => changeShiftMonth(1);
@@ -543,8 +541,13 @@ function setupShiftEventListeners() {
     $('#btn-mobile-clear').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); clearShiftAssignments(); };
     $('#btn-shift-settings').onclick = () => document.getElementById('auto-shift-settings-modal').classList.remove('hidden');
     $('#btn-mobile-settings').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); document.getElementById('auto-shift-settings-modal').classList.remove('hidden'); };
-    $('#btn-mobile-hybrid').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); generateHybridShift(); };
-    $('#btn-hybrid-create-shift').onclick = generateHybridShift;
+
+    // New AI Buttons
+    $('#btn-ai-early').onclick = () => executeHybridShiftLogic('A');
+    $('#btn-ai-late').onclick = () => executeHybridShiftLogic('B');
+    $('#btn-mobile-ai-early').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); executeHybridShiftLogic('A'); };
+    $('#btn-mobile-ai-late').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); executeHybridShiftLogic('B'); };
+
     $('#mobile-fab-menu').onclick = () => $('#mobile-admin-menu').classList.remove('hidden');
 
     // Auto Shift Settings Listeners
@@ -2971,29 +2974,17 @@ function applyAiShiftResult(generatedShift) {
 }
 
 // ============================================================
-//  🤖⚡ ハイブリッド自動作成機能
-// ============================================================
-
-async function generateHybridShift() {
-    showConfirmModal(
-        "🤖⚡ ハイブリッド自動作成",
-        "まずルールベースで土台を作成し、その後AIが人員配置を最適化します。\n（平日余剰 → 土日不足への移動など）\n\n実行しますか？",
-        async () => {
-            await executeHybridShiftLogic();
-        },
-        'bg-gradient-to-r from-cyan-600 to-blue-600'
-    );
-}
-
-// ============================================================
 //  🤖⚡ ハイブリッド自動作成機能（A/B分割・一括生成版）
 // ============================================================
 
-async function executeHybridShiftLogic() {
-    showLoading();
-    pushHistory(); // Save state before starting
+async function executeHybridShiftLogic(targetGroup) {
+    // targetGroup: 'A' (早番) or 'B' (遅番)
+    const groupLabel = targetGroup === 'A' ? "早番(A)" : "遅番(B)";
 
-    // Helper to update loading text
+    showLoading();
+    pushHistory(); // Save state
+
+    // Helper
     const updateLoadingText = (text) => {
         const loadingEl = document.getElementById('shift-loading-overlay');
         if (loadingEl) {
@@ -3014,13 +3005,31 @@ async function executeHybridShiftLogic() {
         const holidays = getHolidays(Y, M);
 
         // =========================================================
-        // 🗑️ STEP 0: 聖域（休み）以外を全削除（リセット）
+        // 🗑️ STEP 0: 対象グループのリセット (聖域以外削除)
         // =========================================================
-        updateLoadingText("既存のシフトをクリア中...");
+        updateLoadingText(`${groupLabel}の既存シフトをクリア中...`);
 
         const preservedRoles = ['公休', '有休', '特休'];
+        const allStaffNames = [
+            ...shiftState.staffListLists.employees,
+            ...shiftState.staffListLists.alba_early,
+            ...shiftState.staffListLists.alba_late
+        ];
 
-        Object.keys(shiftState.shiftDataCache).forEach(name => {
+        // 対象スタッフを特定
+        const targetStaffNames = allStaffNames.filter(name => {
+            const details = shiftState.staffDetails[name] || {};
+            const settings = shiftState.shiftDataCache[name]?.monthly_settings || {};
+            const type = settings.shift_type || details.basic_shift || 'A';
+            return type === targetGroup; // 'A' or 'B' matches only
+        });
+
+        if (targetStaffNames.length === 0) {
+            throw new Error(`${groupLabel}のスタッフが見つかりません。`);
+        }
+
+        // リセット実行 (対象スタッフのみ)
+        targetStaffNames.forEach(name => {
             const data = shiftState.shiftDataCache[name];
             if (data && data.assignments) {
                 Object.keys(data.assignments).forEach(day => {
@@ -3034,62 +3043,36 @@ async function executeHybridShiftLogic() {
         renderShiftAdminTable();
 
         // =========================================================
-        // 🧱 STEP 1: 土台作成 (Rule-based Base)
+        // 🧱 STEP 1: 土台作成 (対象グループのみ再計算)
         // =========================================================
-        updateLoadingText("土台を作成中...");
-        // 全員分をルールベースで仮埋めする
+        updateLoadingText(`${groupLabel}の土台を作成中...`);
+        // executeAutoShiftLogicは全員分走るが、リセットされていない他グループは維持されるため問題ない
         await executeAutoShiftLogic(false);
         renderShiftAdminTable();
 
         // =========================================================
-        // 🤖 STEP 2: グループ別 AI最適化 (Aチーム -> Bチーム)
+        // 🤖 STEP 2: AI最適化 (対象グループのみ一括生成)
         // =========================================================
+        updateLoadingText(`AI最適化中... (${groupLabel} 一括生成)`);
 
-        // 全スタッフのリストを取得
-        const allStaffNames = [
-            ...shiftState.staffListLists.employees,
-            ...shiftState.staffListLists.alba_early,
-            ...shiftState.staffListLists.alba_late
-        ];
-
-        // グループ定義 (A=早番系, B=遅番系)
-        const groups = [
-            { id: 'A', label: '早番(A)チーム' },
-            { id: 'B', label: '遅番(B)チーム' }
-        ];
-
-        // 全体のコンテキストを取得（休日の情報などは共通）
+        // コンテキスト準備 (全休情報などは共通)
         const fullContext = gatherFullShiftContext(Y, M, daysInMonth, holidays);
 
-        for (const group of groups) {
-            updateLoadingText(`AI最適化中... (${group.label} 生成中)`);
+        // 対象スタッフのみに絞ったコンテキスト
+        const partialContext = {
+            meta: fullContext.meta,
+            staff: {}
+        };
+        targetStaffNames.forEach(name => {
+            if (fullContext.staff[name]) {
+                partialContext.staff[name] = fullContext.staff[name];
+            }
+        });
 
-            // 1. このグループに属するスタッフを抽出
-            const targetStaffNames = allStaffNames.filter(name => {
-                const details = shiftState.staffDetails[name] || {};
-                const settings = shiftState.shiftDataCache[name]?.monthly_settings || {};
-                const type = settings.shift_type || details.basic_shift || 'A';
-                return type === group.id;
-            });
-
-            if (targetStaffNames.length === 0) continue;
-
-            // 2. コンテキストデータの軽量化（対象スタッフのみに絞る）
-            // これによりトークン数を削減し、人数が多くてもエラーにならないようにする
-            const partialContext = {
-                meta: fullContext.meta,
-                staff: {}
-            };
-            targetStaffNames.forEach(name => {
-                if (fullContext.staff[name]) {
-                    partialContext.staff[name] = fullContext.staff[name];
-                }
-            });
-
-            // 3. プロンプト作成
-            const prompt = `
+        // プロンプト作成
+        const prompt = `
 以下のシフトデータ(JSON)をもとに、修正版のシフト表を作成してください。
-【対象】**${group.label}** のスタッフのみ
+【対象】**${groupLabel}** のスタッフのみ
 【期間】1日 〜 ${daysInMonth}日 (月全体)
 
 【記号の定義（絶対理解すること）】
@@ -3118,94 +3101,86 @@ async function executeHybridShiftLogic() {
 \`\`\`
 `;
 
-            // 4. APIコール (Gemini 2.5 Flash想定)
-            const res = await fetch('/gemini', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: prompt,
-                    contextData: JSON.stringify(partialContext), // 絞り込んだデータを送信
-                    mode: 'shift_hybrid',
-                    stream: true
-                })
-            });
+        // APIコール (Gemini 2.5 Flash)
+        const res = await fetch('/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: prompt,
+                contextData: JSON.stringify(partialContext),
+                mode: 'shift_hybrid',
+                stream: true
+            })
+        });
 
-            if (!res.ok) {
-                let errMsg = res.statusText;
-                try {
-                    const errJson = await res.json();
-                    if (errJson.error) errMsg = errJson.error;
-                } catch(e) {}
-                throw new Error(`${group.label} 生成エラー: ` + errMsg);
-            }
-
-            // 5. ストリーム受信
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder();
-            let fullText = "";
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value, { stream: true });
-                fullText += chunk;
-                updateLoadingText(`AI最適化中... (${group.label}: ${fullText.length}文字)`);
-            }
-            fullText += decoder.decode();
-
-            // 6. JSON抽出と反映
-            let jsonString = null;
-            const codeBlockMatch = fullText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-
-            if (codeBlockMatch) {
-                jsonString = codeBlockMatch[1];
-            } else {
-                const firstBrace = fullText.indexOf('{');
-                const lastBrace = fullText.lastIndexOf('}');
-                if (firstBrace !== -1) {
-                    jsonString = fullText.substring(firstBrace, (lastBrace !== -1 && lastBrace > firstBrace) ? lastBrace + 1 : undefined);
-                }
-            }
-
-            if (jsonString) {
-                try {
-                    // 壊れたJSONの簡易修復試行
-                    let generatedShift;
-                    try { generatedShift = JSON.parse(jsonString); }
-                    catch (e) {
-                        try { generatedShift = JSON.parse(jsonString + "}"); }
-                        catch (e2) { generatedShift = JSON.parse(jsonString + "]}"); }
-                    }
-
-                    if (generatedShift) {
-                        applyAiShiftResult(generatedShift);
-                    }
-                } catch (e) {
-                    console.error(`${group.label} JSON Parse Error:`, e);
-                    // 致命的エラーにはせず、このグループの最適化をスキップして次へ進む（土台は残るため）
-                    showToast(`⚠️ ${group.label}の最適化に失敗しました（土台を使用します）`, "orange");
-                }
-            } else {
-                 console.warn(`${group.label} Output invalid:`, fullText);
-            }
-
-            // グループごとの進捗を画面に反映
-            renderShiftAdminTable();
+        if (!res.ok) {
+            let errMsg = res.statusText;
+            try {
+                const errJson = await res.json();
+                if (errJson.error) errMsg = errJson.error;
+            } catch(e) {}
+            throw new Error(`AI生成エラー: ` + errMsg);
         }
 
-        // =========================================================
-        // 🏁 完了処理
-        // =========================================================
+        // ストリーム受信
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            fullText += chunk;
+            updateLoadingText(`AI最適化中... (${groupLabel}: ${fullText.length}文字)`);
+        }
+        fullText += decoder.decode();
+
+        // JSON抽出
+        let jsonString = null;
+        const codeBlockMatch = fullText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+        if (codeBlockMatch) {
+            jsonString = codeBlockMatch[1];
+        } else {
+            const firstBrace = fullText.indexOf('{');
+            const lastBrace = fullText.lastIndexOf('}');
+            if (firstBrace !== -1) {
+                jsonString = fullText.substring(firstBrace, (lastBrace !== -1 && lastBrace > firstBrace) ? lastBrace + 1 : undefined);
+            }
+        }
+
+        if (jsonString) {
+            try {
+                let generatedShift;
+                try { generatedShift = JSON.parse(jsonString); }
+                catch (e) {
+                    try { generatedShift = JSON.parse(jsonString + "}"); }
+                    catch (e2) { generatedShift = JSON.parse(jsonString + "]}"); }
+                }
+
+                if (generatedShift) {
+                    applyAiShiftResult(generatedShift);
+                }
+            } catch (e) {
+                console.error("JSON Parse Error:", e);
+                throw new Error("AIの応答を解析できませんでした。");
+            }
+        } else {
+            throw new Error("AI応答からデータが見つかりませんでした。");
+        }
+
+        // 保存 & 完了
         const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
         const docRef = doc(db, "shift_submissions", docId);
         await setDoc(docRef, shiftState.shiftDataCache, { merge: true });
 
-        showToast("🤖⚡ AIシフト一括作成完了！");
+        renderShiftAdminTable();
+        showToast(`🤖 ${groupLabel} AI作成完了！`);
 
     } catch (e) {
         console.error("Hybrid Gen Error:", e);
-        alert("作成エラー: " + e.message);
-        undoShiftAction(); // Revert
+        alert(`${groupLabel} 作成エラー: ` + e.message);
+        undoShiftAction();
     } finally {
         hideLoading();
         const loadingEl = document.getElementById('shift-loading-overlay');
@@ -3215,5 +3190,4 @@ async function executeHybridShiftLogic() {
         }
     }
 }
-window.generateHybridShift = generateHybridShift;
 window.shiftState = shiftState;
