@@ -192,7 +192,10 @@ export function createShiftModals() {
                 </div>
 
                 <div class="hidden md:flex p-3 bg-white border-t border-slate-200 justify-end gap-3 shrink-0">
-                    <button id="btn-clear-shift" class="text-xs font-bold text-rose-600 hover:bg-rose-50 px-4 py-2 rounded-lg border border-rose-200 transition">🗑️ 割り振りクリア</button>
+                    <button id="btn-clear-shift" class="text-xs font-bold text-rose-600 hover:bg-rose-50 px-4 py-2 rounded-lg border border-rose-200 transition">🗑️ 全クリア</button>
+
+                    <button id="btn-clear-roles-only" class="text-xs font-bold text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-lg border border-orange-200 transition">🧹 役職のみクリア</button>
+
                     <button id="btn-shift-settings" class="text-xs font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition flex items-center gap-2">
                         <span>⚙️</span> 設定
                     </button>
@@ -332,9 +335,6 @@ export function createShiftModals() {
             </div>
 
             <div class="mt-6 pt-4 border-t border-slate-100">
-                <button id="btn-clear-roles-only" class="w-full py-3 mb-3 bg-orange-50 text-orange-600 font-bold rounded-xl border border-orange-200 hover:bg-orange-100 transition">
-                    🧹 役職のみクリア（シフトは維持）
-                </button>
                 <button onclick="document.getElementById('auto-shift-settings-modal').classList.add('hidden')" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition">閉じる</button>
             </div>
         </div>
@@ -2984,7 +2984,7 @@ function applyAiShiftResult(generatedShift) {
 
 // --- 新機能: 役職のみクリア ---
 async function clearRolesOnly() {
-    showConfirmModal("役職クリア", "シフト（出勤/休み）は維持したまま、\n割り振られた役職（金メ・倉庫など）だけを解除しますか？", async () => {
+    showConfirmModal("役職クリア", "シフト（出勤/休み）は維持したまま、\n割り振られた役職（金メ・倉庫など）だけを解除して「出勤」に戻しますか？", async () => {
         pushHistory();
         const targetRoles = ['金メ', '金サブ', 'ホ責', '倉庫'];
         let count = 0;
@@ -2994,7 +2994,7 @@ async function clearRolesOnly() {
             if (data && data.assignments) {
                 Object.keys(data.assignments).forEach(day => {
                     if (targetRoles.includes(data.assignments[day])) {
-                        data.assignments[day] = '出勤'; // 役職を剥奪して「ただの出勤」に戻す
+                        data.assignments[day] = '出勤'; // 役職を剥奪
                         count++;
                     }
                 });
@@ -3011,7 +3011,7 @@ async function clearRolesOnly() {
 window.clearRolesOnly = clearRolesOnly;
 
 
-// --- ハイブリッド自動作成 (AI人数調整特化版) ---
+// --- ハイブリッド自動作成 (完全分離・単純人数合わせ・安全装置付き) ---
 async function executeHybridShiftLogic(targetGroup) {
     const groupLabel = targetGroup === 'A' ? "早番(A)" : "遅番(B)";
 
@@ -3047,6 +3047,7 @@ async function executeHybridShiftLogic(targetGroup) {
             ...shiftState.staffListLists.alba_late
         ];
 
+        // 対象スタッフ特定
         const targetStaffNames = allStaffNames.filter(name => {
             const details = shiftState.staffDetails[name] || {};
             const settings = shiftState.shiftDataCache[name]?.monthly_settings || {};
@@ -3069,38 +3070,48 @@ async function executeHybridShiftLogic(targetGroup) {
         });
         renderShiftAdminTable();
 
-        // 2. 土台作成 (ルール通りに組む)
+        // 2. 土台作成 (ルール通りに機械的に組む)
         updateLoadingText(`${groupLabel}の土台を作成中...`);
         await executeAutoShiftLogic(false);
         renderShiftAdminTable();
 
         // 3. AI最適化 (人数調整のみ)
-        updateLoadingText(`AI最適化中... (${groupLabel} 一括調整)`);
+        updateLoadingText(`AI最適化中... (${groupLabel} 人数調整)`);
 
-        // ★重要: 全員のデータを渡す（全体のバランスを見るため）
+        // コンテキスト準備
         const fullContext = gatherFullShiftContext(Y, M, daysInMonth, holidays);
 
-        // プロンプト: 「役職を決めるな」「人数を合わせろ」と厳命
+        // ★修正: 対象グループだけのデータを作成 (相手のことは見せない・考えさせない)
+        const partialContext = {
+            meta: fullContext.meta,
+            staff: {}
+        };
+        targetStaffNames.forEach(name => {
+            if (fullContext.staff[name]) {
+                partialContext.staff[name] = fullContext.staff[name];
+            }
+        });
+
+        // ★厳格プロンプト: 「人数合わせ」と「ルール厳守」のみを指示
         const prompt = `
 以下のシフトデータ(JSON)をもとに、修正版のシフト表を作成してください。
 【対象】**${groupLabel}** のスタッフのみ
-※コンテキストには全スタッフが含まれますが、出力および変更は対象グループ(${groupLabel})のみにしてください。
 【期間】1日 〜 ${daysInMonth}日 (月全体)
 
-【あなたの役割】
-あなたは「役職」を決める権限はありません。
-あなたの仕事は、**各日の出勤人数を目標（契約日数・定員）に近づけるための「人数の微調整」のみ**です。
+【あなたの唯一の任務】
+現在割り振られているシフト（"/" と "出勤"）を微調整し、**各日の出勤人数を目標（契約日数・定員）に可能な限り近づけること**です。
+他のシフト（${targetGroup === 'A' ? '遅番' : '早番'}）のことは一切考える必要はありません。
 
-【記号の定義】
-- **"公休"**: 本人の希望休です。**絶対に移動・変更しないでください。**
-- **"/"**: 休日です。必要に応じて "出勤" に変えて人数を補填できます。
-- **"出勤"**: 勤務です。多すぎる場合は "/" に変えて調整できます。
+【操作ルール】
+- 人数が足りない日： "/" を "出勤" に変更する。
+- 人数が多すぎる日： "出勤" を "/" に変更する。
+- **それ以外はいじるな。**
 
-【絶対厳守の制約】
-1. **【役職禁止】** 「金メ」「倉庫」などの役職名は一切出力しないでください。全て "出勤" か "/" で出力してください。
-2. **【聖域死守】** 「有休」「特休」「公休」は、移動・変更・削除を一切禁止します。
-3. **【契約日数の厳守】** contract_target（契約日数）を超えて出勤を増やさないでください。
-4. **【連勤ブロック】** 6連勤以上（physical work streak >= 6）は絶対に作らないでください。
+【絶対厳守の制約（破ったらエラー）】
+1. **【役職禁止】** "金メ"、"倉庫" などの役職名は絶対に出力しないでください。全て "出勤" か "/" です。
+2. **【聖域死守】** "公休"、"有休"、"特休" は絶対に移動・変更しないでください。
+3. **【連勤ブロック】** いかなる理由があっても **6連勤以上（6日連続出勤）** は絶対に作らないでください。5連勤までです。
+4. **【契約上限】** 契約日数（contract_target）を超えて出勤させないでください。
 
 【出力形式】
 Markdownのコードブロックで囲ったJSON形式のみを出力してください。
@@ -3112,12 +3123,13 @@ Markdownのコードブロックで囲ったJSON形式のみを出力してく�
 \`\`\`
 `;
 
+        // APIコール
         const res = await fetch('/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 prompt: prompt,
-                contextData: JSON.stringify(fullContext), // 全員分渡す
+                contextData: JSON.stringify(partialContext), // 絞り込んだデータ
                 mode: 'shift_hybrid',
                 stream: true
             })
@@ -3160,8 +3172,9 @@ Markdownのコードブロックで囲ったJSON形式のみを出力してく�
                 }
 
                 if (generatedShift) {
-                    // ★強制サニタイズ: 万が一AIが役職を出しても「出勤」に書き換える
                     const roleBlacklist = ['金メ', '金サブ', 'ホ責', '倉庫'];
+
+                    // 1. 適用 & サニタイズ (AIが役職を返してきても強制的に「出勤」にする)
                     Object.keys(generatedShift).forEach(name => {
                         const schedule = generatedShift[name];
                         Object.keys(schedule).forEach(d => {
@@ -3170,8 +3183,30 @@ Markdownのコードブロックで囲ったJSON形式のみを出力してく�
                              }
                         });
                     });
-
                     applyAiShiftResult(generatedShift);
+
+                    // 2. ★安全装置: 連勤ブロッカー (AI適用後に再チェックし、物理的に削除)
+                    // AIが万が一6連勤以上を作っていたら、強制的に6日目を休みにする
+                    targetStaffNames.forEach(name => {
+                        const assignments = shiftState.shiftDataCache[name]?.assignments || {};
+                        let streak = 0;
+                        for (let d = 1; d <= daysInMonth; d++) {
+                            const role = assignments[d];
+                            // 出勤系ならカウントアップ (有休等はカウントしない設定なら除外)
+                            if (role && role !== '/' && role !== '公休' && role !== '有休' && role !== '特休') {
+                                streak++;
+                            } else {
+                                streak = 0;
+                            }
+
+                            if (streak >= 6) {
+                                // 6連勤目発見！強制削除
+                                console.warn(`🛡 Safety Brake: ${name} day ${d} removed (streak ${streak})`);
+                                assignments[d] = '/';
+                                streak = 0; // Reset
+                            }
+                        }
+                    });
                 }
             } catch (e) {
                 console.error("JSON Parse Error:", e);
