@@ -332,6 +332,9 @@ export function createShiftModals() {
             </div>
 
             <div class="mt-6 pt-4 border-t border-slate-100">
+                <button id="btn-clear-roles-only" class="w-full py-3 mb-3 bg-orange-50 text-orange-600 font-bold rounded-xl border border-orange-200 hover:bg-orange-100 transition">
+                    🧹 役職のみクリア（シフトは維持）
+                </button>
                 <button onclick="document.getElementById('auto-shift-settings-modal').classList.add('hidden')" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition">閉じる</button>
             </div>
         </div>
@@ -554,6 +557,8 @@ function setupShiftEventListeners() {
     $('#chk-as-money').onchange = (e) => { shiftState.autoShiftSettings.money = e.target.checked; };
     $('#chk-as-warehouse').onchange = (e) => { shiftState.autoShiftSettings.warehouse = e.target.checked; };
     $('#chk-as-hall-resp').onchange = (e) => { shiftState.autoShiftSettings.hall_resp = e.target.checked; };
+
+    $('#btn-clear-roles-only').onclick = clearRolesOnly;
 
     $('#btn-add-staff').onclick = () => openStaffEditModal(null);
     $('#btn-se-save').onclick = saveStaffDetails;
@@ -2974,17 +2979,45 @@ function applyAiShiftResult(generatedShift) {
 }
 
 // ============================================================
-//  🤖⚡ ハイブリッド自動作成機能（A/B分割・一括生成版）
+// 3. ロジック実装 (ファイルの末尾に追加・置換)
 // ============================================================
 
+// --- 新機能: 役職のみクリア ---
+async function clearRolesOnly() {
+    showConfirmModal("役職クリア", "シフト（出勤/休み）は維持したまま、\n割り振られた役職（金メ・倉庫など）だけを解除しますか？", async () => {
+        pushHistory();
+        const targetRoles = ['金メ', '金サブ', 'ホ責', '倉庫'];
+        let count = 0;
+
+        Object.keys(shiftState.shiftDataCache).forEach(name => {
+            const data = shiftState.shiftDataCache[name];
+            if (data && data.assignments) {
+                Object.keys(data.assignments).forEach(day => {
+                    if (targetRoles.includes(data.assignments[day])) {
+                        data.assignments[day] = '出勤'; // 役職を剥奪して「ただの出勤」に戻す
+                        count++;
+                    }
+                });
+            }
+        });
+
+        const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+        await setDoc(doc(db, "shift_submissions", docId), shiftState.shiftDataCache, { merge: true });
+
+        renderShiftAdminTable();
+        showToast(`🧹 ${count}箇所の役職をクリアしました`);
+    }, 'bg-orange-500');
+}
+window.clearRolesOnly = clearRolesOnly;
+
+
+// --- ハイブリッド自動作成 (AI人数調整特化版) ---
 async function executeHybridShiftLogic(targetGroup) {
-    // targetGroup: 'A' (早番) or 'B' (遅番)
     const groupLabel = targetGroup === 'A' ? "早番(A)" : "遅番(B)";
 
     showLoading();
-    pushHistory(); // Save state
+    pushHistory();
 
-    // Helper
     const updateLoadingText = (text) => {
         const loadingEl = document.getElementById('shift-loading-overlay');
         if (loadingEl) {
@@ -3004,9 +3037,7 @@ async function executeHybridShiftLogic(targetGroup) {
         const daysInMonth = new Date(Y, M, 0).getDate();
         const holidays = getHolidays(Y, M);
 
-        // =========================================================
-        // 🗑️ STEP 0: 対象グループのリセット (聖域以外削除)
-        // =========================================================
+        // 1. 対象グループのリセット (聖域以外削除)
         updateLoadingText(`${groupLabel}の既存シフトをクリア中...`);
 
         const preservedRoles = ['公休', '有休', '特休'];
@@ -3016,19 +3047,15 @@ async function executeHybridShiftLogic(targetGroup) {
             ...shiftState.staffListLists.alba_late
         ];
 
-        // 対象スタッフを特定
         const targetStaffNames = allStaffNames.filter(name => {
             const details = shiftState.staffDetails[name] || {};
             const settings = shiftState.shiftDataCache[name]?.monthly_settings || {};
             const type = settings.shift_type || details.basic_shift || 'A';
-            return type === targetGroup; // 'A' or 'B' matches only
+            return type === targetGroup;
         });
 
-        if (targetStaffNames.length === 0) {
-            throw new Error(`${groupLabel}のスタッフが見つかりません。`);
-        }
+        if (targetStaffNames.length === 0) throw new Error(`${groupLabel}のスタッフが見つかりません。`);
 
-        // リセット実行 (対象スタッフのみ)
         targetStaffNames.forEach(name => {
             const data = shiftState.shiftDataCache[name];
             if (data && data.assignments) {
@@ -3042,57 +3069,41 @@ async function executeHybridShiftLogic(targetGroup) {
         });
         renderShiftAdminTable();
 
-        // =========================================================
-        // 🧱 STEP 1: 土台作成 (対象グループのみ再計算)
-        // =========================================================
+        // 2. 土台作成 (ルール通りに組む)
         updateLoadingText(`${groupLabel}の土台を作成中...`);
-        // executeAutoShiftLogicは全員分走るが、リセットされていない他グループは維持されるため問題ない
         await executeAutoShiftLogic(false);
         renderShiftAdminTable();
 
-        // =========================================================
-        // 🤖 STEP 2: AI最適化 (対象グループのみ一括生成)
-        // =========================================================
-        updateLoadingText(`AI最適化中... (${groupLabel} 一括生成)`);
+        // 3. AI最適化 (人数調整のみ)
+        updateLoadingText(`AI最適化中... (${groupLabel} 一括調整)`);
 
-        // コンテキスト準備 (全休情報などは共通)
+        // ★重要: 全員のデータを渡す（全体のバランスを見るため）
         const fullContext = gatherFullShiftContext(Y, M, daysInMonth, holidays);
 
-        // 対象スタッフのみに絞ったコンテキスト
-        const partialContext = {
-            meta: fullContext.meta,
-            staff: {}
-        };
-        targetStaffNames.forEach(name => {
-            if (fullContext.staff[name]) {
-                partialContext.staff[name] = fullContext.staff[name];
-            }
-        });
-
-        // プロンプト作成
+        // プロンプト: 「役職を決めるな」「人数を合わせろ」と厳命
         const prompt = `
 以下のシフトデータ(JSON)をもとに、修正版のシフト表を作成してください。
 【対象】**${groupLabel}** のスタッフのみ
+※コンテキストには全スタッフが含まれますが、出力および変更は対象グループ(${groupLabel})のみにしてください。
 【期間】1日 〜 ${daysInMonth}日 (月全体)
 
-【記号の定義（絶対理解すること）】
-- **"公休"**: スタッフ本人が提出した希望休です。**絶対に移動・変更しないでください。**
-- **"/"**: システムが割り当てた休日です。あなたはこれを "出勤" と入れ替えて調整することができます。
-- **"出勤"**: 通常の勤務です。これを "/" と入れ替えて調整することができます。
+【あなたの役割】
+あなたは「役職」を決める権限はありません。
+あなたの仕事は、**各日の出勤人数を目標（契約日数・定員）に近づけるための「人数の微調整」のみ**です。
 
-【重要方針】
-契約日数（contract_target）を**上限目標として厳守**し、月全体のバランスを見ながら人員配置を最適化してください。
-前半・後半の偏りをなくし、特定の人に連勤が集中しないようにしてください。
+【記号の定義】
+- **"公休"**: 本人の希望休です。**絶対に移動・変更しないでください。**
+- **"/"**: 休日です。必要に応じて "出勤" に変えて人数を補填できます。
+- **"出勤"**: 勤務です。多すぎる場合は "/" に変えて調整できます。
 
 【絶対厳守の制約】
-1. **【固定・変更禁止】** 「有休」「特休」「公休」は、移動・変更・削除を一切禁止します。
-2. **【契約日数の完全厳守】** contract_target（契約日数）は**絶対的な上限**です。これを超える出勤追加は**一切許可しません**。不足分を埋める目的以外で「/」を「出勤」に変えることは禁止です。
-3. **【連勤ブロック】** 6連勤以上（physical work streak >= 6）は絶対に作らないでください。
-4. **【出力ルール】** システム休日は必ず **"/"** で出力してください。
+1. **【役職禁止】** 「金メ」「倉庫」などの役職名は一切出力しないでください。全て "出勤" か "/" で出力してください。
+2. **【聖域死守】** 「有休」「特休」「公休」は、移動・変更・削除を一切禁止します。
+3. **【契約日数の厳守】** contract_target（契約日数）を超えて出勤を増やさないでください。
+4. **【連勤ブロック】** 6連勤以上（physical work streak >= 6）は絶対に作らないでください。
 
 【出力形式】
-必ずMarkdownのコードブロックで囲ったJSON形式のみを出力してください。
-挨拶や解説は不要です。
+Markdownのコードブロックで囲ったJSON形式のみを出力してください。
 
 \`\`\`json
 {
@@ -3101,13 +3112,12 @@ async function executeHybridShiftLogic(targetGroup) {
 \`\`\`
 `;
 
-        // APIコール (Gemini 2.5 Flash)
         const res = await fetch('/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 prompt: prompt,
-                contextData: JSON.stringify(partialContext),
+                contextData: JSON.stringify(fullContext), // 全員分渡す
                 mode: 'shift_hybrid',
                 stream: true
             })
@@ -3115,28 +3125,21 @@ async function executeHybridShiftLogic(targetGroup) {
 
         if (!res.ok) {
             let errMsg = res.statusText;
-            try {
-                const errJson = await res.json();
-                if (errJson.error) errMsg = errJson.error;
-            } catch(e) {}
+            try { const errJson = await res.json(); if (errJson.error) errMsg = errJson.error; } catch(e) {}
             throw new Error(`AI生成エラー: ` + errMsg);
         }
 
-        // ストリーム受信
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let fullText = "";
-
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            fullText += chunk;
+            fullText += decoder.decode(value, { stream: true });
             updateLoadingText(`AI最適化中... (${groupLabel}: ${fullText.length}文字)`);
         }
         fullText += decoder.decode();
 
-        // JSON抽出
         let jsonString = null;
         const codeBlockMatch = fullText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
         if (codeBlockMatch) {
@@ -3144,9 +3147,7 @@ async function executeHybridShiftLogic(targetGroup) {
         } else {
             const firstBrace = fullText.indexOf('{');
             const lastBrace = fullText.lastIndexOf('}');
-            if (firstBrace !== -1) {
-                jsonString = fullText.substring(firstBrace, (lastBrace !== -1 && lastBrace > firstBrace) ? lastBrace + 1 : undefined);
-            }
+            if (firstBrace !== -1) jsonString = fullText.substring(firstBrace, (lastBrace !== -1 && lastBrace > firstBrace) ? lastBrace + 1 : undefined);
         }
 
         if (jsonString) {
@@ -3159,6 +3160,17 @@ async function executeHybridShiftLogic(targetGroup) {
                 }
 
                 if (generatedShift) {
+                    // ★強制サニタイズ: 万が一AIが役職を出しても「出勤」に書き換える
+                    const roleBlacklist = ['金メ', '金サブ', 'ホ責', '倉庫'];
+                    Object.keys(generatedShift).forEach(name => {
+                        const schedule = generatedShift[name];
+                        Object.keys(schedule).forEach(d => {
+                             if (roleBlacklist.includes(schedule[d])) {
+                                 schedule[d] = '出勤';
+                             }
+                        });
+                    });
+
                     applyAiShiftResult(generatedShift);
                 }
             } catch (e) {
@@ -3169,13 +3181,11 @@ async function executeHybridShiftLogic(targetGroup) {
             throw new Error("AI応答からデータが見つかりませんでした。");
         }
 
-        // 保存 & 完了
         const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
-        const docRef = doc(db, "shift_submissions", docId);
-        await setDoc(docRef, shiftState.shiftDataCache, { merge: true });
+        await setDoc(doc(db, "shift_submissions", docId), shiftState.shiftDataCache, { merge: true });
 
         renderShiftAdminTable();
-        showToast(`🤖 ${groupLabel} AI作成完了！`);
+        showToast(`🤖 ${groupLabel} AI調整完了！`);
 
     } catch (e) {
         console.error("Hybrid Gen Error:", e);
@@ -3184,10 +3194,7 @@ async function executeHybridShiftLogic(targetGroup) {
     } finally {
         hideLoading();
         const loadingEl = document.getElementById('shift-loading-overlay');
-        if (loadingEl) {
-             const textEl = loadingEl.querySelector('p');
-             if(textEl) textEl.remove();
-        }
+        if (loadingEl) { const textEl = loadingEl.querySelector('p'); if(textEl) textEl.remove(); }
     }
 }
 window.shiftState = shiftState;
