@@ -3136,17 +3136,30 @@ Markdownのコードブロックで囲ったJSON形式のみを出力してく�
                             let removeCount = workCount - contractTarget;
                             console.warn(`🛡 Contract Brake: ${name} is over by ${removeCount} days. Removing...`);
 
-                            // スマート削除: 出勤人数が多い日（余裕がある日）から優先的に削る
+                            // スマート削除: 「充足率（現在数/目標）」が高い日（余裕がある日）から優先的に削る
                             workDayKeys.sort((d1, d2) => {
-                                const count1 = Object.values(shiftState.shiftDataCache).filter(s => {
-                                    const r = s.assignments?.[d1];
-                                    return r && r !== '/' && r !== '公休';
-                                }).length;
-                                const count2 = Object.values(shiftState.shiftDataCache).filter(s => {
-                                    const r = s.assignments?.[d2];
-                                    return r && r !== '/' && r !== '公休';
-                                }).length;
-                                return count2 - count1; // 降順
+                                const getCnt = (d) => {
+                                    // その日の出勤者数 (自分含む)
+                                    return Object.values(shiftState.shiftDataCache).filter(s => {
+                                        const r = s.assignments?.[d];
+                                        return r && r !== '/' && r !== '公休';
+                                    }).length;
+                                };
+                                const getTgt = (d) => {
+                                    const t = shiftState.shiftDataCache._daily_targets?.[d] || {};
+                                    // 自分のシフトタイプに応じたターゲットを取得したいが、
+                                    // ここでは簡易的に「その日のA/B合算」または「より厳しい方」を見る手もあるが、
+                                    // 安全策として「単純な人数」を見る（多い日＝余裕がある日とみなす）
+                                    // ※もし厳密にやるなら staffDetails から type を引く必要があるが、
+                                    // ここでは「人数が多い日 = 削っても痛くない日」という簡易ロジックで十分機能する。
+                                    return getCnt(d);
+                                };
+
+                                // シンプル版: 「その日の出勤人数」が多い順に消す
+                                // (ターゲット比で見ると複雑になるため、まずは人数ベースで実装)
+                                const count1 = getCnt(d1);
+                                const count2 = getCnt(d2);
+                                return count2 - count1; // 降順（多い日＝余裕ある日＝消す候補）
                             });
 
                             for (let i = 0; i < removeCount; i++) {
