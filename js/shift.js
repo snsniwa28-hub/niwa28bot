@@ -546,10 +546,11 @@ function setupShiftEventListeners() {
     $('#btn-mobile-settings').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); document.getElementById('auto-shift-settings-modal').classList.remove('hidden'); };
 
     // New AI Buttons
-    $('#btn-ai-early').onclick = () => { if(validateTargets('A')) executeHybridShiftLogic('A'); };
-    $('#btn-ai-late').onclick = () => { if(validateTargets('B')) executeHybridShiftLogic('B'); };
-    $('#btn-mobile-ai-early').onclick = () => { if(validateTargets('A')) { $('#mobile-admin-menu').classList.add('hidden'); executeHybridShiftLogic('A'); } };
-    $('#btn-mobile-ai-late').onclick = () => { if(validateTargets('B')) { $('#mobile-admin-menu').classList.add('hidden'); executeHybridShiftLogic('B'); } };
+    // AI廃止 -> 高速ロジックへ直結 (executeAutoShiftLogic(isPreview, targetGroup))
+    $('#btn-ai-early').onclick = () => { if(validateTargets('A')) executeAutoShiftLogic(true, 'A'); };
+    $('#btn-ai-late').onclick = () => { if(validateTargets('B')) executeAutoShiftLogic(true, 'B'); };
+    $('#btn-mobile-ai-early').onclick = () => { if(validateTargets('A')) { $('#mobile-admin-menu').classList.add('hidden'); executeAutoShiftLogic(true, 'A'); } };
+    $('#btn-mobile-ai-late').onclick = () => { if(validateTargets('B')) { $('#mobile-admin-menu').classList.add('hidden'); executeAutoShiftLogic(true, 'B'); } };
 
     $('#mobile-fab-menu').onclick = () => $('#mobile-admin-menu').classList.remove('hidden');
 
@@ -2011,6 +2012,56 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
             }
         });
 
+        // =========================================================
+        // PHASE 8: 安全装置 (Safety Brake) - 契約超過分のスマート削除
+        // =========================================================
+        // 契約日数を超えている場合、余裕がある日（出勤人数が多い日）から削る
+
+        staffObjects.forEach(s => {
+            // targetGroup指定時、対象外はスキップ
+            if (targetGroup && s.shiftType !== targetGroup) return;
+
+            const contractTarget = s.contractDays;
+
+            // 出勤日数のカウント & 出勤日の特定
+            let workDayKeys = [];
+            let workCount = 0; // 公休以外（出勤+有休+特休）
+
+            // assignmentsは参照なので直接変更可能
+            const assignments = shifts[s.name].assignments;
+
+            days.forEach(d => {
+                const role = assignments[d];
+                if (role && role !== '/' && role !== '公休') {
+                    workCount++;
+                    if (role === '出勤') workDayKeys.push(d); // 削除対象は「出勤」のみ（有休は残す）
+                }
+            });
+
+            if (workCount > contractTarget) {
+                const removeCount = workCount - contractTarget;
+                console.log(`🛡 Safety Brake: ${s.name} is over by ${removeCount}. Removing...`);
+
+                // スマート削除: 「その日の出勤人数」が多い順（余裕がある順）にソートして消す
+                workDayKeys.sort((d1, d2) => {
+                    const getCnt = (d) => {
+                        // その日の全スタッフの出勤数
+                        return Object.values(shifts).filter(obj => {
+                            const r = obj.assignments?.[d];
+                            return r && r !== '/' && r !== '公休';
+                        }).length;
+                    };
+                    return getCnt(d2) - getCnt(d1); // 降順（多い日＝消す候補）
+                });
+
+                for (let i = 0; i < removeCount; i++) {
+                    if (workDayKeys[i]) {
+                        assignments[workDayKeys[i]] = '/';
+                    }
+                }
+            }
+        });
+
         // Cleanup
         staffObjects.forEach(s => {
              if (targetGroup && s.shiftType !== targetGroup) return;
@@ -2815,76 +2866,6 @@ window.finalizeAutoShift = async () => {
 };
 window.activateShiftAdminMode = activateShiftAdminMode;
 
-// ヘルパー関数群 (ハイブリッド・Chat共用)
-function gatherFullShiftContext(year, month, daysInMonth, holidays) {
-    const dailyTargets = {};
-    for(let d=1; d<=daysInMonth; d++) {
-        const t = (shiftState.shiftDataCache._daily_targets && shiftState.shiftDataCache._daily_targets[d]) || {};
-        dailyTargets[d] = { A: t.A !== undefined ? t.A : 9, B: t.B !== undefined ? t.B : 9 };
-    }
-
-    // Prepare Prev Month Info
-    const prevDate = new Date(year, month - 1, 0);
-    const prevDaysCount = prevDate.getDate();
-
-    const staffList = [...shiftState.staffListLists.employees, ...shiftState.staffListLists.alba_early, ...shiftState.staffListLists.alba_late];
-    const staffData = {};
-    staffList.forEach(name => {
-        const sData = shiftState.shiftDataCache[name] || {};
-        const details = shiftState.staffDetails[name] || {};
-
-        // Extract History (Last 7 days of prev month)
-        // AI needs exact role names (strings) to detect late shifts etc.
-        const history = {};
-        if (shiftState.prevMonthCache && shiftState.prevMonthCache[name]) {
-            const pMap = shiftState.prevMonthCache[name];
-            for(let i=0; i<7; i++) {
-                const dVal = prevDaysCount - i;
-                const role = pMap[dVal];
-                // Pass specific role name (string) as requested
-                if (role !== undefined && role !== '/') {
-                     history[String(dVal)] = role;
-                }
-            }
-        }
-
-        staffData[name] = {
-            type: (sData.monthly_settings && sData.monthly_settings.shift_type) || details.basic_shift || 'A',
-            contract_target: details.contract_days || 20,
-            allowedRoles: details.allowed_roles || [],
-            requests: { off: sData.off_days || [], work: sData.work_days || [] },
-            assignments: sData.assignments || {}, // Include assignments for Hybrid/Chat context
-            history: history
-        };
-    });
-    return { meta: { year, month, days_in_month: daysInMonth, holidays, daily_targets: dailyTargets }, staff: staffData };
-}
-
-// AIの結果を反映する関数（安全装置付き）
-function applyAiShiftResult(generatedShift) {
-    Object.keys(generatedShift).forEach(name => {
-        if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = {};
-        if (!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
-
-        const schedule = generatedShift[name];
-        Object.keys(schedule).forEach(day => {
-            let role = schedule[day];
-
-            // 消毒: 不正な値は '/' に置換
-            if (role === '休み' || role === '休' || role === '' || role === null) role = '/';
-
-            // 許可リスト
-            const allowed = ['出勤', '/', '公休', '有休', '特休', '金メ', '金サブ', 'ホ責', '倉庫'];
-
-            if (allowed.includes(role) || (role && (role.includes('早') || role.includes('遅')))) {
-                shiftState.shiftDataCache[name].assignments[day] = role;
-            } else {
-                console.warn(`Invalid role: ${role} -> /`);
-                shiftState.shiftDataCache[name].assignments[day] = '/';
-            }
-        });
-    });
-}
 
 // ============================================================
 // 3. ロジック実装 (ファイルの末尾に追加・置換)
@@ -2917,282 +2898,4 @@ async function clearRolesOnly() {
     }, 'bg-orange-500');
 }
 window.clearRolesOnly = clearRolesOnly;
-
-
-// --- ハイブリッド自動作成 (完全分離・単純人数合わせ・安全装置付き) ---
-async function executeHybridShiftLogic(targetGroup) {
-    const groupLabel = targetGroup === 'A' ? "早番(A)" : "遅番(B)";
-
-    showLoading();
-    pushHistory();
-
-    const updateLoadingText = (text) => {
-        const loadingEl = document.getElementById('shift-loading-overlay');
-        if (loadingEl) {
-            let textEl = loadingEl.querySelector('p');
-            if (!textEl) {
-                textEl = document.createElement('p');
-                textEl.className = "absolute mt-16 text-white font-bold text-lg drop-shadow-md";
-                loadingEl.appendChild(textEl);
-            }
-            textEl.textContent = text;
-        }
-    };
-
-    try {
-        const Y = shiftState.currentYear;
-        const M = shiftState.currentMonth;
-        const daysInMonth = new Date(Y, M, 0).getDate();
-        const holidays = getHolidays(Y, M);
-
-        // 1. 対象グループのリセット (聖域以外削除)
-        updateLoadingText(`${groupLabel}の既存シフトをクリア中...`);
-
-        const preservedRoles = ['公休', '有休', '特休'];
-        const allStaffNames = [
-            ...shiftState.staffListLists.employees,
-            ...shiftState.staffListLists.alba_early,
-            ...shiftState.staffListLists.alba_late
-        ];
-
-        // 対象スタッフ特定
-        const targetStaffNames = allStaffNames.filter(name => {
-            const details = shiftState.staffDetails[name] || {};
-            const settings = shiftState.shiftDataCache[name]?.monthly_settings || {};
-            const type = settings.shift_type || details.basic_shift || 'A';
-            return type === targetGroup;
-        });
-
-        if (targetStaffNames.length === 0) throw new Error(`${groupLabel}のスタッフが見つかりません。`);
-
-        targetStaffNames.forEach(name => {
-            const data = shiftState.shiftDataCache[name];
-            if (data && data.assignments) {
-                Object.keys(data.assignments).forEach(day => {
-                    const role = data.assignments[day];
-                    if (!preservedRoles.includes(role)) {
-                        delete data.assignments[day];
-                    }
-                });
-            }
-        });
-        renderShiftAdminTable();
-
-        // 2. 土台作成 (ルール通りに機械的に組む)
-        updateLoadingText(`${groupLabel}の土台を作成中...`);
-        await executeAutoShiftLogic(false, targetGroup);
-        renderShiftAdminTable();
-
-        // 3. AI最適化 (人数調整のみ)
-        updateLoadingText(`AI最適化中... (${groupLabel} 人数調整)`);
-
-        // コンテキスト準備
-        const fullContext = gatherFullShiftContext(Y, M, daysInMonth, holidays);
-
-        // ★修正: 対象グループだけのデータを作成 (相手のことは見せない・考えさせない)
-        const partialContext = {
-            meta: fullContext.meta,
-            staff: {}
-        };
-        targetStaffNames.forEach(name => {
-            if (fullContext.staff[name]) {
-                partialContext.staff[name] = fullContext.staff[name];
-            }
-        });
-
-        // ★厳格プロンプト: 「人数合わせ」と「ルール厳守」のみを指示
-        const prompt = `
-以下のシフトデータ(JSON)をもとに、修正版のシフト表を作成してください。
-【対象】**${groupLabel}** のスタッフのみ
-【期間】1日 〜 ${daysInMonth}日 (月全体)
-
-【あなたの唯一の任務】
-現在割り振られているシフト（"/" と "出勤"）を微調整し、**各日の出勤人数を目標（契約日数・定員）に可能な限り近づけること**です。
-他のシフト（${targetGroup === 'A' ? '遅番' : '早番'}）のことは一切考える必要はありません。
-
-【操作ルール】
-- 人数が足りない日： "/" を "出勤" に変更する。
-- 人数が多すぎる日： "出勤" を "/" に変更する。
-- **それ以外はいじるな。**
-
-【絶対厳守の制約（破ったらエラー）】
-1. **【役職禁止】** "金メ"、"倉庫" などの役職名は絶対に出力しないでください。全て "出勤" か "/" です。
-2. **【聖域死守】** "公休"、"有休"、"特休" は絶対に移動・変更しないでください。
-3. **【連勤ブロック】** いかなる理由があっても **6連勤以上（6日連続出勤）** は絶対に作らないでください。5連勤までです。
-4. **【契約上限】** 契約日数（contract_target）を超えて出勤させないでください。
-
-【出力形式】
-Markdownのコードブロックで囲ったJSON形式のみを出力してください。
-
-\`\`\`json
-{
-  "スタッフ名": { "1": "出勤", "2": "/", ... "31": "出勤" }
-}
-\`\`\`
-`;
-
-        // APIコール
-        const res = await fetch('/gemini', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prompt: prompt,
-                contextData: JSON.stringify(partialContext), // 絞り込んだデータ
-                mode: 'shift_hybrid',
-                stream: true
-            })
-        });
-
-        if (!res.ok) {
-            let errMsg = res.statusText;
-            try { const errJson = await res.json(); if (errJson.error) errMsg = errJson.error; } catch(e) {}
-            throw new Error(`AI生成エラー: ` + errMsg);
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let fullText = "";
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            fullText += decoder.decode(value, { stream: true });
-            updateLoadingText(`AI最適化中... (${groupLabel}: ${fullText.length}文字)`);
-        }
-        fullText += decoder.decode();
-
-        let jsonString = null;
-        const codeBlockMatch = fullText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-        if (codeBlockMatch) {
-            jsonString = codeBlockMatch[1];
-        } else {
-            const firstBrace = fullText.indexOf('{');
-            const lastBrace = fullText.lastIndexOf('}');
-            if (firstBrace !== -1) jsonString = fullText.substring(firstBrace, (lastBrace !== -1 && lastBrace > firstBrace) ? lastBrace + 1 : undefined);
-        }
-
-        if (jsonString) {
-            try {
-                let generatedShift;
-                try { generatedShift = JSON.parse(jsonString); }
-                catch (e) {
-                    try { generatedShift = JSON.parse(jsonString + "}"); }
-                    catch (e2) { generatedShift = JSON.parse(jsonString + "]}"); }
-                }
-
-                if (generatedShift) {
-                    const roleBlacklist = ['金メ', '金サブ', 'ホ責', '倉庫'];
-
-                    // 1. 適用 & サニタイズ (AIが役職を返してきても強制的に「出勤」にする)
-                    Object.keys(generatedShift).forEach(name => {
-                        const schedule = generatedShift[name];
-                        Object.keys(schedule).forEach(d => {
-                             if (roleBlacklist.includes(schedule[d])) {
-                                 schedule[d] = '出勤';
-                             }
-                        });
-                    });
-                    applyAiShiftResult(generatedShift);
-
-                    // 2. ★安全装置: 連勤 & 契約超過ブロッカー (最強版)
-                    targetStaffNames.forEach(name => {
-                        const assignments = shiftState.shiftDataCache[name]?.assignments || {};
-                        const details = shiftState.staffDetails[name] || {};
-                        const contractTarget = parseInt(details.contract_days || 20); // デフォルト20日
-
-                        // A. 連勤チェック & 削除
-                        let streak = 0;
-                        let workCount = 0; // 契約消化日数カウント (出勤+有休+特休)
-                        let workDayKeys = []; // 出勤日のリスト (削除候補用)
-
-                        // 1日から末日まで走査
-                        for (let d = 1; d <= daysInMonth; d++) {
-                            const role = assignments[d];
-
-                            // 契約日数カウント: 公休と '/' 以外はすべてカウント
-                            if (role && role !== '/' && role !== '公休') {
-                                workCount++;
-                                if (role === '出勤') workDayKeys.push(d); // 削除するのは「出勤」のみ（有休は消さない）
-                            }
-
-                            // 連勤カウント: 物理出勤のみ
-                            if (role && role !== '/' && role !== '公休' && role !== '有休' && role !== '特休') {
-                                streak++;
-                            } else {
-                                streak = 0;
-                            }
-
-                            if (streak >= 6) {
-                                console.warn(`🛡 Safety Brake: ${name} day ${d} removed (streak 6+)`);
-                                assignments[d] = '/';
-                                streak = 0;
-                                // 削除したのでカウントも減らす
-                                workCount--;
-                                workDayKeys = workDayKeys.filter(k => k !== d);
-                            }
-                        }
-
-                        // B. 契約超過チェック & 削除 (NEW!)
-                        if (workCount > contractTarget) {
-                            let removeCount = workCount - contractTarget;
-                            console.warn(`🛡 Contract Brake: ${name} is over by ${removeCount} days. Removing...`);
-
-                            // スマート削除: 「充足率（現在数/目標）」が高い日（余裕がある日）から優先的に削る
-                            workDayKeys.sort((d1, d2) => {
-                                const getCnt = (d) => {
-                                    // その日の出勤者数 (自分含む)
-                                    return Object.values(shiftState.shiftDataCache).filter(s => {
-                                        const r = s.assignments?.[d];
-                                        return r && r !== '/' && r !== '公休';
-                                    }).length;
-                                };
-                                const getTgt = (d) => {
-                                    const t = shiftState.shiftDataCache._daily_targets?.[d] || {};
-                                    // 自分のシフトタイプに応じたターゲットを取得したいが、
-                                    // ここでは簡易的に「その日のA/B合算」または「より厳しい方」を見る手もあるが、
-                                    // 安全策として「単純な人数」を見る（多い日＝余裕がある日とみなす）
-                                    // ※もし厳密にやるなら staffDetails から type を引く必要があるが、
-                                    // ここでは「人数が多い日 = 削っても痛くない日」という簡易ロジックで十分機能する。
-                                    return getCnt(d);
-                                };
-
-                                // シンプル版: 「その日の出勤人数」が多い順に消す
-                                // (ターゲット比で見ると複雑になるため、まずは人数ベースで実装)
-                                const count1 = getCnt(d1);
-                                const count2 = getCnt(d2);
-                                return count2 - count1; // 降順（多い日＝余裕ある日＝消す候補）
-                            });
-
-                            for (let i = 0; i < removeCount; i++) {
-                                if (workDayKeys[i]) {
-                                    assignments[workDayKeys[i]] = '/';
-                                    console.log(`   -> Removed day ${workDayKeys[i]} (Crowded day)`);
-                                }
-                            }
-                        }
-                    });
-                }
-            } catch (e) {
-                console.error("JSON Parse Error:", e);
-                throw new Error("AIの応答を解析できませんでした。");
-            }
-        } else {
-            throw new Error("AI応答からデータが見つかりませんでした。");
-        }
-
-        const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
-        await setDoc(doc(db, "shift_submissions", docId), shiftState.shiftDataCache, { merge: true });
-
-        renderShiftAdminTable();
-        showToast(`🤖 ${groupLabel} AI調整完了！`);
-
-    } catch (e) {
-        console.error("Hybrid Gen Error:", e);
-        alert(`${groupLabel} 作成エラー: ` + e.message);
-        undoShiftAction();
-    } finally {
-        hideLoading();
-        const loadingEl = document.getElementById('shift-loading-overlay');
-        if (loadingEl) { const textEl = loadingEl.querySelector('p'); if(textEl) textEl.remove(); }
-    }
-}
 window.shiftState = shiftState;
