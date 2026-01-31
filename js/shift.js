@@ -3136,14 +3136,23 @@ Markdownのコードブロックで囲ったJSON形式のみを出力してく�
                             let removeCount = workCount - contractTarget;
                             console.warn(`🛡 Contract Brake: ${name} is over by ${removeCount} days. Removing...`);
 
-                            // ランダムに削除候補(出勤日)をシャッフルして消す
-                            // ※有休は消さないように workDayKeys ('出勤'のみ) から選ぶ
-                            workDayKeys.sort(() => Math.random() - 0.5);
+                            // スマート削除: 出勤人数が多い日（余裕がある日）から優先的に削る
+                            workDayKeys.sort((d1, d2) => {
+                                const count1 = Object.values(shiftState.shiftDataCache).filter(s => {
+                                    const r = s.assignments?.[d1];
+                                    return r && r !== '/' && r !== '公休';
+                                }).length;
+                                const count2 = Object.values(shiftState.shiftDataCache).filter(s => {
+                                    const r = s.assignments?.[d2];
+                                    return r && r !== '/' && r !== '公休';
+                                }).length;
+                                return count2 - count1; // 降順
+                            });
 
                             for (let i = 0; i < removeCount; i++) {
                                 if (workDayKeys[i]) {
                                     assignments[workDayKeys[i]] = '/';
-                                    console.log(`   -> Removed day ${workDayKeys[i]}`);
+                                    console.log(`   -> Removed day ${workDayKeys[i]} (Crowded day)`);
                                 }
                             }
                         }
