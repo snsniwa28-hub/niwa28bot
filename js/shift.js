@@ -529,7 +529,6 @@ export function createShiftModals() {
 
 function setupShiftEventListeners() {
     $('#btn-shift-admin-login').onclick = checkShiftAdminPassword;
-    // $('#btn-close-shift-view').onclick = closeShiftModal; // Removed
     $('#btn-shift-cal-back').onclick = backToShiftList;
     $('#shift-prev-month').onclick = () => changeShiftMonth(-1);
     $('#shift-next-month').onclick = () => changeShiftMonth(1);
@@ -544,11 +543,25 @@ function setupShiftEventListeners() {
     $('#btn-undo-action').onclick = undoShiftAction;
     $('#btn-clear-shift').onclick = clearShiftAssignments;
     $('#btn-mobile-clear').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); clearShiftAssignments(); };
-    $('#btn-shift-settings').onclick = () => document.getElementById('auto-shift-settings-modal').classList.remove('hidden');
-    $('#btn-mobile-settings').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); document.getElementById('auto-shift-settings-modal').classList.remove('hidden'); };
 
-    // New AI Buttons
-    // AI廃止 -> 高速ロジックへ直結 (executeAutoShiftLogic(isPreview, targetGroup))
+    // ★新機能: 出勤のみクリア
+    $('#btn-clear-work-only').onclick = clearWorkOnly;
+
+    // ★修正1: 設定画面を開く時に、裏の状態(ON/OFF)をチェックボックスに反映させる
+    const openSettings = () => {
+        const s = shiftState.autoShiftSettings;
+        if(document.getElementById('chk-as-money')) document.getElementById('chk-as-money').checked = s.money;
+        if(document.getElementById('chk-as-warehouse')) document.getElementById('chk-as-warehouse').checked = s.warehouse;
+        if(document.getElementById('chk-as-hall-resp')) document.getElementById('chk-as-hall-resp').checked = s.hall_resp;
+        if(document.getElementById('chk-early-warehouse-auto')) document.getElementById('chk-early-warehouse-auto').checked = shiftState.earlyWarehouseMode;
+
+        document.getElementById('auto-shift-settings-modal').classList.remove('hidden');
+    };
+
+    $('#btn-shift-settings').onclick = openSettings;
+    $('#btn-mobile-settings').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); openSettings(); };
+
+    // AIボタン -> 高速ロジックへ直結 (executeAutoShiftLogic)
     $('#btn-ai-early').onclick = () => { if(validateTargets('A')) executeAutoShiftLogic(true, 'A'); };
     $('#btn-ai-late').onclick = () => { if(validateTargets('B')) executeAutoShiftLogic(true, 'B'); };
     $('#btn-mobile-ai-early').onclick = () => { if(validateTargets('A')) { $('#mobile-admin-menu').classList.add('hidden'); executeAutoShiftLogic(true, 'A'); } };
@@ -561,7 +574,6 @@ function setupShiftEventListeners() {
     $('#chk-as-warehouse').onchange = (e) => { shiftState.autoShiftSettings.warehouse = e.target.checked; };
     $('#chk-as-hall-resp').onchange = (e) => { shiftState.autoShiftSettings.hall_resp = e.target.checked; };
 
-    $('#btn-clear-work-only').onclick = clearWorkOnly;
     $('#btn-clear-roles-only').onclick = clearRolesOnly;
 
     $('#btn-add-staff').onclick = () => openStaffEditModal(null);
@@ -570,13 +582,12 @@ function setupShiftEventListeners() {
     $('#btn-save-daily-target').onclick = saveDailyTarget;
     $('#chk-early-warehouse-auto').onchange = (e) => { shiftState.earlyWarehouseMode = e.target.checked; };
 
-    // Event Delegation for Shift Admin Table
+    // Event Delegation
     const adminBody = document.getElementById('shift-admin-body');
     if(adminBody) {
         adminBody.onclick = (e) => {
             const td = e.target.closest('td');
             if(!td) return;
-            // Handle Staff Name Click (Note)
             if(td.dataset.type === 'name-cell') {
                 const name = td.dataset.name;
                 const remarks = td.dataset.remarks;
@@ -584,7 +595,6 @@ function setupShiftEventListeners() {
                 showAdminNoteModal(name, remarks, dailyRemarks);
                 return;
             }
-            // Handle Shift Cell Click
             if(td.dataset.type === 'shift-cell') {
                 const day = parseInt(td.dataset.day);
                 const name = td.dataset.name;
@@ -595,11 +605,14 @@ function setupShiftEventListeners() {
                 }
                 return;
             }
-            // Handle Daily Target Cell Click (Footer)
             if(td.dataset.type === 'target-cell') {
                 const day = parseInt(td.dataset.day);
-                if(day) openDailyTargetModal(day);
-                return;
+                const type = td.dataset.targetType;
+                if(day && type) {
+                    openDailyTargetModal(day, type);
+                } else if (day) {
+                    openDailyTargetModal(day);
+                }
             }
         };
     }
@@ -1853,26 +1866,40 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
             // 複数回パスを通して徐々に埋める（3回くらい回せば平均化される）
             for(let pass=0; pass<3; pass++) {
 
-                // ★修正3: ①土日祝優先 ②充足率が低い順
+                // ★修正: 運ゲー排除。「土日祝」＞「希少性」＞「充足率」＞「均等分散」
                 sortedDays.sort((a, b) => {
                     const tA = getTarget(a, st);
                     const tB = getTarget(b, st);
                     if (tA === 0) return 1;
                     if (tB === 0) return -1;
 
-                    // 日付情報の取得
                     const dateA = new Date(Y, M - 1, a);
                     const dateB = new Date(Y, M - 1, b);
                     const isWeHolA = (dateA.getDay() === 0 || dateA.getDay() === 6 || holidays.includes(a));
                     const isWeHolB = (dateB.getDay() === 0 || dateB.getDay() === 6 || holidays.includes(b));
 
-                    // 優先順位1: 土日祝 (Trueなら前へ)
+                    // ①【最優先】 土日祝 (絶対確保)
                     if (isWeHolA !== isWeHolB) return isWeHolA ? -1 : 1;
 
-                    // 優先順位2: 充足率 (低い順)
+                    // ②【希少性】 その日に「働けるスタッフ」が少ない日を優先
+                    // (希望休が多い日などを先に埋めないと、後で人が足りなくなる)
+                    const potentialA = staffObjects.filter(s => s.shiftType === st && canAssign(s, a)).length;
+                    const potentialB = staffObjects.filter(s => s.shiftType === st && canAssign(s, b)).length;
+                    if (potentialA !== potentialB) return potentialA - potentialB; // 少ない方が先
+
+                    // ③【充足率】 まだシフトが埋まっていない日を優先
                     const cA = staffObjects.filter(s => s.shiftType === st && s.physicalWorkDays.includes(a)).length;
                     const cB = staffObjects.filter(s => s.shiftType === st && s.physicalWorkDays.includes(b)).length;
-                    return (cA / tA) - (cB / tB);
+                    const rateA = cA / tA;
+                    const rateB = cB / tB;
+                    if (Math.abs(rateA - rateB) > 0.01) return rateA - rateB; // 低い方が先
+
+                    // ④【均等分散】 カレンダー順ではなく「飛び石」で埋める (運ゲー回避)
+                    // 素数(7など)を使ってインデックスを散らす
+                    // 例: 1, 8, 15, 22... のように処理順が月全体にバラける
+                    const scatterA = (a * 7) % daysInMonth;
+                    const scatterB = (b * 7) % daysInMonth;
+                    return scatterA - scatterB;
                 });
 
                 sortedDays.forEach(d => {
