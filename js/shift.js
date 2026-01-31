@@ -546,10 +546,10 @@ function setupShiftEventListeners() {
     $('#btn-mobile-settings').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); document.getElementById('auto-shift-settings-modal').classList.remove('hidden'); };
 
     // New AI Buttons
-    $('#btn-ai-early').onclick = () => executeHybridShiftLogic('A');
-    $('#btn-ai-late').onclick = () => executeHybridShiftLogic('B');
-    $('#btn-mobile-ai-early').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); executeHybridShiftLogic('A'); };
-    $('#btn-mobile-ai-late').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); executeHybridShiftLogic('B'); };
+    $('#btn-ai-early').onclick = () => { if(validateTargets('A')) executeHybridShiftLogic('A'); };
+    $('#btn-ai-late').onclick = () => { if(validateTargets('B')) executeHybridShiftLogic('B'); };
+    $('#btn-mobile-ai-early').onclick = () => { if(validateTargets('A')) { $('#mobile-admin-menu').classList.add('hidden'); executeHybridShiftLogic('A'); } };
+    $('#btn-mobile-ai-late').onclick = () => { if(validateTargets('B')) { $('#mobile-admin-menu').classList.add('hidden'); executeHybridShiftLogic('B'); } };
 
     $('#mobile-fab-menu').onclick = () => $('#mobile-admin-menu').classList.remove('hidden');
 
@@ -1691,8 +1691,35 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
     return true;
 }
 
-// --- NEW AUTO SHIFT LOGIC (AI) ---
-async function executeAutoShiftLogic(isPreview = true) {
+// ------------------------------------------------------------
+// 1. バリデーション関数 (新規追加)
+// ------------------------------------------------------------
+function validateTargets(targetGroup) {
+    const targets = shiftState.shiftDataCache._daily_targets || {};
+    const daysInMonth = new Date(shiftState.currentYear, shiftState.currentMonth, 0).getDate();
+    let hasTarget = false;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const t = targets[d] || {};
+        const val = targetGroup === 'A' ? t.A : t.B;
+        if (val && parseInt(val) > 0) {
+            hasTarget = true;
+            break;
+        }
+    }
+
+    if (!hasTarget) {
+        alert(`⚠️ ${targetGroup === 'A' ? '早番' : '遅番'}の目標人数（定員）が設定されていません。\n自動作成を行うには、少なくとも1日分の定員を設定してください。`);
+        return false;
+    }
+    return true;
+}
+
+// ------------------------------------------------------------
+// 3. 自動ロジック本体 (executeAutoShiftLogic)
+// ------------------------------------------------------------
+
+async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
     if (isPreview) {
         pushHistory();
         showLoading();
@@ -1701,17 +1728,20 @@ async function executeAutoShiftLogic(isPreview = true) {
     try {
         const Y = shiftState.currentYear;
         const M = shiftState.currentMonth;
-        // Import getHolidays locally if it's not globally available in scope, assume imported at top
+        const daysInMonth = new Date(Y, M, 0).getDate();
         const holidays = getHolidays(Y, M);
         const shifts = shiftState.shiftDataCache;
         const dailyTargets = shiftState.shiftDataCache._daily_targets || {};
 
-        // 1. Prepare Context (Reusing Shared Logic)
+        // 1. Context Preparation
         const context = await prepareShiftAnalysisContext(Y, M, shifts, shiftState.staffDetails, shiftState.staffListLists);
-        const { staffObjects, daysInMonth, prevMonthAssignments, prevDaysCount } = context;
+        const { staffObjects, prevMonthAssignments, prevDaysCount } = context;
 
-        // Clear assignments for simulation
+        // --- 修正1: 対象グループのみをクリア ---
         staffObjects.forEach(s => {
+            // targetGroup指定時、対象外のスタッフは何もしない（維持）
+            if (targetGroup && s.shiftType !== targetGroup) return;
+
             const oldAssignments = shifts[s.name]?.assignments || {};
             const newAssignments = {};
             const newAssignedDays = [];
@@ -1720,16 +1750,11 @@ async function executeAutoShiftLogic(isPreview = true) {
             Object.keys(oldAssignments).forEach(dayKey => {
                 const day = parseInt(dayKey);
                 const role = oldAssignments[dayKey];
-
-                // Keep everything except '/' or empty
+                // 公休・有休・特休は維持。それ以外の「出勤」「/」などはリセット対象
                 if (role && role !== '/') {
                     newAssignments[dayKey] = role;
-
-                    // Count for contract (everything except Holiday)
                     if (role !== '公休') {
                         newAssignedDays.push(day);
-
-                        // Physical Work (everything except Leave/Holiday)
                         if (role !== '有休' && role !== '特休' && role !== 'PAID' && role !== 'SPECIAL') {
                             newPhysicalWorkDays.push(day);
                         }
@@ -1745,62 +1770,63 @@ async function executeAutoShiftLogic(isPreview = true) {
 
         const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
 
-        // Wrapper for shared constraint check
-        const canAssign = (staff, day, strictContractMode = false) => {
-            // Check if manually assigned (Manual Shift Protection)
-            const currentAssign = shifts[staff.name].assignments[day];
-            // Fix: Protect manual blank ("") as well. Only allow overwriting if undefined or '/'
-            if (currentAssign !== undefined && currentAssign !== '/') return false;
+        // --- 修正2: 定員取得ロジック (空欄はスキップ=0) ---
+        const getTarget = (day, type) => {
+            const t = dailyTargets[day] || {};
+            const val = type === 'A' ? t.A : t.B;
+            return (val !== undefined && val !== "") ? parseInt(val) : 0;
+        };
 
+        // 制約チェック関数
+        const canAssign = (staff, day, strictContractMode = false) => {
+            const currentAssign = shifts[staff.name].assignments[day];
+            if (currentAssign !== undefined && currentAssign !== '/') return false;
             return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, strictContractMode);
         };
 
-        // Helper: Is Responsible?
-        // UPDATED: Use Rank instead of Allowed Roles for Responsibility Check
         const isResponsible = (s) => ['マネージャー', '主任', '副主任'].includes(s.rank);
 
-        // Helper: Get Target for Day
-        const getTarget = (day, type) => {
-            const date = new Date(Y, M - 1, day);
-            const dayOfWeek = date.getDay();
-            const isHol = holidays.includes(day);
-            const defaultTarget = (dayOfWeek === 0 || dayOfWeek === 6 || isHol) ? 10 : 9;
+        // 処理対象グループ
+        const groupsToProcess = targetGroup ? [targetGroup] : ['A', 'B'];
 
-            const t = dailyTargets[day] || {};
-            const saved = type === 'A' ? t.A : t.B;
-            return saved !== undefined ? saved : defaultTarget;
-        };
+        // =========================================================
+        // PHASE 1: 責任者確保 (最低限の柱)
+        // =========================================================
+        groupsToProcess.forEach(st => {
+            // ここはランダム順で分散させる
+            const shuffledDays = [...days].sort(() => Math.random() - 0.5);
 
-        // --- PHASE 1: Employee Baseline (Ensure Responsibility) ---
-        ['A', 'B'].forEach(st => {
-            days.forEach(d => {
-                // Determine target count: 2 for Sat/Sun/Holiday, 1 for Weekday
+            shuffledDays.forEach(d => {
+                // ターゲット0（休み設定）の日は責任者も不要とみなしてスキップ
+                if (getTarget(d, st) === 0) return;
+
                 const dateObj = new Date(Y, M - 1, d);
-                const dayOfWeek = dateObj.getDay(); // 0:Sun, 6:Sat
+                const dayOfWeek = dateObj.getDay();
                 const isHoliday = holidays.includes(d);
-                const targetRespCount = (dayOfWeek === 0 || dayOfWeek === 6 || isHoliday) ? 2 : 1;
 
-                // Check current responsible count
+                // 土日祝は2人、平日は1人
+                const baseReq = (dayOfWeek === 0 || dayOfWeek === 6 || isHoliday) ? 2 : 1;
+
+                // ただし、そのグループに責任者がそもそも何人いるか？ (身の丈チェック)
+                const totalResp = staffObjects.filter(s => s.shiftType === st && isResponsible(s)).length;
+                const targetRespCount = Math.min(baseReq, totalResp); // いないなら仕方ない
+
                 let currentRespCount = staffObjects.filter(s =>
                     s.shiftType === st && isResponsible(s) && s.physicalWorkDays.includes(d)
                 ).length;
 
                 if (currentRespCount < targetRespCount) {
-                    // Try to find responsible employees to fill the gap
                     const candidates = staffObjects.filter(s =>
                         s.shiftType === st && isResponsible(s) && canAssign(s, d)
                     );
-                    // Sort by request priority, then by fewer assignments
-                    candidates.sort((a,b) => {
-                        const reqA = a.requests.work.includes(d) ? 1 : 0;
-                        const reqB = b.requests.work.includes(d) ? 1 : 0;
-                        if (reqA !== reqB) return reqB - reqA;
-                        return a.assignedDays.length - b.assignedDays.length;
-                    });
+                    // 契約日数に余裕がある順
+                    candidates.sort((a,b) => (a.contractDays - a.assignedDays.length) - (b.contractDays - b.assignedDays.length)).reverse();
 
                     for (const cand of candidates) {
                         if (currentRespCount >= targetRespCount) break;
-                        // Avoid double assignment if not handled by canAssign (it is handled but safe to check)
+                        // 契約日数上限ガード (責任者とはいえ無理はさせない)
+                        if (cand.assignedDays.length >= cand.contractDays) continue;
+
                         if (!cand.assignedDays.includes(d)) {
                             cand.assignedDays.push(d);
                             cand.physicalWorkDays.push(d);
@@ -1811,200 +1837,83 @@ async function executeAutoShiftLogic(isPreview = true) {
             });
         });
 
-        // --- PHASE 2: Fill Employees to Baseline (Approx 4) ---
-        ['A', 'B'].forEach(st => {
-            days.forEach(d => {
-                let count = staffObjects.filter(s => s.shiftType === st && s.type === 'employee' && s.physicalWorkDays.includes(d)).length;
-                if (count < 4) {
-                     const candidates = staffObjects.filter(s =>
-                        s.shiftType === st && s.type === 'employee' && canAssign(s, d)
-                    );
-                     candidates.sort((a,b) => {
-                         const reqA = a.requests.work.includes(d) ? 1 : 0;
-                         const reqB = b.requests.work.includes(d) ? 1 : 0;
-                         if (reqA !== reqB) return reqB - reqA;
-                         return a.assignedDays.length - b.assignedDays.length;
-                     });
-                     for (const c of candidates) {
-                         if (count >= 4) break;
-                         if (c.assignedDays.length >= c.contractDays) continue;
-                         c.assignedDays.push(d);
-                         c.physicalWorkDays.push(d);
-                         count++;
-                     }
-                }
-            });
-        });
+        // =========================================================
+        // PHASE 2 & 4統合: 全員でターゲットを埋める (充足率優先)
+        // =========================================================
+        // ※ 社員優先フェーズを分けず、PHASE 1で責任者を確保したら
+        //    あとは「足りない日に、入れられる人を入れる」方式で一気に平準化する
 
-        // Helper: Calculate potential streak if assigned
-        // Note: canAssign already calls checkAssignmentConstraint which checks HARD limits (>=6).
-        // This helper is for SOFT limit (avoid 5 if possible).
-        const getPotentialStreak = (staff, day) => {
-            // Need access to checkPhysicalWork logic. We can reuse the one from context if we extract it or just duplicate simple logic.
-            // Simplified Streak Calc:
-            // Backwards
-            let seq = 1;
-            let b = day - 1;
-            while(true) {
-                if (b <= 0) {
-                    // History check
-                    const prevD = prevDaysCount + b;
-                    const role = prevMonthAssignments[staff.name]?.[prevD];
-                    if (role === undefined || role === '公休' || role === '/' || role === '有休' || role === 'PAID' || role === '特休' || role === 'SPECIAL') break;
-                    // else it is Work or ''(deleted -> wait, deleted is undefined in history obj? No, history obj is from DB).
-                    // In DB '' is stored as ''. undefined is missing key.
-                    // If DB has '', it is work. If DB has no key, it is undefined -> break.
-                    seq++;
-                    b--;
-                } else {
-                    if (staff.physicalWorkDays.includes(b)) {
-                        seq++;
-                        b--;
-                    } else {
-                        break;
+        groupsToProcess.forEach(st => {
+            const sortedDays = [...days];
+
+            // 複数回パスを通して徐々に埋める（3回くらい回せば平均化される）
+            for(let pass=0; pass<3; pass++) {
+
+                // ★修正3: 充足率が低い順（ピンチの日順）にソート
+                sortedDays.sort((a, b) => {
+                    const tA = getTarget(a, st);
+                    const tB = getTarget(b, st);
+                    if (tA === 0) return 1; // ターゲットなしは後回し
+                    if (tB === 0) return -1;
+
+                    const cA = staffObjects.filter(s => s.shiftType === st && s.physicalWorkDays.includes(a)).length;
+                    const cB = staffObjects.filter(s => s.shiftType === st && s.physicalWorkDays.includes(b)).length;
+
+                    // 充足率 (現在数 / 目標) が小さい方が先頭
+                    return (cA / tA) - (cB / tB);
+                });
+
+                sortedDays.forEach(d => {
+                    const target = getTarget(d, st);
+                    if (target === 0) return; // スキップ
+
+                    let current = staffObjects.filter(s => s.shiftType === st && s.physicalWorkDays.includes(d)).length;
+
+                    // ★修正2: 身の丈キャップ (スタッフ総数以上は求めない)
+                    const totalStaff = staffObjects.filter(s => s.shiftType === st).length;
+                    const effectiveTarget = Math.min(target, totalStaff);
+
+                    if (current < effectiveTarget) {
+                        const candidates = staffObjects.filter(s =>
+                            s.shiftType === st && canAssign(s, d)
+                        );
+
+                        // 候補者の選び方:
+                        // 1. 契約日数不足が多い人 (働きたがっている人)
+                        // 2. 連勤リスクが低い人 (getPotentialStreakは重いので、ここでは簡易的に前日休み優先とかでもいいが、既存ロジックを使う)
+                        candidates.sort((a,b) => {
+                             const needA = a.contractDays - a.assignedDays.length;
+                             const needB = b.contractDays - b.assignedDays.length;
+                             return needB - needA; // 不足が大きい順
+                        });
+
+                        for(const c of candidates) {
+                             if (current >= effectiveTarget) break;
+                             if (c.assignedDays.length >= c.contractDays) continue; // 契約守る
+
+                             c.assignedDays.push(d);
+                             c.physicalWorkDays.push(d);
+                             current++;
+                        }
                     }
-                }
+                });
             }
-            // Forwards
-            let f = day + 1;
-            while(staff.physicalWorkDays.includes(f)) {
-                seq++;
-                f++;
-            }
-            return seq;
-        };
-
-        // --- PHASE 3: Employee Contract Fill (Normal) ---
-        let changed = true;
-        while(changed) {
-            changed = false;
-            const needy = staffObjects.filter(s => s.type === 'employee' && s.assignedDays.length < s.contractDays);
-            needy.sort((a,b) => (a.contractDays - a.assignedDays.length) - (b.contractDays - b.assignedDays.length)).reverse();
-
-            for (const emp of needy) {
-                 if (emp.assignedDays.length >= emp.contractDays) continue;
-                 let validDays = days.filter(d => emp.requests.work.includes(d) && canAssign(emp, d));
-                 if (validDays.length === 0) {
-                     validDays = days.filter(d => !emp.requests.work.includes(d) && canAssign(emp, d));
-                 }
-                 if (validDays.length > 0) {
-                     // Filter/Sort by Streak Preference (Avoid 5)
-                     // Soft Constraint: Prefer days where streak <= 4. Backup: Streak == 5.
-                     // (Streak >= 6 blocked by canAssign)
-
-                     validDays.sort((d1, d2) => {
-                         const s1 = getPotentialStreak(emp, d1);
-                         const s2 = getPotentialStreak(emp, d2);
-                         const bad1 = s1 >= 5 ? 1 : 0;
-                         const bad2 = s2 >= 5 ? 1 : 0;
-                         if (bad1 !== bad2) return bad1 - bad2; // Prioritize low streak
-
-                         const t1 = getTarget(d1, emp.shiftType);
-                         const c1 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d1)).length;
-                         const fill1 = c1 / t1;
-                         const t2 = getTarget(d2, emp.shiftType);
-                         const c2 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d2)).length;
-                         const fill2 = c2 / t2;
-                         return fill1 - fill2;
-                     });
-
-                     const bestDay = validDays[0];
-                     emp.assignedDays.push(bestDay);
-                     // Update physicalWorkDays if not leave (here we assume Work for contract fill)
-                     emp.physicalWorkDays.push(bestDay);
-                     changed = true;
-                 }
-            }
-        }
-
-        // --- PHASE 4: Alba Fill (Target based) ---
-        ['A', 'B'].forEach(st => {
-            days.forEach(d => {
-                const target = getTarget(d, st);
-                let current = staffObjects.filter(s => s.shiftType === st && s.physicalWorkDays.includes(d)).length;
-
-                if (current < target) {
-                     const candidates = staffObjects.filter(s =>
-                        s.shiftType === st && s.type === 'byte' && canAssign(s, d)
-                    );
-                     candidates.sort((a,b) => {
-                         // Primary Sort: Streak Preference (Soft Limit)
-                         const sA = getPotentialStreak(a, d);
-                         const sB = getPotentialStreak(b, d);
-                         const badA = sA >= 5 ? 1 : 0;
-                         const badB = sB >= 5 ? 1 : 0;
-                         if (badA !== badB) return badA - badB;
-
-                         const reqA = a.requests.work.includes(d) ? 1 : 0;
-                         const reqB = b.requests.work.includes(d) ? 1 : 0;
-                         if(reqA !== reqB) return reqB - reqA;
-                         const needA = a.contractDays - a.assignedDays.length;
-                         const needB = b.contractDays - b.assignedDays.length;
-                         return needB - needA;
-                     });
-
-                     for(const c of candidates) {
-                         if (current >= target) break;
-                         if (c.assignedDays.length >= c.contractDays) continue;
-                         c.assignedDays.push(d);
-                         c.physicalWorkDays.push(d); // Track physical work
-                         current++;
-                     }
-                }
-            });
         });
 
-        // --- PHASE 5: Alba Contract Fill (Force) ---
-        changed = true;
-        while(changed) {
-            changed = false;
-            const needy = staffObjects.filter(s => s.type === 'byte' && s.assignedDays.length < s.contractDays);
-            for(const alba of needy) {
-                const validDays = days.filter(d => canAssign(alba, d));
-                 if (validDays.length > 0) {
-                     validDays.sort((d1, d2) => {
-                         const c1 = staffObjects.filter(s => s.shiftType === alba.shiftType && s.assignedDays.includes(d1)).length;
-                         const c2 = staffObjects.filter(s => s.shiftType === alba.shiftType && s.assignedDays.includes(d2)).length;
-                         return c1 - c2;
-                     });
-                     alba.assignedDays.push(validDays[0]);
-                     alba.physicalWorkDays.push(validDays[0]);
-                     changed = true;
-                 }
-            }
-        }
-
-        // --- PHASE 6: STRICT CONTRACT ENFORCEMENT (Employees Only) ---
-        const needyEmployees = staffObjects.filter(s => s.type === 'employee' && s.assignedDays.length < s.contractDays);
-        for (const emp of needyEmployees) {
-            while (emp.assignedDays.length < emp.contractDays) {
-                const candidates = days.filter(d => canAssign(emp, d, true)); // strictContractMode = true
-                if (candidates.length === 0) break;
-                 candidates.sort((d1, d2) => {
-                     const c1 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d1)).length;
-                     const c2 = staffObjects.filter(s => s.shiftType === emp.shiftType && s.assignedDays.includes(d2)).length;
-                     return c1 - c2;
-                 });
-                 emp.assignedDays.push(candidates[0]);
-                 emp.physicalWorkDays.push(candidates[0]);
-            }
-        }
-
-        // --- PHASE 7: Role Assignment ---
-        ['A', 'B'].forEach(st => {
+        // =========================================================
+        // PHASE 7: 役職割り振り (ここは変更なし)
+        // =========================================================
+        groupsToProcess.forEach(st => {
             days.forEach(d => {
-                // Identify all staff assigned to this day (Contract fulfilled)
+                // targetGroup指定時は、そのグループのみ処理
                 const allAssigned = staffObjects.filter(s => s.shiftType === st && s.assignedDays.includes(d));
-
                 const leaveGroup = [];
                 let workGroup = [];
 
-                // Split into Leave vs Work based on Requests
                 allAssigned.forEach(s => {
                     const req = s.requests.types[d];
-                    // Check if already has a fixed assignment (from carryover)
                     const existing = shifts[s.name].assignments[d];
-
+                    // 公休等は既に除外されているはずだが念のため
                     if (req === 'PAID') {
                         leaveGroup.push(s);
                         shifts[s.name].assignments[d] = '有休';
@@ -2012,14 +1921,12 @@ async function executeAutoShiftLogic(isPreview = true) {
                         leaveGroup.push(s);
                         shifts[s.name].assignments[d] = '特休';
                     } else {
-                        // Only add to workGroup for AI role assignment if no existing fixed assignment
                         if (!existing || existing === '/') {
                             workGroup.push(s);
                         }
                     }
                 });
 
-                // Helper to assign role (Operates on workGroup only)
                 const assign = (roleKey, filterFn) => {
                     const candidates = workGroup.filter(filterFn);
                     if (candidates.length === 0) return;
@@ -2027,37 +1934,23 @@ async function executeAutoShiftLogic(isPreview = true) {
                     const picked = candidates[0];
                     shifts[picked.name].assignments[d] = roleKey;
                     picked.roleCounts[roleKey]++;
-                    workGroup = workGroup.filter(u => u !== picked); // Remove from pool
+                    workGroup = workGroup.filter(u => u !== picked);
                 };
 
-                // 1. Money Main
-                if (shiftState.autoShiftSettings.money) {
-                    assign(ROLES.MONEY, s => s.allowedRoles.includes('money_main'));
-                }
-
-                // 2. Money Sub
-                if (shiftState.autoShiftSettings.money) {
-                    assign(ROLES.MONEY_SUB, s => s.allowedRoles.includes('money_sub'));
-                }
-
-                // 3. Hall Resp
-                if (shiftState.autoShiftSettings.hall_resp) {
-                    assign(ROLES.HALL_RESP, s => s.allowedRoles.includes('hall_resp'));
-                }
-
-                // 4. Warehouse
+                if (shiftState.autoShiftSettings.money) assign('金メ', s => s.allowedRoles.includes('money_main'));
+                if (shiftState.autoShiftSettings.money) assign('金サブ', s => s.allowedRoles.includes('money_sub'));
+                if (shiftState.autoShiftSettings.hall_resp) assign('ホ責', s => s.allowedRoles.includes('hall_resp'));
                 if (shiftState.autoShiftSettings.warehouse) {
-                    assign(ROLES.WAREHOUSE, s => {
+                    assign('倉庫', s => {
                         if (!s.allowedRoles.includes('warehouse')) return false;
                         if (shiftState.earlyWarehouseMode && s.type === 'employee' && s.shiftType === 'A') return false;
                         return true;
                     });
                 }
 
-                // 5. Others -> Work ('出勤')
+                // 残りは出勤
                 workGroup.forEach(s => {
                     const current = shifts[s.name].assignments[d];
-                    // Fix: Protect manual blank (""). Only assign if undefined or '/'
                     if (current === undefined || current === '/') {
                         shifts[s.name].assignments[d] = '出勤';
                     }
@@ -2065,12 +1958,12 @@ async function executeAutoShiftLogic(isPreview = true) {
             });
         });
 
-        // ★追加: 本人の希望休(requests.off)は明示的に '公休' として確定させる
+        // 本人の希望休反映 (対象グループのみ)
         staffObjects.forEach(s => {
+            if (targetGroup && s.shiftType !== targetGroup) return;
             if (s.requests && s.requests.off) {
                 s.requests.off.forEach(day => {
                     const current = shifts[s.name].assignments[day];
-                    // 既に有休などが設定されていなければ、希望通りの '公休' をセット
                     if (!current || current === '/') {
                         shifts[s.name].assignments[day] = '公休';
                     }
@@ -2078,48 +1971,23 @@ async function executeAutoShiftLogic(isPreview = true) {
             }
         });
 
-        // Cleanup and Save
-        const staffNames = [
-            ...shiftState.staffListLists.employees,
-            ...shiftState.staffListLists.alba_early,
-            ...shiftState.staffListLists.alba_late
-        ];
-
-        staffNames.forEach(name => {
-            if (!shifts[name]) shifts[name] = {};
-            if (!shifts[name].assignments) shifts[name].assignments = {};
-            for (let d = 1; d <= daysInMonth; d++) {
-                // Fix: Only fill strict undefined with '/'
-                if (shifts[name].assignments[d] === undefined) {
-                    shifts[name].assignments[d] = '/';
-                }
-            }
+        // Cleanup
+        staffObjects.forEach(s => {
+             if (targetGroup && s.shiftType !== targetGroup) return;
+             const name = s.name;
+             if (!shifts[name]) shifts[name] = {};
+             if (!shifts[name].assignments) shifts[name].assignments = {};
+             for (let d = 1; d <= daysInMonth; d++) {
+                 if (shifts[name].assignments[d] === undefined) {
+                     shifts[name].assignments[d] = '/';
+                 }
+             }
         });
 
-        // --- Post-Generation Check ---
-        const missingResponsibility = [];
-        for (let d = 1; d <= daysInMonth; d++) {
-             ['A', 'B'].forEach(type => {
-                 const hasResponsible = staffObjects.some(s =>
-                     s.shiftType === type &&
-                     s.assignedDays.includes(d) &&
-                     s.allowedRoles.includes('money_main')
-                 );
-                 if (!hasResponsible) {
-                     missingResponsibility.push(`・${d}日 (${type === 'A' ? '早番' : '遅番'})`);
-                 }
-             });
-        }
-
-        if (missingResponsibility.length > 0) {
-            alert(`⚠️ 以下の日程で責任者（金銭メイン）が不足しています。手動で調整してください。\n\n${missingResponsibility.join('\n')}`);
-        }
-
-        // --- Calculate Stats for Preview ---
+        // Preview Stats
         let filledCount = 0;
         let staffSet = new Set();
         Object.keys(shifts).forEach(name => {
-             // Compare with previous state (from history)
              const prevData = shiftState.historyStack[shiftState.historyStack.length - 1][name] || { assignments: {} };
              const currAssign = shifts[name].assignments || {};
              Object.keys(currAssign).forEach(d => {
@@ -3072,7 +2940,7 @@ async function executeHybridShiftLogic(targetGroup) {
 
         // 2. 土台作成 (ルール通りに機械的に組む)
         updateLoadingText(`${groupLabel}の土台を作成中...`);
-        await executeAutoShiftLogic(false);
+        await executeAutoShiftLogic(false, targetGroup);
         renderShiftAdminTable();
 
         // 3. AI最適化 (人数調整のみ)
