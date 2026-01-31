@@ -194,6 +194,8 @@ export function createShiftModals() {
                 <div class="hidden md:flex p-3 bg-white border-t border-slate-200 justify-end gap-3 shrink-0">
                     <button id="btn-clear-shift" class="text-xs font-bold text-rose-600 hover:bg-rose-50 px-4 py-2 rounded-lg border border-rose-200 transition">🗑️ 全クリア</button>
 
+                    <button id="btn-clear-work-only" class="text-xs font-bold text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-lg border border-orange-200 transition">🧹 出勤のみクリア</button>
+
                     <button id="btn-clear-roles-only" class="text-xs font-bold text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-lg border border-orange-200 transition">🧹 役職のみクリア</button>
 
                     <button id="btn-shift-settings" class="text-xs font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition flex items-center gap-2">
@@ -559,6 +561,7 @@ function setupShiftEventListeners() {
     $('#chk-as-warehouse').onchange = (e) => { shiftState.autoShiftSettings.warehouse = e.target.checked; };
     $('#chk-as-hall-resp').onchange = (e) => { shiftState.autoShiftSettings.hall_resp = e.target.checked; };
 
+    $('#btn-clear-work-only').onclick = clearWorkOnly;
     $('#btn-clear-roles-only').onclick = clearRolesOnly;
 
     $('#btn-add-staff').onclick = () => openStaffEditModal(null);
@@ -1850,17 +1853,25 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
             // 複数回パスを通して徐々に埋める（3回くらい回せば平均化される）
             for(let pass=0; pass<3; pass++) {
 
-                // ★修正3: 充足率が低い順（ピンチの日順）にソート
+                // ★修正3: ①土日祝優先 ②充足率が低い順
                 sortedDays.sort((a, b) => {
                     const tA = getTarget(a, st);
                     const tB = getTarget(b, st);
-                    if (tA === 0) return 1; // ターゲットなしは後回し
+                    if (tA === 0) return 1;
                     if (tB === 0) return -1;
 
+                    // 日付情報の取得
+                    const dateA = new Date(Y, M - 1, a);
+                    const dateB = new Date(Y, M - 1, b);
+                    const isWeHolA = (dateA.getDay() === 0 || dateA.getDay() === 6 || holidays.includes(a));
+                    const isWeHolB = (dateB.getDay() === 0 || dateB.getDay() === 6 || holidays.includes(b));
+
+                    // 優先順位1: 土日祝 (Trueなら前へ)
+                    if (isWeHolA !== isWeHolB) return isWeHolA ? -1 : 1;
+
+                    // 優先順位2: 充足率 (低い順)
                     const cA = staffObjects.filter(s => s.shiftType === st && s.physicalWorkDays.includes(a)).length;
                     const cB = staffObjects.filter(s => s.shiftType === st && s.physicalWorkDays.includes(b)).length;
-
-                    // 充足率 (現在数 / 目標) が小さい方が先頭
                     return (cA / tA) - (cB / tB);
                 });
 
@@ -2870,6 +2881,36 @@ window.activateShiftAdminMode = activateShiftAdminMode;
 // ============================================================
 // 3. ロジック実装 (ファイルの末尾に追加・置換)
 // ============================================================
+
+// 公休・有休・特休以外（出勤など）をクリアする関数
+async function clearWorkOnly() {
+    showConfirmModal("出勤のみクリア", "「公休」「有休」「特休」は残したまま、\n自動割り振りされた「出勤」や「/」のみをリセットしますか？", async () => {
+        pushHistory();
+        const protectedRoles = ['公休', '有休', '特休'];
+        let count = 0;
+
+        Object.keys(shiftState.shiftDataCache).forEach(name => {
+            const data = shiftState.shiftDataCache[name];
+            if (data && data.assignments) {
+                Object.keys(data.assignments).forEach(day => {
+                    const role = data.assignments[day];
+                    // 保護対象以外の役職（出勤、/、金メなど）はすべてクリア
+                    if (role && !protectedRoles.includes(role)) {
+                        data.assignments[day] = '/';
+                        count++;
+                    }
+                });
+            }
+        });
+
+        const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
+        await setDoc(doc(db, "shift_submissions", docId), shiftState.shiftDataCache, { merge: true });
+
+        renderShiftAdminTable();
+        showToast(`🧹 ${count}箇所の割り振りをリセットしました`);
+    }, 'bg-orange-500');
+}
+window.clearWorkOnly = clearWorkOnly;
 
 // --- 新機能: 役職のみクリア ---
 async function clearRolesOnly() {
