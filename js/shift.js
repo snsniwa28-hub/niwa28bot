@@ -1901,6 +1901,46 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
         });
 
         // =========================================================
+        // PHASE 3: 契約日数強制消化 (Contract Fill - 身の丈無視の絶対ノルマ)
+        // =========================================================
+        // 定員が埋まっていても、契約日数が足りないスタッフを「ねじ込む」
+        groupsToProcess.forEach(st => {
+            const hungryStaff = staffObjects.filter(s =>
+                s.shiftType === st && s.assignedDays.length < s.contractDays
+            );
+
+            // 不足日数が多い順（必死な順）に処理
+            hungryStaff.sort((a,b) => (a.contractDays - a.assignedDays.length) - (b.contractDays - b.assignedDays.length)).reverse();
+
+            hungryStaff.forEach(s => {
+                let safetyLoop = 0;
+                while (s.assignedDays.length < s.contractDays && safetyLoop < 100) {
+                    safetyLoop++;
+                    // 入れる日を探す（制約チェックOK かつ まだ入っていない日）
+                    // 優先順位: ターゲットに対する充足率が低い日（まだマシな日）
+                    const candidates = days.filter(d => canAssign(s, d));
+
+                    if (candidates.length === 0) break; // もう物理的に入れる日がない
+
+                    candidates.sort((a, b) => {
+                        const tA = getTarget(a, st);
+                        const tB = getTarget(b, st);
+                        const cA = staffObjects.filter(obj => obj.shiftType === st && obj.physicalWorkDays.includes(a)).length;
+                        const cB = staffObjects.filter(obj => obj.shiftType === st && obj.physicalWorkDays.includes(b)).length;
+                        // ターゲット0の場合は分母0になるので回避
+                        const rA = tA > 0 ? cA / tA : 999;
+                        const rB = tB > 0 ? cB / tB : 999;
+                        return rA - rB;
+                    });
+
+                    const bestDay = candidates[0];
+                    s.assignedDays.push(bestDay);
+                    s.physicalWorkDays.push(bestDay);
+                }
+            });
+        });
+
+        // =========================================================
         // PHASE 7: 役職割り振り (ここは変更なし)
         // =========================================================
         groupsToProcess.forEach(st => {
@@ -3053,14 +3093,28 @@ Markdownのコードブロックで囲ったJSON形式のみを出力してく�
                     });
                     applyAiShiftResult(generatedShift);
 
-                    // 2. ★安全装置: 連勤ブロッカー (AI適用後に再チェックし、物理的に削除)
-                    // AIが万が一6連勤以上を作っていたら、強制的に6日目を休みにする
+                    // 2. ★安全装置: 連勤 & 契約超過ブロッカー (最強版)
                     targetStaffNames.forEach(name => {
                         const assignments = shiftState.shiftDataCache[name]?.assignments || {};
+                        const details = shiftState.staffDetails[name] || {};
+                        const contractTarget = parseInt(details.contract_days || 20); // デフォルト20日
+
+                        // A. 連勤チェック & 削除
                         let streak = 0;
+                        let workCount = 0; // 契約消化日数カウント (出勤+有休+特休)
+                        let workDayKeys = []; // 出勤日のリスト (削除候補用)
+
+                        // 1日から末日まで走査
                         for (let d = 1; d <= daysInMonth; d++) {
                             const role = assignments[d];
-                            // 出勤系ならカウントアップ (有休等はカウントしない設定なら除外)
+
+                            // 契約日数カウント: 公休と '/' 以外はすべてカウント
+                            if (role && role !== '/' && role !== '公休') {
+                                workCount++;
+                                if (role === '出勤') workDayKeys.push(d); // 削除するのは「出勤」のみ（有休は消さない）
+                            }
+
+                            // 連勤カウント: 物理出勤のみ
                             if (role && role !== '/' && role !== '公休' && role !== '有休' && role !== '特休') {
                                 streak++;
                             } else {
@@ -3068,10 +3122,29 @@ Markdownのコードブロックで囲ったJSON形式のみを出力してく�
                             }
 
                             if (streak >= 6) {
-                                // 6連勤目発見！強制削除
-                                console.warn(`🛡 Safety Brake: ${name} day ${d} removed (streak ${streak})`);
+                                console.warn(`🛡 Safety Brake: ${name} day ${d} removed (streak 6+)`);
                                 assignments[d] = '/';
-                                streak = 0; // Reset
+                                streak = 0;
+                                // 削除したのでカウントも減らす
+                                workCount--;
+                                workDayKeys = workDayKeys.filter(k => k !== d);
+                            }
+                        }
+
+                        // B. 契約超過チェック & 削除 (NEW!)
+                        if (workCount > contractTarget) {
+                            let removeCount = workCount - contractTarget;
+                            console.warn(`🛡 Contract Brake: ${name} is over by ${removeCount} days. Removing...`);
+
+                            // ランダムに削除候補(出勤日)をシャッフルして消す
+                            // ※有休は消さないように workDayKeys ('出勤'のみ) から選ぶ
+                            workDayKeys.sort(() => Math.random() - 0.5);
+
+                            for (let i = 0; i < removeCount; i++) {
+                                if (workDayKeys[i]) {
+                                    assignments[workDayKeys[i]] = '/';
+                                    console.log(`   -> Removed day ${workDayKeys[i]}`);
+                                }
                             }
                         }
                     });
