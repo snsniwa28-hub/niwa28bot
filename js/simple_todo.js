@@ -23,8 +23,12 @@ let unsubscribeCategories = null;
 export let categories = [];
 export let currentCategory = null;
 
+let currentPendingTodoId = null; // For modal handling
+
 export async function initSimpleTodo() {
     try {
+        ensureCompletionModals(); // Inject modals
+
         // Ensure Categories
         const todoDataRef = doc(db, 'masters', 'todo_data');
         const todoDataSnap = await getDoc(todoDataRef);
@@ -265,12 +269,12 @@ function createTodoElement(todo) {
         let icon = "📅";
         let label = `${dateStr} まで`;
 
-        if (due < today) {
+        if (due < today && !todo.isCompleted) {
             // Overdue
             dateClass = "text-xs font-bold bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full inline-flex items-center gap-1";
             icon = "⚠️";
             label = `${dateStr} (期限切れ)`;
-        } else if (due.getTime() === today.getTime()) {
+        } else if (due.getTime() === today.getTime() && !todo.isCompleted) {
             // Today
             dateClass = "text-xs font-bold bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full inline-flex items-center gap-1";
             icon = "🔥";
@@ -280,6 +284,49 @@ function createTodoElement(todo) {
         dateDiv.innerHTML = `<span class="${dateClass}"><span>${icon}</span> ${label}</span>`;
         content.appendChild(dateDiv);
     }
+
+    // 4. Completion Report (Image & Comment)
+    if (todo.isCompleted) {
+        const reportContainer = document.createElement('div');
+        reportContainer.className = "mt-2 flex flex-col gap-2";
+
+        if (todo.completionComment) {
+            const comment = document.createElement('div');
+            comment.className = "text-xs text-slate-600 bg-blue-50 border border-blue-100 p-2 rounded-lg";
+
+            const labelSpan = document.createElement('span');
+            labelSpan.className = "font-bold text-blue-500 mr-1";
+            labelSpan.textContent = "📝 報告:";
+
+            const textSpan = document.createElement('span');
+            textSpan.textContent = todo.completionComment;
+
+            comment.appendChild(labelSpan);
+            comment.appendChild(textSpan);
+            reportContainer.appendChild(comment);
+        }
+
+        if (todo.completionImage) {
+            const imgWrapper = document.createElement('div');
+            imgWrapper.className = "relative inline-block group/img";
+
+            const img = document.createElement('img');
+            img.src = todo.completionImage;
+            img.className = "h-20 w-auto rounded-lg border border-slate-200 object-cover cursor-zoom-in hover:opacity-90 transition shadow-sm";
+            img.onclick = (e) => {
+                e.stopPropagation();
+                openImageModal(todo.completionImage);
+            };
+
+            imgWrapper.appendChild(img);
+            reportContainer.appendChild(imgWrapper);
+        }
+
+        if (reportContainer.hasChildNodes()) {
+            content.appendChild(reportContainer);
+        }
+    }
+
 
     // Delete Button (visible on hover)
     const deleteBtn = document.createElement('button');
@@ -336,14 +383,22 @@ export async function addSimpleTodo() {
 }
 
 export async function toggleTodoStatus(id, currentStatus) {
-    try {
-        const ref = doc(db, 'simple_todos', id);
-        await updateDoc(ref, {
-            isCompleted: !currentStatus
-        });
-    } catch (error) {
-        console.error("Error toggling todo:", error);
-        showToast('更新に失敗しました', true);
+    if (!currentStatus) {
+        // Active -> Completed: Show Modal
+        openCompletionModal(id);
+    } else {
+        // Completed -> Active: Revert immediately (clear report data)
+        try {
+            const ref = doc(db, 'simple_todos', id);
+            await updateDoc(ref, {
+                isCompleted: false,
+                completionComment: null, // Clear report
+                completionImage: null    // Clear report
+            });
+        } catch (error) {
+            console.error("Error toggling todo:", error);
+            showToast('更新に失敗しました', true);
+        }
     }
 }
 
@@ -500,4 +555,181 @@ async function addNewCategory() {
         console.error("Error adding category:", error);
         showToast('カテゴリの追加に失敗しました', true);
     }
+}
+
+// --- Completion Modal Logic ---
+
+function ensureCompletionModals() {
+    if (!document.getElementById('todo-completion-modal')) {
+        const modalHtml = `
+        <div id="todo-completion-modal" class="modal-overlay hidden" style="z-index: 100;">
+            <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col">
+                <h3 class="text-lg font-bold text-slate-800 mb-4">タスク完了報告</h3>
+                <textarea id="todo-completion-comment" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 mb-4 resize-none" rows="3" placeholder="対応内容を入力 (任意)"></textarea>
+
+                <div class="mb-6">
+                    <label class="block w-full cursor-pointer bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:bg-slate-100 hover:border-blue-400 transition group">
+                        <span id="todo-completion-file-label" class="text-sm font-bold text-slate-500 group-hover:text-blue-600">画像添付 (任意)</span>
+                        <input type="file" id="todo-completion-image" accept="image/*" class="hidden">
+                    </label>
+                    <div id="todo-completion-preview" class="mt-2 hidden">
+                        <img id="todo-completion-preview-img" class="h-24 rounded border border-slate-200 object-contain mx-auto">
+                        <button id="todo-completion-clear-img" class="text-xs text-rose-500 font-bold mt-1 block mx-auto hover:underline">画像を削除</button>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button id="todo-completion-cancel" class="flex-1 py-2.5 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
+                    <button id="todo-completion-save" class="flex-1 py-2.5 rounded-xl font-bold text-white bg-blue-600 shadow-lg shadow-blue-200 hover:bg-blue-700 transition">完了にする</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Setup Events
+        document.getElementById('todo-completion-cancel').onclick = closeCompletionModal;
+        document.getElementById('todo-completion-save').onclick = handleCompletionSave;
+
+        const fileInput = document.getElementById('todo-completion-image');
+        const previewDiv = document.getElementById('todo-completion-preview');
+        const previewImg = document.getElementById('todo-completion-preview-img');
+        const clearImgBtn = document.getElementById('todo-completion-clear-img');
+        const labelSpan = document.getElementById('todo-completion-file-label');
+
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    previewImg.src = ev.target.result;
+                    previewDiv.classList.remove('hidden');
+                    labelSpan.textContent = "画像を変更";
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        clearImgBtn.onclick = () => {
+            fileInput.value = '';
+            previewDiv.classList.add('hidden');
+            previewImg.src = '';
+            labelSpan.textContent = "画像添付 (任意)";
+        };
+    }
+
+    if (!document.getElementById('todo-image-modal')) {
+        const imgModalHtml = `
+        <div id="todo-image-modal" class="modal-overlay hidden" style="z-index: 110;">
+            <div class="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4" onclick="document.getElementById('todo-image-modal').classList.add('hidden')">
+                <img id="todo-image-full" class="max-w-full max-h-[90vh] rounded-lg shadow-2xl object-contain">
+                <button class="absolute top-4 right-4 text-white bg-white/20 hover:bg-white/30 rounded-full w-10 h-10 flex items-center justify-center transition">✕</button>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', imgModalHtml);
+    }
+}
+
+function openCompletionModal(todoId) {
+    currentPendingTodoId = todoId;
+
+    // Reset inputs
+    document.getElementById('todo-completion-comment').value = '';
+    document.getElementById('todo-completion-image').value = '';
+    document.getElementById('todo-completion-preview').classList.add('hidden');
+    document.getElementById('todo-completion-file-label').textContent = "画像添付 (任意)";
+
+    const modal = document.getElementById('todo-completion-modal');
+    modal.classList.remove('hidden');
+}
+
+function closeCompletionModal() {
+    const modal = document.getElementById('todo-completion-modal');
+    modal.classList.add('hidden');
+    currentPendingTodoId = null;
+}
+
+function openImageModal(src) {
+    const modal = document.getElementById('todo-image-modal');
+    const img = document.getElementById('todo-image-full');
+    img.src = src;
+    modal.classList.remove('hidden');
+}
+
+async function handleCompletionSave() {
+    if (!currentPendingTodoId) return;
+
+    const comment = document.getElementById('todo-completion-comment').value.trim();
+    const fileInput = document.getElementById('todo-completion-image');
+    const file = fileInput.files[0];
+
+    // Show loading state if needed, or just toast
+    const saveBtn = document.getElementById('todo-completion-save');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '保存中...';
+
+    try {
+        let imageBase64 = null;
+        if (file) {
+            imageBase64 = await compressImage(file);
+        }
+
+        const ref = doc(db, 'simple_todos', currentPendingTodoId);
+        await updateDoc(ref, {
+            isCompleted: true,
+            completionComment: comment || null,
+            completionImage: imageBase64 || null
+        });
+
+        showToast('タスクを完了しました');
+        closeCompletionModal();
+
+    } catch (error) {
+        console.error("Error completing todo:", error);
+        showToast('完了処理に失敗しました', true);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '完了にする';
+    }
+}
+
+function compressImage(file) {
+    return new Promise((resolve, reject) => {
+        const maxWidth = 1000;
+        const maxHeight = 1000;
+        const reader = new FileReader();
+
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Compress to JPEG 0.7
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                resolve(dataUrl);
+            };
+            img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+    });
 }
