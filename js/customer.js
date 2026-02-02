@@ -52,7 +52,6 @@ function updateNewOpeningCard() {
     // Always enable interaction
     cardLink.classList.remove('opacity-50', 'pointer-events-none', 'bg-slate-50');
     cardLink.classList.add('bg-white', 'hover:-translate-y-1', 'hover:shadow-xl', 'cursor-pointer');
-    cardLink.setAttribute('href', '#new-opening-section');
 
     // Icon styles restore (or ensure it's indigo)
     if (iconContainer) {
@@ -86,17 +85,18 @@ export function openNewOpening() {
         c.innerHTML = `
             <div class="flex flex-col items-center justify-center h-64 text-slate-400">
                 <span class="text-4xl mb-2">🚧</span>
-                <p class="font-bold">現在、新台情報はありません</p>
+                <p class="font-bold text-lg">現在、新台情報はありません</p>
+                <p class="text-xs mt-2 opacity-70">（右上の「⚙️ 管理」ボタンから登録できます）</p>
             </div>`;
         return;
     }
 
     const listContainer = document.createElement("div");
-    listContainer.className = "space-y-6 max-w-4xl mx-auto";
+    listContainer.className = "max-w-4xl mx-auto";
 
     newOpeningData.forEach(item => {
         const card = document.createElement("div");
-        card.className = "bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden";
+        card.className = "bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6";
 
         // Slideshow or Image
         let imageSection = "";
@@ -178,14 +178,17 @@ export function openNewOpeningEditAuth() {
 }
 
 export function openNewOpeningEdit() {
-    $('#newOpeningEditModal').classList.remove('hidden');
+    $('#new-opening-edit-view').classList.add('active');
     renderNewOpeningEditList();
     clearNewOpeningForm();
 }
 
-export function closeNewOpeningEditModal() {
-    $('#newOpeningEditModal').classList.add('hidden');
+export function closeNewOpeningEditView() {
+    $('#new-opening-edit-view').classList.remove('active');
+    openNewOpening(); // Refresh view
 }
+// Keep for compatibility if needed, but we should switch to new function name in index_events
+export const closeNewOpeningEditModal = closeNewOpeningEditView;
 
 function renderNewOpeningEditList() {
     const list = $('#new-opening-edit-list');

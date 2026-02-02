@@ -334,7 +334,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (target.id === 'close-remarks-modal-btn') window.closeRemarksModal();
         });
     }
-});
 
     // --- Static View Event Listeners (Moved from Delegation) ---
 
@@ -346,15 +345,18 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('qscTabFinished')?.addEventListener('click', () => window.handleQscTab('完了'));
 
     // New Opening View
+    document.getElementById('newOpeningCard')?.addEventListener('click', () => {
+        window.openNewOpening();
+    });
+
     document.getElementById('close-new-opening-view-btn')?.addEventListener('click', () => window.closeNewOpeningModal());
 
-    // New Opening Edit
-    document.getElementById('open-new-opening-edit-btn')?.addEventListener('click', (e) => {
-        e.stopPropagation();
+    document.getElementById('btn-open-new-opening-admin')?.addEventListener('click', () => {
         window.openNewOpeningEditAuth();
     });
 
-    document.getElementById('close-new-opening-edit-btn')?.addEventListener('click', () => {
+    // New Opening Edit
+    document.getElementById('close-new-opening-edit-view-btn')?.addEventListener('click', () => {
         window.closeNewOpeningEditModal();
     });
 
@@ -382,3 +384,4 @@ document.addEventListener('DOMContentLoaded', () => {
             // Checking js/qsc.js: Yes, d.querySelector('.btn-edit-qsc').onclick = ...
         }
     });
+});

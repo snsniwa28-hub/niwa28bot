@@ -105,10 +105,7 @@
                 </div>
 
                 <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.25s;">
-                    <a id="newOpeningCard" href="#new-opening-section" class="relative block group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
-                        <button id="open-new-opening-edit-btn" class="absolute top-3 right-3 p-2 bg-slate-50 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-full transition-all z-20 shadow-sm">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                        </button>
+                    <div id="newOpeningCard" class="relative block group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
                         <div class="flex justify-between items-start mb-2">
                             <div class="bg-indigo-50 text-indigo-600 p-3 rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
@@ -436,6 +433,7 @@
                 </button>
                 <h2 class="text-lg font-black text-slate-800">導入機種リスト</h2>
             </div>
+            <button id="btn-open-new-opening-admin" class="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition">⚙️ 管理</button>
         </header>
         <div id="newOpeningInfo" class="p-6 overflow-y-auto flex-1 bg-slate-50"></div>
     </div>
@@ -521,13 +519,18 @@
         </div>
     </div>
 
-    <div id="newOpeningEditModal" class="modal-overlay hidden" style="z-index: 90;">
-        <div class="modal-content p-0 w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
-                <h3 class="font-bold text-slate-800">新台入替設定</h3>
-                <button id="close-new-opening-edit-btn" class="text-slate-400 hover:text-slate-600">✕</button>
+    <div id="new-opening-edit-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-new-opening-edit-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h2 class="text-lg font-black text-slate-800">新台入替設定</h2>
             </div>
-            <div class="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50">
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50">
+            <div class="max-w-3xl mx-auto w-full">
                 <!-- List of existing -->
                 <div class="mb-6">
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">登録済みリスト</h4>
