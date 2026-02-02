@@ -438,30 +438,53 @@ function renderMachineDetails(details, isLoading = false) {
         const actual = item.actual ? parseInt(item.actual) : 0;
         const rate = target > 0 ? Math.round((actual / target) * 100) : 0;
         const isAchieved = target > 0 && actual >= target;
+        const time = item.time || '';
 
-        const barColor = isAchieved ? 'bg-amber-400' : 'bg-indigo-500';
-        const cardBorder = isAchieved ? 'border-amber-200' : 'border-slate-100';
-        const icon = isAchieved ? '👑' : '📊';
+        // Styling
+        const cardBg = isAchieved ? 'bg-gradient-to-br from-white to-amber-50' : 'bg-white';
+        const cardBorder = isAchieved ? 'border-amber-200 ring-1 ring-amber-100' : 'border-slate-100';
+        const barColor = isAchieved ? 'bg-gradient-to-r from-amber-400 to-amber-500' : 'bg-indigo-500';
 
         const card = document.createElement('div');
-        card.className = `bg-white rounded-2xl border ${cardBorder} shadow-sm p-4 flex flex-col justify-between`;
+        card.className = `${cardBg} rounded-2xl border ${cardBorder} shadow-sm p-5 flex flex-col gap-3 relative overflow-hidden transition hover:shadow-md`;
+
+        let timeHtml = '';
+        if (time) {
+            const safeTime = time.replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[m];
+            });
+            timeHtml = `<span class="inline-block bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full mb-1">🕒 ${safeTime}</span>`;
+        }
+
+        let achievementIcon = '';
+        if (isAchieved) {
+            achievementIcon = `<div class="absolute top-0 right-0 p-2 bg-amber-100 rounded-bl-2xl text-amber-500 text-xl shadow-sm">👑</div>`;
+        }
 
         card.innerHTML = `
-            <div class="flex justify-between items-start mb-3">
-                <h4 class="font-bold text-slate-700 truncate max-w-[70%] text-sm machine-title"></h4>
-                <span class="text-xs font-bold ${isAchieved ? 'text-amber-500' : 'text-slate-400'}">${icon}</span>
+            ${achievementIcon}
+            <div class="flex flex-col items-start z-10 w-full">
+                ${timeHtml}
+                <h4 class="font-black text-slate-800 text-base leading-tight machine-title break-words w-full pr-8 mb-1"></h4>
             </div>
 
-            <div class="flex justify-between items-end mb-1">
-                <span class="text-xs font-bold text-slate-400">Target: ${target}</span>
-                <div class="text-right">
-                    <span class="text-xl font-black ${isAchieved ? 'text-amber-500' : 'text-slate-800'}">${actual}</span>
-                    <span class="text-[10px] text-slate-400">/ ${target}台</span>
+            <div class="mt-auto w-full">
+                 <div class="flex justify-between items-end mb-1">
+                    <span class="text-[10px] font-bold text-slate-400">達成率 ${rate}%</span>
+                    <div class="text-right">
+                        <span class="text-2xl font-black ${isAchieved ? 'text-amber-500' : 'text-slate-800'} tracking-tighter leading-none">${actual}</span>
+                        <span class="text-[10px] font-bold text-slate-400">/ ${target}</span>
+                    </div>
                 </div>
-            </div>
-
-            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                <div class="${barColor} h-full rounded-full" style="width: ${Math.min(rate, 100)}%"></div>
+                <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner">
+                    <div class="${barColor} h-full rounded-full transition-all duration-1000" style="width: ${Math.min(rate, 100)}%"></div>
+                </div>
             </div>
         `;
 
@@ -728,6 +751,7 @@ export async function openMachineDetailsEdit(dateStr) {
                 return currentDateObj <= endDateObj;
             }).map(item => ({
                 name: item.name,
+                time: item.time || '',
                 target: item.target,
                 display_end_date: item.display_end_date,
                 actual: ''
@@ -736,7 +760,7 @@ export async function openMachineDetailsEdit(dateStr) {
     }
 
     if (machineDetails.length > 0) {
-        machineDetails.forEach(item => addMachineDetailRow(item.name, item.target, item.actual, item.display_end_date));
+        machineDetails.forEach(item => addMachineDetailRow(item.name, item.time || '', item.target, item.actual, item.display_end_date));
     } else {
         addMachineDetailRow();
     }
@@ -861,10 +885,52 @@ function renderMachineCalendarGrid() {
 
     const clickHandlers = [];
 
+    // Pre-calculate active ranges for "Deemed Display"
+    const allConfigs = [];
+    Object.keys(monthlyOpData).forEach(dateKey => {
+        const d = monthlyOpData[dateKey];
+        if (d.machine_details && Array.isArray(d.machine_details)) {
+            d.machine_details.forEach(det => {
+                if (det.display_end_date) {
+                    allConfigs.push({
+                        startDate: dateKey,
+                        endDate: det.display_end_date,
+                        name: det.name,
+                        time: det.time
+                    });
+                }
+            });
+        }
+    });
+
     for(let d=1; d<=daysInMonth; d++) {
         const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const data = monthlyOpData[dateStr] || {};
-        const details = data.machine_details || [];
+
+        const activeMachines = {};
+
+        // 1. Check Deemed (Past settings with future end dates)
+        allConfigs.forEach(conf => {
+            if (conf.startDate <= dateStr && conf.endDate >= dateStr) {
+                // If multiple configs cover this date, the one with the latest start date takes precedence
+                if (!activeMachines[conf.name] || activeMachines[conf.name].startDate < conf.startDate) {
+                    activeMachines[conf.name] = conf;
+                }
+            }
+        });
+
+        // 2. Check Direct (Explicit entry for this day)
+        if (monthlyOpData[dateStr] && monthlyOpData[dateStr].machine_details) {
+            monthlyOpData[dateStr].machine_details.forEach(det => {
+                activeMachines[det.name] = {
+                    startDate: dateStr,
+                    endDate: det.display_end_date || dateStr,
+                    name: det.name,
+                    time: det.time
+                };
+            });
+        }
+
+        const details = Object.values(activeMachines);
         const hasData = details.length > 0;
 
         let content = '';
@@ -905,6 +971,7 @@ export async function saveMachineDetails() {
     const machineDetails = [];
     machineRows.forEach(row => {
         const name = row.querySelector('.machine-name').value.trim();
+        const time = row.querySelector('.machine-time').value.trim();
         const target = row.querySelector('.machine-target').value;
         const actual = row.querySelector('.machine-actual').value;
         const endDate = row.querySelector('.machine-end-date').value;
@@ -912,6 +979,7 @@ export async function saveMachineDetails() {
         if (name) {
             machineDetails.push({
                 name: name,
+                time: time || null,
                 target: target ? parseInt(target) : null,
                 actual: actual ? parseInt(actual) : null,
                 display_end_date: endDate || null
@@ -927,36 +995,41 @@ export async function saveMachineDetails() {
     } catch (e) { alert("保存失敗: " + e.message); }
 }
 
-function addMachineDetailRow(name = '', target = '', actual = '', endDate = '') {
+function addMachineDetailRow(name = '', time = '', target = '', actual = '', endDate = '') {
     const container = $('#machine-details-edit-container');
     if (!container) return;
 
     const div = document.createElement('div');
-    // Responsive Grid: 2 columns on mobile, 10 columns on desktop
-    div.className = 'grid grid-cols-2 sm:grid-cols-10 gap-x-3 gap-y-3 sm:gap-2 items-start sm:items-center machine-detail-row border-b border-slate-100 pb-4 sm:pb-2 mb-2';
+    // Responsive Grid: 2 columns on mobile, 12 columns on desktop
+    div.className = 'grid grid-cols-2 sm:grid-cols-12 gap-x-3 gap-y-3 sm:gap-2 items-start sm:items-center machine-detail-row border-b border-slate-100 pb-4 sm:pb-2 mb-2';
 
     div.innerHTML = `
-        <!-- Name: Full width on mobile (2/2), 30% on PC (3/10) -->
+        <!-- Name: Full width on mobile (2/2), 3 col on PC -->
         <div class="col-span-2 sm:col-span-3">
             <label class="block text-[10px] text-slate-400 font-bold mb-0.5">機種名</label>
             <input type="text" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-2 sm:py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-name" placeholder="機種名">
         </div>
 
-        <!-- Target: Half width on mobile (1/2), 20% on PC (2/10) -->
+        <!-- Time: Half on mobile (1/2), 2 col on PC -->
+        <div class="col-span-1 sm:col-span-2">
+            <label class="block text-[10px] text-slate-400 font-bold mb-0.5">時間</label>
+            <input type="text" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-2 sm:py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-time" placeholder="時間 (例: 15:00)">
+        </div>
+
+        <!-- Target: Half on mobile (1/2), 2 col on PC -->
         <div class="col-span-1 sm:col-span-2">
             <label class="block text-[10px] text-slate-400 font-bold mb-0.5">目標</label>
             <input type="number" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-2 sm:py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-target" placeholder="目標">
         </div>
 
-        <!-- Actual: Half width on mobile (1/2), 20% on PC (2/10) -->
-        <!-- Note: Moved up for better mobile layout flow (Target & Actual side-by-side) -->
+        <!-- Actual: Half on mobile (1/2), 2 col on PC -->
         <div class="col-span-1 sm:col-span-2">
             <label class="block text-[10px] text-indigo-300 font-bold mb-0.5">実績</label>
             <input type="number" class="w-full bg-white border border-indigo-200 rounded px-2 py-2 sm:py-1.5 text-xs font-bold focus:border-indigo-500 outline-none machine-actual" placeholder="実績">
         </div>
 
-        <!-- End Date: Full width on mobile (2/2), 30% on PC (3/10) -->
-        <div class="col-span-2 sm:col-span-3 flex gap-1 items-end">
+        <!-- End Date: Half on mobile (1/2), 3 col on PC -->
+        <div class="col-span-1 sm:col-span-3 flex gap-1 items-end">
              <div class="flex-1">
                 <label class="block text-[10px] text-slate-400 font-bold mb-0.5">表示終了日</label>
                 <input type="date" class="w-full bg-slate-50 border border-slate-200 rounded px-2 py-2 sm:py-1.5 text-[10px] font-bold focus:border-indigo-500 outline-none machine-end-date">
@@ -969,6 +1042,7 @@ function addMachineDetailRow(name = '', target = '', actual = '', endDate = '') 
     `;
 
     div.querySelector('.machine-name').value = name;
+    div.querySelector('.machine-time').value = time;
     div.querySelector('.machine-target').value = target;
     div.querySelector('.machine-actual').value = actual;
     div.querySelector('.machine-end-date').value = endDate;
