@@ -14,12 +14,16 @@ import {
     getDocs,
     getDoc,
     setDoc,
-    arrayUnion
+    arrayUnion,
+    limit
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { showToast } from './ui.js';
+import { showToast, showPasswordModal } from './ui.js';
 
 let unsubscribeTodos = null;
 let unsubscribeCategories = null;
+let unsubscribeDashboardActive = null;
+let unsubscribeDashboardRecent = null;
+
 export let categories = [];
 export let currentCategory = null;
 
@@ -42,9 +46,11 @@ export async function initSimpleTodo() {
         unsubscribeCategories = onSnapshot(todoDataRef, (doc) => {
             if (doc.exists()) {
                 categories = doc.data().categories || [];
-                const modal = document.getElementById('simple-todo-modal');
-                if (modal && !modal.classList.contains('hidden') && !currentCategory) {
-                    renderCategoryView();
+                // Only refresh if we are in the category/dashboard view
+                const viewCategories = document.getElementById('simple-todo-view-categories');
+                const view = document.getElementById('todo-view'); // Using full view check
+                if (view && view.classList.contains('active') && viewCategories && !viewCategories.classList.contains('hidden')) {
+                    renderDashboard();
                 }
             }
         });
@@ -88,7 +94,7 @@ export function openSimpleTodoModal() {
     view.classList.add('active');
 
     currentCategory = null;
-    renderCategoryView();
+    renderDashboard();
 }
 
 export function closeSimpleTodoModal() {
@@ -96,10 +102,10 @@ export function closeSimpleTodoModal() {
     if (view) {
         view.classList.remove('active');
     }
-    if (unsubscribeTodos) {
-        unsubscribeTodos();
-        unsubscribeTodos = null;
-    }
+    // Unsubscribe all
+    if (unsubscribeTodos) { unsubscribeTodos(); unsubscribeTodos = null; }
+    if (unsubscribeDashboardActive) { unsubscribeDashboardActive(); unsubscribeDashboardActive = null; }
+    if (unsubscribeDashboardRecent) { unsubscribeDashboardRecent(); unsubscribeDashboardRecent = null; }
 }
 
 function subscribeTodos(category) {
@@ -110,8 +116,7 @@ function subscribeTodos(category) {
 
     let q;
     if (category) {
-        // Note: Client-side sorting is performed in renderTodos, so we can omit orderBy here
-        // to avoid requiring a composite index (category + createdAt) immediately.
+        // Note: Client-side sorting is performed in renderTodos
         q = query(collection(db, 'simple_todos'), where('category', '==', category));
     } else {
         q = query(collection(db, 'simple_todos'), orderBy('createdAt', 'asc'));
@@ -153,7 +158,14 @@ function renderTodos(todos) {
             return tA - tB;
         });
 
-    const completedTodos = todos.filter(t => t.isCompleted);
+    // Completed: Sort by completedAt desc if available
+    const completedTodos = todos
+        .filter(t => t.isCompleted)
+        .sort((a, b) => {
+             const tA = a.completedAt?.toMillis ? a.completedAt.toMillis() : (a.createdAt?.toMillis ? a.createdAt.toMillis() : 0);
+             const tB = b.completedAt?.toMillis ? b.completedAt.toMillis() : (b.createdAt?.toMillis ? b.createdAt.toMillis() : 0);
+             return tB - tA; // Newest completed first
+        });
 
     // Render Active
     activeTodos.forEach(todo => {
@@ -338,7 +350,8 @@ export async function addSimpleTodo() {
             detail: detail,
             category: currentCategory,
             isCompleted: false,
-            createdAt: serverTimestamp()
+            createdAt: serverTimestamp(),
+            completedAt: null
         });
     } catch (error) {
         console.error("Error adding todo:", error);
@@ -358,7 +371,8 @@ export async function toggleTodoStatus(id, currentStatus) {
             await updateDoc(ref, {
                 isCompleted: false,
                 completionComment: null, // Clear report
-                completionImage: null    // Clear report
+                completionImage: null,   // Clear report
+                completedAt: null        // Reset timestamp
             });
         } catch (error) {
             console.error("Error toggling todo:", error);
@@ -415,12 +429,13 @@ export async function clearCompletedTodos() {
     }
 }
 
-export function renderCategoryView() {
+export function renderDashboard() {
+    // Replaces renderCategoryView with Dashboard logic
     const viewCategories = document.getElementById('simple-todo-view-categories');
     const viewTasks = document.getElementById('simple-todo-view-tasks');
     if (!viewCategories || !viewTasks) return;
 
-    // Unsubscribe from todos as we are in menu
+    // Unsubscribe from tasks view subscription
     if (unsubscribeTodos) {
         unsubscribeTodos();
         unsubscribeTodos = null;
@@ -431,32 +446,236 @@ export function renderCategoryView() {
 
     updateHeader('チームToDoリスト');
 
-    viewCategories.innerHTML = '';
-    const grid = document.createElement('div');
-    grid.className = 'grid grid-cols-2 gap-3';
+    // Setup Header Actions (Settings)
+    const headerTitle = document.getElementById('todo-view-title');
+    if (headerTitle && !document.getElementById('todo-settings-btn')) {
+         // This is handled in updateHeader, but we can ensure settings button logic here
+    }
+
+    viewCategories.innerHTML = `
+        <div class="space-y-6">
+            <!-- 1. Recent Achievements -->
+            <section>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <span>🏆</span> 最近の達成 (Recent)
+                </h3>
+                <div id="todo-dashboard-recent" class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide min-h-[80px]">
+                    <div class="flex items-center justify-center w-full text-xs text-slate-400 font-bold bg-white rounded-xl py-6 border border-slate-100">
+                        読み込み中...
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Priority Tasks -->
+            <section>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <span>🔥</span> 注目タスク (Priority)
+                </h3>
+                <div id="todo-dashboard-priority" class="space-y-2">
+                     <div class="text-center text-xs text-slate-400 font-bold py-4">読み込み中...</div>
+                </div>
+            </section>
+
+            <!-- 3. Categories -->
+            <section>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <span>📁</span> カテゴリ (Categories)
+                </h3>
+                <div id="todo-dashboard-categories" class="grid grid-cols-2 gap-3">
+                     <!-- Categories will be injected here -->
+                </div>
+            </section>
+        </div>
+    `;
+
+    fetchDashboardData();
+}
+
+function fetchDashboardData() {
+    // 1. Unsubscribe old dashboard listeners
+    if (unsubscribeDashboardActive) { unsubscribeDashboardActive(); unsubscribeDashboardActive = null; }
+    if (unsubscribeDashboardRecent) { unsubscribeDashboardRecent(); unsubscribeDashboardRecent = null; }
+
+    // 2. Fetch Active Tasks (All) - for Priority & Badges
+    const qActive = query(collection(db, 'simple_todos'), where('isCompleted', '==', false));
+    unsubscribeDashboardActive = onSnapshot(qActive, (snapshot) => {
+        const activeTodos = [];
+        snapshot.forEach(doc => activeTodos.push({ id: doc.id, ...doc.data() }));
+        renderDashboardPriority(activeTodos);
+        renderDashboardCategories(activeTodos);
+    });
+
+    // 3. Fetch Recent Completed (Limit 10)
+    // Note: This requires composite index (isCompleted + completedAt).
+    // If index is missing, it will error. We should handle that or rely on client side filtering if volume is low.
+    // Given the prompt constraints, let's try strict query first. If it fails, we might need index creation.
+    const qRecent = query(
+        collection(db, 'simple_todos'),
+        where('isCompleted', '==', true),
+        orderBy('completedAt', 'desc'),
+        limit(10)
+    );
+
+    unsubscribeDashboardRecent = onSnapshot(qRecent, (snapshot) => {
+        const recentTodos = [];
+        snapshot.forEach(doc => recentTodos.push({ id: doc.id, ...doc.data() }));
+        renderDashboardRecent(recentTodos);
+    }, (error) => {
+        console.warn("Recent todos query failed (likely missing index). Falling back to basic query.", error);
+        // Fallback: Fetch some completed and sort client side (not ideal but works without index)
+        const qFallback = query(collection(db, 'simple_todos'), where('isCompleted', '==', true), limit(20));
+        getDocs(qFallback).then(snap => {
+            let recent = [];
+            snap.forEach(doc => recent.push({ id: doc.id, ...doc.data() }));
+            recent.sort((a, b) => {
+                 const tA = a.completedAt?.toMillis ? a.completedAt.toMillis() : 0;
+                 const tB = b.completedAt?.toMillis ? b.completedAt.toMillis() : 0;
+                 return tB - tA;
+            });
+            renderDashboardRecent(recent.slice(0, 10));
+        });
+    });
+}
+
+function renderDashboardRecent(todos) {
+    const container = document.getElementById('todo-dashboard-recent');
+    if (!container) return;
+
+    if (todos.length === 0) {
+        container.innerHTML = `<div class="w-full text-center text-xs text-slate-300 font-bold py-4">最近の完了タスクはありません</div>`;
+        return;
+    }
+
+    container.innerHTML = '';
+    todos.forEach(todo => {
+        const el = document.createElement('div');
+        el.className = "flex-shrink-0 w-48 bg-white border border-slate-100 rounded-xl p-3 shadow-sm flex flex-col gap-2 relative overflow-hidden group hover:border-blue-200 transition cursor-pointer";
+
+        // Optional Image BG or Icon
+        if (todo.completionImage) {
+            el.innerHTML += `<div class="absolute top-0 right-0 w-12 h-12 opacity-10"><img src="${todo.completionImage}" class="w-full h-full object-cover rounded-bl-xl"></div>`;
+        }
+
+        const date = todo.completedAt?.toDate ? todo.completedAt.toDate() : new Date();
+        const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+
+        el.innerHTML += `
+            <div class="flex items-center gap-1 mb-0.5">
+                <span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">${dateStr}</span>
+                ${todo.assignee ? `<span class="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded truncate max-w-[80px]">${todo.assignee}</span>` : ''}
+            </div>
+            <p class="text-xs font-bold text-slate-700 line-clamp-2 leading-relaxed">${todo.text}</p>
+            ${todo.completionComment ? `<div class="mt-auto pt-1 text-[10px] text-slate-500 truncate">💬 ${todo.completionComment}</div>` : ''}
+        `;
+
+        // Make it clickable to see details (maybe open completion modal in read-only?)
+        // For now, just a visual indicator.
+        container.appendChild(el);
+    });
+}
+
+function renderDashboardPriority(todos) {
+    const container = document.getElementById('todo-dashboard-priority');
+    if (!container) return;
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const dayAfter = new Date(today);
+    dayAfter.setDate(today.getDate() + 2);
+
+    const priorityList = todos.filter(t => {
+        if (!t.dueDate) return false;
+        const due = new Date(t.dueDate);
+        due.setHours(0,0,0,0);
+        return due <= dayAfter; // Overdue, Today, Tomorrow, DayAfter
+    }).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+    if (priorityList.length === 0) {
+        container.innerHTML = `<div class="text-center text-xs text-slate-300 font-bold py-4">期限間近のタスクはありません ✅</div>`;
+        return;
+    }
+
+    container.innerHTML = '';
+    priorityList.slice(0, 5).forEach(todo => {
+        const div = document.createElement('div');
+        div.className = "flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition cursor-pointer";
+        div.onclick = () => {
+            currentCategory = todo.category;
+            renderTaskView();
+            // Optionally scroll to specific task?
+        };
+
+        const due = new Date(todo.dueDate);
+        due.setHours(0,0,0,0);
+
+        let badgeClass = "bg-slate-100 text-slate-500";
+        let badgeIcon = "📅";
+        let badgeText = `${due.getMonth()+1}/${due.getDate()}`;
+
+        if (due < today) {
+            badgeClass = "bg-rose-100 text-rose-600 animate-pulse";
+            badgeIcon = "⚠️";
+            badgeText += " (期限切れ)";
+        } else if (due.getTime() === today.getTime()) {
+            badgeClass = "bg-amber-100 text-amber-600";
+            badgeIcon = "🔥";
+            badgeText = "今日まで";
+        } else {
+            badgeClass = "bg-indigo-50 text-indigo-600";
+            badgeIcon = "🔜";
+            badgeText = "もうすぐ";
+        }
+
+        div.innerHTML = `
+            <div class="${badgeClass} px-2 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap flex items-center gap-1 shrink-0">
+                <span>${badgeIcon}</span> ${badgeText}
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold text-slate-700 truncate">${todo.text}</p>
+                <p class="text-[10px] text-slate-400 font-bold flex gap-2">
+                    <span>📁 ${todo.category}</span>
+                    ${todo.assignee ? `<span>👤 ${todo.assignee}</span>` : ''}
+                </p>
+            </div>
+            <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function renderDashboardCategories(activeTodos) {
+    const container = document.getElementById('todo-dashboard-categories');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // Count tasks per category
+    const counts = {};
+    activeTodos.forEach(t => {
+        if (!counts[t.category]) counts[t.category] = 0;
+        counts[t.category]++;
+    });
 
     categories.forEach(cat => {
+        const count = counts[cat] || 0;
         const btn = document.createElement('button');
-        btn.className = 'bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-500 transition text-left flex flex-col gap-2 group';
+        btn.className = 'bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-500 transition text-left flex flex-col gap-2 group relative overflow-hidden';
+
         btn.innerHTML = `
-            <span class="text-2xl">📁</span>
-            <span class="font-bold text-slate-700 group-hover:text-blue-600">${cat}</span>
+            <div class="flex justify-between items-start">
+                <span class="text-2xl">📁</span>
+                ${count > 0 ? `<span class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">${count}</span>` : ''}
+            </div>
+            <span class="font-bold text-slate-700 group-hover:text-blue-600 text-sm truncate w-full">${cat}</span>
         `;
         btn.onclick = () => {
             currentCategory = cat;
             renderTaskView();
         };
-        grid.appendChild(btn);
+        container.appendChild(btn);
     });
-
-    // Add Category Button
-    const addBtn = document.createElement('button');
-    addBtn.className = 'bg-slate-100 border border-slate-200 border-dashed rounded-xl p-4 text-slate-400 font-bold flex items-center justify-center gap-2 hover:bg-slate-200 hover:text-slate-600 transition';
-    addBtn.innerHTML = `<span>＋</span> カテゴリ追加`;
-    addBtn.onclick = addNewCategory;
-
-    grid.appendChild(addBtn);
-    viewCategories.appendChild(grid);
 }
 
 export function renderTaskView() {
@@ -480,6 +699,26 @@ function updateHeader(titleText, showBack = false) {
     const h2 = document.getElementById('todo-view-title');
     if (!h2) return;
 
+    // Clear any existing buttons first (except the close button which is outside h2 but in header)
+    // Actually h2 contains the title content.
+
+    // Inject Settings Button in Header if not exists
+    const headerContainer = h2.parentElement;
+    if (!document.getElementById('todo-settings-btn')) {
+        const settingsBtn = document.createElement('button');
+        settingsBtn.id = 'todo-settings-btn';
+        settingsBtn.className = "text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition ml-auto";
+        settingsBtn.innerHTML = "⚙️ 管理";
+        settingsBtn.onclick = () => {
+            showPasswordModal(() => {
+                 showCategoryManager();
+            });
+        };
+        headerContainer.appendChild(settingsBtn);
+    }
+
+    const settingsBtn = document.getElementById('todo-settings-btn');
+
     if (showBack) {
         h2.innerHTML = `
             <button id="todo-back-btn" class="mr-2 text-slate-400 hover:text-blue-600 transition">
@@ -491,11 +730,13 @@ function updateHeader(titleText, showBack = false) {
         if (backBtn) {
             backBtn.onclick = () => {
                 currentCategory = null;
-                renderCategoryView();
+                renderDashboard();
             };
         }
+        if (settingsBtn) settingsBtn.classList.add('hidden'); // Hide settings in task view
     } else {
         h2.innerHTML = `<span>✅</span> ${titleText}`;
+        if (settingsBtn) settingsBtn.classList.remove('hidden'); // Show settings in dashboard
     }
 }
 
@@ -517,6 +758,88 @@ async function addNewCategory() {
     } catch (error) {
         console.error("Error adding category:", error);
         showToast('カテゴリの追加に失敗しました', true);
+    }
+}
+
+// --- Category Manager ---
+function showCategoryManager() {
+    // We can reuse the modal logic or inject a simple overlay
+    if (document.getElementById('category-manager-modal')) {
+        document.getElementById('category-manager-modal').classList.remove('hidden');
+        renderCategoryManagerList();
+        return;
+    }
+
+    const html = `
+    <div id="category-manager-modal" class="modal-overlay" style="z-index: 105;">
+        <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col max-h-[80vh]">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-800">カテゴリ管理</h3>
+                <button onclick="document.getElementById('category-manager-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div id="category-manager-list" class="flex-1 overflow-y-auto space-y-2 mb-4"></div>
+            <button id="category-manager-add-btn" class="w-full py-3 bg-indigo-50 text-indigo-600 font-bold rounded-xl hover:bg-indigo-100 transition border border-indigo-100">＋ カテゴリを追加</button>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    document.getElementById('category-manager-add-btn').onclick = async () => {
+        await addNewCategory(); // Reuses existing function
+        renderCategoryManagerList();
+    };
+
+    renderCategoryManagerList();
+}
+
+function renderCategoryManagerList() {
+    const list = document.getElementById('category-manager-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    categories.forEach(cat => {
+        const div = document.createElement('div');
+        div.className = "flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100";
+        div.innerHTML = `
+            <span class="font-bold text-slate-700">${cat}</span>
+            <button class="text-rose-400 hover:text-rose-600 p-2 rounded-lg hover:bg-rose-50 transition" title="削除">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+        `;
+        div.querySelector('button').onclick = () => deleteCategory(cat);
+        list.appendChild(div);
+    });
+}
+
+async function deleteCategory(categoryName) {
+    if (!confirm(`カテゴリ「${categoryName}」を削除しますか？`)) return;
+
+    // Check usage
+    const q = query(collection(db, 'simple_todos'), where('category', '==', categoryName), limit(1));
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+        showToast('タスクが残っているため削除できません', true);
+        return;
+    }
+
+    try {
+        const todoDataRef = doc(db, 'masters', 'todo_data');
+        const newData = categories.filter(c => c !== categoryName);
+        await updateDoc(todoDataRef, {
+            categories: newData
+        });
+        showToast(`カテゴリ「${categoryName}」を削除しました`);
+        // categories array will update via onSnapshot, but manual rerender of manager list needed?
+        // onSnapshot updates 'categories' var, but we might need to wait or just optimistic update.
+        // The onSnapshot will eventually trigger renderDashboard, but manager list needs refresh.
+        // Let's rely on onSnapshot to update global 'categories', but since we are inside a function,
+        // we might not see the update immediately.
+        // Let's manually refresh list after short delay or fetch.
+        setTimeout(renderCategoryManagerList, 500);
+
+    } catch (error) {
+        console.error("Error deleting category:", error);
+        showToast('削除に失敗しました', true);
     }
 }
 
@@ -640,7 +963,8 @@ async function handleCompletionSave() {
         await updateDoc(ref, {
             isCompleted: true,
             completionComment: comment || null,
-            completionImage: imageBase64 || null
+            completionImage: imageBase64 || null,
+            completedAt: serverTimestamp() // Set timestamp
         });
 
         showToast('タスクを完了しました');
