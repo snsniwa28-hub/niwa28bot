@@ -134,85 +134,100 @@ export function closeConfirmModal() {
     confirmCallback = null;
 }
 
-// --- Game Loading Overlay ---
-let loadingInterval = null;
+window.closeConfirmModal = closeConfirmModal;
 
-export function showLoadingOverlay(message = "Now Loading...") {
-    if (!document.getElementById('game-loading-overlay')) {
+// --- Image Viewer (Lightbox) ---
+let currentViewerImages = [];
+let currentViewerIndex = 0;
+
+export function showImageViewer(images, startIndex = 0) {
+    if (!images || images.length === 0) return;
+    currentViewerImages = images;
+    currentViewerIndex = startIndex;
+
+    if (!document.getElementById('image-viewer-overlay')) {
         const html = `
-        <div id="game-loading-overlay" class="fixed inset-0 z-[200] bg-slate-900 flex flex-col items-center justify-center transition-opacity duration-300 opacity-0 pointer-events-none">
-            <div class="w-64 relative mb-8">
-                <!-- Glitchy Text Effect Base -->
-                <h2 id="loading-text" class="text-2xl font-black text-white tracking-widest text-center mb-2 animate-pulse">Now Loading...</h2>
-                <div class="h-1 w-full bg-slate-700 rounded-full overflow-hidden">
-                    <div id="loading-bar" class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 w-0 transition-all duration-300 ease-out"></div>
-                </div>
+        <div id="image-viewer-overlay" class="fixed inset-0 z-[150] bg-black/95 hidden flex flex-col items-center justify-center transition-opacity duration-300 opacity-0">
+            <button id="iv-close" class="absolute top-4 right-4 text-white p-4 rounded-full bg-white/10 hover:bg-white/20 transition z-50">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <button id="iv-prev" class="absolute left-4 top-1/2 -translate-y-1/2 text-white p-4 rounded-full bg-white/10 hover:bg-white/20 transition z-50 hidden">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <button id="iv-next" class="absolute right-4 top-1/2 -translate-y-1/2 text-white p-4 rounded-full bg-white/10 hover:bg-white/20 transition z-50 hidden">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </button>
+
+            <div class="relative w-full h-full flex items-center justify-center p-4 sm:p-10 pointer-events-none">
+                <img id="iv-image" src="" class="max-w-full max-h-full object-contain shadow-2xl transition-transform duration-300 pointer-events-auto">
+                <p id="iv-counter" class="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/80 font-bold text-sm bg-black/50 px-4 py-2 rounded-full hidden">1 / 1</p>
             </div>
-            <div class="flex gap-2">
-                <span class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0s"></span>
-                <span class="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
-                <span class="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
-            </div>
-            <p id="loading-subtext" class="text-xs font-bold text-slate-500 mt-4 tracking-wide">SYSTEM INITIALIZING</p>
         </div>`;
         document.body.insertAdjacentHTML('beforeend', html);
+
+        document.getElementById('iv-close').onclick = hideImageViewer;
+        document.getElementById('iv-prev').onclick = (e) => { e.stopPropagation(); navigateImageViewer(-1); };
+        document.getElementById('iv-next').onclick = (e) => { e.stopPropagation(); navigateImageViewer(1); };
+        // Close on background click
+        document.getElementById('image-viewer-overlay').onclick = (e) => {
+            if(e.target.id === 'image-viewer-overlay') hideImageViewer();
+        };
+        // Keyboard support
+        document.addEventListener('keydown', (e) => {
+            if(document.getElementById('image-viewer-overlay').classList.contains('hidden')) return;
+            if(e.key === 'Escape') hideImageViewer();
+            if(e.key === 'ArrowLeft') navigateImageViewer(-1);
+            if(e.key === 'ArrowRight') navigateImageViewer(1);
+        });
     }
 
-    const overlay = document.getElementById('game-loading-overlay');
-    const bar = document.getElementById('loading-bar');
-    const textEl = document.getElementById('loading-text');
-    const subtextEl = document.getElementById('loading-subtext');
+    const overlay = document.getElementById('image-viewer-overlay');
+    overlay.classList.remove('hidden');
+    // Force reflow for transition
+    requestAnimationFrame(() => {
+        overlay.classList.remove('opacity-0');
+    });
 
-    overlay.classList.remove('pointer-events-none', 'opacity-0');
-    overlay.classList.add('pointer-events-auto', 'opacity-100');
-
-    textEl.textContent = message;
-    subtextEl.textContent = "AI PROCESSING...";
-    bar.style.width = "0%";
-
-    // Simulated Progress Logic
-    let width = 0;
-    if (loadingInterval) clearInterval(loadingInterval);
-
-    loadingInterval = setInterval(() => {
-        // Fast at first, slow at end
-        if (width < 30) width += Math.random() * 5;
-        else if (width < 60) width += Math.random() * 2;
-        else if (width < 85) width += Math.random() * 0.5;
-
-        if (width > 90) width = 90; // Cap at 90 until explicit hide
-
-        bar.style.width = width + "%";
-    }, 100);
+    updateImageViewer();
 }
 
-export function updateLoadingMessage(message) {
-    const textEl = document.getElementById('loading-text');
-    if (textEl) textEl.textContent = message;
+function updateImageViewer() {
+    const img = document.getElementById('iv-image');
+    const prevBtn = document.getElementById('iv-prev');
+    const nextBtn = document.getElementById('iv-next');
+    const counter = document.getElementById('iv-counter');
+
+    img.src = currentViewerImages[currentViewerIndex];
+
+    if (currentViewerImages.length > 1) {
+        prevBtn.classList.remove('hidden');
+        nextBtn.classList.remove('hidden');
+        counter.classList.remove('hidden');
+        counter.textContent = `${currentViewerIndex + 1} / ${currentViewerImages.length}`;
+    } else {
+        prevBtn.classList.add('hidden');
+        nextBtn.classList.add('hidden');
+        counter.classList.add('hidden');
+    }
 }
 
-export function hideLoadingOverlay() {
-    const overlay = document.getElementById('game-loading-overlay');
-    const bar = document.getElementById('loading-bar');
-    const subtextEl = document.getElementById('loading-subtext');
-
-    if (!overlay) return;
-
-    if (loadingInterval) clearInterval(loadingInterval);
-
-    // Finish bar
-    if (bar) bar.style.width = "100%";
-    if (subtextEl) subtextEl.textContent = "COMPLETE";
-
-    // Wait a bit then fade
-    setTimeout(() => {
-        overlay.classList.remove('opacity-100', 'pointer-events-auto');
-        overlay.classList.add('opacity-0', 'pointer-events-none');
-        // Reset width for next time
-        setTimeout(() => { if(bar) bar.style.width = "0%"; }, 300);
-    }, 500);
+function navigateImageViewer(direction) {
+    if (currentViewerImages.length <= 1) return;
+    currentViewerIndex = (currentViewerIndex + direction + currentViewerImages.length) % currentViewerImages.length;
+    updateImageViewer();
 }
 
-window.showLoadingOverlay = showLoadingOverlay;
-window.hideLoadingOverlay = hideLoadingOverlay;
-window.closeConfirmModal = closeConfirmModal;
+export function hideImageViewer() {
+    const overlay = document.getElementById('image-viewer-overlay');
+    if(overlay) {
+        overlay.classList.add('opacity-0');
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+            const img = document.getElementById('iv-image');
+            if(img) img.src = "";
+        }, 300);
+    }
+}
+
+window.showImageViewer = showImageViewer;
+window.hideImageViewer = hideImageViewer;

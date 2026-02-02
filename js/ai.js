@@ -58,16 +58,16 @@ export async function toggleAIChat(category = 'all', categoryName = '社内資�
         const statusEl = document.getElementById('ai-status-text');
         if(statusEl) statusEl.textContent = `${categoryName}の資料を表示中`;
 
-        // Add Admin Management Button dynamically if not exists
+        // Add Knowledge Button dynamically if not exists
         let header = modal.querySelector('.border-b');
-        if (!header.querySelector('.admin-knowledge-btn')) {
+        if (!header.querySelector('.knowledge-btn')) {
             const btn = document.createElement('button');
-            btn.className = 'admin-knowledge-btn ml-auto mr-2 p-2 bg-slate-100 rounded-full hover:bg-slate-200 text-slate-400 transition';
-            btn.innerHTML = '⚙️';
-            btn.onclick = () => showPasswordModal(() => {
-                window.openStrategyAdmin(category);
+            btn.className = 'knowledge-btn ml-auto mr-2 flex items-center gap-1 bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-100 transition shadow-sm border border-indigo-100';
+            btn.innerHTML = '<span>📚</span> 知識を教える';
+            btn.onclick = () => {
+                window.openInternalSharedModal(category);
                 closeAIChat();
-            });
+            };
             // Insert before close button
             const closeBtn = header.querySelector('button:last-child');
             header.insertBefore(btn, closeBtn);
@@ -106,6 +106,7 @@ async function loadCategorySummary(category, categoryName) {
             const data = summarySnap.data();
             shortText = data.short || shortText;
             fullText = data.full || fullText;
+            contextImages = data.ai_images || [];
         }
 
         // Cache
@@ -116,6 +117,19 @@ async function loadCategorySummary(category, categoryName) {
 
         // Initial Greeting
         addMessageToUI("ai", `🤖 **${categoryName}** の最新情報（直近のまとめ）です。`);
+
+        // Check for images
+        if (contextImages && contextImages.length > 0) {
+             addCustomHtmlMessage("ai", `
+                <div class="flex items-center gap-2 mb-3 p-2 bg-slate-800/5 rounded-lg">
+                    <span class="text-lg">📷</span>
+                    <span class="text-xs font-bold text-slate-600">関連する資料画像があります</span>
+                </div>
+                <button onclick="window.viewAIContextImages()" class="w-full py-3 bg-slate-800 text-white font-bold rounded-xl shadow-lg hover:bg-slate-700 transition text-xs flex items-center justify-center gap-2 mb-4">
+                    [画像を拡大して見る]
+                </button>
+            `);
+        }
 
         // Display Short Summary
         addCustomHtmlMessage("ai", `
@@ -417,3 +431,8 @@ window.toggleAIChat = toggleAIChat;
 window.closeAIChat = closeAIChat;
 window.sendAIMessage = sendAIMessage;
 window.openCategoryChat = (category, name) => toggleAIChat(category, name);
+window.viewAIContextImages = () => {
+    if (window.showImageViewer && contextImages.length > 0) {
+        window.showImageViewer(contextImages);
+    }
+};

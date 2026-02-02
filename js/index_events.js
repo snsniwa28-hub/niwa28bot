@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('nav-internal-shared')?.addEventListener('click', () => {
-        window.openInternalSharedModal();
+        window.toggleAIChat('unified', '社内共有・戦略（全体）');
     });
 
     // Views
@@ -199,37 +199,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Internal Shared Modal
-    document.getElementById('btn-knowledge-list')?.addEventListener('click', () => {
-        window.toggleKnowledgeList();
-    });
-
-    document.getElementById('btn-create-strategy-mobile')?.addEventListener('click', () => {
-        window.openStrategyEditor();
+    document.getElementById('btn-open-knowledge-add')?.addEventListener('click', () => {
+        window.openKnowledgeAddModal();
     });
 
     document.getElementById('close-internal-shared-view-btn')?.addEventListener('click', () => {
         document.getElementById('internal-shared-view').classList.remove('active');
     });
 
-    // Strategy Editor Modal
-    document.getElementById('cancel-strategy-editor-btn')?.addEventListener('click', () => {
-        window.closeStrategyEditor();
+    // Knowledge Add Modal
+    document.getElementById('close-knowledge-add-modal')?.addEventListener('click', () => {
+        window.closeKnowledgeAddModal();
     });
 
-    document.getElementById('add-block-img-top-btn')?.addEventListener('click', () => {
-        window.addEditorBlock('img_top');
+    document.getElementById('btn-save-knowledge')?.addEventListener('click', () => {
+        window.saveKnowledge();
     });
 
-    document.getElementById('add-block-text-btn')?.addEventListener('click', () => {
-        window.addEditorBlock('text');
-    });
-
-    document.getElementById('add-block-img-bottom-btn')?.addEventListener('click', () => {
-        window.addEditorBlock('img_bottom');
-    });
-
-    document.getElementById('save-strategy-btn')?.addEventListener('click', () => {
-        window.saveStrategy();
+    document.getElementById('ka-file')?.addEventListener('change', function() {
+        window.handleContextFileUpload(this);
     });
 
     // Member Target Modal
@@ -288,30 +276,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Internal Shared Modal Body Delegation (Strategies, etc.)
     document.getElementById('internal-shared-view')?.addEventListener('click', (e) => {
-        // Strategy Slideshow
-        const slidePrev = e.target.closest('[data-action="strategy-slide-prev"]');
-        if (slidePrev) {
-            window.changeStrategySlide(-1);
-            return;
-        }
-        const slideNext = e.target.closest('[data-action="strategy-slide-next"]');
-        if (slideNext) {
-            window.changeStrategySlide(1);
-            return;
-        }
-
-        // Strategy Actions (Edit/Delete)
-        const editBtn = e.target.closest('[data-action="edit-strategy"]');
-        if (editBtn) {
-            window.openStrategyEditor(editBtn.dataset.id);
-            return;
-        }
-        const deleteBtn = e.target.closest('[data-action="delete-strategy"]');
-        if (deleteBtn) {
-            window.deleteStrategy(deleteBtn.dataset.id);
-            return;
-        }
-
         // Knowledge Filter
         const filterBtn = e.target.closest('[data-action="filter-knowledge"]');
         if (filterBtn) {
@@ -320,15 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Strategy Context File Upload
-    // Since file inputs don't bubble change events reliably in delegated listeners in some cases,
-    // but here we can try attaching to body or a stable parent if id is not unique or present at init.
-    // However, the file input is inside 'strategy-article-editor' which is dynamic.
-    // We added ID 'strategy-context-file' to it. We can attach a delegated change listener to the modal or document.
     document.addEventListener('change', (e) => {
-        if (e.target && e.target.id === 'strategy-context-file') {
-            window.handleContextFileUpload(e.target);
-        }
         if (e.target && e.target.classList.contains('js-calc-trigger')) {
              window.calcOpTotal(e.target.dataset.time);
         }
