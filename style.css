@@ -306,3 +306,12 @@ body {
     padding: 0 1rem;
     flex-shrink: 0;
 }
+
+/* === Utility: Hide Scrollbar === */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
