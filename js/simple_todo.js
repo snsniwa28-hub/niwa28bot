@@ -42,8 +42,8 @@ export async function initSimpleTodo() {
         unsubscribeCategories = onSnapshot(todoDataRef, (doc) => {
             if (doc.exists()) {
                 categories = doc.data().categories || [];
-                const modal = document.getElementById('simple-todo-modal');
-                if (modal && !modal.classList.contains('hidden') && !currentCategory) {
+                const view = document.getElementById('todo-view');
+                if (view && view.classList.contains('active') && !currentCategory) {
                     renderCategoryView();
                 }
             }

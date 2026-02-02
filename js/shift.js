@@ -316,123 +316,135 @@ export function createShiftModals() {
         </div>
     </div>
 
-    <!-- AUTO SHIFT SETTINGS MODAL -->
-    <div id="auto-shift-settings-modal" class="modal-overlay hidden" style="z-index: 100;">
-        <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl">
-            <h3 class="font-bold text-slate-800 text-lg mb-4">⚙️ 役職割り振り設定</h3>
+    <!-- AUTO SHIFT SETTINGS VIEW -->
+    <div id="auto-shift-settings-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-auto-shift-settings-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h3 class="font-bold text-slate-800 text-lg">役職割り振り設定</h3>
+            </div>
+        </header>
+        <div class="p-6 overflow-y-auto flex-1 bg-slate-50">
             <p class="text-xs font-bold text-slate-400 mb-6">AIが割り振りを行う役割を選択してください。</p>
 
             <div class="space-y-4">
-                <label class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition">
+                <label class="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition shadow-sm">
                     <span class="text-sm font-bold text-slate-700">金銭業務 (金メ・金サブ)</span>
                     <input type="checkbox" id="chk-as-money" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500">
                 </label>
-                <label class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition">
+                <label class="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition shadow-sm">
                     <span class="text-sm font-bold text-slate-700">倉庫番</span>
                     <input type="checkbox" id="chk-as-warehouse" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500">
                 </label>
-                <label class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition">
+                <label class="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition shadow-sm">
                     <span class="text-sm font-bold text-slate-700">ホール責任者</span>
                     <input type="checkbox" id="chk-as-hall-resp" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500">
                 </label>
-                <label class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition">
+                <label class="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition shadow-sm">
                     <span class="text-sm font-bold text-slate-700">早番倉庫お任せ</span>
                     <input type="checkbox" id="chk-early-warehouse-auto" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500">
                 </label>
             </div>
+        </div>
+    </div>
 
-            <div class="mt-6 pt-4 border-t border-slate-100">
-                <button onclick="document.getElementById('auto-shift-settings-modal').classList.add('hidden')" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition">閉じる</button>
+    <!-- STAFF MASTER VIEW -->
+    <div id="staff-master-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-staff-master-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h3 class="font-bold text-slate-800 text-lg">スタッフマスタ管理</h3>
             </div>
+            <button onclick="window.resetStaffSort()" class="text-xs font-bold bg-slate-100 text-slate-500 px-3 py-2 rounded-lg hover:bg-slate-200 transition">役職順リセット</button>
+        </header>
+        <div class="flex-1 overflow-y-auto p-4 bg-slate-50">
+            <div id="staff-master-list" class="space-y-4 pb-20"></div>
+        </div>
+        <div class="p-4 border-t border-slate-100 bg-white shrink-0">
+            <button id="btn-add-staff" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">+ スタッフを追加</button>
         </div>
     </div>
 
-    <!-- Staff Master, Edit, Target, Note Modals (Keeping Structure) -->
-    <div id="staff-master-modal" class="modal-overlay hidden" style="z-index: 70;">
-         <div class="modal-content p-0 w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
-             <div class="p-4 border-b border-slate-200 flex justify-between items-center">
-                <h3 class="font-bold text-slate-800">スタッフマスタ管理</h3>
-                <button onclick="document.getElementById('staff-master-modal').classList.add('hidden')" class="text-slate-400">✕</button>
-             </div>
-             <div class="p-2 border-b border-slate-100 flex justify-end">
-                <button onclick="window.resetStaffSort()" class="px-3 py-1 bg-slate-100 text-slate-600 rounded text-xs font-bold hover:bg-slate-200">役職順にリセット</button>
-             </div>
-             <div class="p-4 overflow-y-auto flex-1 bg-slate-50">
-                <div id="staff-master-list" class="space-y-4"></div>
-                <button id="btn-add-staff" class="w-full mt-4 py-3 border-2 border-dashed border-slate-300 text-slate-400 font-bold rounded-xl hover:bg-white hover:text-indigo-500 transition">+ スタッフを追加</button>
-             </div>
-        </div>
-    </div>
-
-    <div id="staff-edit-modal" class="modal-overlay hidden" style="z-index: 80;">
-         <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-xl">
-            <h3 class="font-bold text-slate-800 text-lg mb-4" id="staff-edit-title">スタッフ編集</h3>
-            <div class="space-y-4">
+    <!-- STAFF EDIT VIEW -->
+    <div id="staff-edit-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-staff-edit-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h3 class="font-bold text-slate-800 text-lg" id="staff-edit-title">スタッフ編集</h3>
+            </div>
+        </header>
+        <div class="p-6 overflow-y-auto flex-1 bg-slate-50">
+            <div class="max-w-lg mx-auto bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
                 <div>
-                    <label class="text-xs font-bold text-slate-500">名前</label>
-                    <input type="text" id="se-name" class="w-full border border-slate-200 rounded-lg p-2 text-sm font-bold">
+                    <label class="text-xs font-bold text-slate-500 mb-1 block">名前</label>
+                    <input type="text" id="se-name" class="w-full border border-slate-200 rounded-lg p-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="text-xs font-bold text-slate-500">区分</label>
-                        <select id="se-type" class="w-full border border-slate-200 rounded-lg p-2 text-sm bg-white" onchange="window.updateRankOptions()">
+                        <label class="text-xs font-bold text-slate-500 mb-1 block">区分</label>
+                        <select id="se-type" class="w-full border border-slate-200 rounded-lg p-3 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" onchange="window.updateRankOptions()">
                             <option value="employee">社員</option>
                             <option value="byte">アルバイト</option>
                         </select>
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-slate-500">基本シフト</label>
-                        <select id="se-basic-shift" class="w-full border border-slate-200 rounded-lg p-2 text-sm bg-white">
+                        <label class="text-xs font-bold text-slate-500 mb-1 block">基本シフト</label>
+                        <select id="se-basic-shift" class="w-full border border-slate-200 rounded-lg p-3 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
                             <option value="A">A (早番)</option>
                             <option value="B">B (遅番)</option>
                         </select>
                     </div>
                 </div>
                 <div>
-                    <label class="text-xs font-bold text-slate-500">役職 (ランク)</label>
-                    <select id="se-rank" class="w-full border border-slate-200 rounded-lg p-2 text-sm bg-white"></select>
+                    <label class="text-xs font-bold text-slate-500 mb-1 block">役職 (ランク)</label>
+                    <select id="se-rank" class="w-full border border-slate-200 rounded-lg p-3 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"></select>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="text-xs font-bold text-slate-500">契約日数 (目標)</label>
-                        <input type="number" id="se-contract-days" class="w-full border border-slate-200 rounded-lg p-2 text-sm font-bold" value="20">
+                        <label class="text-xs font-bold text-slate-500 mb-1 block">契約日数 (目標)</label>
+                        <input type="number" id="se-contract-days" class="w-full border border-slate-200 rounded-lg p-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" value="20">
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-slate-500">最大連勤数</label>
-                        <input type="number" id="se-max-consecutive" class="w-full border border-slate-200 rounded-lg p-2 text-sm font-bold" value="5">
+                        <label class="text-xs font-bold text-slate-500 mb-1 block">最大連勤数</label>
+                        <input type="number" id="se-max-consecutive" class="w-full border border-slate-200 rounded-lg p-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" value="5">
                     </div>
                 </div>
                 <div>
-                    <label class="text-xs font-bold text-slate-500">特例許可 (スキル設定)</label>
-                    <div class="grid grid-cols-2 gap-2 mt-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <label class="text-xs font-bold text-slate-500 mb-2 block">特例許可 (スキル設定)</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center gap-2 cursor-pointer select-none bg-slate-50 p-3 rounded-lg border border-slate-100 hover:bg-slate-100 transition">
                             <input type="checkbox" id="se-allow-money-main" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
-                            <span class="text-sm text-slate-700 font-bold">金銭メイン</span>
+                            <span class="text-xs font-bold text-slate-700">金銭メイン</span>
                         </label>
-                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <label class="flex items-center gap-2 cursor-pointer select-none bg-slate-50 p-3 rounded-lg border border-slate-100 hover:bg-slate-100 transition">
                             <input type="checkbox" id="se-allow-money-sub" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
-                            <span class="text-sm text-slate-700 font-bold">金銭サブ</span>
+                            <span class="text-xs font-bold text-slate-700">金銭サブ</span>
                         </label>
-                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <label class="flex items-center gap-2 cursor-pointer select-none bg-slate-50 p-3 rounded-lg border border-slate-100 hover:bg-slate-100 transition">
                             <input type="checkbox" id="se-allow-warehouse" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
-                            <span class="text-sm text-slate-700 font-bold">倉庫</span>
+                            <span class="text-xs font-bold text-slate-700">倉庫</span>
                         </label>
-                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <label class="flex items-center gap-2 cursor-pointer select-none bg-slate-50 p-3 rounded-lg border border-slate-100 hover:bg-slate-100 transition">
                             <input type="checkbox" id="se-allow-hall-resp" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
-                            <span class="text-sm text-slate-700 font-bold">ホ責</span>
+                            <span class="text-xs font-bold text-slate-700">ホ責</span>
                         </label>
                     </div>
                 </div>
             </div>
-            <div class="flex gap-3 mt-6">
-                <button id="btn-se-delete" class="px-4 py-2 bg-rose-50 text-rose-600 font-bold rounded-lg text-xs hover:bg-rose-100">削除</button>
-                <div class="flex-1"></div>
-                <button onclick="document.getElementById('staff-edit-modal').classList.add('hidden')" class="px-4 py-2 bg-slate-100 text-slate-500 font-bold rounded-lg text-xs">キャンセル</button>
-                <button id="btn-se-save" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg text-xs shadow-lg shadow-indigo-200">保存</button>
-            </div>
+        </div>
+        <div class="p-4 border-t border-slate-100 bg-white shrink-0 flex justify-between gap-3">
+            <button id="btn-se-delete" class="px-6 py-3 bg-rose-50 text-rose-600 font-bold rounded-xl text-sm border border-rose-100 hover:bg-rose-100 transition">削除</button>
+            <button id="btn-se-save" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存</button>
         </div>
     </div>
 
+    <!-- DAILY TARGET MODAL (Small) -->
     <div id="daily-target-modal" class="modal-overlay hidden" style="z-index: 90;">
         <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl">
             <h3 class="font-bold text-slate-800 text-lg mb-4" id="daily-target-title">定員設定</h3>
@@ -453,51 +465,99 @@ export function createShiftModals() {
         </div>
     </div>
 
-    <div id="admin-note-modal" class="modal-overlay hidden" style="z-index: 70;">
-         <div class="modal-content p-6 w-full max-w-md max-h-[90vh] flex flex-col">
-            <h3 class="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex justify-between items-center">
-                <span>備考詳細・編集</span>
-                <span id="admin-note-staff-name" class="text-sm font-normal text-slate-500"></span>
-            </h3>
-            <div class="flex-1 overflow-y-auto pr-2">
+    <!-- ADMIN NOTE VIEW -->
+    <div id="admin-note-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-admin-note-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                    備考編集 <span id="admin-note-staff-name" class="text-sm font-normal text-slate-500 ml-2"></span>
+                </h3>
+            </div>
+        </header>
+        <div class="p-6 overflow-y-auto flex-1 bg-slate-50">
+            <div class="max-w-lg mx-auto bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <div class="mb-6">
-                    <p class="text-xs font-bold text-slate-400 mb-1">月間備考</p>
-                    <textarea id="admin-note-monthly-edit" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" rows="3"></textarea>
+                    <p class="text-xs font-bold text-slate-400 mb-2">月間備考</p>
+                    <textarea id="admin-note-monthly-edit" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none transition" rows="3"></textarea>
                 </div>
                  <div class="mb-4">
-                    <p class="text-xs font-bold text-slate-400 mb-1">デイリー備考</p>
+                    <p class="text-xs font-bold text-slate-400 mb-2">デイリー備考</p>
                     <div id="admin-note-daily-list" class="space-y-3"></div>
                 </div>
             </div>
-            <div class="mt-4 pt-4 border-t border-slate-100 flex gap-3 shrink-0">
-                <button onclick="closeAdminNoteModal()" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200">キャンセル</button>
-                <button id="btn-save-admin-note" class="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200">保存する</button>
+        </div>
+        <div class="p-4 border-t border-slate-100 bg-white shrink-0">
+            <div class="max-w-lg mx-auto">
+                <button id="btn-save-admin-note" class="w-full py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition">保存する</button>
             </div>
         </div>
     </div>
 
-    <!-- COMPENSATORY OFF MODAL -->
-    <div id="compensatory-off-modal" class="modal-overlay hidden" style="z-index: 90;">
-        <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-xl flex flex-col max-h-[80vh]">
-            <h3 class="font-bold text-slate-800 text-lg mb-2">代休の提案</h3>
-            <p id="comp-off-desc" class="text-xs text-slate-500 font-bold mb-4"></p>
-
-            <div class="bg-indigo-50 p-3 rounded-lg mb-4 text-xs text-indigo-800 font-bold flex items-start gap-2">
-                <span>💡</span>
-                <span>シフト交代で出勤が増えました。<br>人員に余裕がある日を代休（休み）にできます。</span>
-            </div>
-
-            <div id="comp-off-list" class="flex-1 overflow-y-auto space-y-2 pr-2 mb-4"></div>
-
-            <div class="pt-2 border-t border-slate-100">
-                <button onclick="closeCompensatoryModal()" class="w-full py-3 bg-slate-100 text-slate-500 font-bold rounded-xl text-xs hover:bg-slate-200 transition">
-                    今回は代休を設定しない（完了）
+    <!-- COMPENSATORY OFF VIEW -->
+    <div id="compensatory-off-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-compensatory-off-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
                 </button>
+                <h3 class="font-bold text-slate-800 text-lg">代休提案</h3>
+            </div>
+        </header>
+        <div class="p-6 overflow-y-auto flex-1 bg-slate-50">
+            <div class="max-w-lg mx-auto bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <p id="comp-off-desc" class="text-sm font-bold text-slate-600 mb-4"></p>
+                <div class="bg-indigo-50 p-4 rounded-xl mb-6 text-xs text-indigo-800 font-bold flex items-start gap-2 leading-relaxed">
+                    <span class="text-lg">💡</span>
+                    <span>シフト交代で出勤が増えました。<br>人員に余裕がある日を代休（休み）に設定できます。</span>
+                </div>
+                <div id="comp-off-list" class="space-y-2"></div>
+            </div>
+        </div>
+        <div class="p-4 border-t border-slate-100 bg-white shrink-0 text-center">
+             <button onclick="document.getElementById('compensatory-off-view').classList.remove('active')" class="text-sm font-bold text-slate-400 hover:text-slate-600 py-2">今回は設定しない</button>
+        </div>
+    </div>
+
+    <!-- ADJUSTMENT CANDIDATE VIEW -->
+    <div id="adjustment-candidate-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-adjustment-candidate-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h3 class="font-bold text-slate-800 text-lg">シフト交代候補</h3>
+            </div>
+        </header>
+        <div class="p-6 overflow-y-auto flex-1 bg-slate-50">
+            <div class="max-w-lg mx-auto">
+                <p id="adj-modal-desc" class="text-xs font-bold text-slate-500 mb-4 ml-1"></p>
+                <div id="adj-candidate-list" class="space-y-3"></div>
             </div>
         </div>
     </div>
 
-    <!-- AUTO SHIFT PREVIEW MODAL -->
+    <!-- Adjustment Confirm Modal (Small) -->
+    <div id="adjustment-confirm-modal" class="modal-overlay hidden" style="z-index: 110;">
+        <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl">
+            <h3 class="font-bold text-slate-800 text-lg mb-4">交代の確認</h3>
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-6 text-center">
+                <div class="font-bold text-slate-400 text-xs mb-1">交代元</div>
+                <div id="adj-confirm-old" class="text-lg font-black text-rose-500 mb-3"></div>
+                <div class="font-bold text-slate-300 text-xs mb-1">⬇</div>
+                <div class="font-bold text-slate-400 text-xs mb-1">交代先</div>
+                <div id="adj-confirm-new" class="text-lg font-black text-indigo-600"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="document.getElementById('adjustment-confirm-modal').classList.add('hidden')" class="py-3 bg-slate-100 text-slate-500 font-bold rounded-xl text-xs hover:bg-slate-200 transition">キャンセル</button>
+                <button id="btn-exec-adjustment" class="py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs shadow-lg hover:bg-indigo-700 transition">実行する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUTO SHIFT PREVIEW MODAL (Small) -->
     <div id="auto-shift-preview-modal" class="modal-overlay hidden" style="z-index: 100;">
         <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-xl flex flex-col">
             <h3 class="font-bold text-slate-800 text-lg mb-2">AI 自動作成プレビュー</h3>
@@ -549,8 +609,16 @@ function setupShiftEventListeners() {
     $('#btn-undo-action').onclick = undoShiftAction;
     $('#btn-clear-shift').onclick = clearShiftAssignments;
     $('#btn-mobile-clear').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); clearShiftAssignments(); };
-    $('#btn-shift-settings').onclick = () => document.getElementById('auto-shift-settings-modal').classList.remove('hidden');
-    $('#btn-mobile-settings').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); document.getElementById('auto-shift-settings-modal').classList.remove('hidden'); };
+    $('#btn-shift-settings').onclick = () => document.getElementById('auto-shift-settings-view').classList.add('active');
+    $('#btn-mobile-settings').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); document.getElementById('auto-shift-settings-view').classList.add('active'); };
+
+    // Close buttons for Fullscreen Views
+    $('#close-staff-master-view-btn').onclick = () => document.getElementById('staff-master-view').classList.remove('active');
+    $('#close-staff-edit-view-btn').onclick = () => document.getElementById('staff-edit-view').classList.remove('active');
+    $('#close-admin-note-view-btn').onclick = closeAdminNoteModal;
+    $('#close-auto-shift-settings-view-btn').onclick = () => document.getElementById('auto-shift-settings-view').classList.remove('active');
+    $('#close-compensatory-off-view-btn').onclick = closeCompensatoryModal;
+    $('#close-adjustment-candidate-view-btn').onclick = () => document.getElementById('adjustment-candidate-view').classList.remove('active');
 
     // New AI Buttons
     // AI廃止 -> 高速ロジックへ直結 (executeAutoShiftLogic(isPreview, targetGroup))
@@ -2215,7 +2283,7 @@ async function openAdjustmentCandidateModal(day, currentStaffName, currentRole) 
         });
     }
 
-    document.getElementById('adjustment-candidate-modal').classList.remove('hidden');
+    document.getElementById('adjustment-candidate-view').classList.add('active');
     hideLoading();
 }
 
@@ -2254,7 +2322,7 @@ async function finalizeAdjustmentReplacement(day, oldStaff, newStaff, role) {
     try {
         await setDoc(docRef, update, { merge: true });
 
-        document.getElementById('adjustment-candidate-modal').classList.add('hidden');
+        document.getElementById('adjustment-candidate-view').classList.remove('active');
         renderShiftAdminTable();
         showToast(`${newStaff} さんに交代しました`);
 
@@ -2361,12 +2429,12 @@ async function _executeResetStaffSort() {
 
 window.openStaffMasterModal = () => {
     renderStaffMasterList();
-    document.getElementById('staff-master-modal').classList.remove('hidden');
+    document.getElementById('staff-master-view').classList.add('active');
 };
 
 window.openStaffEditModal = (name) => {
-    const modal = document.getElementById('staff-edit-modal');
-    modal.classList.remove('hidden');
+    const view = document.getElementById('staff-edit-view');
+    view.classList.add('active');
     document.getElementById('staff-edit-title').textContent = name ? "スタッフ編集" : "追加";
 
     const nameInput = document.getElementById('se-name');
@@ -2553,7 +2621,7 @@ async function saveStaffDetails() {
         }
 
         showToast("保存しました");
-        document.getElementById('staff-edit-modal').classList.add('hidden');
+        document.getElementById('staff-edit-view').classList.remove('active');
         renderStaffMasterList();
         renderShiftAdminTable();
     } catch(e) {
@@ -2587,7 +2655,7 @@ async function _executeDeleteStaff(name) {
             staff_details: shiftState.staffDetails
         });
         showToast("削除しました");
-        document.getElementById('staff-edit-modal').classList.add('hidden');
+        document.getElementById('staff-edit-view').classList.remove('active');
         renderStaffMasterList();
         renderShiftAdminTable();
     } catch(e) {
@@ -2671,7 +2739,7 @@ window.handleDailyTargetKeydown = (event, day, type) => {
 };
 
 export function showAdminNoteModal(name, monthlyNote, dailyNotes) {
-    const modal = document.getElementById('admin-note-modal');
+    const view = document.getElementById('admin-note-view');
     document.getElementById('admin-note-staff-name').textContent = name;
     document.getElementById('admin-note-monthly-edit').value = monthlyNote || "";
     const dailyListDiv = document.getElementById('admin-note-daily-list');
@@ -2692,10 +2760,10 @@ export function showAdminNoteModal(name, monthlyNote, dailyNotes) {
         dailyListDiv.innerHTML = '<p class="text-xs text-slate-400">デイリー備考はありません</p>';
     }
     document.getElementById('btn-save-admin-note').onclick = () => saveAdminNote(name);
-    modal.classList.remove('hidden');
+    view.classList.add('active');
 }
 export function closeAdminNoteModal() {
-    document.getElementById('admin-note-modal').classList.add('hidden');
+    document.getElementById('admin-note-view').classList.remove('active');
 }
 async function saveAdminNote(name) {
     const monthlyVal = document.getElementById('admin-note-monthly-edit').value;

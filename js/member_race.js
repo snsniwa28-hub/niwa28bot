@@ -218,7 +218,7 @@ export function openMemberSettings() {
 }
 
 export function showMemberTargetModal() {
-    const modal = document.getElementById('member-target-modal');
+    const view = document.getElementById('member-target-view');
     document.getElementById('member-target-modal-month').textContent = `${currentYear}年${currentMonth}月`;
 
     // Fill Global Target
@@ -251,11 +251,11 @@ export function showMemberTargetModal() {
         });
     }
 
-    modal.classList.remove('hidden');
+    view.classList.add('active');
 }
 
 export function closeMemberTargetModal() {
-    document.getElementById('member-target-modal').classList.add('hidden');
+    document.getElementById('member-target-view').classList.remove('active');
 }
 
 export async function saveMemberTargets() {

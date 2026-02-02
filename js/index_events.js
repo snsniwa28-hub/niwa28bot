@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Chat / Strategy
     document.getElementById('open-unified-chat-btn')?.addEventListener('click', () => {
-        window.openCategoryChat('unified', '社内共有・戦略');
+        window.openInternalSharedModal('unified');
     });
 
     document.getElementById('open-strategy-admin-btn')?.addEventListener('click', (e) => {
@@ -207,12 +207,12 @@ document.addEventListener('DOMContentLoaded', () => {
         window.openStrategyEditor();
     });
 
-    document.getElementById('close-internal-shared-view-btn')?.addEventListener('click', () => {
-        document.getElementById('internal-shared-view').classList.remove('active');
+    document.getElementById('close-strategy-view-btn')?.addEventListener('click', () => {
+        document.getElementById('strategy-view').classList.remove('active');
     });
 
-    // Strategy Editor Modal
-    document.getElementById('cancel-strategy-editor-btn')?.addEventListener('click', () => {
+    // Strategy Editor View
+    document.getElementById('close-strategy-editor-view-btn')?.addEventListener('click', () => {
         window.closeStrategyEditor();
     });
 
@@ -232,8 +232,8 @@ document.addEventListener('DOMContentLoaded', () => {
         window.saveStrategy();
     });
 
-    // Member Target Modal
-    document.getElementById('close-member-target-modal-btn')?.addEventListener('click', () => {
+    // Member Target View
+    document.getElementById('close-member-target-view-btn')?.addEventListener('click', () => {
         window.closeMemberTargetModal();
     });
 
@@ -241,8 +241,8 @@ document.addEventListener('DOMContentLoaded', () => {
         window.saveMemberTargets();
     });
 
-    // QSC Edit Modal
-    document.getElementById('close-qsc-edit-modal-btn')?.addEventListener('click', () => {
+    // QSC Edit Panel
+    document.getElementById('close-qsc-edit-panel-btn')?.addEventListener('click', () => {
         window.closeQscEditModal();
     });
 
@@ -264,13 +264,9 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addDeadline();
     });
 
-    // AI Chat Modal
-    document.getElementById('ai-chat-overlay')?.addEventListener('click', () => {
-        window.toggleAIChat();
-    });
-
-    document.getElementById('close-ai-chat-btn')?.addEventListener('click', () => {
-        window.toggleAIChat();
+    // AI Chat View
+    document.getElementById('close-ai-chat-view-btn')?.addEventListener('click', () => {
+        window.closeAIChat();
     });
 
     document.getElementById('ai-input')?.addEventListener('keydown', (event) => {
@@ -286,8 +282,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Part 3: Dynamic Content Delegation ---
 
-    // Internal Shared Modal Body Delegation (Strategies, etc.)
-    document.getElementById('internal-shared-view')?.addEventListener('click', (e) => {
+    // Strategy View Delegation
+    document.getElementById('strategy-view')?.addEventListener('click', (e) => {
         // Strategy Slideshow
         const slidePrev = e.target.closest('[data-action="strategy-slide-prev"]');
         if (slidePrev) {

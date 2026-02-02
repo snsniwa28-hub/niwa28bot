@@ -499,6 +499,41 @@
                 <p class="text-xs text-slate-400 font-bold">チェックを入れると全員に反映されます</p>
              </div>
         </div>
+
+        <!-- QSC Edit Sub-View (Integrated) -->
+        <div id="qsc-item-edit-container" class="hidden flex-col h-full bg-slate-50 absolute inset-0 z-20 top-16 animate-fade-in">
+             <div class="p-6 overflow-y-auto flex-1">
+                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 max-w-lg mx-auto">
+                     <h3 class="text-lg font-bold text-slate-800 mb-6">項目編集</h3>
+                     <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">No. (表示順)</label>
+                            <input type="number" id="qscEditNo" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">エリア</label>
+                            <input type="text" id="qscEditArea" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">内容</label>
+                            <textarea id="qscEditContent" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+                        </div>
+                        <div>
+                             <label class="block text-xs font-bold text-slate-500 mb-1">画像</label>
+                             <img id="qscEditImagePreview" class="w-full h-40 object-contain bg-slate-100 rounded-lg mb-2 hidden border border-slate-200">
+                             <div class="flex gap-2">
+                                <button id="qscEditDeleteImageBtn" class="hidden bg-rose-50 text-rose-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-rose-200 hover:bg-rose-100 transition">削除</button>
+                                <input type="file" id="qscEditImageInput" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                             </div>
+                        </div>
+                     </div>
+                     <div class="flex gap-3 mt-8">
+                        <button id="close-qsc-edit-panel-btn" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
+                        <button id="save-qsc-edit-btn" class="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存する</button>
+                    </div>
+                 </div>
+             </div>
+        </div>
     </div>
 
     <div id="modals-container"></div>
@@ -648,10 +683,10 @@
         </div>
     </div>
 
-    <div id="internal-shared-view" class="fullscreen-view">
+    <div id="strategy-view" class="fullscreen-view">
         <header class="view-header">
             <div class="flex items-center gap-3">
-                <button id="close-internal-shared-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                <button id="close-strategy-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
                 </button>
                 <div class="flex items-center gap-2">
@@ -680,102 +715,68 @@
                 <p class="text-center text-slate-400 mt-10">読み込み中...</p>
              </div>
         </div>
+    </div>
 
-        <div id="strategy-editor-modal" class="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in">
-            <div class="bg-white w-full max-w-lg h-[85vh] rounded-2xl shadow-2xl flex flex-col m-4 overflow-hidden relative">
+    <div id="strategy-editor-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-strategy-editor-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h4 class="font-black text-slate-800 text-lg">記事の作成・編集</h4>
+            </div>
+        </header>
 
-                <div class="p-4 border-b border-slate-100 bg-slate-50 shrink-0 flex justify-between items-center">
-                    <h4 class="font-black text-slate-700">記事の作成・編集</h4>
-                    <button id="cancel-strategy-editor-btn" class="text-xs font-bold text-slate-400 hover:text-slate-600">キャンセル</button>
-                </div>
+        <div class="flex-1 overflow-y-auto p-4 bg-slate-50/50">
+            <div id="strategy-article-editor" class="max-w-2xl mx-auto w-full">
+                <!-- Content injected by JS -->
+            </div>
+        </div>
 
-                <div class="flex-1 overflow-y-auto p-4 bg-slate-50/50">
-                    <div id="strategy-article-editor" class="">
-                        <div id="strategy-blocks-container" class="space-y-4 min-h-[100px]"></div>
-
-                        <div class="grid grid-cols-3 gap-2 mt-6 pt-6 border-t border-slate-200 border-dashed">
-                            <button id="add-block-img-top-btn" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
-                                <span class="text-lg mb-1 group-hover:scale-110 transition">📷📝</span>
-                                <span class="text-[10px] font-bold text-slate-500">画像上</span>
-                            </button>
-                            <button id="add-block-text-btn" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
-                                <span class="text-lg mb-1 group-hover:scale-110 transition">📝</span>
-                                <span class="text-[10px] font-bold text-slate-500">文字のみ</span>
-                            </button>
-                            <button id="add-block-img-bottom-btn" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
-                                <span class="text-lg mb-1 group-hover:scale-110 transition">📝📷</span>
-                                <span class="text-[10px] font-bold text-slate-500">画像下</span>
-                            </button>
-                        </div>
-                        <p class="text-[10px] text-center text-slate-400 font-bold mt-2">↑ ブロックを追加して記事を構成 ↑</p>
-                    </div>
-                </div>
-
-                <div class="p-4 border-t border-slate-100 bg-white shrink-0">
-                    <button id="save-strategy-btn" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存して公開</button>
-                </div>
+        <div class="p-4 border-t border-slate-100 bg-white shrink-0">
+            <div class="max-w-2xl mx-auto w-full">
+                <button id="save-strategy-btn" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存して公開</button>
             </div>
         </div>
     </div>
 
-    <div id="member-target-modal" class="modal-overlay hidden" style="z-index: 80;">
-        <div class="modal-content p-0 w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
-                <h3 class="font-bold text-slate-800">目標設定 <span id="member-target-modal-month" class="text-xs text-slate-400 ml-2"></span></h3>
-                <button id="close-member-target-modal-btn" class="text-slate-400 hover:text-slate-600">✕</button>
+    <div id="member-target-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-member-target-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h3 class="font-bold text-slate-800 text-lg">目標設定 <span id="member-target-modal-month" class="text-xs text-slate-400 ml-2"></span></h3>
             </div>
-            <div class="p-6 overflow-y-auto flex-1">
-                <div class="mb-6">
+        </header>
+
+        <div class="p-6 overflow-y-auto flex-1 bg-slate-50">
+            <div class="max-w-xl mx-auto w-full">
+                <div class="mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <label class="block text-xs font-bold text-slate-500 mb-2">店舗全体目標 (件)</label>
                     <input type="number" id="member-global-target-input" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-lg font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
-                <div>
-                    <div class="flex justify-between items-center mb-2">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
                         <label class="block text-xs font-bold text-slate-500">個人目標設定</label>
                         <span class="text-[10px] text-slate-400">※0は目標なし</span>
                     </div>
                     <div id="member-individual-target-list" class="space-y-2"></div>
                 </div>
             </div>
-            <div class="p-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl shrink-0">
+        </div>
+
+        <div class="p-4 border-t border-slate-200 bg-white shrink-0">
+            <div class="max-w-xl mx-auto w-full">
                 <button id="save-member-targets-btn" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">設定を保存する</button>
             </div>
         </div>
     </div>
 
-    <div id="qscEditModal" class="modal-overlay hidden" style="z-index: 80;">
-        <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-2xl">
-            <h3 class="text-lg font-bold text-slate-800 mb-4">QSC項目編集</h3>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">No. (表示順)</label>
-                    <input type="number" id="qscEditNo" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">エリア</label>
-                    <input type="text" id="qscEditArea" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">内容</label>
-                    <textarea id="qscEditContent" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
-                </div>
-                <div>
-                     <label class="block text-xs font-bold text-slate-500 mb-1">画像 (お手本・NG例など)</label>
-                     <img id="qscEditImagePreview" class="w-full h-32 object-contain bg-slate-50 rounded-lg mb-2 hidden border border-slate-200">
-                     <div class="flex gap-2">
-                        <button id="qscEditDeleteImageBtn" class="hidden bg-rose-50 text-rose-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-rose-200 hover:bg-rose-100 transition">画像を削除</button>
-                        <input type="file" id="qscEditImageInput" accept="image/*" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                     </div>
-                </div>
-            </div>
-
-            <div class="flex gap-3 mt-6">
-                <button id="close-qsc-edit-modal-btn" class="flex-1 py-2.5 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
-                <button id="save-qsc-edit-btn" class="flex-1 py-2.5 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存する</button>
-            </div>
-        </div>
-    </div>
+    <!-- QSC Edit (Integrated into QSC View via toggle, or separate view if needed).
+         User requested integrated view. We will add a container for editing inside QSC View or a separate View.
+         Given ID requirements, we deleted qscEditModal. We will add a hidden container in QSC view via JS or handle it here.
+         Let's add a QSC Edit Container inside QSC View instead. -->
 
     <div id="remarks-modal" class="modal-overlay hidden"><div class="modal-content p-6"><h3 class="text-lg font-bold text-slate-800 mb-1" id="remarks-modal-task"></h3><p class="text-xs font-bold text-slate-400 mb-4" id="remarks-modal-time"></p><div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-slate-700 text-sm font-medium leading-relaxed mb-6" id="remarks-modal-text"></div><button id="close-remarks-modal-btn" class="w-full py-3 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">閉じる</button></div></div>
 
@@ -807,42 +808,34 @@
         </div>
     </div>
 
-    <!-- AI Chat Modal -->
-    <div id="ai-chat-modal" class="fixed inset-0 z-[100] hidden items-end sm:items-center justify-center pointer-events-none">
-        <div id="ai-chat-overlay" class="absolute inset-0 bg-black/20 backdrop-blur-sm pointer-events-auto"></div>
-        <div class="w-full sm:w-[450px] h-[80vh] sm:h-[700px] bg-slate-50 sm:rounded-3xl rounded-t-3xl shadow-2xl flex flex-col pointer-events-auto relative overflow-hidden transition-transform duration-300">
-            <!-- Header -->
-            <div class="bg-white p-4 border-b border-slate-200 flex justify-between items-center shrink-0 shadow-sm z-10">
+    <div id="ai-chat-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-ai-chat-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
                 <div class="flex items-center gap-3">
-                    <div class="bg-indigo-100 p-2 rounded-xl text-indigo-600">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    <div class="bg-indigo-100 p-1.5 rounded-xl text-indigo-600">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     </div>
                     <div>
-                        <h3 class="font-black text-slate-800">Garden AI Assistant</h3>
+                        <h3 class="font-black text-slate-800 text-lg">Garden AI</h3>
                         <p id="ai-status-text" class="text-[10px] font-bold text-slate-400 truncate max-w-[200px]">待機中...</p>
                     </div>
                 </div>
-                <button id="close-ai-chat-btn" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 flex items-center justify-center transition">✕</button>
             </div>
+        </header>
 
-            <!-- Messages -->
-            <div id="ai-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
-                <div class="flex justify-start mb-4 animate-fade-in">
-                    <div class="bg-white p-3 rounded-2xl rounded-bl-none text-sm font-bold text-slate-700 border border-slate-100 shadow-sm max-w-[80%]">
-                        こんにちは！社内資料に基づいて質問にお答えします。<br>
-                        「今月のスロット戦略は？」のように聞いてください。
-                    </div>
-                </div>
-            </div>
+        <div id="ai-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
+            <!-- Messages injected by JS -->
+        </div>
 
-            <!-- Input -->
-            <div class="p-4 bg-white border-t border-slate-200 shrink-0">
-                <div class="flex items-end gap-2 bg-slate-100 p-2 rounded-2xl border border-slate-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition">
-                    <textarea id="ai-input" rows="1" class="w-full bg-transparent border-none text-sm font-bold text-slate-700 px-2 py-2 outline-none resize-none max-h-32" placeholder="質問を入力..."></textarea>
-                    <button id="send-ai-message-btn" class="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-md shadow-indigo-200 transition shrink-0">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                    </button>
-                </div>
+        <div class="p-4 bg-white border-t border-slate-200 shrink-0">
+            <div class="max-w-2xl mx-auto w-full flex items-end gap-2 bg-slate-100 p-2 rounded-2xl border border-slate-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition">
+                <textarea id="ai-input" rows="1" class="w-full bg-transparent border-none text-sm font-bold text-slate-700 px-2 py-2 outline-none resize-none max-h-32" placeholder="質問を入力..."></textarea>
+                <button id="send-ai-message-btn" class="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-md shadow-indigo-200 transition shrink-0">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                </button>
             </div>
         </div>
     </div>

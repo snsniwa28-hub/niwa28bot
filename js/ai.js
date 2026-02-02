@@ -27,12 +27,11 @@ export async function initAI() {
 }
 
 export async function toggleAIChat(category = 'all', categoryName = '社内資料') {
-    const modal = document.getElementById('ai-chat-modal');
+    const view = document.getElementById('ai-chat-view');
     isChatOpen = !isChatOpen;
 
     if (isChatOpen) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+        view.classList.add('active');
 
         // Reset UI every time it opens
         const messagesContainer = document.getElementById('ai-messages');
@@ -59,8 +58,8 @@ export async function toggleAIChat(category = 'all', categoryName = '社内資�
         if(statusEl) statusEl.textContent = `${categoryName}の資料を表示中`;
 
         // Add Admin Management Button dynamically if not exists
-        let header = modal.querySelector('.border-b');
-        if (!header.querySelector('.admin-knowledge-btn')) {
+        let header = view.querySelector('.view-header');
+        if (header && !header.querySelector('.admin-knowledge-btn')) {
             const btn = document.createElement('button');
             btn.className = 'admin-knowledge-btn ml-auto mr-2 p-2 bg-slate-100 rounded-full hover:bg-slate-200 text-slate-400 transition';
             btn.innerHTML = '⚙️';
@@ -68,24 +67,32 @@ export async function toggleAIChat(category = 'all', categoryName = '社内資�
                 window.openStrategyAdmin(category);
                 closeAIChat();
             });
-            // Insert before close button
-            const closeBtn = header.querySelector('button:last-child');
-            header.insertBefore(btn, closeBtn);
+            // Insert before close button (assumed to be the last child in the header container logic)
+            // But view-header has structure: [div.flex.gap-3 [button#close...]] ...
+            // The close button is actually the FIRST element in my new HTML structure (left aligned).
+            // The AI Header structure in index.html is:
+            // <header class="view-header"><div class="flex items-center gap-3"><button id="close...">...</button>...</div></header>
+            // So there is NO close button at the end.
+            // I should append this settings button to the header, maybe on the right side.
+
+            // Let's create a container for right-side actions if needed, or just append to header.
+            // The header has display: flex, justify-content: space-between.
+            // Currently it only has one child (the div with back button and title).
+            // So appending a button will put it on the far right.
+            header.appendChild(btn);
         }
 
     } else {
         // Clear UI when closing
         document.getElementById('ai-messages').innerHTML = '';
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+        view.classList.remove('active');
     }
 }
 
 export function closeAIChat() {
     isChatOpen = false;
     document.getElementById('ai-messages').innerHTML = '';
-    document.getElementById('ai-chat-modal').classList.add('hidden');
-    document.getElementById('ai-chat-modal').classList.remove('flex');
+    document.getElementById('ai-chat-view').classList.remove('active');
 }
 
 // --- Context & AI Logic ---
