@@ -392,6 +392,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // New Opening View
     document.getElementById('close-new-opening-view-btn')?.addEventListener('click', () => window.closeNewOpeningModal());
 
+    // New Opening Edit
+    document.getElementById('open-new-opening-edit-btn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        window.openNewOpeningEditAuth();
+    });
+
+    document.getElementById('close-new-opening-edit-btn')?.addEventListener('click', () => {
+        window.closeNewOpeningEditModal();
+    });
+
+    document.getElementById('no-edit-save-btn')?.addEventListener('click', () => {
+        window.saveNewOpeningItem();
+    });
+
+    document.getElementById('no-edit-clear-btn')?.addEventListener('click', () => {
+        window.openNewOpeningEdit(); // Re-opens (resets) form
+    });
+
+    document.getElementById('no-edit-image-upload')?.addEventListener('change', function() {
+        window.handleNewOpeningImageSelect(this);
+    });
+
+    document.getElementById('no-edit-add-url-btn')?.addEventListener('click', () => {
+        window.handleAddNewUrl();
+    });
+
     // QSC Edit Buttons (Delegation for dynamic list items inside #qsc-view)
     document.getElementById('qsc-view')?.addEventListener('click', (e) => {
         if (e.target.classList.contains('btn-edit-qsc')) {
