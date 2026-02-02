@@ -83,14 +83,19 @@ export function createShiftModals() {
 
     const html = `
     <!-- FULL SCREEN SHIFT VIEW -->
-    <div id="shift-main-view" class="fixed inset-0 z-[60] bg-slate-50 transform transition-transform duration-300 translate-x-full flex flex-col font-main font-sans">
+    <div id="shift-main-view" class="fullscreen-view font-main font-sans z-[60]">
 
-        <header class="bg-white border-b border-slate-200 h-16 shrink-0 flex items-center justify-between px-4 sm:px-6 z-20 shadow-sm">
-            <div class="flex items-center gap-2 sm:gap-4">
-                <div class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">
-                    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+        <header class="view-header shrink-0 z-20 shadow-sm px-4 sm:px-6">
+            <div class="flex items-center gap-3">
+                <button id="close-shift-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <div class="flex items-center gap-2">
+                    <div class="bg-emerald-100 text-emerald-600 p-1.5 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    </div>
+                    <h2 class="font-black text-slate-800 text-lg sm:text-xl tracking-tight">シフト管理</h2>
                 </div>
-                <h2 class="font-black text-slate-800 text-lg sm:text-xl tracking-tight">シフト管理</h2>
             </div>
             <button id="btn-shift-admin-login" class="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-2 rounded-lg transition flex items-center gap-2">
                 <span>🔒</span> <span class="hidden sm:inline">管理者</span>
@@ -529,7 +534,7 @@ export function createShiftModals() {
 
 function setupShiftEventListeners() {
     $('#btn-shift-admin-login').onclick = checkShiftAdminPassword;
-    // $('#btn-close-shift-view').onclick = closeShiftModal; // Removed
+    $('#close-shift-view-btn').onclick = closeShiftModal;
     $('#btn-shift-cal-back').onclick = backToShiftList;
     $('#shift-prev-month').onclick = () => changeShiftMonth(-1);
     $('#shift-next-month').onclick = () => changeShiftMonth(1);
@@ -654,7 +659,9 @@ export function activateShiftAdminMode() {
 export async function openShiftUserModal() {
     showLoading();
     createShiftModals();
-    document.getElementById('shift-main-view').classList.remove('translate-x-full');
+    const view = document.getElementById('shift-main-view');
+    view.classList.add('active');
+
     const d = new Date();
     d.setMonth(d.getMonth() + 1);
     shiftState.currentYear = d.getFullYear();
@@ -711,7 +718,7 @@ export function switchShiftView(viewName) {
 }
 
 export function closeShiftModal() {
-    document.getElementById('shift-main-view').classList.add('translate-x-full');
+    document.getElementById('shift-main-view').classList.remove('active');
 }
 
 export function backToShiftList() {

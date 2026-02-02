@@ -265,9 +265,8 @@ function updateKnowledgeFilterUI() {
 }
 
 function updateHeaderUI() {
-    // const header = document.querySelector('#internalSharedModal .modal-content > div:first-child'); // HTML側でクラス定義済みのため上書き不要
-    const titleEl = document.querySelector('#internalSharedModal h3');
-    const iconEl = document.querySelector('#internalSharedModal span.text-2xl');
+    const titleEl = document.querySelector('#internal-shared-view h3');
+    const iconEl = document.querySelector('#internal-shared-view span.text-2xl');
     const createBtn = document.getElementById('btn-create-strategy');
     const aiBtn = document.getElementById('btn-category-ai');
     const knowledgeBtn = document.getElementById('btn-knowledge-list');
@@ -552,10 +551,9 @@ window.openInternalSharedModal = (category = 'unified') => {
     isStrategyAdmin = false;
     // 常に統一カテゴリとして開く
     setStrategyCategory('unified');
-    const modal = document.getElementById('internalSharedModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+    const view = document.getElementById('internal-shared-view');
+    if (view) {
+        view.classList.add('active');
     }
 };
 
@@ -563,10 +561,9 @@ export function openStrategyAdmin(category) {
     isStrategyAdmin = true;
     isKnowledgeMode = true;
     setStrategyCategory(category);
-    const modal = document.getElementById('internalSharedModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+    const view = document.getElementById('internal-shared-view');
+    if (view) {
+        view.classList.add('active');
     }
 }
 

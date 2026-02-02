@@ -446,21 +446,74 @@
         </main>
     </div>
 
+    <div id="new-opening-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-new-opening-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h2 class="text-lg font-black text-slate-800">導入機種リスト</h2>
+            </div>
+        </header>
+        <div id="newOpeningInfo" class="p-6 overflow-y-auto flex-1 bg-slate-50"></div>
+    </div>
+
+    <div id="qsc-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-qsc-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h2 class="text-lg font-black text-slate-800">QSC チェックリスト</h2>
+            </div>
+            <button id="qscEditButton" class="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition">⚙️ 管理</button>
+        </header>
+
+        <div class="flex flex-col flex-1 overflow-hidden h-full">
+             <div class="p-4 bg-white border-b border-slate-100 flex justify-center shrink-0">
+                <div class="flex bg-slate-100 p-1 rounded-lg">
+                    <button id="qscTabUnfinished" class="px-6 py-1.5 text-xs font-bold rounded-md bg-white text-rose-600 shadow-sm transition-all">未実施</button>
+                    <button id="qscTabFinished" class="px-6 py-1.5 text-xs font-bold rounded-md text-slate-400 transition-all">完了済</button>
+                </div>
+             </div>
+
+             <div class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6">
+                <div id="qscAddForm" class="hidden mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                    <h4 class="text-xs font-bold text-indigo-600 mb-2 uppercase tracking-widest">新規項目</h4>
+                    <div class="flex flex-col gap-2">
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="number" id="newQscNo" placeholder="No." class="border border-slate-200 rounded p-2 text-sm" min="1">
+                            <input type="text" id="newQscArea" placeholder="エリア" class="col-span-2 border border-slate-200 rounded p-2 text-sm">
+                        </div>
+                        <input type="text" id="newQscContent" placeholder="内容" class="border border-slate-200 rounded p-2 text-sm">
+                        <div class="flex gap-2">
+                            <input type="file" id="newQscImage" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-white file:text-indigo-600 hover:file:bg-indigo-50">
+                            <button id="btn-add-qsc-item" class="bg-indigo-600 text-white font-bold text-sm py-2 px-6 rounded-lg whitespace-nowrap">追加</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="qscListContainer" class="space-y-3"></div>
+             </div>
+
+             <div class="p-3 bg-white border-t border-slate-100 text-center shrink-0">
+                <p class="text-xs text-slate-400 font-bold">チェックを入れると全員に反映されます</p>
+             </div>
+        </div>
+    </div>
+
     <div id="modals-container"></div>
 
-    <div id="deadlineManagementModal" class="modal-overlay hidden" style="z-index: 85;">
-        <div class="modal-content p-0 w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
-                <h2 class="text-sm font-bold text-slate-500 flex items-center gap-2">
-                    <span>⚙️</span> 期限物・お知らせ管理
-                </h2>
-                <div class="flex items-center gap-2">
-                    <button id="close-deadline-management-modal-btn" class="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 flex items-center justify-center transition">
-                        ✕
-                    </button>
-                </div>
+    <div id="deadline-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-deadline-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h2 class="text-lg font-black text-slate-800">期限物・お知らせ管理</h2>
             </div>
-            <div class="p-4 overflow-y-auto flex-1 bg-slate-50/50">
+        </header>
+        <div class="p-4 overflow-y-auto flex-1 bg-slate-50">
+            <div class="max-w-3xl mx-auto w-full">
                 <div class="mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <h3 class="text-xs font-bold text-slate-400 uppercase mb-3 tracking-widest">新規追加</h3>
                     <div class="space-y-3">
@@ -486,134 +539,149 @@
         </div>
     </div>
 
-    <div id="simple-todo-modal" class="modal-overlay hidden" style="z-index: 85;">
-        <div class="modal-content p-0 w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
-                <h2 class="text-sm font-bold text-slate-500 flex items-center gap-2">
-                    <span>✅</span> チームToDoリスト
-                </h2>
-                <div class="flex items-center gap-2">
-                    <button id="close-simple-todo-modal-btn" class="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 flex items-center justify-center transition">
-                        ✕
+    <div id="todo-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-todo-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h2 id="todo-view-title" class="text-lg font-black text-slate-800">チームToDoリスト</h2>
+            </div>
+        </header>
+
+        <div class="flex flex-col flex-1 overflow-hidden h-full">
+            <!-- Categories View -->
+            <div id="simple-todo-view-categories" class="p-4 overflow-y-auto flex-1 bg-slate-50/50 hidden"></div>
+
+            <!-- Task List View -->
+            <div id="simple-todo-view-tasks" class="flex flex-col flex-1 overflow-hidden h-full">
+                <!-- Input Area -->
+                <div class="p-4 border-b border-slate-50 bg-white shrink-0 space-y-3">
+                    <div class="max-w-3xl mx-auto w-full">
+                        <input type="text" id="todo-input" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 transition mb-3" placeholder="タスクを入力...">
+
+                        <div class="flex gap-2 mb-2">
+                            <select id="todo-assignee" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">担当者未定</option>
+                            </select>
+                            <input type="date" id="todo-due-date" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <div class="flex gap-2 items-start">
+                            <textarea id="todo-detail" rows="1" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="詳細メモ (任意)"></textarea>
+                            <button id="add-todo-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition whitespace-nowrap">追加</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- List Area -->
+                <div class="p-4 overflow-y-auto flex-1 bg-slate-50/50">
+                    <div class="max-w-3xl mx-auto w-full">
+                        <div id="todo-list-active" class="space-y-2 mb-6">
+                            <!-- Active tasks will be rendered here -->
+                        </div>
+
+                        <div id="todo-list-completed-container" class="hidden">
+                            <div class="flex items-center gap-2 mb-2 mt-6">
+                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">完了済み</h3>
+                                <div class="h-px bg-slate-200 flex-1"></div>
+                            </div>
+                            <div id="todo-list-completed" class="space-y-2 opacity-75">
+                                <!-- Completed tasks will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="p-4 border-t border-slate-100 bg-white shrink-0 flex justify-end">
+                    <button id="clear-completed-todos-btn" class="text-rose-500 text-xs font-bold hover:bg-rose-50 px-3 py-2 rounded-lg transition flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        完了済みを削除
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Input Area -->
-            <div class="p-4 border-b border-slate-50 bg-white shrink-0 space-y-3">
-                <input type="text" id="todo-input" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="タスクを入力...">
+    <div id="map-update-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-map-update-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h2 class="text-lg font-black text-slate-800">フロアマップの更新</h2>
+            </div>
+        </header>
+        <div class="p-6 flex-1 overflow-y-auto bg-white flex flex-col items-center">
+            <div class="w-full max-w-md flex-1 flex flex-col">
+                <div class="flex-1 overflow-y-auto mb-4">
+                    <div id="map-current-preview" class="mb-4">
+                        <p class="text-xs font-bold text-slate-400 mb-2">現在のマップ</p>
+                        <div class="bg-slate-50 rounded-lg border border-slate-200 p-2">
+                            <img id="map-current-preview-img" class="w-full h-40 object-contain rounded opacity-70">
+                        </div>
+                    </div>
+                    <div id="map-preview-container" class="mb-4 hidden">
+                        <p class="text-xs font-bold text-indigo-500 mb-2">新規プレビュー</p>
+                        <div class="bg-indigo-50 rounded-lg border border-indigo-200 p-2">
+                            <img id="map-preview" class="w-full h-40 object-contain rounded">
+                        </div>
+                    </div>
 
-                <div class="flex gap-2">
-                    <select id="todo-assignee" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">担当者未定</option>
-                    </select>
-                    <input type="date" id="todo-due-date" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="mb-2">
+                        <label class="block w-full cursor-pointer bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:bg-slate-100 hover:border-indigo-400 transition group">
+                            <span class="text-sm font-bold text-slate-500 group-hover:text-indigo-600">ここをタップして画像を選択</span>
+                            <input type="file" id="map-file-input" accept="image/*" class="hidden">
+                        </label>
+                    </div>
+                    <p class="text-[10px] text-slate-400 font-bold leading-relaxed">
+                        ※高画質で保存されますが、容量制限(1MB)のため自動調整される場合があります。<br>
+                        ※縦横比は維持されます。
+                    </p>
                 </div>
 
-                <div class="flex gap-2 items-start">
-                    <textarea id="todo-detail" rows="1" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="詳細メモ (任意)"></textarea>
-                    <button id="add-todo-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition whitespace-nowrap">追加</button>
+                <div class="flex gap-3 pt-2 border-t border-slate-100 mt-auto">
+                    <button id="btn-save-map" class="w-full py-3 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存して更新</button>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- List Area -->
-            <div class="p-4 overflow-y-auto flex-1 bg-slate-50/50">
-
-                <div id="todo-list-active" class="space-y-2 mb-6">
-                    <!-- Active tasks will be rendered here -->
+    <div id="internal-shared-view" class="fullscreen-view">
+        <header class="view-header">
+            <div class="flex items-center gap-3">
+                <button id="close-internal-shared-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">📋</span>
+                    <h3 class="font-black text-slate-800 text-lg">社内共有・戦略</h3>
                 </div>
-
-                <div id="todo-list-completed-container" class="hidden">
-                    <div class="flex items-center gap-2 mb-2 mt-6">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">完了済み</h3>
-                        <div class="h-px bg-slate-200 flex-1"></div>
-                    </div>
-                    <div id="todo-list-completed" class="space-y-2 opacity-75">
-                         <!-- Completed tasks will be rendered here -->
-                    </div>
-                </div>
-
             </div>
+        </header>
 
-             <!-- Footer -->
-             <div class="p-4 border-t border-slate-100 bg-white shrink-0 flex justify-end">
-                 <button id="clear-completed-todos-btn" class="text-rose-500 text-xs font-bold hover:bg-rose-50 px-3 py-2 rounded-lg transition flex items-center gap-1">
-                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                     完了済みを削除
-                 </button>
+        <div class="flex flex-col flex-1 overflow-hidden h-full">
+             <div class="bg-white border-b border-slate-200 p-3 flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-hide shrink-0 shadow-sm z-10">
+                <button id="btn-knowledge-list" class="flex-shrink-0 flex items-center gap-1 bg-white text-slate-500 px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 hover:bg-slate-50 transition shadow-sm">
+                    🧠 知識リスト
+                </button>
+                <button id="btn-category-ai" class="flex-shrink-0 flex items-center gap-1 bg-indigo-50 text-indigo-600 px-3 py-2 rounded-lg text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition">
+                    🤖 AIに聞く
+                </button>
+                <button id="btn-create-strategy" class="hidden flex-shrink-0 items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">
+                    <span>＋</span> 新規作成
+                </button>
+             </div>
+
+             <div id="internalSharedModalBody" class="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50"></div>
+
+             <div id="strategy-list-container" class="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 bg-slate-50">
+                <p class="text-center text-slate-400 mt-10">読み込み中...</p>
              </div>
         </div>
-    </div>
 
-    <div id="map-update-modal" class="modal-overlay hidden" style="z-index: 95;">
-        <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col">
-            <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <span>🗺️</span> フロアマップの更新
-            </h3>
-
-            <div class="flex-1 overflow-y-auto mb-4">
-                <div id="map-current-preview" class="mb-4">
-                    <p class="text-xs font-bold text-slate-400 mb-2">現在のマップ</p>
-                    <div class="bg-slate-50 rounded-lg border border-slate-200 p-2">
-                        <img id="map-current-preview-img" class="w-full h-40 object-contain rounded opacity-70">
-                    </div>
-                </div>
-                <div id="map-preview-container" class="mb-4 hidden">
-                    <p class="text-xs font-bold text-indigo-500 mb-2">新規プレビュー</p>
-                    <div class="bg-indigo-50 rounded-lg border border-indigo-200 p-2">
-                        <img id="map-preview" class="w-full h-40 object-contain rounded">
-                    </div>
-                </div>
-
-                <div class="mb-2">
-                    <label class="block w-full cursor-pointer bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:bg-slate-100 hover:border-indigo-400 transition group">
-                        <span class="text-sm font-bold text-slate-500 group-hover:text-indigo-600">ここをタップして画像を選択</span>
-                        <input type="file" id="map-file-input" accept="image/*" class="hidden">
-                    </label>
-                </div>
-                <p class="text-[10px] text-slate-400 font-bold leading-relaxed">
-                    ※高画質で保存されますが、容量制限(1MB)のため自動調整される場合があります。<br>
-                    ※縦横比は維持されます。
-                </p>
-            </div>
-
-            <div class="flex gap-3 pt-2 border-t border-slate-100">
-                <button id="close-map-update-modal-btn" class="flex-1 py-2.5 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
-                <button id="btn-save-map" class="flex-1 py-2.5 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存して更新</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="internalSharedModal" class="modal-overlay hidden" style="z-index: 90;">
-        <div class="modal-content p-0 w-full max-w-2xl bg-slate-50 rounded-2xl shadow-2xl flex flex-col h-[90vh]">
-            <div class="bg-white border-b border-slate-200 flex flex-col shrink-0 z-10 shadow-sm">
-                <div class="p-4 flex justify-between items-center">
-                    <div class="flex items-center gap-2">
-                        <span class="text-2xl">📋</span>
-                        <h3 class="font-black text-slate-800 text-lg">社内共有・戦略</h3>
-                    </div>
-                    <button id="close-internal-shared-modal-btn" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 flex items-center justify-center transition">✕</button>
-                </div>
-
-                <div class="px-4 pb-4 flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
-                    <button id="btn-knowledge-list" class="flex-shrink-0 flex items-center gap-1 bg-white text-slate-500 px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 hover:bg-slate-50 transition shadow-sm">
-                        🧠 知識リスト
-                    </button>
-                    <button id="btn-category-ai" class="flex-shrink-0 flex items-center gap-1 bg-indigo-50 text-indigo-600 px-3 py-2 rounded-lg text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition">
-                        🤖 AIに聞く
-                    </button>
-                    <button id="btn-create-strategy" class="hidden flex-shrink-0 items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">
-                        <span>＋</span> 新規作成
-                    </button>
-                </div>
-            </div>
-
-            <div id="strategy-list-container" class="flex-1 overflow-y-auto p-4 sm:p-6 pb-20">
-                <p class="text-center text-slate-400 mt-10">読み込み中...</p>
-            </div>
-        </div>
-
-        <div id="strategy-editor-modal" class="absolute inset-0 bg-black/50 backdrop-blur-sm z-20 flex items-center justify-center hidden animate-fade-in">
+        <div id="strategy-editor-modal" class="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in">
             <div class="bg-white w-full max-w-lg h-[85vh] rounded-2xl shadow-2xl flex flex-col m-4 overflow-hidden relative">
 
                 <div class="p-4 border-b border-slate-100 bg-slate-50 shrink-0 flex justify-between items-center">

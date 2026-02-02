@@ -77,59 +77,24 @@ export async function initSimpleTodo() {
             }
         }
 
-        setupModalStructure();
-
     } catch (error) {
         console.error("Error fetching staff for todo:", error);
     }
 }
 
-function setupModalStructure() {
-    const modal = document.getElementById('simple-todo-modal');
-    if (!modal) return;
-    const content = modal.querySelector('.modal-content');
-    if (!content) return;
-
-    if (document.getElementById('simple-todo-view-tasks')) return;
-
-    // Get Header (first child)
-    const header = content.firstElementChild;
-
-    // Collect other children (Input, List, Footer)
-    const children = Array.from(content.children).slice(1);
-
-    // Create Views
-    const viewTasks = document.createElement('div');
-    viewTasks.id = 'simple-todo-view-tasks';
-    viewTasks.className = 'flex flex-col flex-1 overflow-hidden h-full';
-
-    children.forEach(child => viewTasks.appendChild(child));
-
-    const viewCategories = document.createElement('div');
-    viewCategories.id = 'simple-todo-view-categories';
-    viewCategories.className = 'p-4 overflow-y-auto flex-1 bg-slate-50/50 hidden';
-
-    content.appendChild(viewCategories);
-    content.appendChild(viewTasks);
-}
-
 export function openSimpleTodoModal() {
-    const modal = document.getElementById('simple-todo-modal');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-
-    setupModalStructure();
+    const view = document.getElementById('todo-view');
+    if (!view) return;
+    view.classList.add('active');
 
     currentCategory = null;
     renderCategoryView();
 }
 
 export function closeSimpleTodoModal() {
-    const modal = document.getElementById('simple-todo-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+    const view = document.getElementById('todo-view');
+    if (view) {
+        view.classList.remove('active');
     }
     if (unsubscribeTodos) {
         unsubscribeTodos();
@@ -512,9 +477,7 @@ export function renderTaskView() {
 }
 
 function updateHeader(titleText, showBack = false) {
-    const modal = document.getElementById('simple-todo-modal');
-    if (!modal) return;
-    const h2 = modal.querySelector('h2');
+    const h2 = document.getElementById('todo-view-title');
     if (!h2) return;
 
     if (showBack) {

@@ -275,3 +275,34 @@ body {
     color: #ffffff;
     backdrop-filter: blur(4px);
 }
+
+/* === Fullscreen Fade Views (New Standard) === */
+.fullscreen-view {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background-color: #f8fafc; /* bg-slate-50 */
+    display: flex;
+    flex-direction: column;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden; /* Ensure it doesn't block clicks when hidden */
+}
+
+.fullscreen-view.active {
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+}
+
+.view-header {
+    height: 4rem; /* h-16 */
+    background-color: white;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    flex-shrink: 0;
+}
