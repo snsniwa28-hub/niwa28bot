@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Part 2: Modals ---
 
     // Deadline Management Modal
-    document.getElementById('close-deadline-management-modal-btn')?.addEventListener('click', () => {
+    document.getElementById('close-deadline-view-btn')?.addEventListener('click', () => {
         window.closeDeadlineManagementModal();
     });
 
@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Simple ToDo Modal
-    document.getElementById('close-simple-todo-modal-btn')?.addEventListener('click', () => {
+    document.getElementById('close-todo-view-btn')?.addEventListener('click', () => {
         window.closeSimpleTodoModal();
     });
 
@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.handleMapFileSelect(this);
     });
 
-    document.getElementById('close-map-update-modal-btn')?.addEventListener('click', () => {
+    document.getElementById('close-map-update-view-btn')?.addEventListener('click', () => {
         window.closeMapUpdateModal();
     });
 
@@ -207,8 +207,8 @@ document.addEventListener('DOMContentLoaded', () => {
         window.openStrategyEditor();
     });
 
-    document.getElementById('close-internal-shared-modal-btn')?.addEventListener('click', () => {
-        document.getElementById('internalSharedModal').classList.add('hidden');
+    document.getElementById('close-internal-shared-view-btn')?.addEventListener('click', () => {
+        document.getElementById('internal-shared-view').classList.remove('active');
     });
 
     // Strategy Editor Modal
@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Part 3: Dynamic Content Delegation ---
 
     // Internal Shared Modal Body Delegation (Strategies, etc.)
-    document.getElementById('internalSharedModal')?.addEventListener('click', (e) => {
+    document.getElementById('internal-shared-view')?.addEventListener('click', (e) => {
         // Strategy Slideshow
         const slidePrev = e.target.closest('[data-action="strategy-slide-prev"]');
         if (slidePrev) {
@@ -346,15 +346,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (target.closest('#btn-close-calendar')) window.closeMonthlyCalendar();
 
             // QSC Modal
-            if (target.id === 'btn-add-qsc-item') window.addQscItem();
-            if (target.id === 'qscEditButton') window.openQSCModal(); // Logic might differ if toggle
-            if (target.closest('#closeQscModal')) window.closeQscEditModal(); // Note: ID might be closeQscModal in HTML
-            // QSC Tabs
-            if (target.id === 'qscTabUnfinished') window.handleQscTab('未実施');
-            if (target.id === 'qscTabFinished') window.handleQscTab('完了');
-
-            // New Opening Modal
-            if (target.closest('#closeNewOpeningModal')) window.closeNewOpeningModal();
+            // Note: QSC View is now static in HTML, but dynamic content might still be delegated if added here?
+            // Actually, we moved QSC View OUT of #modals-container. So these listeners won't fire for QSC View elements if they are in QSC View.
+            // But QSC Modal (Edit) might still be in modals container? No, we replaced QSC Modal.
+            // We need to move these listeners to direct attachment or document body delegation if needed.
+            // For now, removing them from here and adding direct listeners below.
 
             // Machine Detail Modal
             if (target.closest('#closeDetailModal')) window.closeDetailModal();
@@ -383,3 +379,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+    // --- Static View Event Listeners (Moved from Delegation) ---
+
+    // QSC View
+    document.getElementById('btn-add-qsc-item')?.addEventListener('click', () => window.addQscItem());
+    document.getElementById('qscEditButton')?.addEventListener('click', () => window.openQSCModal()); // In header
+    document.getElementById('close-qsc-view-btn')?.addEventListener('click', () => window.closeQSCModal());
+    document.getElementById('qscTabUnfinished')?.addEventListener('click', () => window.handleQscTab('未実施'));
+    document.getElementById('qscTabFinished')?.addEventListener('click', () => window.handleQscTab('完了'));
+
+    // New Opening View
+    document.getElementById('close-new-opening-view-btn')?.addEventListener('click', () => window.closeNewOpeningModal());
+
+    // QSC Edit Buttons (Delegation for dynamic list items inside #qsc-view)
+    document.getElementById('qsc-view')?.addEventListener('click', (e) => {
+        if (e.target.classList.contains('btn-edit-qsc')) {
+            // Logic handled in renderQSCList by attaching onclick directly to element creation
+            // So no delegation needed here if js/qsc.js does it.
+            // Checking js/qsc.js: Yes, d.querySelector('.btn-edit-qsc').onclick = ...
+        }
+    });

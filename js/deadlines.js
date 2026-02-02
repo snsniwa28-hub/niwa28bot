@@ -223,9 +223,9 @@ function createDeadlineElement(id, data, mode) {
 }
 
 export function openDeadlineManagementModal() {
-    const modal = document.getElementById("deadlineManagementModal");
-    if (modal) {
-        modal.classList.remove("hidden");
+    const view = document.getElementById("deadline-view");
+    if (view) {
+        view.classList.add("active");
         // Ensure rendering happens when opened to populate the admin list
         renderDeadlinesList();
 
@@ -242,9 +242,9 @@ export function openDeadlineManagementModal() {
 }
 
 export function closeDeadlineManagementModal() {
-    const modal = document.getElementById("deadlineManagementModal");
-    if (modal) {
-        modal.classList.add("hidden");
+    const view = document.getElementById("deadline-view");
+    if (view) {
+        view.classList.remove("active");
     }
     // Clear inputs
     const contentInput = document.getElementById('new-deadline-content');

@@ -95,7 +95,7 @@ export function openNewOpening() {
     if (!newOpeningData || !newOpeningData.length) {
         // Though the card is disabled, keep this check for direct calls
         c.innerHTML = "<p class='text-center text-slate-400 py-10'>データなし</p>";
-        $('#newOpeningModal').classList.remove("hidden");
+        $('#new-opening-view').classList.add("active");
         return;
     }
 
@@ -148,11 +148,11 @@ export function openNewOpening() {
         c.appendChild(section);
     };
     createList(lat, "✨ 最新導入"); createList(oth, "🔄 その他");
-    $('#newOpeningModal').classList.remove("hidden");
+    $('#new-opening-view').classList.add('active');
 }
 
 export function closeNewOpeningModal() {
-    $('#newOpeningModal').classList.add('hidden');
+    $('#new-opening-view').classList.remove('active');
 }
 
 export function closeDetailModal() {
@@ -206,8 +206,7 @@ export function fetchMapData() {
 let mapFileToSave = null;
 
 export function openMapUpdateModal() {
-    $('#map-update-modal').classList.remove('hidden');
-    $('#map-update-modal').classList.add('flex');
+    $('#map-update-view').classList.add('active');
     mapFileToSave = null;
     $('#map-file-input').value = "";
     $('#map-preview').src = "";
@@ -219,8 +218,7 @@ export function openMapUpdateModal() {
 }
 
 export function closeMapUpdateModal() {
-    $('#map-update-modal').classList.add('hidden');
-    $('#map-update-modal').classList.remove('flex');
+    $('#map-update-view').classList.remove('active');
 }
 
 export async function handleMapFileSelect(input) {

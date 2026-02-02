@@ -87,7 +87,7 @@ export function subscribeQSC() {
         const countEl = $('#qscUnfinishedCount');
         if(countEl) countEl.textContent = u > 0 ? `残り ${u} 件` : `完了`;
 
-        if(!$('#qscModal').classList.contains("hidden")) renderQSCList();
+        if($('#qsc-view').classList.contains("active")) renderQSCList();
     });
 }
 
@@ -338,12 +338,12 @@ export function activateQscEditMode() {
 }
 
 export function openQSCModal() {
-    $('#qscModal').classList.remove('hidden');
+    $('#qsc-view').classList.add('active');
     renderQSCList();
 }
 
 export function closeQSCModal() {
-    $('#qscModal').classList.add('hidden');
+    $('#qsc-view').classList.remove('active');
 }
 
 export function setQscTab(tab) {
