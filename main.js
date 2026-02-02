@@ -41,6 +41,13 @@ window.renderToday = Customer.renderToday;
 window.openNewOpening = Customer.openNewOpening;
 window.closeNewOpeningModal = Customer.closeNewOpeningModal;
 window.closeDetailModal = Customer.closeDetailModal;
+window.openNewOpeningEditAuth = Customer.openNewOpeningEditAuth;
+window.openNewOpeningEdit = Customer.openNewOpeningEdit;
+window.closeNewOpeningEditModal = Customer.closeNewOpeningEditModal;
+window.saveNewOpeningItem = Customer.saveNewOpeningItem;
+window.handleNewOpeningImageSelect = Customer.handleNewOpeningImageSelect;
+window.handleAddNewUrl = Customer.handleAddNewUrl;
+
 // Map Update
 window.openMapUpdateModal = Customer.openMapUpdateModal;
 window.closeMapUpdateModal = Customer.closeMapUpdateModal;

@@ -126,7 +126,10 @@
                 </div>
 
                 <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.25s;">
-                    <a id="newOpeningCard" href="#new-opening-section" class="block group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                    <a id="newOpeningCard" href="#new-opening-section" class="relative block group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
+                        <button id="open-new-opening-edit-btn" class="absolute top-3 right-3 p-2 bg-slate-50 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-full transition-all z-20 shadow-sm">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        </button>
                         <div class="flex justify-between items-start mb-2">
                             <div class="bg-indigo-50 text-indigo-600 p-3 rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
@@ -534,6 +537,78 @@
                 <h3 class="text-xs font-bold text-slate-400 uppercase mb-2 tracking-widest px-1">登録済みリスト</h3>
                 <div id="deadlines-list-admin">
                     <p class="text-slate-400 text-sm text-center py-2">読み込み中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="newOpeningEditModal" class="modal-overlay hidden" style="z-index: 90;">
+        <div class="modal-content p-0 w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-slate-800">新台入替設定</h3>
+                <button id="close-new-opening-edit-btn" class="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50">
+                <!-- List of existing -->
+                <div class="mb-6">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">登録済みリスト</h4>
+                    <div id="new-opening-edit-list" class="space-y-2">
+                        <p class="text-center text-slate-400 text-xs">読み込み中...</p>
+                    </div>
+                </div>
+
+                <!-- Edit Form -->
+                <div class="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h4 class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-4">新規追加 / 編集</h4>
+                    <input type="hidden" id="no-edit-id">
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">機種名</label>
+                            <input type="text" id="no-edit-name" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="flex-1">
+                                <label class="block text-xs font-bold text-slate-500 mb-1">導入台数</label>
+                                <input type="number" id="no-edit-count" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-xs font-bold text-slate-500 mb-1">合計台数</label>
+                                <input type="number" id="no-edit-total" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">スペック詳細</label>
+                        <textarea id="no-edit-spec" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-500 mb-2">画像 (スライドショー)</label>
+
+                        <!-- Image Preview List -->
+                        <div id="no-edit-images-preview" class="flex gap-2 overflow-x-auto pb-2 mb-2"></div>
+
+                        <div class="flex flex-col gap-2">
+                             <label class="flex items-center justify-center w-full p-3 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 hover:border-indigo-300 transition group">
+                                <span class="text-xs font-bold text-slate-400 group-hover:text-indigo-500 flex items-center gap-2">
+                                    <span>📷</span> 画像をアップロード
+                                </span>
+                                <input type="file" id="no-edit-image-upload" accept="image/*" class="hidden">
+                            </label>
+
+                            <div class="flex gap-2">
+                                <input type="text" id="no-edit-image-url" placeholder="画像URLを直接入力" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                                <button id="no-edit-add-url-btn" class="bg-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-300 transition">追加</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 pt-4 border-t border-slate-100">
+                         <button id="no-edit-clear-btn" class="px-4 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-100 transition">リセット</button>
+                         <button id="no-edit-save-btn" class="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-lg shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存する</button>
+                    </div>
                 </div>
             </div>
         </div>

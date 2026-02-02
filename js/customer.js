@@ -1,11 +1,12 @@
 import { db } from './firebase.js';
-import { collection, getDocs, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, getDocs, doc, setDoc, getDoc, onSnapshot, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { latestKeywords } from './config.js';
 import { $, compressMapImage } from './utils.js';
 
 let allMachines = [];
 let newOpeningData = [];
 let eventMap = new Map();
+let currentEditingImages = [];
 
 export async function fetchCustomerData() {
     try {
@@ -15,12 +16,13 @@ export async function fetchCustomerData() {
             getDocs(collection(db, "calendar"))
         ]);
         allMachines = mSnap.docs.map(d => d.data()).sort((a, b) => a.name.localeCompare(b.name));
-        newOpeningData = nSnap.docs.map(d => d.data());
+        newOpeningData = nSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         eventMap = new Map(cSnap.docs.map(d => d.data()).sort((a, b) => a.date - b.date).map(e => [e.date, e]));
         renderToday();
         updateNewOpeningCard();
         fetchMapData(); // Load Map
     } catch (e) {
+        console.error(e);
         const container = $('#todayEventContainer');
         if(container) container.innerHTML = `<p class="text-rose-500 text-center font-bold">データ読込失敗</p>`;
     }
@@ -47,109 +49,119 @@ function updateNewOpeningCard() {
     const title = cardLink.querySelector('h2');
     const sub = cardLink.querySelector('p');
 
-    if (!newOpeningData || newOpeningData.length === 0) {
-        // Disable
-        cardLink.classList.add('opacity-50', 'pointer-events-none', 'bg-slate-50');
-        cardLink.classList.remove('bg-white', 'hover:-translate-y-1', 'hover:shadow-xl', 'cursor-pointer');
-        cardLink.removeAttribute('href');
+    // Always enable interaction
+    cardLink.classList.remove('opacity-50', 'pointer-events-none', 'bg-slate-50');
+    cardLink.classList.add('bg-white', 'hover:-translate-y-1', 'hover:shadow-xl', 'cursor-pointer');
+    cardLink.setAttribute('href', '#new-opening-section');
 
+    // Icon styles restore (or ensure it's indigo)
+    if (iconContainer) {
+        iconContainer.classList.add('bg-indigo-50', 'text-indigo-600', 'group-hover:bg-indigo-600');
+        iconContainer.classList.remove('bg-slate-100', 'text-slate-400');
+    }
+
+    if (!newOpeningData || newOpeningData.length === 0) {
         if (title) {
-            title.textContent = "情報は現在ありません";
+            title.textContent = "新台データ準備中";
             title.classList.remove('group-hover:text-indigo-600');
             title.classList.add('text-slate-400');
         }
-
         if (sub) sub.textContent = "Coming Soon...";
-
-        // Icon styles (Indigo -> Gray)
-        if (iconContainer) {
-            iconContainer.classList.remove('bg-indigo-50', 'text-indigo-600', 'group-hover:bg-indigo-600');
-            iconContainer.classList.add('bg-slate-100', 'text-slate-400');
-        }
-
     } else {
-        // Enable (Reset to original state)
-        cardLink.classList.remove('opacity-50', 'pointer-events-none', 'bg-slate-50');
-        cardLink.classList.add('bg-white', 'hover:-translate-y-1', 'hover:shadow-xl', 'cursor-pointer');
-        cardLink.setAttribute('href', '#new-opening-section');
-
         if (title) {
             title.textContent = "新装開店";
             title.classList.add('group-hover:text-indigo-600');
             title.classList.remove('text-slate-400');
         }
-
         if (sub) sub.textContent = "最新機種情報";
-
-        // Icon styles restore
-        if (iconContainer) {
-            iconContainer.classList.add('bg-indigo-50', 'text-indigo-600', 'group-hover:bg-indigo-600');
-            iconContainer.classList.remove('bg-slate-100', 'text-slate-400');
-        }
     }
 }
 
 export function openNewOpening() {
     const c = $('#newOpeningInfo');
     c.innerHTML = "";
+    $('#new-opening-view').classList.add('active');
+
     if (!newOpeningData || !newOpeningData.length) {
-        // Though the card is disabled, keep this check for direct calls
-        c.innerHTML = "<p class='text-center text-slate-400 py-10'>データなし</p>";
-        $('#new-opening-view').classList.add("active");
+        c.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-64 text-slate-400">
+                <span class="text-4xl mb-2">🚧</span>
+                <p class="font-bold">現在、新台情報はありません</p>
+            </div>`;
         return;
     }
 
-    const lat=[], oth=[];
-    const validData = newOpeningData.filter(d => d && d.name);
-    validData.forEach(m => (latestKeywords.some(k=>m.name.includes(k))?lat:oth).push(m));
+    const listContainer = document.createElement("div");
+    listContainer.className = "space-y-6 max-w-4xl mx-auto";
 
-    const createList = (list, title) => {
-        if(!list.length) return;
-        const section = document.createElement("div");
-        section.innerHTML = `<h3 class="font-bold text-lg mb-2 border-b pb-1">${title}</h3>`;
-        const ul = document.createElement("ul");
-        ul.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8";
+    newOpeningData.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden";
 
-        list.sort((a,b)=>b.count-a.count).forEach(item => {
-            const li = document.createElement("li");
-            li.className = "bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-sm cursor-pointer hover:bg-slate-50 transition";
+        // Slideshow or Image
+        let imageSection = "";
+        const images = item.images || [];
+        if (images.length > 0) {
+            imageSection = `
+                <div class="relative w-full aspect-video bg-slate-900 group/slide">
+                    <img src="${images[0]}" class="w-full h-full object-contain" id="slide-img-${item.id}" data-idx="0">
+                    ${images.length > 1 ? `
+                        <button class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition opacity-0 group-hover/slide:opacity-100" onclick="changeSlide('${item.id}', -1)">◀</button>
+                        <button class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition opacity-0 group-hover/slide:opacity-100" onclick="changeSlide('${item.id}', 1)">▶</button>
+                        <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                            ${images.map((_, i) => `<div class="w-1.5 h-1.5 rounded-full ${i===0?'bg-white':'bg-white/50'}" id="dot-${item.id}-${i}"></div>`).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
 
-            const norm = (s) => (s||"").replace(/\s+/g, '').toLowerCase();
-            const targetName = norm(item.name);
-            const matched = allMachines.find(m => m && m.name && (norm(m.name).includes(targetName) || targetName.includes(norm(m.name))));
-            const hasDetail = matched && matched.salesPitch;
+        // Specs and Details
+        const specText = (item.spec || "詳細情報なし").replace(/\n/g, '<br>');
 
-            li.innerHTML = `<div class="flex flex-col overflow-hidden mr-2 pointer-events-none"><span class="font-bold text-slate-700 truncate text-sm sm:text-base">${item.name}</span>${hasDetail?`<span class="text-xs text-indigo-500 font-bold mt-1">✨ 詳細あり</span>`:`<span class="text-xs text-slate-400 font-medium mt-1">情報なし</span>`}</div><span class="text-xs font-black bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shrink-0 pointer-events-none">${item.count}台</span>`;
+        card.innerHTML = `
+            ${imageSection}
+            <div class="p-5">
+                <div class="flex justify-between items-start mb-3">
+                    <h3 class="text-xl font-black text-slate-800 leading-tight">${item.name || "名称未設定"}</h3>
+                    <div class="flex flex-col items-end gap-1">
+                        <span class="bg-indigo-600 text-white text-xs font-bold px-2 py-1 rounded-lg shadow-sm shadow-indigo-200">導入 ${item.count || 0}台</span>
+                        ${item.totalCount ? `<span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded">総台数 ${item.totalCount}台</span>` : ''}
+                    </div>
+                </div>
 
-            li.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if(hasDetail) {
-                    try {
-                        $('#detailName').textContent = matched.name;
-                        $('#detailPitch').textContent = matched.salesPitch || "情報なし";
-                        const f=(i,l)=>{
-                            $(i).innerHTML="";
-                            const list = Array.isArray(l) ? l : [l || "情報なし"];
-                            list.forEach(t=>$(i).innerHTML+=`<li class="flex items-start"><span class="mr-2 mt-1.5 w-1.5 h-1.5 bg-current rounded-full flex-shrink-0"></span><span>${t}</span></li>`);
-                        };
-                        f("#detailPros", matched.pros);
-                        f("#detailCons", matched.cons);
-                        $('#machineDetailModal').classList.remove("hidden");
-                    } catch(err) {
-                        alert("データ表示中にエラーが発生しました。");
-                    }
-                } else {
-                    alert(`「${item.name}」の詳細データは見つかりませんでした。\n管理者に機種データの登録を確認してください。`);
-                }
-            });
-            ul.appendChild(li);
-        });
-        section.appendChild(ul);
-        c.appendChild(section);
-    };
-    createList(lat, "✨ 最新導入"); createList(oth, "🔄 その他");
-    $('#new-opening-view').classList.add('active');
+                <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                    <h4 class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">SPEC & INFO</h4>
+                    <p class="text-sm font-medium text-slate-700 leading-relaxed">${specText}</p>
+                </div>
+            </div>
+        `;
+        listContainer.appendChild(card);
+    });
+
+    c.appendChild(listContainer);
 }
+
+// Global function for slideshow (since onclick is used in HTML string)
+window.changeSlide = (itemId, dir) => {
+    const item = newOpeningData.find(d => d.id === itemId);
+    if (!item || !item.images || item.images.length < 2) return;
+
+    const imgEl = document.getElementById(`slide-img-${itemId}`);
+    if (!imgEl) return;
+
+    let idx = parseInt(imgEl.getAttribute('data-idx'));
+    idx = (idx + dir + item.images.length) % item.images.length;
+
+    imgEl.src = item.images[idx];
+    imgEl.setAttribute('data-idx', idx);
+
+    // Update dots
+    item.images.forEach((_, i) => {
+        const dot = document.getElementById(`dot-${itemId}-${i}`);
+        if(dot) dot.className = `w-1.5 h-1.5 rounded-full ${i===idx?'bg-white':'bg-white/50'}`;
+    });
+};
 
 export function closeNewOpeningModal() {
     $('#new-opening-view').classList.remove('active');
@@ -158,6 +170,176 @@ export function closeNewOpeningModal() {
 export function closeDetailModal() {
     $('#machineDetailModal').classList.add('hidden');
 }
+
+// --- Admin Logic ---
+
+export function openNewOpeningEditAuth() {
+    window.showPasswordModal(openNewOpeningEdit);
+}
+
+export function openNewOpeningEdit() {
+    $('#newOpeningEditModal').classList.remove('hidden');
+    renderNewOpeningEditList();
+    clearNewOpeningForm();
+}
+
+export function closeNewOpeningEditModal() {
+    $('#newOpeningEditModal').classList.add('hidden');
+}
+
+function renderNewOpeningEditList() {
+    const list = $('#new-opening-edit-list');
+    list.innerHTML = "";
+    if (!newOpeningData || newOpeningData.length === 0) {
+        list.innerHTML = `<p class="text-center text-slate-400 text-xs py-2">登録データはありません</p>`;
+        return;
+    }
+
+    newOpeningData.forEach(item => {
+        const div = document.createElement('div');
+        div.className = "flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-200";
+        div.innerHTML = `
+            <div class="truncate flex-1 mr-2">
+                <span class="font-bold text-slate-700 text-sm">${item.name}</span>
+                <span class="text-xs text-slate-400 ml-2">(${item.count}台)</span>
+            </div>
+            <div class="flex gap-1 shrink-0">
+                <button class="bg-white border border-slate-200 text-indigo-600 px-2 py-1 rounded text-xs font-bold hover:bg-indigo-50 transition btn-edit-no" data-id="${item.id}">編集</button>
+                <button class="bg-white border border-slate-200 text-rose-500 px-2 py-1 rounded text-xs font-bold hover:bg-rose-50 transition btn-del-no" data-id="${item.id}">削除</button>
+            </div>
+        `;
+        list.appendChild(div);
+    });
+
+    list.querySelectorAll('.btn-edit-no').forEach(b => {
+        b.addEventListener('click', (e) => editNewOpeningItem(e.target.dataset.id));
+    });
+    list.querySelectorAll('.btn-del-no').forEach(b => {
+        b.addEventListener('click', (e) => deleteNewOpeningItem(e.target.dataset.id));
+    });
+}
+
+function clearNewOpeningForm() {
+    $('#no-edit-id').value = "";
+    $('#no-edit-name').value = "";
+    $('#no-edit-count').value = "";
+    $('#no-edit-total').value = "";
+    $('#no-edit-spec').value = "";
+    $('#no-edit-image-url').value = "";
+    currentEditingImages = [];
+    renderEditingImages();
+}
+
+function editNewOpeningItem(id) {
+    const item = newOpeningData.find(d => d.id === id);
+    if (!item) return;
+
+    $('#no-edit-id').value = item.id;
+    $('#no-edit-name').value = item.name || "";
+    $('#no-edit-count').value = item.count || "";
+    $('#no-edit-total').value = item.totalCount || "";
+    $('#no-edit-spec').value = item.spec || "";
+
+    currentEditingImages = item.images ? [...item.images] : [];
+    renderEditingImages();
+}
+
+export async function deleteNewOpeningItem(id) {
+    if (!confirm("本当に削除しますか？")) return;
+    try {
+        await deleteDoc(doc(db, "newOpening", id));
+        // Refresh data is handled by fetchCustomerData if we call it, or we should reload
+        // Ideally we should use onSnapshot for realtime updates, but customer.js uses one-time fetch.
+        // So we manually re-fetch.
+        await fetchCustomerData();
+        renderNewOpeningEditList();
+        alert("削除しました");
+    } catch(e) {
+        alert("削除に失敗しました: " + e.message);
+    }
+}
+
+export async function saveNewOpeningItem() {
+    const id = $('#no-edit-id').value;
+    const name = $('#no-edit-name').value.trim();
+    if (!name) {
+        alert("機種名は必須です");
+        return;
+    }
+
+    const data = {
+        name: name,
+        count: parseInt($('#no-edit-count').value) || 0,
+        totalCount: parseInt($('#no-edit-total').value) || 0,
+        spec: $('#no-edit-spec').value || "",
+        images: currentEditingImages,
+        createdAt: new Date()
+    };
+
+    const btn = $('#no-edit-save-btn');
+    btn.textContent = "保存中...";
+    btn.disabled = true;
+
+    try {
+        if (id) {
+            await setDoc(doc(db, "newOpening", id), data, { merge: true });
+        } else {
+            await addDoc(collection(db, "newOpening"), data);
+        }
+        await fetchCustomerData();
+        renderNewOpeningEditList();
+        clearNewOpeningForm();
+        alert("保存しました");
+    } catch(e) {
+        console.error(e);
+        alert("保存に失敗しました: " + e.message);
+    } finally {
+        btn.textContent = "保存する";
+        btn.disabled = false;
+    }
+}
+
+export async function handleNewOpeningImageSelect(input) {
+    if (input.files && input.files[0]) {
+        try {
+            const base64 = await compressMapImage(input.files[0]);
+            currentEditingImages.push(base64);
+            renderEditingImages();
+            input.value = ""; // Reset
+        } catch(e) {
+            alert(e.message);
+        }
+    }
+}
+
+export function handleAddNewUrl() {
+    const url = $('#no-edit-image-url').value.trim();
+    if (url) {
+        currentEditingImages.push(url);
+        renderEditingImages();
+        $('#no-edit-image-url').value = "";
+    }
+}
+
+function renderEditingImages() {
+    const c = $('#no-edit-images-preview');
+    c.innerHTML = "";
+    currentEditingImages.forEach((img, idx) => {
+        const div = document.createElement('div');
+        div.className = "relative shrink-0 w-20 h-20 bg-slate-100 rounded border border-slate-200 overflow-hidden group";
+        div.innerHTML = `
+            <img src="${img}" class="w-full h-full object-cover">
+            <button class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-[10px] rounded-bl opacity-0 group-hover:opacity-100 transition" onclick="removeNewOpeningImage(${idx})">✕</button>
+        `;
+        c.appendChild(div);
+    });
+}
+
+// Global for inline onclick
+window.removeNewOpeningImage = (idx) => {
+    currentEditingImages.splice(idx, 1);
+    renderEditingImages();
+};
 
 // --- Map Update Logic ---
 
