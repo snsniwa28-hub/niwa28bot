@@ -724,70 +724,73 @@
     </div>
 
     <div id="internal-shared-view" class="fullscreen-view">
-        <header class="view-header">
-            <div class="flex items-center gap-3">
-                <button id="close-internal-shared-view-btn" class="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-                </button>
-                <div class="flex items-center gap-2">
-                    <span class="text-2xl">📋</span>
-                    <h3 class="font-black text-slate-800 text-lg">社内共有・戦略</h3>
-                </div>
-            </div>
+        <header class="view-header bg-slate-900 border-slate-800">
+            <button id="close-internal-shared-view-btn" class="flex items-center gap-2 text-white hover:text-indigo-400 transition group">
+                <span class="p-1 rounded-full bg-slate-800 group-hover:bg-slate-700 transition">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </span>
+                <span class="font-bold text-sm">AIチャットに戻る</span>
+            </button>
+            <h2 class="font-black text-white text-lg tracking-wider">知識ステーション</h2>
+            <button id="btn-open-knowledge-add" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-indigo-900/50 transition flex items-center gap-2">
+                <span>➕</span> 知識を追加
+            </button>
         </header>
 
-        <div class="flex flex-col flex-1 overflow-hidden h-full">
-             <div class="bg-white border-b border-slate-200 p-3 flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-hide shrink-0 shadow-sm z-10">
-                <button id="btn-knowledge-list" class="flex-shrink-0 flex items-center gap-1 bg-white text-slate-500 px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 hover:bg-slate-50 transition shadow-sm">
-                    🧠 知識リスト
-                </button>
-                <button id="btn-category-ai" class="flex-shrink-0 flex items-center gap-1 bg-indigo-50 text-indigo-600 px-3 py-2 rounded-lg text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition">
-                    🤖 AIに聞く
-                </button>
-                <button id="btn-create-strategy" class="hidden flex-shrink-0 items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">
-                    <span>＋</span> 新規作成
-                </button>
-             </div>
-
-             <div id="internalSharedModalBody" class="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50"></div>
-
-             <div id="strategy-list-container" class="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 bg-slate-50">
-                <p class="text-center text-slate-400 mt-10">読み込み中...</p>
+        <div class="flex flex-col flex-1 overflow-hidden h-full bg-slate-100">
+             <div id="strategy-list-container" class="flex-1 overflow-y-auto p-4 sm:p-6 pb-20">
+                <p class="text-center text-slate-400 mt-10">知識データを読み込み中...</p>
              </div>
         </div>
 
-        <div id="strategy-editor-modal" class="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in">
-            <div class="bg-white w-full max-w-lg h-[85vh] rounded-2xl shadow-2xl flex flex-col m-4 overflow-hidden relative">
-
+        <!-- NEW Knowledge Add Modal -->
+        <div id="knowledge-add-modal" class="fixed inset-0 z-[60] hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
                 <div class="p-4 border-b border-slate-100 bg-slate-50 shrink-0 flex justify-between items-center">
-                    <h4 class="font-black text-slate-700">記事の作成・編集</h4>
-                    <button id="cancel-strategy-editor-btn" class="text-xs font-bold text-slate-400 hover:text-slate-600">キャンセル</button>
+                    <h4 class="font-black text-slate-700 flex items-center gap-2">
+                        <span>🧠</span> 知識を教える
+                    </h4>
+                    <button id="close-knowledge-add-modal" class="text-slate-400 hover:text-slate-600 p-2">✕</button>
                 </div>
 
-                <div class="flex-1 overflow-y-auto p-4 bg-slate-50/50">
-                    <div id="strategy-article-editor" class="">
-                        <div id="strategy-blocks-container" class="space-y-4 min-h-[100px]"></div>
+                <div class="flex-1 overflow-y-auto p-6 space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">カテゴリ <span class="text-rose-500">*</span></label>
+                        <select id="ka-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="" disabled selected>選択してください</option>
+                            <option value="pachinko">🅿️ パチンコ</option>
+                            <option value="slot">🎰 スロット</option>
+                            <option value="strategy">📈 戦略・全体</option>
+                        </select>
+                    </div>
 
-                        <div class="grid grid-cols-3 gap-2 mt-6 pt-6 border-t border-slate-200 border-dashed">
-                            <button id="add-block-img-top-btn" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
-                                <span class="text-lg mb-1 group-hover:scale-110 transition">📷📝</span>
-                                <span class="text-[10px] font-bold text-slate-500">画像上</span>
-                            </button>
-                            <button id="add-block-text-btn" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
-                                <span class="text-lg mb-1 group-hover:scale-110 transition">📝</span>
-                                <span class="text-[10px] font-bold text-slate-500">文字のみ</span>
-                            </button>
-                            <button id="add-block-img-bottom-btn" class="flex flex-col items-center justify-center p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition group">
-                                <span class="text-lg mb-1 group-hover:scale-110 transition">📝📷</span>
-                                <span class="text-[10px] font-bold text-slate-500">画像下</span>
-                            </button>
-                        </div>
-                        <p class="text-[10px] text-center text-slate-400 font-bold mt-2">↑ ブロックを追加して記事を構成 ↑</p>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">タイトル (任意)</label>
+                        <input type="text" id="ka-title" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="例: 新台の稼働状況について">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">知識・メモ・共有事項 <span class="text-rose-500">*</span></label>
+                        <textarea id="ka-text" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 h-40 resize-none leading-relaxed" placeholder="ここに知識や共有したい内容を入力してください..."></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-2">資料画像 / PDF (任意)</label>
+                        <label class="flex items-center justify-center w-full p-4 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 hover:border-indigo-400 transition group">
+                            <div class="flex flex-col items-center gap-1">
+                                <span class="text-2xl group-hover:scale-110 transition">📷</span>
+                                <span class="text-xs font-bold text-slate-400 group-hover:text-indigo-600">画像をアップロード</span>
+                            </div>
+                            <input type="file" id="ka-file" accept="image/*,.pdf" class="hidden">
+                        </label>
+                        <div id="ka-file-status" class="mt-2 text-xs font-bold text-slate-400 text-center"></div>
                     </div>
                 </div>
 
                 <div class="p-4 border-t border-slate-100 bg-white shrink-0">
-                    <button id="save-strategy-btn" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存して公開</button>
+                    <button id="btn-save-knowledge" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition flex items-center justify-center gap-2">
+                        <span>📥</span> 保存してAIに学習させる
+                    </button>
                 </div>
             </div>
         </div>
@@ -883,9 +886,7 @@
     </div>
 
     <!-- AI Chat Modal -->
-    <div id="ai-chat-modal" class="fixed inset-0 z-[100] hidden items-end sm:items-center justify-center pointer-events-none">
-        <div id="ai-chat-overlay" class="absolute inset-0 bg-black/20 backdrop-blur-sm pointer-events-auto"></div>
-        <div class="w-full sm:w-[450px] h-[80vh] sm:h-[700px] bg-slate-50 sm:rounded-3xl rounded-t-3xl shadow-2xl flex flex-col pointer-events-auto relative overflow-hidden transition-transform duration-300">
+    <div id="ai-chat-modal" class="fixed inset-0 w-full h-full z-50 bg-slate-50 hidden flex-col">
             <!-- Header -->
             <div class="bg-white p-4 border-b border-slate-200 flex justify-between items-center shrink-0 shadow-sm z-10">
                 <div class="flex items-center gap-3">
@@ -919,7 +920,6 @@
                     </button>
                 </div>
             </div>
-        </div>
     </div>
 
 

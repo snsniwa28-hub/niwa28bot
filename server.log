@@ -1,34 +1,24 @@
-127.0.0.1 - - [02/Feb/2026 16:55:32] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:32] "GET /sinsou1.jpg HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:32] "GET /style.css HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:32] code 404, message File not found
-127.0.0.1 - - [02/Feb/2026 16:55:32] "GET /simazu.jpg HTTP/1.1" 404 -
-127.0.0.1 - - [02/Feb/2026 16:55:32] "GET /main.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/customer.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/operations.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/tasks.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/ui.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/qsc.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/shift.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/member_race.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/deadlines.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/strategy.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/components.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/simple_todo.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/utils.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/auth.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/ai.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/firebase.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/index_events.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/config.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /js/file_parser.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] code 404, message File not found
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /senryaku2.jpg HTTP/1.1" 404 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] code 404, message File not found
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /senryaku4.jpg HTTP/1.1" 404 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] code 404, message File not found
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /senryaku5.jpg HTTP/1.1" 404 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] code 404, message File not found
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /senryaku3.jpg HTTP/1.1" 404 -
-127.0.0.1 - - [02/Feb/2026 16:55:35] code 404, message File not found
-127.0.0.1 - - [02/Feb/2026 16:55:35] "GET /senryaku1.jpg HTTP/1.1" 404 -
+127.0.0.1 - - [02/Feb/2026 17:16:44] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:44] "GET /style.css HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:44] "GET /main.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:44] code 404, message File not found
+127.0.0.1 - - [02/Feb/2026 17:16:44] "GET /simazu.jpg HTTP/1.1" 404 -
+127.0.0.1 - - [02/Feb/2026 17:16:44] "GET /sinsou1.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/shift.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/qsc.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/tasks.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/member_race.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/customer.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/operations.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/deadlines.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/strategy.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/simple_todo.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/components.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/ai.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/index_events.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/firebase.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/config.js HTTP/1.1" 200 -
+127.0.0.1 - - [02/Feb/2026 17:16:47] "GET /js/file_parser.js HTTP/1.1" 200 -
