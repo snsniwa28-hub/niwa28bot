@@ -417,8 +417,8 @@ function renderStrategyList() {
 // --- UI Rendering (Editor) ---
 export function openStrategyEditor(id = null) {
     editingId = id;
-    const modal = document.getElementById('strategy-editor-modal');
-    modal.classList.remove('hidden');
+    const modal = document.getElementById('strategy-editor-view');
+    modal.classList.add('active');
 
     const editorContainer = document.getElementById('strategy-article-editor');
     editorContainer.innerHTML = '';
@@ -497,7 +497,7 @@ export function openStrategyEditor(id = null) {
 }
 
 export function closeStrategyEditor() {
-    document.getElementById('strategy-editor-modal').classList.add('hidden');
+    document.getElementById('strategy-editor-view').classList.remove('active');
 }
 
 // --- Global Handlers ---
@@ -551,7 +551,7 @@ window.openInternalSharedModal = (category = 'unified') => {
     isStrategyAdmin = false;
     // 常に統一カテゴリとして開く
     setStrategyCategory('unified');
-    const view = document.getElementById('internal-shared-view');
+    const view = document.getElementById('strategy-view');
     if (view) {
         view.classList.add('active');
     }
@@ -561,7 +561,7 @@ export function openStrategyAdmin(category) {
     isStrategyAdmin = true;
     isKnowledgeMode = true;
     setStrategyCategory(category);
-    const view = document.getElementById('internal-shared-view');
+    const view = document.getElementById('strategy-view');
     if (view) {
         view.classList.add('active');
     }

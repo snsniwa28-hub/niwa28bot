@@ -220,8 +220,8 @@ export function editQscItem(item) {
     currentEditingQscId = item.id;
     currentEditingQscImage = item.image || null;
 
-    const modal = document.getElementById('qscEditModal');
-    if (!modal) return;
+    const container = document.getElementById('qsc-item-edit-container');
+    if (!container) return;
 
     document.getElementById('qscEditNo').value = item.no;
     document.getElementById('qscEditArea').value = item.area;
@@ -253,15 +253,15 @@ export function editQscItem(item) {
         if (deleteBtn) deleteBtn.classList.add('hidden');
     }
 
-    modal.classList.remove('hidden');
-    modal.classList.add('flex', 'items-center', 'justify-center');
+    container.classList.remove('hidden');
+    container.classList.add('flex');
 }
 
 export function closeQscEditModal() {
-    const modal = document.getElementById('qscEditModal');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex', 'items-center', 'justify-center');
+    const container = document.getElementById('qsc-item-edit-container');
+    if (container) {
+        container.classList.add('hidden');
+        container.classList.remove('flex');
     }
     currentEditingQscId = null;
     currentEditingQscImage = null;
