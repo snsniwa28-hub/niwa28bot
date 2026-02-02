@@ -353,18 +353,37 @@ export function renderModals() {
                             <input type="number" id="in_today_target_15" class="op-input border-indigo-200 focus:border-indigo-500" placeholder="実績入力">
                         </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-3">
-                        <div class="op-input-group">
-                            <label class="text-blue-500">4円パチンコ</label>
-                            <input type="number" id="in_4p_15" class="op-input js-calc-trigger" data-time="15" placeholder="0">
+
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 font-bold mb-0.5">4円パチンコ 実績</label>
+                            <input type="number" id="in_4p_15" class="op-input" oninput="calcOpTotal('15')" placeholder="0">
                         </div>
-                        <div class="op-input-group">
-                            <label class="text-yellow-600">1円パチンコ</label>
-                            <input type="number" id="in_1p_15" class="op-input js-calc-trigger" data-time="15" placeholder="0">
+                        <div>
+                            <label class="block text-[10px] text-indigo-400 font-bold mb-0.5">目標 (任意)</label>
+                            <input type="number" id="in_target_4p_15" class="w-full bg-indigo-50 border border-indigo-100 rounded px-2 py-2 text-sm font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="目標">
                         </div>
-                        <div class="op-input-group">
-                            <label class="text-emerald-600">20円スロット</label>
-                            <input type="number" id="in_20s_15" class="op-input js-calc-trigger" data-time="15" placeholder="0">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 font-bold mb-0.5">1円パチンコ 実績</label>
+                            <input type="number" id="in_1p_15" class="op-input" oninput="calcOpTotal('15')" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-indigo-400 font-bold mb-0.5">目標 (任意)</label>
+                            <input type="number" id="in_target_1p_15" class="w-full bg-indigo-50 border border-indigo-100 rounded px-2 py-2 text-sm font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="目標">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 font-bold mb-0.5">20円スロット 実績</label>
+                            <input type="number" id="in_20s_15" class="op-input" oninput="calcOpTotal('15')" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-indigo-400 font-bold mb-0.5">目標 (任意)</label>
+                            <input type="number" id="in_target_20s_15" class="w-full bg-indigo-50 border border-indigo-100 rounded px-2 py-2 text-sm font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="目標">
                         </div>
                     </div>
                 </div>
@@ -383,18 +402,37 @@ export function renderModals() {
                             <input type="number" id="in_today_target_19" class="op-input border-indigo-200 focus:border-indigo-500" placeholder="実績入力">
                         </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-3">
-                        <div class="op-input-group">
-                            <label class="text-blue-500">4円パチンコ</label>
-                            <input type="number" id="in_4p_19" class="op-input js-calc-trigger" data-time="19" placeholder="0">
+
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 font-bold mb-0.5">4円パチンコ 実績</label>
+                            <input type="number" id="in_4p_19" class="op-input" oninput="calcOpTotal('19')" placeholder="0">
                         </div>
-                        <div class="op-input-group">
-                            <label class="text-yellow-600">1円パチンコ</label>
-                            <input type="number" id="in_1p_19" class="op-input js-calc-trigger" data-time="19" placeholder="0">
+                        <div>
+                            <label class="block text-[10px] text-indigo-400 font-bold mb-0.5">目標 (任意)</label>
+                            <input type="number" id="in_target_4p_19" class="w-full bg-indigo-50 border border-indigo-100 rounded px-2 py-2 text-sm font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="目標">
                         </div>
-                        <div class="op-input-group">
-                            <label class="text-emerald-600">20円スロット</label>
-                            <input type="number" id="in_20s_19" class="op-input js-calc-trigger" data-time="19" placeholder="0">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 font-bold mb-0.5">1円パチンコ 実績</label>
+                            <input type="number" id="in_1p_19" class="op-input" oninput="calcOpTotal('19')" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-indigo-400 font-bold mb-0.5">目標 (任意)</label>
+                            <input type="number" id="in_target_1p_19" class="w-full bg-indigo-50 border border-indigo-100 rounded px-2 py-2 text-sm font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="目標">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 font-bold mb-0.5">20円スロット 実績</label>
+                            <input type="number" id="in_20s_19" class="op-input" oninput="calcOpTotal('19')" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-indigo-400 font-bold mb-0.5">目標 (任意)</label>
+                            <input type="number" id="in_target_20s_19" class="w-full bg-indigo-50 border border-indigo-100 rounded px-2 py-2 text-sm font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="目標">
                         </div>
                     </div>
                 </div>
