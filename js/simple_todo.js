@@ -453,7 +453,7 @@ export function renderDashboard() {
     }
 
     viewCategories.innerHTML = `
-        <div class="space-y-6">
+        <div class="space-y-8">
             <!-- 1. Recent Achievements -->
             <section>
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
@@ -466,17 +466,31 @@ export function renderDashboard() {
                 </div>
             </section>
 
-            <!-- 2. Priority Tasks -->
+            <hr class="border-slate-100">
+
+            <!-- 2. Expired (Urgent) -->
             <section>
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <span>🔥</span> 注目タスク (Priority)
+                <h3 class="text-xs font-bold text-rose-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <span>⚠️</span> 期限切れ (Expired)
                 </h3>
-                <div id="todo-dashboard-priority" class="space-y-2">
-                     <div class="text-center text-xs text-slate-400 font-bold py-4">読み込み中...</div>
+                <div id="todo-dashboard-expired" class="space-y-2">
+                     <div class="text-center text-xs text-slate-300 font-bold py-2">読み込み中...</div>
                 </div>
             </section>
 
-            <!-- 3. Categories -->
+            <!-- 3. Upcoming (Priority) -->
+            <section>
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <span>🔥</span> もうすぐ期限 (Upcoming)
+                </h3>
+                <div id="todo-dashboard-upcoming" class="space-y-2">
+                     <div class="text-center text-xs text-slate-300 font-bold py-2">読み込み中...</div>
+                </div>
+            </section>
+
+            <hr class="border-slate-100">
+
+            <!-- 4. Categories -->
             <section>
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                     <span>📁</span> カテゴリ (Categories)
@@ -501,7 +515,8 @@ function fetchDashboardData() {
     unsubscribeDashboardActive = onSnapshot(qActive, (snapshot) => {
         const activeTodos = [];
         snapshot.forEach(doc => activeTodos.push({ id: doc.id, ...doc.data() }));
-        renderDashboardPriority(activeTodos);
+        renderDashboardExpired(activeTodos);
+        renderDashboardUpcoming(activeTodos);
         renderDashboardCategories(activeTodos);
     });
 
@@ -568,81 +583,111 @@ function renderDashboardRecent(todos) {
             ${todo.completionComment ? `<div class="mt-auto pt-1 text-[10px] text-slate-500 truncate">💬 ${todo.completionComment}</div>` : ''}
         `;
 
-        // Make it clickable to see details (maybe open completion modal in read-only?)
-        // For now, just a visual indicator.
+        // Click to see details
+        el.onclick = () => showCompletedTaskDetail(todo);
         container.appendChild(el);
     });
 }
 
-function renderDashboardPriority(todos) {
-    const container = document.getElementById('todo-dashboard-priority');
+function renderDashboardExpired(todos) {
+    const container = document.getElementById('todo-dashboard-expired');
     if (!container) return;
+
+    // Style the container for urgency
+    container.className = "space-y-2 bg-rose-50 p-3 rounded-xl border border-rose-100";
 
     const today = new Date();
     today.setHours(0,0,0,0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const dayAfter = new Date(today);
-    dayAfter.setDate(today.getDate() + 2);
 
-    const priorityList = todos.filter(t => {
+    const expiredList = todos.filter(t => {
         if (!t.dueDate) return false;
         const due = new Date(t.dueDate);
         due.setHours(0,0,0,0);
-        return due <= dayAfter; // Overdue, Today, Tomorrow, DayAfter
+        return due < today;
     }).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
-    if (priorityList.length === 0) {
-        container.innerHTML = `<div class="text-center text-xs text-slate-300 font-bold py-4">期限間近のタスクはありません ✅</div>`;
+    if (expiredList.length === 0) {
+        container.innerHTML = `<div class="text-center text-xs text-rose-300 font-bold py-2">期限切れのタスクはありません ✅</div>`;
         return;
     }
 
     container.innerHTML = '';
-    priorityList.slice(0, 5).forEach(todo => {
-        const div = document.createElement('div');
-        div.className = "flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition cursor-pointer";
-        div.onclick = () => {
-            currentCategory = todo.category;
-            renderTaskView();
-            // Optionally scroll to specific task?
-        };
-
-        const due = new Date(todo.dueDate);
-        due.setHours(0,0,0,0);
-
-        let badgeClass = "bg-slate-100 text-slate-500";
-        let badgeIcon = "📅";
-        let badgeText = `${due.getMonth()+1}/${due.getDate()}`;
-
-        if (due < today) {
-            badgeClass = "bg-rose-100 text-rose-600 animate-pulse";
-            badgeIcon = "⚠️";
-            badgeText += " (期限切れ)";
-        } else if (due.getTime() === today.getTime()) {
-            badgeClass = "bg-amber-100 text-amber-600";
-            badgeIcon = "🔥";
-            badgeText = "今日まで";
-        } else {
-            badgeClass = "bg-indigo-50 text-indigo-600";
-            badgeIcon = "🔜";
-            badgeText = "もうすぐ";
-        }
-
-        div.innerHTML = `
-            <div class="${badgeClass} px-2 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap flex items-center gap-1 shrink-0">
-                <span>${badgeIcon}</span> ${badgeText}
-            </div>
-            <div class="min-w-0 flex-1">
-                <p class="text-sm font-bold text-slate-700 truncate">${todo.text}</p>
-                <p class="text-[10px] text-slate-400 font-bold flex gap-2">
-                    <span>📁 ${todo.category}</span>
-                    ${todo.assignee ? `<span>👤 ${todo.assignee}</span>` : ''}
-                </p>
-            </div>
-            <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-        `;
+    expiredList.forEach(todo => {
+        const div = createDashboardTaskElement(todo, 'expired');
         container.appendChild(div);
     });
+}
+
+function renderDashboardUpcoming(todos) {
+    const container = document.getElementById('todo-dashboard-upcoming');
+    if (!container) return;
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const dayAfter = new Date(today);
+    dayAfter.setDate(today.getDate() + 2);
+
+    const upcomingList = todos.filter(t => {
+        if (!t.dueDate) return false;
+        const due = new Date(t.dueDate);
+        due.setHours(0,0,0,0);
+        return due >= today && due <= dayAfter;
+    }).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+    if (upcomingList.length === 0) {
+        container.innerHTML = `<div class="text-center text-xs text-slate-300 font-bold py-2">直近の期限のタスクはありません ✅</div>`;
+        return;
+    }
+
+    container.innerHTML = '';
+    upcomingList.forEach(todo => {
+        const div = createDashboardTaskElement(todo, 'upcoming');
+        container.appendChild(div);
+    });
+}
+
+function createDashboardTaskElement(todo, type) {
+    const div = document.createElement('div');
+    div.className = "flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition cursor-pointer group";
+    div.onclick = () => {
+        openCompletionModal(todo.id);
+    };
+
+    const due = new Date(todo.dueDate);
+    due.setHours(0,0,0,0);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    let badgeClass = "bg-slate-100 text-slate-500";
+    let badgeIcon = "📅";
+    let badgeText = `${due.getMonth()+1}/${due.getDate()}`;
+
+    if (type === 'expired') {
+        badgeClass = "bg-rose-100 text-rose-600 font-bold";
+        badgeIcon = "⚠️";
+    } else if (due.getTime() === today.getTime()) {
+        badgeClass = "bg-amber-100 text-amber-600 font-bold";
+        badgeIcon = "🔥";
+        badgeText = "今日まで";
+    } else {
+        badgeClass = "bg-indigo-50 text-indigo-600 font-bold";
+        badgeIcon = "🔜";
+    }
+
+    div.innerHTML = `
+        <div class="${badgeClass} px-2 py-1 rounded-lg text-[10px] whitespace-nowrap flex items-center gap-1 shrink-0">
+            <span>${badgeIcon}</span> ${badgeText}
+        </div>
+        <div class="min-w-0 flex-1">
+            <p class="text-sm font-bold text-slate-700 truncate">${todo.text}</p>
+            <p class="text-[10px] text-slate-400 font-bold flex gap-2">
+                <span>📁 ${todo.category}</span>
+                ${todo.assignee ? `<span>👤 ${todo.assignee}</span>` : ''}
+            </p>
+        </div>
+        <div class="opacity-0 group-hover:opacity-100 text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg transition">完了報告</div>
+    `;
+    return div;
 }
 
 function renderDashboardCategories(activeTodos) {
@@ -913,6 +958,84 @@ function ensureCompletionModals() {
         </div>`;
         document.body.insertAdjacentHTML('beforeend', imgModalHtml);
     }
+
+    // Completed Task Detail Modal
+    if (!document.getElementById('todo-completed-detail-modal')) {
+        const detailModalHtml = `
+        <div id="todo-completed-detail-modal" class="modal-overlay hidden" style="z-index: 105;">
+            <div class="modal-content p-6 w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto relative">
+                <button id="todo-completed-detail-close" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">完了タスク詳細</h3>
+
+                <h2 id="detail-todo-text" class="text-lg font-bold text-slate-800 mb-3 leading-relaxed break-words"></h2>
+
+                <div id="detail-todo-meta" class="flex flex-wrap gap-2 mb-6"></div>
+
+                <div id="detail-todo-comment" class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-4 hidden">
+                    <h4 class="text-xs font-bold text-blue-500 mb-1">📝 完了報告コメント</h4>
+                    <p class="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed"></p>
+                </div>
+
+                <div id="detail-todo-image-container" class="mb-4 hidden">
+                    <h4 class="text-xs font-bold text-slate-400 mb-2">📷 添付画像</h4>
+                    <img id="detail-todo-image" class="w-full rounded-lg border border-slate-200 cursor-zoom-in hover:opacity-95 transition">
+                </div>
+
+                <button onclick="document.getElementById('todo-completed-detail-modal').classList.add('hidden')" class="w-full py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 transition mt-auto">閉じる</button>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', detailModalHtml);
+
+        document.getElementById('todo-completed-detail-close').onclick = () => {
+            document.getElementById('todo-completed-detail-modal').classList.add('hidden');
+        };
+    }
+}
+
+export function showCompletedTaskDetail(todo) {
+    const modal = document.getElementById('todo-completed-detail-modal');
+    if (!modal) return;
+
+    // Populate Data
+    const titleEl = document.getElementById('detail-todo-text');
+    const metaEl = document.getElementById('detail-todo-meta');
+    const commentEl = document.getElementById('detail-todo-comment');
+    const imageContainer = document.getElementById('detail-todo-image-container');
+    const imageEl = document.getElementById('detail-todo-image');
+
+    // Title
+    titleEl.textContent = todo.text;
+
+    // Meta (Assignee + Date)
+    const date = todo.completedAt?.toDate ? todo.completedAt.toDate() : new Date();
+    const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+    metaEl.innerHTML = `
+        <span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-xs font-bold">📅 ${dateStr}</span>
+        ${todo.assignee ? `<span class="bg-indigo-50 text-indigo-600 px-2 py-1 rounded text-xs font-bold">👤 ${todo.assignee}</span>` : ''}
+    `;
+
+    // Comment
+    if (todo.completionComment) {
+        commentEl.classList.remove('hidden');
+        commentEl.querySelector('p').textContent = todo.completionComment;
+    } else {
+        commentEl.classList.add('hidden');
+    }
+
+    // Image
+    if (todo.completionImage) {
+        imageContainer.classList.remove('hidden');
+        imageEl.src = todo.completionImage;
+        imageEl.onclick = () => openImageModal(todo.completionImage);
+    } else {
+        imageContainer.classList.add('hidden');
+    }
+
+    // Show Modal
+    modal.classList.remove('hidden');
 }
 
 function openCompletionModal(todoId) {
