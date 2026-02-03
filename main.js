@@ -4,7 +4,6 @@ import * as Customer from './js/customer.js';
 import * as Operations from './js/operations.js';
 import * as QSC from './js/qsc.js';
 import * as Shift from './js/shift.js';
-import * as Tasks from './js/tasks.js';
 import * as MemberRace from './js/member_race.js';
 import * as Deadlines from './js/deadlines.js';
 import * as Strategy from './js/strategy.js';
@@ -30,9 +29,6 @@ window.showPasswordModal = UI.showPasswordModal;
 window.closePasswordModal = UI.closePasswordModal;
 window.showConfirmModal = UI.showConfirmModal;
 window.closeConfirmModal = UI.closeConfirmModal;
-window.selectOption = Tasks.selectOption; // Tasks manages the select logic
-window.confirmSelection = Tasks.confirmSelection;
-window.closeSelectModal = Tasks.closeSelectModal;
 window.closeModal = UI.closeModal;
 
 // Customer
@@ -128,50 +124,6 @@ window.saveMemberTargets = MemberRace.saveMemberTargets;
 window.editMemberTarget = MemberRace.editMemberTarget;
 window.renderMemberRaceBoard = MemberRace.renderMemberRaceBoard;
 
-// Tasks (Staff App)
-window.fetchMasterData = Tasks.fetchMasterData;
-window.handleDateChange = Tasks.handleDateChange;
-window.changeDate = function(offset) {
-    const picker = document.getElementById('date-picker');
-    if (!picker) return;
-    const currentVal = picker.value || window.getTodayDateString();
-    if (!currentVal) return;
-
-    const date = new Date(currentVal);
-    date.setDate(date.getDate() + offset);
-
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    const newVal = `${y}-${m}-${d}`;
-
-    picker.value = newVal;
-    Tasks.handleDateChange(newVal);
-};
-window.refreshCurrentView = Tasks.refreshCurrentView;
-window.setupInitialView = Tasks.setupInitialView;
-window.saveStaffListToFirestore = Tasks.saveStaffListToFirestore;
-window.showSubTab = Tasks.showSubTab;
-window.setEditingMode = Tasks.setEditingMode;
-window.autoAssignSection = Tasks.autoAssignSection;
-window.autoAssignTasks = Tasks.autoAssignTasks;
-window.openFixedStaffSelect = Tasks.openFixedStaffSelect;
-window.setFixed = Tasks.setFixed;
-window.updateRemark = Tasks.updateRemark;
-window.addTask = Tasks.addTask;
-window.addS = Tasks.addS;
-window.openStaffSelect = Tasks.openStaffSelect;
-window.openTimeSelect = Tasks.openTimeSelect;
-window.openTaskSelect = Tasks.openTaskSelect;
-window.confirmDeleteRequest = Tasks.confirmDeleteRequest;
-window.openBulkDeleteMenu = Tasks.openBulkDeleteMenu;
-window.closeBulkDeleteModal = Tasks.closeBulkDeleteModal;
-window.requestBulkDelete = Tasks.requestBulkDelete;
-window.cancelDelete = Tasks.cancelDelete;
-window.confirmDelete = Tasks.confirmDelete;
-window.showRemarksModal = Tasks.showRemarksModal;
-window.closeRemarksModal = Tasks.closeRemarksModal;
-
 // --- Main Initialization ---
 
 window.checkPassword = function() {
@@ -214,7 +166,8 @@ document.addEventListener("DOMContentLoaded", () => {
     AI.initAI();
 
     QSC.subscribeQSC();
-    Tasks.fetchMasterData().then(() => {
+    // Shiftモジュール経由でマスタデータを取得し、その後会員レースを開始
+    Shift.initStaffData().then(() => {
         MemberRace.subscribeMemberRace();
     });
     Operations.subscribeOperations();
@@ -247,75 +200,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const closeDetailBtn = document.getElementById('closeDetailModal');
     if(closeDetailBtn) closeDetailBtn.onclick = Customer.closeDetailModal;
 
-    // Tasks / Staff
-    const editModeBtn = document.getElementById('edit-mode-button');
-    if(editModeBtn) editModeBtn.onclick = Tasks.toggleAdminEdit;
-    
     // Switch View callback integration
-    window.switchView = (view) => UI.switchView(view, {
-        onStaffView: () => {
-             Tasks.setupInitialView();
-             if(!window.taskDocRef) { // Check if initialized (Tasks logic handles this mostly)
-                 Tasks.handleDateChange(getTodayDateString());
-             }
-        }
-    });
-
-    // Check Hash
-    if(window.location.hash === '#staff') {
-        UI.switchView('staff', {
-             onStaffView: () => {
-                 Tasks.setupInitialView();
-                 Tasks.handleDateChange(getTodayDateString());
-             }
-        });
-    }
+    window.switchView = (view) => UI.switchView(view);
 
     // Shift Button Setup (Static HTML)
     Shift.injectShiftButton();
 });
-
-window.filterTasks = (type) => {
-    // 1. Update Button Styles
-    const buttons = {
-        all: document.getElementById('filter-btn-all'),
-        employee: document.getElementById('filter-btn-employee'),
-        byte: document.getElementById('filter-btn-byte')
-    };
-
-    Object.keys(buttons).forEach(key => {
-        const btn = buttons[key];
-        if (btn) {
-            if (key === type) {
-                btn.className = "filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-slate-800 text-white shadow-sm transition-all";
-            } else {
-                btn.className = "filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 transition-all";
-            }
-        }
-    });
-
-    // 2. Toggle Visibility using Partial Matches
-    const toggle = (selector, show) => {
-        document.querySelectorAll(selector).forEach(el => {
-            if(show) el.classList.remove('hidden');
-            else el.classList.add('hidden');
-        });
-    };
-
-    const setVisibility = (isEmployee, isVisible) => {
-         const infix = isEmployee ? 'employee' : 'alba';
-         const selector = `[id*="summary-open-${infix}-container"], [id*="summary-close-${infix}-container"]`;
-         toggle(selector, isVisible);
-    };
-
-    if (type === 'all') {
-        setVisibility(true, true);  // Employee
-        setVisibility(false, true); // Byte
-    } else if (type === 'employee') {
-        setVisibility(true, true);
-        setVisibility(false, false);
-    } else if (type === 'byte') {
-        setVisibility(true, false);
-        setVisibility(false, true);
-    }
-};
