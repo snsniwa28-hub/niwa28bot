@@ -169,6 +169,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Shiftモジュール経由でマスタデータを取得し、その後会員レースを開始
     Shift.initStaffData().then(() => {
         MemberRace.subscribeMemberRace();
+        // ★追加: 名簿取得完了をDeadlinesに通知して再描画させる
+        Deadlines.updateDeadlineStaffLists();
     });
     Operations.subscribeOperations();
 
