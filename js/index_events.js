@@ -12,10 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Views
-    document.getElementById('switch-view-staff-btn')?.addEventListener('click', () => {
-        window.switchView('staff');
-    });
-
     document.getElementById('switch-view-customer-btn')?.addEventListener('click', () => {
         window.switchView('customer');
     });
@@ -69,90 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Map
     document.getElementById('open-map-update-btn')?.addEventListener('click', () => {
         window.showPasswordModal(window.openMapUpdateModal);
-    });
-
-    // Staff Header
-    document.getElementById('prev-date-btn')?.addEventListener('click', () => {
-        window.changeDate(-1);
-    });
-
-    document.getElementById('next-date-btn')?.addEventListener('click', () => {
-        window.changeDate(1);
-    });
-
-    document.getElementById('date-picker')?.addEventListener('change', function() {
-        window.handleDateChange(this.value);
-    });
-
-    // Staff Tabs
-    document.getElementById('tab-open')?.addEventListener('click', () => {
-        window.showSubTab('open');
-    });
-
-    document.getElementById('tab-close')?.addEventListener('click', () => {
-        window.showSubTab('close');
-    });
-
-    // Filter Buttons
-    document.getElementById('filter-btn-all')?.addEventListener('click', () => {
-        window.filterTasks('all');
-    });
-    document.getElementById('filter-btn-employee')?.addEventListener('click', () => {
-        window.filterTasks('employee');
-    });
-    document.getElementById('filter-btn-byte')?.addEventListener('click', () => {
-        window.filterTasks('byte');
-    });
-
-    // Bulk Delete
-    document.getElementById('open-bulk-delete-menu-btn')?.addEventListener('click', () => {
-        window.openBulkDeleteMenu();
-    });
-
-    // Auto Assign
-    document.getElementById('auto-assign-open-btn')?.addEventListener('click', () => {
-        window.autoAssignSection('open');
-    });
-    document.getElementById('auto-assign-close-btn')?.addEventListener('click', () => {
-        window.autoAssignSection('close');
-    });
-
-    // Fixed Staff Select (Open)
-    document.getElementById('fixed-money_count-btn')?.addEventListener('click', () => {
-        window.openFixedStaffSelect('fixed_money_count','open_early','金銭業務 (早番)');
-    });
-    document.getElementById('fixed_open_warehouse-btn')?.addEventListener('click', () => {
-        window.openFixedStaffSelect('fixed_open_warehouse','open_early','倉庫番 (特景)');
-    });
-    document.getElementById('fixed-open_counter-btn')?.addEventListener('click', () => {
-        window.openFixedStaffSelect('fixed_open_counter','open_late','カウンター開設');
-    });
-
-    // Add Staff (Open)
-    document.getElementById('add-staff-early-employee-btn')?.addEventListener('click', () => {
-        window.openStaffSelect('early','employees');
-    });
-    document.getElementById('add-staff-late-alba-btn')?.addEventListener('click', () => {
-        window.openStaffSelect('late','alba_early');
-    });
-
-    // Fixed Staff Select (Close)
-    document.getElementById('fixed-money_collect-btn')?.addEventListener('click', () => {
-        window.openFixedStaffSelect('fixed_money_collect','close_emp','金銭回収');
-    });
-    document.getElementById('fixed-warehouses-btn')?.addEventListener('click', () => {
-        window.openFixedStaffSelect('fixed_warehouses','close_all','倉庫整理');
-    });
-    document.getElementById('fixed-counters-btn')?.addEventListener('click', () => {
-        window.openFixedStaffSelect('fixed_counters','close_all','カウンター');
-    });
-
-    // Add Staff (Close)
-    document.getElementById('add-staff-close-employee-btn')?.addEventListener('click', () => {
-        window.openStaffSelect('closing_employee','employees');
-    });
-    document.getElementById('add-staff-close-alba-btn')?.addEventListener('click', () => {
-        window.openStaffSelect('closing_alba','alba_late');
     });
 
     // --- Part 2: Modals ---
@@ -238,11 +150,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.saveQscEdit();
     });
 
-    // Remarks Modal
-    document.getElementById('close-remarks-modal-btn')?.addEventListener('click', () => {
-        window.closeRemarksModal();
-    });
-
     // Deadline Modal (Simple)
     document.getElementById('close-deadline-modal-btn')?.addEventListener('click', () => {
         window.closeDeadlineModal();
@@ -311,27 +218,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Machine Detail Modal
             if (target.closest('#closeDetailModal')) window.closeDetailModal();
 
-            // Bulk Delete Modal
-            const bulkBtn = target.closest('[data-action="bulk-delete"]');
-            if (bulkBtn) window.requestBulkDelete(bulkBtn.dataset.type, bulkBtn.dataset.shift);
-            if (target.id === 'btn-close-bulk-delete') window.closeBulkDeleteModal();
-
-            // Delete Modal
-            if (target.id === 'btn-cancel-delete') window.cancelDelete();
-            if (target.id === 'btn-confirm-delete') window.confirmDelete();
-
             // Password Modal
             if (target.id === 'btn-cancel-password') window.closePasswordModal();
             if (target.id === 'btn-check-password') window.checkPassword();
-
-            // Select Modal
-            if (target.closest('#btn-close-select-modal-top') || target.id === 'btn-close-select-modal-bottom') {
-                window.closeSelectModal();
-            }
-            if (target.id === 'select-confirm-btn') window.confirmSelection();
-
-            // Remarks Modal
-            if (target.id === 'close-remarks-modal-btn') window.closeRemarksModal();
         });
     }
 

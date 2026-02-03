@@ -2654,3 +2654,28 @@ async function clearRolesOnly() {
 }
 window.clearRolesOnly = clearRolesOnly;
 window.shiftState = shiftState;
+
+// アプリ起動時にスタッフデータを読み込み、他モジュール（会員レース等）へ提供する
+export async function initStaffData() {
+    const staffDocRef = doc(db, 'masters', 'staff_data');
+    try {
+        const staffSnap = await getDoc(staffDocRef);
+        if (staffSnap.exists()) {
+            const data = staffSnap.data();
+            // シフト機能用ステートへの保存
+            shiftState.staffListLists = {
+                employees: data.employees || [],
+                alba_early: data.alba_early || [],
+                alba_late: data.alba_late || []
+            };
+            shiftState.staffDetails = data.staff_details || {};
+
+            // 【重要】他モジュール（member_race.js等）との互換性維持のためグローバルへ公開
+            window.masterStaffList = shiftState.staffListLists;
+
+            console.log("Staff data initialized via Shift module.");
+        }
+    } catch(e) {
+        console.error("Staff Init Error:", e);
+    }
+}
