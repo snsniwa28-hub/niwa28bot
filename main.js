@@ -94,6 +94,7 @@ window.renderQSCList = QSC.renderQSCList;
 window.addQscItem = QSC.addQscItem;
 window.deleteQscItem = QSC.deleteQscItem;
 window.openQSCModal = QSC.openQSCModal; // Replaced specific inline code
+window.closeQSCModal = QSC.closeQSCModal;
 window.closeQscEditModal = QSC.closeQscEditModal;
 window.saveQscEdit = QSC.saveQscEdit;
 // Handle QSC tab switching specifically to avoid complex inline JS
