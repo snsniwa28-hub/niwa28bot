@@ -65,7 +65,26 @@
             </section>
 
             <div class="mb-4 fade-in-up" style="animation-delay: 0.2s;">
-                 <div id="open-simple-todo-btn" class="relative w-full rounded-3xl overflow-hidden shadow-lg shadow-indigo-900/5 border border-slate-100 group cursor-pointer transition-all hover:shadow-xl hover:-translate-y-1 bg-white">
+                 <div class="relative w-full rounded-3xl overflow-hidden shadow-lg shadow-indigo-900/5 border-2 border-slate-100 group cursor-pointer transition-all hover:shadow-xl hover:-translate-y-1 bg-white">
+                    <button id="open-unified-chat-btn" class="w-full text-left p-6 sm:p-8 flex items-center justify-between">
+                        <div class="flex items-center gap-5">
+                            <div class="bg-slate-100 p-4 rounded-2xl group-hover:bg-slate-200 transition-colors">
+                                <span class="text-3xl">📋</span>
+                            </div>
+                            <div>
+                                <h2 class="text-xl sm:text-2xl font-black text-slate-800 tracking-tight mb-1 group-hover:text-slate-600 transition-colors">各チームの伝達</h2>
+                                <p class="text-slate-400 text-xs sm:text-sm font-bold">Team Communication & Strategy</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 rounded-full p-2 group-hover:bg-slate-100 transition">
+                             <svg class="w-6 h-6 text-slate-400 group-hover:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-4 fade-in-up" style="animation-delay: 0.25s;">
+                 <div id="open-simple-todo-btn" class="relative w-full rounded-3xl overflow-hidden shadow-lg shadow-indigo-900/5 border-2 border-blue-500 group cursor-pointer transition-all hover:shadow-xl hover:-translate-y-1 bg-white">
                     <button class="w-full text-left p-6 sm:p-8 flex items-center justify-between">
                         <div class="flex items-center gap-5">
                             <div class="bg-blue-50 p-4 rounded-2xl group-hover:bg-blue-100 transition-colors">
@@ -83,77 +102,64 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
-
-                <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.25s;">
-                    <a id="newOpeningCard" href="#new-opening-section" class="relative block group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="bg-indigo-50 text-indigo-600 p-3 rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-                            </div>
-                        </div>
-                        <div>
-                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">新装開店</h2>
-                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">最新機種情報</p>
-                        </div>
-                    </a>
-                </div>
-
-                <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.3s;">
-                    <div id="shiftEntryCard" class="group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="bg-emerald-50 text-emerald-600 p-3 rounded-2xl group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                            </div>
-                        </div>
-                        <div>
-                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">シフト提出</h2>
-                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">出勤確認</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="fade-in-up col-span-1 h-full" style="animation-delay: 0.35s;">
-                    <div id="openQSCButton" class="group cursor-pointer bg-white rounded-3xl shadow-lg shadow-indigo-900/5 border border-slate-100 p-4 sm:p-5 h-full hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between aspect-square">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="bg-rose-50 text-rose-600 p-3 rounded-2xl group-hover:bg-rose-600 group-hover:text-white transition-colors duration-300">
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                            </div>
-                            <span id="qscUnfinishedCount" class="bg-rose-100 text-rose-600 text-[8px] font-bold px-1.5 py-0.5 rounded-full">読込中</span>
-                        </div>
-                        <div>
-                            <h2 class="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-rose-600 transition-colors">QSC</h2>
-                            <p class="text-slate-400 text-[10px] font-bold mt-0.5">クオリティ管理</p>
-                        </div>
-                    </div>
-                </div>
-
-
-            </div>
-
-            <div class="mt-4 lg:mt-5 fade-in-up" style="animation-delay: 0.4s;">
-                 <div class="relative w-full rounded-3xl overflow-hidden shadow-xl shadow-indigo-900/10 border border-slate-100 group cursor-pointer transition-all hover:shadow-2xl hover:-translate-y-1">
-                    <button id="open-unified-chat-btn" class="w-full text-left bg-gradient-to-r from-slate-800 to-slate-700 p-6 sm:p-8 flex items-center justify-between">
+            <div class="mb-4 fade-in-up" style="animation-delay: 0.3s;">
+                <div id="shiftEntryCard" class="relative w-full rounded-3xl overflow-hidden shadow-lg shadow-indigo-900/5 border-2 border-emerald-500 group cursor-pointer transition-all hover:shadow-xl hover:-translate-y-1 bg-white">
+                    <div class="w-full text-left p-6 sm:p-8 flex items-center justify-between">
                         <div class="flex items-center gap-5">
-                            <div class="bg-white/10 p-4 rounded-2xl backdrop-blur-md">
-                                <span class="text-3xl">📋</span>
+                            <div class="bg-emerald-50 text-emerald-600 p-4 rounded-2xl group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
+                                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                             </div>
                             <div>
-                                <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight mb-1">各チームの伝達</h2>
-                                <p class="text-slate-300 text-xs sm:text-sm font-bold">Team Communication & Strategy</p>
+                                <h2 class="text-xl sm:text-2xl font-black text-slate-800 tracking-tight mb-1 group-hover:text-emerald-600 transition-colors">シフト提出</h2>
+                                <p class="text-slate-400 text-xs sm:text-sm font-bold">出勤確認</p>
                             </div>
                         </div>
-                        <div class="bg-white/10 rounded-full p-2 group-hover:bg-white/20 transition">
-                             <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                         <div class="bg-slate-50 rounded-full p-2 group-hover:bg-slate-100 transition">
+                                <svg class="w-6 h-6 text-slate-400 group-hover:text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                         </div>
-                    </button>
-
-                     <!-- Admin Lock Button -->
-                    <button id="open-strategy-admin-btn" class="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full transition-all z-20 shadow-sm">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    </button>
+                    </div>
                 </div>
+            </div>
 
+            <div class="mb-4 fade-in-up" style="animation-delay: 0.35s;">
+                <a id="newOpeningCard" href="#new-opening-section" class="block relative w-full rounded-3xl overflow-hidden shadow-lg shadow-indigo-900/5 border-2 border-indigo-600 group cursor-pointer transition-all hover:shadow-xl hover:-translate-y-1 bg-white">
+                    <div class="w-full text-left p-6 sm:p-8 flex items-center justify-between">
+                        <div class="flex items-center gap-5">
+                            <div class="bg-indigo-50 text-indigo-600 p-4 rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+                                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xl sm:text-2xl font-black text-slate-800 tracking-tight mb-1 group-hover:text-indigo-600 transition-colors">新装開店</h2>
+                                <p class="text-slate-400 text-xs sm:text-sm font-bold">最新機種情報</p>
+                            </div>
+                        </div>
+                         <div class="bg-slate-50 rounded-full p-2 group-hover:bg-slate-100 transition">
+                                <svg class="w-6 h-6 text-slate-400 group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="mb-4 fade-in-up" style="animation-delay: 0.4s;">
+                <div id="openQSCButton" class="relative w-full rounded-3xl overflow-hidden shadow-lg shadow-indigo-900/5 border-2 border-rose-500 group cursor-pointer transition-all hover:shadow-xl hover:-translate-y-1 bg-white">
+                    <div class="w-full text-left p-6 sm:p-8 flex items-center justify-between">
+                        <div class="flex items-center gap-5">
+                            <div class="bg-rose-50 text-rose-600 p-4 rounded-2xl group-hover:bg-rose-600 group-hover:text-white transition-colors duration-300">
+                                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h2 class="text-xl sm:text-2xl font-black text-slate-800 tracking-tight mb-1 group-hover:text-rose-600 transition-colors">QSC</h2>
+                                    <span id="qscUnfinishedCount" class="bg-rose-100 text-rose-600 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full">読込中</span>
+                                </div>
+                                <p class="text-slate-400 text-xs sm:text-sm font-bold">クオリティ管理</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 rounded-full p-2 group-hover:bg-slate-100 transition">
+                                <svg class="w-6 h-6 text-slate-400 group-hover:text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <section id="deadlines-section" class="mt-8 relative z-10 fade-in-up" style="animation-delay: 0.5s;">
