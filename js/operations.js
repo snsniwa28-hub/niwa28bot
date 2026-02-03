@@ -32,7 +32,7 @@ window.calcOpTotal = (time) => {
     const s20 = getVal(`in_20s_${time}`);
 
     const total = p4 + p1 + s20;
-    const totalInput = document.getElementById(`in_today_target_${time}`);
+    const totalInput = document.getElementById(`in_actual_total_${time}`);
 
     if (totalInput) {
         totalInput.value = total > 0 ? total : '';
@@ -93,15 +93,18 @@ export function renderOperationsBoard() {
     const t = todayOpData || {};
     const y = yesterdayOpData || {};
 
-    // 全体目標・実績の取得ロジック（既存維持）
+    // 全体目標・実績の取得ロジック（修正）
     const calcTotal = (d, time) => {
         if (!d) return null;
-        if (d[`today_target_total_${time}`]) return parseInt(d[`today_target_total_${time}`]);
-        if (d[`actual_total_${time}`]) return d[`actual_total_${time}`];
+        // 実績を優先して取得
+        if (d[`actual_total_${time}`]) return parseInt(d[`actual_total_${time}`]);
+
+        // 内訳から計算
         const p4 = parseInt(d[`actual_4p_${time}`]) || 0;
         const p1 = parseInt(d[`actual_1p_${time}`]) || 0;
         const s20 = parseInt(d[`actual_20s_${time}`]) || 0;
-        return (p4 + p1 + s20) > 0 ? (p4 + p1 + s20) : null;
+        const sum = p4 + p1 + s20;
+        return sum > 0 ? sum : null;
     };
 
     const today15 = calcTotal(t, '15');
@@ -517,14 +520,14 @@ export async function openOpInput(dateStr) {
     };
 
     // 既存項目
-    setVal('in_target_15', data.target_total_15);
-    setVal('in_today_target_15', data.today_target_total_15);
+    setVal('in_today_target_15', data.today_target_total_15 || data.target_total_15);
+    setVal('in_actual_total_15', data.actual_total_15);
     setVal('in_4p_15', data.actual_4p_15);
     setVal('in_1p_15', data.actual_1p_15);
     setVal('in_20s_15', data.actual_20s_15);
 
-    setVal('in_target_19', data.target_total_19);
-    setVal('in_today_target_19', data.today_target_total_19);
+    setVal('in_today_target_19', data.today_target_total_19 || data.target_total_19);
+    setVal('in_actual_total_19', data.actual_total_19);
     setVal('in_4p_19', data.actual_4p_19);
     setVal('in_1p_19', data.actual_1p_19);
     setVal('in_20s_19', data.actual_20s_19);
@@ -853,8 +856,7 @@ export async function saveOpData() {
 
     const d = {
         // 15時データ
-        target_total_15: getVal('in_target_15'),
-        today_target_total_15: total15, // 自動計算で上書き
+        today_target_total_15: getVal('in_today_target_15'),
         actual_total_15: total15,
         actual_4p_15: getVal('in_4p_15'),
         actual_1p_15: getVal('in_1p_15'),
@@ -865,8 +867,7 @@ export async function saveOpData() {
         target_20s_15: getVal('in_target_20s_15'),
 
         // 19時データ
-        target_total_19: getVal('in_target_19'),
-        today_target_total_19: total19, // 自動計算で上書き
+        today_target_total_19: getVal('in_today_target_19'),
         actual_total_19: total19,
         actual_4p_19: getVal('in_4p_19'),
         actual_1p_19: getVal('in_1p_19'),
