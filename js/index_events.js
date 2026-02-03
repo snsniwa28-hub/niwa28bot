@@ -334,7 +334,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (target.id === 'close-remarks-modal-btn') window.closeRemarksModal();
         });
     }
-});
 
     // --- Static View Event Listeners (Moved from Delegation) ---
 
@@ -388,3 +387,4 @@ document.addEventListener('DOMContentLoaded', () => {
             // Checking js/qsc.js: Yes, d.querySelector('.btn-edit-qsc').onclick = ...
         }
     });
+});
