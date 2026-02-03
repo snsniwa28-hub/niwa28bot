@@ -178,13 +178,14 @@ export function openNewOpeningEditAuth() {
 }
 
 export function openNewOpeningEdit() {
-    $('#newOpeningEditModal').classList.remove('hidden');
+    $('#new-opening-edit-view').classList.add('active');
     renderNewOpeningEditList();
     clearNewOpeningForm();
 }
 
-export function closeNewOpeningEditModal() {
-    $('#newOpeningEditModal').classList.add('hidden');
+export function closeNewOpeningEditView() {
+    $('#new-opening-edit-view').classList.remove('active');
+    openNewOpening(); // Refresh view
 }
 
 function renderNewOpeningEditList() {

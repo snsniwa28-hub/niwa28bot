@@ -345,17 +345,23 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('qscTabUnfinished')?.addEventListener('click', () => window.handleQscTab('未実施'));
     document.getElementById('qscTabFinished')?.addEventListener('click', () => window.handleQscTab('完了'));
 
+    // New Opening Card (Dashboard)
+    document.getElementById('newOpeningCard')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.openNewOpening();
+    });
+
     // New Opening View
     document.getElementById('close-new-opening-view-btn')?.addEventListener('click', () => window.closeNewOpeningModal());
 
-    // New Opening Edit
-    document.getElementById('open-new-opening-edit-btn')?.addEventListener('click', (e) => {
-        e.stopPropagation();
+    // New Opening View - Admin Button
+    document.getElementById('btn-open-new-opening-admin')?.addEventListener('click', () => {
         window.openNewOpeningEditAuth();
     });
 
-    document.getElementById('close-new-opening-edit-btn')?.addEventListener('click', () => {
-        window.closeNewOpeningEditModal();
+    // New Opening Edit - Close (Back)
+    document.getElementById('close-new-opening-edit-view-btn')?.addEventListener('click', () => {
+        window.closeNewOpeningEditView();
     });
 
     document.getElementById('no-edit-save-btn')?.addEventListener('click', () => {
