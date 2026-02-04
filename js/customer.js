@@ -174,7 +174,7 @@ export function closeDetailModal() {
 // --- Admin Logic ---
 
 export function openNewOpeningEditAuth() {
-    window.showPasswordModal(openNewOpeningEdit);
+    showPasswordModal(openNewOpeningEdit);
 }
 
 export function openNewOpeningEdit() {

@@ -9,6 +9,7 @@ import * as Strategy from './strategy.js';
 import * as SimpleTodo from './simple_todo.js';
 import * as Auth from './auth.js';
 import * as AI from './ai.js';
+import { changeStrategySlide } from './components.js';
 
 // Helper for Password Check (formerly global window.checkPassword in main.js)
 function checkPassword() {
@@ -222,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Knowledge Filter
         const filterBtn = e.target.closest('[data-action="filter-knowledge"]');
         if (filterBtn) {
-            // Strategy.setKnowledgeFilter(filterBtn.dataset.filter); // Not implemented
+            Strategy.setKnowledgeFilter(filterBtn.dataset.filter);
             return;
         }
     });
@@ -253,9 +254,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Password Input Enter Key
-    document.getElementById('password-input')?.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+    // Password Input Enter Key (Delegated due to dynamic rendering)
+    document.addEventListener('keydown', (e) => {
+        if (e.target && e.target.id === 'password-input' && e.key === 'Enter') {
             e.preventDefault();
             checkPassword();
         }
@@ -322,6 +323,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const removeBtn = e.target.closest('.btn-remove-image');
         if (removeBtn) {
             Customer.removeNewOpeningImage(parseInt(removeBtn.dataset.idx));
+        }
+    });
+
+    // Delegated Member Race Actions
+    document.getElementById('member-list-container')?.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('.btn-edit-target');
+        const updateBtn = e.target.closest('.btn-update-count');
+
+        if (editBtn) {
+            MemberRace.editMemberTarget(editBtn.dataset.name);
+        } else if (updateBtn) {
+            const name = updateBtn.dataset.name;
+            const delta = parseInt(updateBtn.dataset.delta);
+            MemberRace.updateMemberCount(name, delta);
+        }
+    });
+
+    // Delegated Strategy Slideshow - attached to body or a stable parent since container is dynamic
+    document.body.addEventListener('click', (e) => {
+        const prevBtn = e.target.closest('[data-action="strategy-slide-prev"]');
+        const nextBtn = e.target.closest('[data-action="strategy-slide-next"]');
+
+        if (prevBtn) {
+            changeStrategySlide(-1);
+        } else if (nextBtn) {
+            changeStrategySlide(1);
         }
     });
 

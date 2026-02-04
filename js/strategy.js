@@ -12,6 +12,11 @@ let isKnowledgeMode = false;
 let tempPdfImages = [];
 let knowledgeFilter = 'all';
 
+export function setKnowledgeFilter(filter) {
+    knowledgeFilter = filter;
+    renderStrategyList();
+}
+
 // --- Firestore Operations ---
 export async function loadStrategies() {
     const q = query(collection(db, "strategies"), orderBy("updatedAt", "desc"), limit(50));
@@ -338,7 +343,21 @@ function renderStrategyList() {
     const grid = document.createElement('div');
     grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4";
 
-    strategies.forEach(item => {
+    // Filtering logic
+    const filtered = strategies.filter(s => {
+        if (knowledgeFilter === 'all') return true;
+        return s.category === knowledgeFilter;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div class="flex flex-col items-center justify-center py-20 opacity-50">
+            <span class="text-4xl mb-2">🔍</span>
+            <p class="text-sm font-bold text-slate-400">該当する知識データがありません</p>
+        </div>`;
+        return;
+    }
+
+    filtered.forEach(item => {
         const date = item.updatedAt ? new Date(item.updatedAt.toDate()).toLocaleDateString() : '---';
 
         const card = document.createElement('div');

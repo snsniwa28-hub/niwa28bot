@@ -150,9 +150,9 @@ export function renderMemberRaceBoard() {
 
         // Target Text
         const displayTarget = hasTarget ? indTarget : '未定';
-        const targetHtml = `<span onclick="editMemberTarget('${name}')" class="cursor-pointer hover:text-indigo-500 hover:underline decoration-dotted ml-1" title="目標を変更">/ ${displayTarget}</span>`;
+        const targetHtml = `<span class="cursor-pointer hover:text-indigo-500 hover:underline decoration-dotted ml-1 btn-edit-target" data-name="${name}" title="目標を変更">/ ${displayTarget}</span>`;
         // UI Improvement: Icon + Text button
-        const editBtnHtml = `<button onclick="editMemberTarget('${name}')" class="ml-2 inline-flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg px-2 py-1 transition-colors group" title="目標を編集"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" /></svg><span class="text-xs font-bold ml-1 group-hover:text-indigo-600">目標</span></button>`;
+        const editBtnHtml = `<button class="ml-2 inline-flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg px-2 py-1 transition-colors group btn-edit-target" data-name="${name}" title="目標を編集"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" /></svg><span class="text-xs font-bold ml-1 group-hover:text-indigo-600">目標</span></button>`;
 
         card.innerHTML = `
             ${crownHtml}
@@ -169,8 +169,8 @@ export function renderMemberRaceBoard() {
                     </div>
                 </div>
                 <div class="flex items-center gap-1 ml-2">
-                    <button onclick="updateMemberCount('${name}', 1)" class="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition shadow-sm active:scale-95">＋</button>
-                    <button onclick="updateMemberCount('${name}', -1)" class="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:bg-slate-50 transition active:scale-95">－</button>
+                    <button class="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition shadow-sm active:scale-95 btn-update-count" data-name="${name}" data-delta="1">＋</button>
+                    <button class="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:bg-slate-50 transition active:scale-95 btn-update-count" data-name="${name}" data-delta="-1">－</button>
                 </div>
             </div>
         `;
@@ -303,8 +303,8 @@ function ensureEditTargetModalExists() {
                 </div>
             </div>
             <div class="flex gap-3 mt-6">
-                <button onclick="window.closeEditMemberTargetModal()" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
-                <button onclick="window.saveEditMemberTarget()" class="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存</button>
+                <button id="btn-close-edit-target" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
+                <button id="btn-save-edit-target" class="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">保存</button>
             </div>
         </div>
     </div>
@@ -319,16 +319,22 @@ function ensureEditTargetModalExists() {
     } else {
         document.body.appendChild(container.firstElementChild);
     }
+
+    // Attach listeners
+    document.getElementById('btn-close-edit-target').onclick = closeEditMemberTargetModal;
+    document.getElementById('btn-save-edit-target').onclick = saveEditMemberTarget;
 }
 
 // Exposed Functions for Modal Interactions
-window.closeEditMemberTargetModal = function() {
+let currentEditingMember = null;
+
+export function closeEditMemberTargetModal() {
     const modal = document.getElementById('editMemberTargetModal');
     if (modal) modal.classList.add('hidden');
 }
 
-window.saveEditMemberTarget = async function() {
-    const name = window.currentEditingMember;
+export async function saveEditMemberTarget() {
+    const name = currentEditingMember;
     const input = document.getElementById('editMemberTargetInput');
     if (!name || !input) return;
 
@@ -350,7 +356,7 @@ window.saveEditMemberTarget = async function() {
 
         await setDoc(docRef, updatePayload, { merge: true });
         showToast(`${name}さんの目標を更新しました`);
-        window.closeEditMemberTargetModal();
+        closeEditMemberTargetModal();
 
     } catch(e) {
         console.error("Edit Target Error:", e);
@@ -360,7 +366,7 @@ window.saveEditMemberTarget = async function() {
 
 export function editMemberTarget(name) {
     ensureEditTargetModalExists();
-    window.currentEditingMember = name;
+    currentEditingMember = name;
 
     const currentTarget = (memberData.individual_targets && memberData.individual_targets[name]) || 0;
 

@@ -375,7 +375,7 @@ export function createShiftModals() {
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-xs font-bold text-slate-500">区分</label>
-                        <select id="se-type" class="w-full border border-slate-200 rounded-lg p-2 text-sm bg-white" onchange="window.updateRankOptions()">
+                        <select id="se-type" class="w-full border border-slate-200 rounded-lg p-2 text-sm bg-white">
                             <option value="employee">社員</option>
                             <option value="byte">アルバイト</option>
                         </select>
@@ -580,6 +580,7 @@ function setupShiftEventListeners() {
     $('#btn-se-delete').onclick = deleteStaff;
     $('#btn-save-daily-target').onclick = saveDailyTarget;
     $('#chk-early-warehouse-auto').onchange = (e) => { shiftState.earlyWarehouseMode = e.target.checked; };
+    $('#se-type').onchange = updateRankOptions;
 
     // Event Delegation for Shift Admin Table
     const adminBody = document.getElementById('shift-admin-body');
