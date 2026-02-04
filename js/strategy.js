@@ -1,6 +1,6 @@
 import { db, app } from './firebase.js';
 import { collection, doc, setDoc, getDoc, getDocs, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { showToast, showConfirmModal, showPasswordModal, showLoadingOverlay, hideLoadingOverlay } from './ui.js';
+import { showToast, showConfirmModal, showPasswordModal, showLoadingOverlay, hideLoadingOverlay, showImageViewer } from './ui.js';
 import { parseFile } from './file_parser.js';
 
 // --- State ---
@@ -243,7 +243,7 @@ export function openStrategyDetail(id) {
             const img = document.createElement('img');
             img.src = url;
             img.className = "h-14 w-14 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-80 transition";
-            img.onclick = () => window.showImageViewer([url]);
+            img.onclick = () => showImageViewer([url]);
             imgContainer.appendChild(img);
         });
     } else {
@@ -371,7 +371,7 @@ function renderStrategyList() {
             // Interaction: Image click opens viewer
             imgContainer.addEventListener('click', (e) => {
                 e.stopPropagation(); // Stop card click
-                window.showImageViewer(item.ai_images);
+                showImageViewer(item.ai_images);
             });
 
             const badge = document.createElement('div');
@@ -414,7 +414,7 @@ function renderStrategyList() {
         deleteBtn.textContent = "削除";
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            window.deleteStrategy(item.id);
+            deleteStrategy(item.id);
         });
 
         footerDiv.appendChild(deleteBtn);
@@ -432,7 +432,7 @@ function renderStrategyList() {
 }
 
 // --- Global Handlers ---
-window.handleContextFileUpload = async (input) => {
+export const handleContextFileUpload = async (input) => {
     if (input.files && input.files[0]) {
         const file = input.files[0];
         const statusEl = document.getElementById('ka-file-status');
@@ -501,17 +501,6 @@ export async function checkAndTriggerDailyUpdate() {
         console.error("Daily Check Error:", e);
     }
 }
-
-// Window Assignments
-window.openInternalSharedModal = openInternalSharedModal;
-window.openKnowledgeAddModal = openKnowledgeAddModal;
-window.closeKnowledgeAddModal = closeKnowledgeAddModal;
-window.saveKnowledge = saveKnowledge;
-window.deleteStrategy = deleteStrategy;
-window.manualUpdateSummary = manualUpdateSummary;
-window.openStrategyDetail = openStrategyDetail;
-window.closeStrategyDetailModal = closeStrategyDetailModal;
-window.updateStrategyDetail = updateStrategyDetail;
 
 export function initStrategy() {
     loadStrategies();

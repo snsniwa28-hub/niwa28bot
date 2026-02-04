@@ -1,6 +1,6 @@
 import { db } from './firebase.js';
 import { collection, addDoc, updateDoc, getDoc, getDocs, query, orderBy, limit, where, serverTimestamp, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { showToast, showConfirmModal, showPasswordModal } from './ui.js';
+import { showToast, showConfirmModal, showPasswordModal, showImageViewer } from './ui.js';
 
 let isChatOpen = false;
 let currentContext = ""; // Not fully used in new mode but kept for chat compatibility
@@ -125,10 +125,14 @@ async function loadCategorySummary(category, categoryName) {
                     <span class="text-lg">📷</span>
                     <span class="text-xs font-bold text-slate-600">関連する資料画像があります</span>
                 </div>
-                <button onclick="window.viewAIContextImages()" class="w-full py-3 bg-slate-800 text-white font-bold rounded-xl shadow-lg hover:bg-slate-700 transition text-xs flex items-center justify-center gap-2 mb-4">
+                <button id="btn-view-ai-images" class="w-full py-3 bg-slate-800 text-white font-bold rounded-xl shadow-lg hover:bg-slate-700 transition text-xs flex items-center justify-center gap-2 mb-4">
                     [画像を拡大して見る]
                 </button>
             `);
+             setTimeout(() => {
+                 const btn = document.getElementById('btn-view-ai-images');
+                 if(btn) btn.onclick = viewAIContextImages;
+             }, 0);
         }
 
         // Display Short Summary
@@ -137,11 +141,15 @@ async function loadCategorySummary(category, categoryName) {
                 ${formatAIMessage(shortText)}
             </div>
             <div class="mt-4 pt-4 border-t border-slate-100">
-                <button onclick="window.showFullSummary()" class="w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold rounded-xl transition flex items-center justify-center gap-2">
+                <button id="btn-show-full-summary" class="w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold rounded-xl transition flex items-center justify-center gap-2">
                     <span>📅</span> 今後の予定・詳細をすべて見る
                 </button>
             </div>
         `);
+        setTimeout(() => {
+             const btn = document.getElementById('btn-show-full-summary');
+             if(btn) btn.onclick = showFullSummary;
+        }, 0);
 
         if(statusEl) statusEl.textContent = `[${categoryName}] 最新サマリーを表示`;
 
@@ -153,9 +161,9 @@ async function loadCategorySummary(category, categoryName) {
 }
 
 // Function to swap to full summary
-window.showFullSummary = () => {
+const showFullSummary = () => {
     const container = document.getElementById('ai-summary-content');
-    const button = document.querySelector('button[onclick="window.showFullSummary()"]');
+    const button = document.getElementById('btn-show-full-summary');
 
     if (container) {
         // Apply transition effect
@@ -426,13 +434,9 @@ function scrollToBottom() {
     if(container) container.scrollTop = container.scrollHeight;
 }
 
-// Global Expose
-window.toggleAIChat = toggleAIChat;
-window.closeAIChat = closeAIChat;
-window.sendAIMessage = sendAIMessage;
-window.openCategoryChat = (category, name) => toggleAIChat(category, name);
-window.viewAIContextImages = () => {
-    if (window.showImageViewer && contextImages.length > 0) {
-        window.showImageViewer(contextImages);
+// Internal Helper
+const viewAIContextImages = () => {
+    if (contextImages.length > 0) {
+        showImageViewer(contextImages);
     }
 };

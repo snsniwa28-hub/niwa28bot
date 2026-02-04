@@ -112,9 +112,9 @@ export function createShiftModals() {
 
                         <!-- Tabs -->
                         <div class="flex flex-wrap justify-center gap-2 mb-8">
-                            <button id="btn-tab-early" class="px-6 py-2 rounded-full bg-indigo-600 text-white font-bold text-sm shadow-md transition-all" onclick="window.switchStaffTab('early')">☀️ 早番 (Early)</button>
-                            <button id="btn-tab-late" class="px-6 py-2 rounded-full bg-white text-slate-500 font-bold text-sm border border-slate-200 hover:bg-slate-50 transition-all" onclick="window.switchStaffTab('late')">🌙 遅番 (Late)</button>
-                            <button id="btn-tab-employee" class="px-6 py-2 rounded-full bg-white text-slate-500 font-bold text-sm border border-slate-200 hover:bg-slate-50 transition-all" onclick="window.switchStaffTab('employee')">👔 社員 (Employee)</button>
+                            <button id="btn-tab-early" class="px-6 py-2 rounded-full bg-indigo-600 text-white font-bold text-sm shadow-md transition-all">☀️ 早番 (Early)</button>
+                            <button id="btn-tab-late" class="px-6 py-2 rounded-full bg-white text-slate-500 font-bold text-sm border border-slate-200 hover:bg-slate-50 transition-all">🌙 遅番 (Late)</button>
+                            <button id="btn-tab-employee" class="px-6 py-2 rounded-full bg-white text-slate-500 font-bold text-sm border border-slate-200 hover:bg-slate-50 transition-all">👔 社員 (Employee)</button>
                         </div>
 
                         <div id="shift-staff-list-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 text-left"></div>
@@ -289,7 +289,7 @@ export function createShiftModals() {
                 <button id="btn-action-prev" class="pr-4 pl-2 py-2 bg-white border border-slate-200 text-slate-500 rounded-xl text-xs font-bold hover:bg-slate-50 transition flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg> 前の日
                 </button>
-                <button onclick="closeShiftActionModal()" class="px-4 py-2 rounded-lg text-slate-400 font-bold text-xs hover:bg-slate-100 transition">閉じる</button>
+                <button id="btn-close-action-modal" class="px-4 py-2 rounded-lg text-slate-400 font-bold text-xs hover:bg-slate-100 transition">閉じる</button>
                 <button id="btn-action-next" class="pl-4 pr-2 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition flex items-center gap-1">
                     次の日 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 </button>
@@ -352,10 +352,10 @@ export function createShiftModals() {
          <div class="modal-content p-0 w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
              <div class="p-4 border-b border-slate-200 flex justify-between items-center">
                 <h3 class="font-bold text-slate-800">スタッフマスタ管理</h3>
-                <button onclick="document.getElementById('staff-master-modal').classList.add('hidden')" class="text-slate-400">✕</button>
+                <button id="btn-close-staff-master" class="text-slate-400">✕</button>
              </div>
              <div class="p-2 border-b border-slate-100 flex justify-end">
-                <button onclick="window.resetStaffSort()" class="px-3 py-1 bg-slate-100 text-slate-600 rounded text-xs font-bold hover:bg-slate-200">役職順にリセット</button>
+                <button id="btn-reset-staff-sort" class="px-3 py-1 bg-slate-100 text-slate-600 rounded text-xs font-bold hover:bg-slate-200">役職順にリセット</button>
              </div>
              <div class="p-4 overflow-y-auto flex-1 bg-slate-50">
                 <div id="staff-master-list" class="space-y-4"></div>
@@ -470,7 +470,7 @@ export function createShiftModals() {
                 </div>
             </div>
             <div class="mt-4 pt-4 border-t border-slate-100 flex gap-3 shrink-0">
-                <button onclick="closeAdminNoteModal()" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200">キャンセル</button>
+                <button id="btn-close-admin-note" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200">キャンセル</button>
                 <button id="btn-save-admin-note" class="flex-1 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200">保存する</button>
             </div>
         </div>
@@ -499,8 +499,8 @@ export function createShiftModals() {
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="cancelAutoShift()" class="py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 transition">キャンセル</button>
-                <button onclick="finalizeAutoShift()" class="py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 hover:from-emerald-700 hover:to-teal-700 transition">確定して保存</button>
+                <button id="btn-cancel-auto-shift" class="py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 transition">キャンセル</button>
+                <button id="btn-finalize-auto-shift" class="py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 hover:from-emerald-700 hover:to-teal-700 transition">確定して保存</button>
             </div>
         </div>
     </div>
@@ -537,6 +537,33 @@ function setupShiftEventListeners() {
     $('#btn-ai-late').onclick = () => { if(validateTargets('B')) executeAutoShiftLogic(true, 'B'); };
     $('#btn-mobile-ai-early').onclick = () => { if(validateTargets('A')) { $('#mobile-admin-menu').classList.add('hidden'); executeAutoShiftLogic(true, 'A'); } };
     $('#btn-mobile-ai-late').onclick = () => { if(validateTargets('B')) { $('#mobile-admin-menu').classList.add('hidden'); executeAutoShiftLogic(true, 'B'); } };
+
+    // Staff Tab Buttons
+    $('#btn-tab-early').onclick = () => switchStaffTab('early');
+    $('#btn-tab-late').onclick = () => switchStaffTab('late');
+    $('#btn-tab-employee').onclick = () => switchStaffTab('employee');
+
+    // Modals & Actions
+    $('#btn-close-action-modal').onclick = closeShiftActionModal;
+    $('#btn-close-staff-master').onclick = () => document.getElementById('staff-master-modal').classList.add('hidden');
+    $('#btn-reset-staff-sort').onclick = resetStaffSort;
+    $('#btn-close-admin-note').onclick = closeAdminNoteModal;
+    $('#btn-cancel-auto-shift').onclick = cancelAutoShift;
+    $('#btn-finalize-auto-shift').onclick = finalizeAutoShift;
+
+    // Staff Move Delegation
+    const masterList = document.getElementById('staff-master-list');
+    if (masterList) {
+        masterList.onclick = (e) => {
+            const btn = e.target.closest('.btn-move-staff');
+            if (btn) {
+                const listKey = btn.dataset.key;
+                const index = parseInt(btn.dataset.index);
+                const dir = parseInt(btn.dataset.dir);
+                moveStaff(listKey, index, dir);
+            }
+        };
+    }
 
     $('#mobile-fab-menu').onclick = () => $('#mobile-admin-menu').classList.remove('hidden');
 
@@ -750,7 +777,6 @@ export function switchStaffTab(tab) {
     shiftState.currentStaffTab = tab;
     renderShiftStaffList();
 }
-window.switchStaffTab = switchStaffTab;
 
 export function selectShiftStaff(name) {
     shiftState.selectedStaff = name;
@@ -1215,8 +1241,8 @@ export function renderShiftAdminTable() {
             input.min = 0;
 
             // Event Handlers
-            input.onblur = () => window.saveDailyTargetInline(d, typeKey, input);
-            input.onkeydown = (e) => window.handleDailyTargetKeydown(e, d, typeKey);
+            input.onblur = () => saveDailyTargetInline(d, typeKey, input);
+            input.onkeydown = (e) => handleDailyTargetKeydown(e, d, typeKey);
             input.onclick = (e) => e.stopPropagation(); // Prevent row click if any
 
             td.appendChild(input);
@@ -2136,12 +2162,8 @@ export async function changeShiftMonth(delta) {
     else if(shiftState.selectedStaff) renderShiftCalendar();
 }
 
-window.showActionSelectModal = showActionSelectModal;
-window.closeShiftActionModal = closeShiftActionModal;
-window.clearShiftAssignments = clearShiftAssignments;
-
 // --- Rank Options Logic ---
-window.updateRankOptions = () => {
+export const updateRankOptions = () => {
     const type = document.getElementById('se-type').value;
     const rankSelect = document.getElementById('se-rank');
     rankSelect.innerHTML = '';
@@ -2155,7 +2177,7 @@ window.updateRankOptions = () => {
 };
 
 // --- Staff Sort Reset ---
-window.resetStaffSort = async () => {
+export const resetStaffSort = async () => {
     showConfirmModal("並び順リセット", "現在の並び順を役職・ランク順にリセットしますか？", async () => {
         _executeResetStaffSort();
     });
@@ -2190,12 +2212,12 @@ async function _executeResetStaffSort() {
     showToast("並び順をリセットしました");
 };
 
-window.openStaffMasterModal = () => {
+export const openStaffMasterModal = () => {
     renderStaffMasterList();
     document.getElementById('staff-master-modal').classList.remove('hidden');
 };
 
-window.openStaffEditModal = (name) => {
+export const openStaffEditModal = (name) => {
     const modal = document.getElementById('staff-edit-modal');
     modal.classList.remove('hidden');
     document.getElementById('staff-edit-title').textContent = name ? "スタッフ編集" : "追加";
@@ -2225,7 +2247,7 @@ window.openStaffEditModal = (name) => {
 };
 
 // --- Staff List Rendering with Reorder ---
-window.moveStaff = (listKey, index, direction) => {
+export const moveStaff = (listKey, index, direction) => {
     const list = shiftState.staffListLists[listKey];
     if (!list) return;
     const targetIndex = index + direction;
@@ -2273,8 +2295,8 @@ function renderStaffMasterList() {
         div.innerHTML = `
             <div class="flex items-center gap-3">
                 <div class="flex flex-col gap-1">
-                    <button class="w-6 h-6 rounded flex items-center justify-center bg-slate-100 text-slate-500 font-bold text-xs ${upDisabled}" onclick="window.moveStaff('${listKey}', ${index}, -1)">↑</button>
-                    <button class="w-6 h-6 rounded flex items-center justify-center bg-slate-100 text-slate-500 font-bold text-xs ${downDisabled}" onclick="window.moveStaff('${listKey}', ${index}, 1)">↓</button>
+                    <button class="w-6 h-6 rounded flex items-center justify-center bg-slate-100 text-slate-500 font-bold text-xs btn-move-staff ${upDisabled}" data-key="${listKey}" data-index="${index}" data-dir="-1">↑</button>
+                    <button class="w-6 h-6 rounded flex items-center justify-center bg-slate-100 text-slate-500 font-bold text-xs btn-move-staff ${downDisabled}" data-key="${listKey}" data-index="${index}" data-dir="1">↓</button>
                 </div>
                 <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm">👤</div>
                 <div>
@@ -2427,7 +2449,7 @@ async function _executeDeleteStaff(name) {
     hideLoading();
 }
 
-window.openDailyTargetModal = (day) => {
+export const openDailyTargetModal = (day) => {
     shiftState.selectedDay = day;
     document.getElementById('daily-target-title').textContent = `${shiftState.currentMonth}/${day} 定員設定`;
     const targets = shiftState.shiftDataCache._daily_targets || {};
@@ -2437,7 +2459,7 @@ window.openDailyTargetModal = (day) => {
     document.getElementById('daily-target-modal').classList.remove('hidden');
 };
 
-window.saveDailyTarget = async () => {
+export const saveDailyTarget = async () => {
     const day = shiftState.selectedDay;
     if(!day) return;
     const valA = parseInt(document.getElementById('target-a-input').value) || 0;
@@ -2459,7 +2481,7 @@ window.saveDailyTarget = async () => {
 };
 
 // --- New Inline Saving Logic ---
-window.saveDailyTargetInline = async (day, type, inputElement) => {
+export const saveDailyTargetInline = async (day, type, inputElement) => {
     const val = parseInt(inputElement.value) || 0;
     if (!shiftState.shiftDataCache._daily_targets) shiftState.shiftDataCache._daily_targets = {};
     if (!shiftState.shiftDataCache._daily_targets[day]) shiftState.shiftDataCache._daily_targets[day] = {};
@@ -2486,7 +2508,7 @@ window.saveDailyTargetInline = async (day, type, inputElement) => {
     }
 };
 
-window.handleDailyTargetKeydown = (event, day, type) => {
+export const handleDailyTargetKeydown = (event, day, type) => {
     if (event.key === 'Enter') {
         event.preventDefault();
         event.target.blur(); // Trigger save via blur
@@ -2554,16 +2576,14 @@ async function saveAdminNote(name) {
         alert("保存失敗: " + e.message);
     }
 }
-window.closeAdminNoteModal = closeAdminNoteModal;
-window.showAdminNoteModal = showAdminNoteModal;
 
-window.showAutoShiftPreviewModal = (filled, staffCount) => {
+export const showAutoShiftPreviewModal = (filled, staffCount) => {
     document.getElementById('preview-filled-count').textContent = filled;
     document.getElementById('preview-staff-count').textContent = staffCount + '名';
     document.getElementById('auto-shift-preview-modal').classList.remove('hidden');
 };
 
-window.cancelAutoShift = () => {
+export const cancelAutoShift = () => {
     document.getElementById('auto-shift-preview-modal').classList.add('hidden');
     // Revert local changes from history without saving to DB (since we never saved)
     if(shiftState.historyStack.length > 0) {
@@ -2574,7 +2594,7 @@ window.cancelAutoShift = () => {
     }
 };
 
-window.finalizeAutoShift = async () => {
+export const finalizeAutoShift = async () => {
     showLoading();
     try {
         const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
@@ -2589,7 +2609,6 @@ window.finalizeAutoShift = async () => {
         hideLoading();
     }
 };
-window.activateShiftAdminMode = activateShiftAdminMode;
 
 
 // ============================================================
@@ -2597,7 +2616,7 @@ window.activateShiftAdminMode = activateShiftAdminMode;
 // ============================================================
 
 // 公休・有休・特休以外（出勤など）をクリアする関数
-async function clearWorkOnly() {
+export async function clearWorkOnly() {
     showConfirmModal("出勤のみクリア", "「公休」「有休」「特休」は残したまま、\n自動割り振りされた「出勤」や「/」のみをリセットしますか？", async () => {
         pushHistory();
         const protectedRoles = ['公休', '有休', '特休'];
@@ -2624,10 +2643,9 @@ async function clearWorkOnly() {
         showToast(`🧹 ${count}箇所の割り振りをリセットしました`);
     }, 'bg-orange-500');
 }
-window.clearWorkOnly = clearWorkOnly;
 
 // --- 新機能: 役職のみクリア ---
-async function clearRolesOnly() {
+export async function clearRolesOnly() {
     showConfirmModal("役職クリア", "シフト（出勤/休み）は維持したまま、\n割り振られた役職（金メ・倉庫など）だけを解除して「出勤」に戻しますか？", async () => {
         pushHistory();
         const targetRoles = ['金メ', '金サブ', 'ホ責', '倉庫'];
@@ -2652,8 +2670,6 @@ async function clearRolesOnly() {
         showToast(`🧹 ${count}箇所の役職をクリアしました`);
     }, 'bg-orange-500');
 }
-window.clearRolesOnly = clearRolesOnly;
-window.shiftState = shiftState;
 
 // アプリ起動時にスタッフデータを読み込み、他モジュール（会員レース等）へ提供する
 export async function initStaffData() {
