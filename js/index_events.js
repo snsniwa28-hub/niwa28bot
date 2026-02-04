@@ -115,6 +115,10 @@ document.addEventListener('DOMContentLoaded', () => {
         window.openKnowledgeAddModal();
     });
 
+    document.getElementById('btn-refresh-knowledge')?.addEventListener('click', () => {
+        window.manualUpdateSummary();
+    });
+
     document.getElementById('close-internal-shared-view-btn')?.addEventListener('click', () => {
         document.getElementById('internal-shared-view').classList.remove('active');
     });
@@ -130,6 +134,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('ka-file')?.addEventListener('change', function() {
         window.handleContextFileUpload(this);
+    });
+
+    // Knowledge Detail Modal
+    document.getElementById('btn-cancel-strategy-detail')?.addEventListener('click', () => {
+        window.closeStrategyDetailModal();
+    });
+    document.getElementById('btn-cancel-strategy-detail-2')?.addEventListener('click', () => {
+        window.closeStrategyDetailModal();
+    });
+    document.getElementById('btn-save-strategy-detail')?.addEventListener('click', () => {
+        window.updateStrategyDetail();
     });
 
     // Member Target Modal

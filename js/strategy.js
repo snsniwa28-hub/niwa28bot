@@ -1,6 +1,6 @@
 import { db, app } from './firebase.js';
-import { collection, doc, setDoc, getDoc, getDocs, deleteDoc, serverTimestamp, query, orderBy, limit, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { showToast, showConfirmModal, showPasswordModal } from './ui.js';
+import { collection, doc, setDoc, getDoc, getDocs, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { showToast, showConfirmModal, showPasswordModal, showLoadingOverlay, hideLoadingOverlay } from './ui.js';
 import { parseFile } from './file_parser.js';
 
 // --- State ---
@@ -93,7 +93,23 @@ async function updateCategorySummary(category_ignored) {
     } catch (e) {
         console.error("Summary Update Failed:", e);
         showToast("サマリー更新に失敗しました");
+        throw e; // Propagate error for caller handling
     }
+}
+
+export async function manualUpdateSummary() {
+    showConfirmModal("AIサマリー更新", "現在の知識データに基づいて、AIサマリーを再生成しますか？\n(少し時間がかかります)", async () => {
+        try {
+            showLoadingOverlay("AIがサマリーを生成中...");
+            await updateCategorySummary('unified');
+            showToast("サマリーを更新しました");
+        } catch(e) {
+            console.error(e);
+            // Error toast handled in updateCategorySummary or here
+        } finally {
+            hideLoadingOverlay();
+        }
+    });
 }
 
 export async function saveKnowledge() {
@@ -116,7 +132,7 @@ export async function saveKnowledge() {
         return;
     }
 
-    showToast("AIが学習中...");
+    showLoadingOverlay("AIが学習中...");
 
     let data = {
         title: title || `【${category}】共有事項`,
@@ -176,6 +192,8 @@ export async function saveKnowledge() {
     } catch (e) {
         console.error(e);
         alert("保存エラー: " + e.message);
+    } finally {
+        hideLoadingOverlay();
     }
 }
 
@@ -186,12 +204,96 @@ async function addDoc(collectionRef, data) {
 
 export async function deleteStrategy(id) {
     showConfirmModal("削除確認", "この知識データを削除しますか？", async () => {
-        await deleteDoc(doc(db, "strategies", id));
-        showToast("削除しました");
-        await updateCategorySummary('unified');
-        loadStrategies();
+        try {
+            showLoadingOverlay("削除処理中...");
+            await deleteDoc(doc(db, "strategies", id));
+            await updateCategorySummary('unified');
+            showToast("削除しました");
+            loadStrategies();
+        } catch(e) {
+            console.error(e);
+            showToast("削除エラー");
+        } finally {
+            hideLoadingOverlay();
+        }
     });
 }
+
+// --- Detail & Edit Logic ---
+
+export function openStrategyDetail(id) {
+    const item = strategies.find(s => s.id === id);
+    if (!item) return;
+
+    editingId = id;
+
+    // Populate Modal
+    document.getElementById('kd-id').value = id;
+    document.getElementById('kd-category').value = item.category || 'strategy';
+    document.getElementById('kd-date').value = item.relevant_date || '';
+    document.getElementById('kd-title').value = item.title || '';
+    document.getElementById('kd-summary').value = item.ai_summary || '';
+    document.getElementById('kd-text').value = item.text_content || '';
+
+    // Images
+    const imgContainer = document.getElementById('kd-images-list');
+    imgContainer.innerHTML = '';
+    if (item.ai_images && item.ai_images.length > 0) {
+        item.ai_images.forEach(url => {
+            const img = document.createElement('img');
+            img.src = url;
+            img.className = "h-14 w-14 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-80 transition";
+            img.onclick = () => window.showImageViewer([url]);
+            imgContainer.appendChild(img);
+        });
+    } else {
+        imgContainer.innerHTML = '<span class="text-xs text-slate-400 font-bold">画像なし</span>';
+    }
+
+    document.getElementById('knowledge-detail-modal').classList.remove('hidden');
+}
+
+export function closeStrategyDetailModal() {
+    document.getElementById('knowledge-detail-modal').classList.add('hidden');
+    editingId = null;
+}
+
+export async function updateStrategyDetail() {
+    if (!editingId) return;
+
+    const category = document.getElementById('kd-category').value;
+    const date = document.getElementById('kd-date').value;
+    const title = document.getElementById('kd-title').value;
+    const summary = document.getElementById('kd-summary').value;
+    const text = document.getElementById('kd-text').value;
+
+    try {
+        showLoadingOverlay("更新中...");
+
+        await updateDoc(doc(db, "strategies", editingId), {
+            category: category,
+            relevant_date: date,
+            title: title,
+            ai_summary: summary,
+            text_content: text,
+            updatedAt: serverTimestamp() // Update timestamp to bring to top? Or keep original? Usually update brings to top.
+        });
+
+        // Trigger AI Summary update
+        await updateCategorySummary('unified');
+
+        showToast("✅ 更新完了");
+        closeStrategyDetailModal();
+        loadStrategies();
+
+    } catch(e) {
+        console.error(e);
+        showToast("更新失敗: " + e.message);
+    } finally {
+        hideLoadingOverlay();
+    }
+}
+
 
 // --- UI Rendering ---
 
@@ -238,8 +340,16 @@ function renderStrategyList() {
 
     strategies.forEach(item => {
         const date = item.updatedAt ? new Date(item.updatedAt.toDate()).toLocaleDateString() : '---';
+
         const card = document.createElement('div');
-        card.className = "bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full hover:shadow-md transition group";
+        // Mobile UI Optimization: Increased padding, adjusted shadows
+        card.className = "bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full hover:shadow-md transition active:scale-[0.98] cursor-pointer group";
+
+        // Interaction: Card click opens detail
+        card.addEventListener('click', (e) => {
+            // Prevent if clicking specific buttons (handled inside)
+            openStrategyDetail(item.id);
+        });
 
         const teamMap = { 'pachinko': 'パチンコ', 'slot': 'スロット', 'strategy': '戦略' };
         const teamName = teamMap[item.category] || item.category || '未分類';
@@ -250,30 +360,71 @@ function renderStrategyList() {
 
         let thumbnailHtml = '';
         if (item.ai_images && item.ai_images.length > 0) {
-            thumbnailHtml = `
-                <div class="h-32 bg-slate-100 relative overflow-hidden cursor-pointer" onclick="window.showImageViewer(['${item.ai_images.join("','")}'])">
-                    <img src="${item.ai_images[0]}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
-                    <div class="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        📷 ${item.ai_images.length}
-                    </div>
-                </div>
-            `;
+            // Mobile Optimization: Fixed aspect ratio
+            const imgContainer = document.createElement('div');
+            imgContainer.className = "h-40 sm:h-32 bg-slate-100 relative overflow-hidden shrink-0";
+
+            const img = document.createElement('img');
+            img.src = item.ai_images[0];
+            img.className = "w-full h-full object-cover transition duration-500";
+
+            // Interaction: Image click opens viewer
+            imgContainer.addEventListener('click', (e) => {
+                e.stopPropagation(); // Stop card click
+                window.showImageViewer(item.ai_images);
+            });
+
+            const badge = document.createElement('div');
+            badge.className = "absolute bottom-2 right-2 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm";
+            badge.textContent = `📷 ${item.ai_images.length}`;
+
+            imgContainer.appendChild(img);
+            imgContainer.appendChild(badge);
+
+            card.appendChild(imgContainer);
+        } else {
+             // Placeholder for layout stability (Optional, but requested "consideration")
+             // Actually, cleaner design might just skip image area to show more text
         }
 
-        card.innerHTML = `
-            ${thumbnailHtml}
-            <div class="p-4 flex-1 flex flex-col">
-                <div class="flex items-center gap-2 mb-2">
-                    <span class="text-[10px] ${badgeColor} px-2 py-0.5 rounded-lg font-bold">${teamName}</span>
-                    <span class="text-[10px] text-slate-400 font-bold ml-auto">${date}</span>
-                </div>
-                <h3 class="font-bold text-slate-800 text-sm mb-2 line-clamp-2">${item.title}</h3>
-                <p class="text-xs text-slate-500 line-clamp-3 mb-4 flex-1">${item.ai_summary || item.text_content || '(内容なし)'}</p>
-                <div class="flex justify-end pt-2 border-t border-slate-50">
-                    <button class="text-xs font-bold text-rose-400 hover:text-rose-600 px-2 py-1" onclick="window.deleteStrategy('${item.id}')">削除</button>
-                </div>
-            </div>
-        `;
+        const contentDiv = document.createElement('div');
+        contentDiv.className = "p-4 sm:p-5 flex-1 flex flex-col gap-3";
+
+        // Header line
+        const headerDiv = document.createElement('div');
+        headerDiv.className = "flex items-center gap-2";
+        headerDiv.innerHTML = `<span class="text-[10px] ${badgeColor} px-2 py-0.5 rounded-lg font-bold shrink-0">${teamName}</span><span class="text-[10px] text-slate-400 font-bold ml-auto">${date}</span>`;
+
+        // Title: text-pretty, break-words
+        const titleEl = document.createElement('h3');
+        titleEl.className = "font-black text-slate-800 text-sm sm:text-base leading-relaxed text-pretty break-words";
+        titleEl.textContent = item.title;
+
+        // Summary/Content: text-pretty, leading-relaxed
+        const descEl = document.createElement('p');
+        descEl.className = "text-xs sm:text-sm text-slate-500 line-clamp-3 leading-loose text-pretty break-words flex-1";
+        descEl.textContent = item.ai_summary || item.text_content || '(内容なし)';
+
+        // Footer Actions
+        const footerDiv = document.createElement('div');
+        footerDiv.className = "flex justify-end pt-3 border-t border-slate-50 mt-auto";
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = "text-xs font-bold text-slate-300 hover:text-rose-500 p-2 -mr-2 rounded-lg transition z-10";
+        deleteBtn.textContent = "削除";
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.deleteStrategy(item.id);
+        });
+
+        footerDiv.appendChild(deleteBtn);
+
+        contentDiv.appendChild(headerDiv);
+        contentDiv.appendChild(titleEl);
+        contentDiv.appendChild(descEl);
+        contentDiv.appendChild(footerDiv);
+
+        card.appendChild(contentDiv);
         grid.appendChild(card);
     });
 
@@ -357,6 +508,10 @@ window.openKnowledgeAddModal = openKnowledgeAddModal;
 window.closeKnowledgeAddModal = closeKnowledgeAddModal;
 window.saveKnowledge = saveKnowledge;
 window.deleteStrategy = deleteStrategy;
+window.manualUpdateSummary = manualUpdateSummary;
+window.openStrategyDetail = openStrategyDetail;
+window.closeStrategyDetailModal = closeStrategyDetailModal;
+window.updateStrategyDetail = updateStrategyDetail;
 
 export function initStrategy() {
     loadStrategies();
