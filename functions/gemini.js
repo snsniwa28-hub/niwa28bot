@@ -6,7 +6,7 @@ export async function onRequest(context) {
   }
 
   try {
-    const { prompt, contextData, contextImages, mode, history, currentDate, stream } = await request.json();
+    const { prompt, contextData, contextImages, mode, history, currentDate, stream, targetType } = await request.json();
     const apiKey = env.GEMINI_API_KEY;
     const model = env.GEMINI_MODEL || "gemini-2.5-flash";
 
@@ -21,7 +21,43 @@ export async function onRequest(context) {
 
     if (mode === 'extraction') {
         // Extraction Mode for Operations Targets
-        const fullPrompt = `
+        let fullPrompt = "";
+
+        if (targetType === '15') {
+            fullPrompt = `
+あなたはデータ抽出の専門家です。提供された資料（Excel等）から【15時（午後3時）時点の「店舗全体」の稼働目標値】のみを抽出してください。
+
+【絶対順守のルール】
+1. **「店舗全体」「総稼働」「合計」「Total」**の行・列を最優先で探すこと。
+   - 機種別（4円パチンコ、スロット等）の細かい内訳数値は**ノイズとして完全に無視**する。
+   - 通常、その時間帯で**最も大きな数値**が全体合計である。
+2. 「15:00」「15時」「午後3時」の列にあるデータのみを見る。
+3. 19時のデータや、実績値（Actual）は無視する。「目標（Target/Plan/予定）」の数値のみを抽出する。
+4. 出力はJSON形式のみ: { "YYYY-MM-DD": 数値 }
+   - 余計な解説やMarkdown記法は一切不要。
+
+解析対象データ:
+${prompt}
+`;
+        } else if (targetType === '19') {
+            fullPrompt = `
+あなたはデータ抽出の専門家です。提供された資料（Excel等）から【19時（午後7時）時点の「店舗全体」の稼働目標値】のみを抽出してください。
+
+【絶対順守のルール】
+1. **「店舗全体」「総稼働」「合計」「Total」**の行・列を最優先で探すこと。
+   - 機種別（4円パチンコ、スロット等）の細かい内訳数値は**ノイズとして完全に無視**する。
+   - 通常、その時間帯で**最も大きな数値**が全体合計である。
+2. 「19:00」「19時」「午後7時」の列にあるデータのみを見る。
+3. 15時のデータや、実績値（Actual）は無視する。「目標（Target/Plan/予定）」の数値のみを抽出する。
+4. 出力はJSON形式のみ: { "YYYY-MM-DD": 数値 }
+   - 余計な解説やMarkdown記法は一切不要。
+
+解析対象データ:
+${prompt}
+`;
+        } else {
+            // Default (Legacy)
+            fullPrompt = `
 あなたはデータ抽出AIです。
 提供されたテキストデータ（CSV形式含む）または画像から、**「15時時点の目標値」**と**「19時時点の目標値」**を日付ごとに抽出してください。
 以下のJSON形式のみを出力してください。余計な解説やMarkdown記法（\`\`\`jsonなど）は一切不要です。
@@ -44,6 +80,8 @@ export async function onRequest(context) {
 解析対象データ:
 ${prompt}
 `;
+        }
+
         const parts = [{ text: fullPrompt }];
         // Add Images
         if (contextImages && Array.isArray(contextImages)) {

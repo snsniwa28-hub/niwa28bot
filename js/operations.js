@@ -15,6 +15,7 @@ let viewingMachineDate = getTodayDateString(); // State for Machine View
 // Dynamic Date Management (Operations)
 let currentOpYear = new Date().getFullYear();
 let currentOpMonth = new Date().getMonth(); // 0-indexed
+let importTargetType = null; // '15' or '19'
 
 // Dynamic Date Management (Machine)
 let currentMachineYear = new Date().getFullYear();
@@ -398,6 +399,10 @@ function renderCalendarGrid() {
             <div class="flex flex-col sm:flex-row items-center justify-between w-full gap-2">
                 <div class="flex items-center gap-2">
                     <span class="text-lg">📅 稼働実績カレンダー</span>
+                    <button id="btn-ai-import-menu" class="ml-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 border border-indigo-200">
+                        <span>🤖</span> AI読込
+                    </button>
+                    <input type="file" id="op-import-file-input" accept="image/*, .pdf, .xlsx, .xls" class="hidden">
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -414,6 +419,12 @@ function renderCalendarGrid() {
             const next = document.getElementById('op-next-month');
             if (prev) prev.onclick = (e) => { e.stopPropagation(); changeOpMonth(-1); };
             if (next) next.onclick = (e) => { e.stopPropagation(); changeOpMonth(1); };
+
+            const btnAi = document.getElementById('btn-ai-import-menu');
+            if (btnAi) btnAi.onclick = (e) => { e.stopPropagation(); showImportSelectModal(); };
+
+            const fileInput = document.getElementById('op-import-file-input');
+            if (fileInput) fileInput.onchange = handleOpImportFile;
         }, 0);
     }
 
@@ -887,13 +898,61 @@ export async function saveOpData() {
     } catch (e) { alert("保存失敗: " + e.message); }
 }
 
+function showImportSelectModal() {
+    if (document.getElementById('import-select-modal')) {
+        document.getElementById('import-select-modal').classList.remove('hidden');
+        return;
+    }
+
+    const html = `
+    <div id="import-select-modal" class="modal-overlay" style="z-index: 200;">
+        <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl flex flex-col">
+            <h3 class="font-bold text-slate-800 text-lg mb-4">読み込むデータを選択</h3>
+            <div class="flex flex-col gap-3 mb-6">
+                <button id="btn-import-15" class="py-4 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-bold rounded-xl transition flex flex-col items-center gap-1">
+                    <span class="text-xl">🕒 15時 (全体目標)</span>
+                    <span class="text-xs opacity-70">午後3時の店舗全体稼働目標</span>
+                </button>
+                <button id="btn-import-19" class="py-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-xl transition flex flex-col items-center gap-1">
+                    <span class="text-xl">🌙 19時 (全体目標)</span>
+                    <span class="text-xs opacity-70">午後7時の店舗全体稼働目標</span>
+                </button>
+            </div>
+            <button id="btn-import-cancel" class="py-3 text-slate-400 font-bold rounded-xl hover:bg-slate-50 transition">キャンセル</button>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    const closeModal = () => document.getElementById('import-select-modal').classList.add('hidden');
+
+    document.getElementById('btn-import-cancel').onclick = closeModal;
+
+    document.getElementById('btn-import-15').onclick = () => {
+        importTargetType = '15';
+        closeModal();
+        $('#op-import-file-input').click();
+    };
+
+    document.getElementById('btn-import-19').onclick = () => {
+        importTargetType = '19';
+        closeModal();
+        $('#op-import-file-input').click();
+    };
+}
+
 async function handleOpImportFile(e) {
     const file = e.target.files[0];
     if (!file) return;
 
-    e.target.value = '';
+    e.target.value = ''; // Reset input
 
-    showToast("AI解析中...", 5000);
+    if (!importTargetType) {
+        alert("読込モードが選択されていません。");
+        return;
+    }
+
+    const targetLabel = importTargetType === '15' ? '15時目標' : '19時目標';
+    showToast(`AI解析中 (${targetLabel})...`, 5000);
 
     try {
         const { text, images } = await parseFile(file);
@@ -904,7 +963,8 @@ async function handleOpImportFile(e) {
             body: JSON.stringify({
                 prompt: text,
                 contextImages: images ? images.slice(0, 5) : [],
-                mode: 'extraction'
+                mode: 'extraction',
+                targetType: importTargetType
             })
         });
 
@@ -926,25 +986,53 @@ async function handleOpImportFile(e) {
             return;
         }
 
-        if (confirm(`${currentOpYear}年${currentOpMonth + 1}月のデータ ${count}日分を検出しました。\n一括登録しますか？`)) {
-            const batch = writeBatch(db);
+        // Show toast instead of confirm to streamline process as per instructions ("抽出結果は確認画面を挟まず、即座にFirestoreへ保存する")
+        const batch = writeBatch(db);
 
-            filteredTargets.forEach(([date, val]) => {
-                const updateData = {};
-                if (val.t19 !== undefined) updateData.target_total_19 = val.t19;
-                if (val.t15 !== undefined) updateData.target_total_15 = val.t15;
+        filteredTargets.forEach(([date, val]) => {
+            const updateData = {};
+            // The prompt will return { "YYYY-MM-DD": number }
+            // So val is the number directly.
 
-                if (Object.keys(updateData).length > 0) {
-                    const ref = doc(db, "operations_data", date);
-                    batch.set(ref, updateData, { merge: true });
-                }
-            });
+            // Check if val is an object (legacy format) or number (new format)
+            // But we will enforce the new prompt to return simple key-value or we handle it here.
+            // If the user instructions say "Output: JSON only. Format { 'YYYY-MM-DD': number }",
+            // then val is the number.
 
-            await batch.commit();
-            showToast(`${count}件の目標を更新しました！`);
-            if (!$('#calendar-modal').classList.contains('hidden')) {
-                openMonthlyCalendar();
+            let numVal = 0;
+            if (typeof val === 'number') {
+                numVal = val;
+            } else if (typeof val === 'object' && val !== null) {
+                // If AI returns object { t15: ... } despite instructions, handle gracefully?
+                // The prompt is strict, but let's be safe.
+                // Actually, I'll assume the prompt follows instructions.
+                // But wait, I haven't updated the prompt yet.
+                // I will ensure the prompt returns simple number mapping.
+                // However, to be robust:
+                if (importTargetType === '15' && val.t15) numVal = val.t15;
+                else if (importTargetType === '19' && val.t19) numVal = val.t19;
+                else numVal = 0; // Fallback or skip
             }
+
+            // If we got a simple number from the new specific prompt:
+            if (typeof val === 'number' || typeof val === 'string') {
+                 numVal = parseInt(val);
+            }
+
+            if (numVal > 0) {
+                if (importTargetType === '15') updateData.target_total_15 = numVal;
+                if (importTargetType === '19') updateData.target_total_19 = numVal;
+
+                const ref = doc(db, "operations_data", date);
+                batch.set(ref, updateData, { merge: true });
+            }
+        });
+
+        await batch.commit();
+        showToast(`${targetLabel}を ${count}件 更新しました！`);
+
+        if (!$('#calendar-modal').classList.contains('hidden')) {
+            openMonthlyCalendar();
         }
 
     } catch (err) {
