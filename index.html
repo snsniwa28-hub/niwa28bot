@@ -669,9 +669,14 @@
                 <span class="font-bold text-sm">AIチャットに戻る</span>
             </button>
             <h2 class="font-black text-white text-lg tracking-wider">知識ステーション</h2>
-            <button id="btn-open-knowledge-add" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-indigo-900/50 transition flex items-center gap-2">
-                <span>➕</span> 知識を追加
-            </button>
+            <div class="flex items-center gap-2">
+                <button id="btn-refresh-knowledge" class="bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white p-2 rounded-lg transition" title="AIサマリーを更新">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                </button>
+                <button id="btn-open-knowledge-add" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-indigo-900/50 transition flex items-center gap-2">
+                    <span>➕</span> 知識を追加
+                </button>
+            </div>
         </header>
 
         <div class="flex flex-col flex-1 overflow-hidden h-full bg-slate-100">
@@ -729,6 +734,65 @@
                         <span>📥</span> 保存してAIに学習させる
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Knowledge Detail/Edit Modal -->
+    <div id="knowledge-detail-modal" class="fixed inset-0 z-[60] hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            <div class="p-4 border-b border-slate-100 bg-slate-50 shrink-0 flex justify-between items-center">
+                <h4 class="font-black text-slate-700 flex items-center gap-2">
+                    <span>📝</span> 知識詳細・編集
+                </h4>
+                <button id="btn-cancel-strategy-detail" class="text-slate-400 hover:text-slate-600 p-2">✕</button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 space-y-5">
+                <input type="hidden" id="kd-id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">カテゴリ</label>
+                        <select id="kd-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="pachinko">🅿️ パチンコ</option>
+                            <option value="slot">🎰 スロット</option>
+                            <option value="strategy">📈 戦略・全体</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">対象日付</label>
+                        <input type="text" id="kd-date" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">タイトル</label>
+                    <input type="text" id="kd-title" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">AI要約 (チャット回答に使用)</label>
+                    <textarea id="kd-summary" class="w-full bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 h-24 resize-none leading-relaxed"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">本文 (Original Text)</label>
+                    <textarea id="kd-text" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 h-40 resize-none leading-relaxed"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-2">添付画像</label>
+                    <div id="kd-images-list" class="flex gap-2 overflow-x-auto pb-2 min-h-[60px] items-center">
+                        <!-- Images will be injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-100 bg-white shrink-0 flex gap-3">
+                <button id="btn-cancel-strategy-detail-2" class="flex-1 py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 transition">キャンセル</button>
+                <button id="btn-save-strategy-detail" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">
+                    変更を保存
+                </button>
             </div>
         </div>
     </div>
@@ -859,6 +923,14 @@
             </div>
     </div>
 
+
+    <!-- Global Loading Overlay -->
+    <div id="global-loading-overlay" class="fixed inset-0 z-[200] bg-slate-900/40 backdrop-blur-sm hidden flex flex-col items-center justify-center transition-opacity duration-300 opacity-0">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4 animate-bounce-in">
+            <div class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+            <p id="global-loading-msg" class="text-sm font-bold text-slate-700">処理中...</p>
+        </div>
+    </div>
 
     <script type="module" src="main.js"></script>
 </body>

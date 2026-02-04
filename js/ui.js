@@ -231,3 +231,29 @@ export function hideImageViewer() {
 
 window.showImageViewer = showImageViewer;
 window.hideImageViewer = hideImageViewer;
+
+// --- Loading Overlay ---
+export function showLoadingOverlay(msg = "処理中...") {
+    const overlay = document.getElementById('global-loading-overlay');
+    const msgEl = document.getElementById('global-loading-msg');
+    if(overlay && msgEl) {
+        msgEl.textContent = msg;
+        overlay.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            overlay.classList.remove('opacity-0');
+        });
+    }
+}
+
+export function hideLoadingOverlay() {
+    const overlay = document.getElementById('global-loading-overlay');
+    if(overlay) {
+        overlay.classList.add('opacity-0');
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+        }, 300);
+    }
+}
+
+window.showLoadingOverlay = showLoadingOverlay;
+window.hideLoadingOverlay = hideLoadingOverlay;
