@@ -1,7 +1,7 @@
 import { db } from './firebase.js';
 import { collection, doc, onSnapshot, getDocs, setDoc, writeBatch, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { $, getTodayDateString, getYesterdayDateString } from './utils.js';
-import { showToast } from './ui.js';
+import { showToast, showLoadingOverlay, hideLoadingOverlay } from './ui.js';
 import { parseFile } from './file_parser.js';
 
 let todayOpData = null;
@@ -952,7 +952,7 @@ async function handleOpImportFile(e) {
     }
 
     const targetLabel = importTargetType === '15' ? '15時目標' : '19時目標';
-    showToast(`AI解析中 (${targetLabel})...`, 5000);
+    showLoadingOverlay(`AI解析中 (${targetLabel})...`);
 
     try {
         const { text, images } = await parseFile(file);
@@ -1038,5 +1038,7 @@ async function handleOpImportFile(e) {
     } catch (err) {
         console.error(err);
         alert("AI解析エラー: " + err.message);
+    } finally {
+        hideLoadingOverlay();
     }
 }
