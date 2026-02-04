@@ -20,8 +20,8 @@ let currentOpMonth = new Date().getMonth(); // 0-indexed
 let currentMachineYear = new Date().getFullYear();
 let currentMachineMonth = new Date().getMonth(); // 0-indexed
 
-// Auto-calculation logic exposed to global scope
-window.calcOpTotal = (time) => {
+// Auto-calculation logic
+export const calcOpTotal = (time) => {
     const getVal = (id) => {
         const el = document.getElementById(id);
         return el && el.value ? parseInt(el.value) : 0;

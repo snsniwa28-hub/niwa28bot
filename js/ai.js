@@ -1,6 +1,7 @@
 import { db } from './firebase.js';
 import { collection, addDoc, updateDoc, getDoc, getDocs, query, orderBy, limit, where, serverTimestamp, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { showToast, showConfirmModal, showPasswordModal } from './ui.js';
+import { showToast, showConfirmModal, showPasswordModal, showImageViewer } from './ui.js';
+import { openInternalSharedModal } from './strategy.js';
 
 let isChatOpen = false;
 let currentContext = ""; // Not fully used in new mode but kept for chat compatibility
@@ -23,7 +24,17 @@ function escapeHtml(text) {
 }
 
 export async function initAI() {
-    // Init logic if needed
+    // Delegation for dynamic AI chat buttons
+    const container = document.getElementById('ai-messages');
+    if (container) {
+        container.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-view-ai-images-action')) {
+                viewAIContextImages();
+            } else if (e.target.closest('.btn-show-full-summary-action')) {
+                showFullSummary(e.target.closest('.btn-show-full-summary-action'));
+            }
+        });
+    }
 }
 
 export async function toggleAIChat(category = 'all', categoryName = '社内資料') {
@@ -64,10 +75,11 @@ export async function toggleAIChat(category = 'all', categoryName = '社内資�
             const btn = document.createElement('button');
             btn.className = 'knowledge-btn ml-auto mr-2 flex items-center gap-1 bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-100 transition shadow-sm border border-indigo-100';
             btn.innerHTML = '<span>📚</span> 知識を教える';
-            btn.onclick = () => {
-                window.openInternalSharedModal(category);
+
+            btn.addEventListener('click', () => {
+                openInternalSharedModal(category);
                 closeAIChat();
-            };
+            });
             // Insert before close button
             const closeBtn = header.querySelector('button:last-child');
             header.insertBefore(btn, closeBtn);
@@ -125,7 +137,7 @@ async function loadCategorySummary(category, categoryName) {
                     <span class="text-lg">📷</span>
                     <span class="text-xs font-bold text-slate-600">関連する資料画像があります</span>
                 </div>
-                <button onclick="window.viewAIContextImages()" class="w-full py-3 bg-slate-800 text-white font-bold rounded-xl shadow-lg hover:bg-slate-700 transition text-xs flex items-center justify-center gap-2 mb-4">
+                <button class="w-full py-3 bg-slate-800 text-white font-bold rounded-xl shadow-lg hover:bg-slate-700 transition text-xs flex items-center justify-center gap-2 mb-4 btn-view-ai-images-action">
                     [画像を拡大して見る]
                 </button>
             `);
@@ -137,7 +149,7 @@ async function loadCategorySummary(category, categoryName) {
                 ${formatAIMessage(shortText)}
             </div>
             <div class="mt-4 pt-4 border-t border-slate-100">
-                <button onclick="window.showFullSummary()" class="w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold rounded-xl transition flex items-center justify-center gap-2">
+                <button class="w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold rounded-xl transition flex items-center justify-center gap-2 btn-show-full-summary-action">
                     <span>📅</span> 今後の予定・詳細をすべて見る
                 </button>
             </div>
@@ -153,9 +165,8 @@ async function loadCategorySummary(category, categoryName) {
 }
 
 // Function to swap to full summary
-window.showFullSummary = () => {
+const showFullSummary = (btnElement) => {
     const container = document.getElementById('ai-summary-content');
-    const button = document.querySelector('button[onclick="window.showFullSummary()"]');
 
     if (container) {
         // Apply transition effect
@@ -166,8 +177,8 @@ window.showFullSummary = () => {
         }, 200);
     }
 
-    if (button) {
-        button.remove(); // Remove button after showing full
+    if (btnElement) {
+        btnElement.remove(); // Remove button after showing full
     }
 };
 
@@ -426,13 +437,9 @@ function scrollToBottom() {
     if(container) container.scrollTop = container.scrollHeight;
 }
 
-// Global Expose
-window.toggleAIChat = toggleAIChat;
-window.closeAIChat = closeAIChat;
-window.sendAIMessage = sendAIMessage;
-window.openCategoryChat = (category, name) => toggleAIChat(category, name);
-window.viewAIContextImages = () => {
-    if (window.showImageViewer && contextImages.length > 0) {
-        window.showImageViewer(contextImages);
+// Internal Helper
+const viewAIContextImages = () => {
+    if (contextImages.length > 0) {
+        showImageViewer(contextImages);
     }
 };

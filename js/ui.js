@@ -49,15 +49,7 @@ export function showPasswordModal(callback, inputId = 'password-input', errorId 
     $(`#${inputId}`).focus();
 
     const input = $(`#${inputId}`);
-    // Remove old listeners to avoid stacking (though usually it's better to add once)
-    // Here we assume the main controller sets up the specific Enter key logic or we do it here.
-    // In the original code, onkeydown was set every time.
-    input.onkeydown = (e) => {
-        if(e.key === 'Enter') {
-            e.preventDefault();
-            if (window.checkPassword) window.checkPassword(); // Call the global handler
-        }
-    };
+    // Listener for Enter key is now handled in index_events.js to avoid global dependency
 }
 
 export function closePasswordModal(modalId = 'password-modal') {
@@ -98,12 +90,18 @@ export function showConfirmModal(title, message, onConfirm, color = 'bg-indigo-6
                 <h3 id="global-confirm-title" class="font-bold text-slate-800 text-lg mb-2"></h3>
                 <p id="global-confirm-msg" class="text-sm font-bold text-slate-500 mb-6 leading-relaxed"></p>
                 <div class="grid grid-cols-2 gap-3">
-                    <button onclick="window.closeConfirmModal()" class="py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 transition">キャンセル</button>
+                    <button id="global-confirm-cancel" class="py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 transition">キャンセル</button>
                     <button id="global-confirm-ok" class="py-3 text-white font-bold rounded-xl shadow-lg transition">OK</button>
                 </div>
             </div>
         </div>`;
         document.body.insertAdjacentHTML('beforeend', html);
+
+        // Attach listener to cancel button once
+        const cancelBtn = document.getElementById('global-confirm-cancel');
+        if (cancelBtn) {
+            cancelBtn.onclick = closeConfirmModal;
+        }
     }
 
     const modal = document.getElementById('global-confirm-modal');
@@ -133,8 +131,6 @@ export function closeConfirmModal() {
     if(modal) modal.classList.add('hidden');
     confirmCallback = null;
 }
-
-window.closeConfirmModal = closeConfirmModal;
 
 // --- Image Viewer (Lightbox) ---
 let currentViewerImages = [];
@@ -229,9 +225,6 @@ export function hideImageViewer() {
     }
 }
 
-window.showImageViewer = showImageViewer;
-window.hideImageViewer = hideImageViewer;
-
 // --- Loading Overlay ---
 export function showLoadingOverlay(msg = "処理中...") {
     const overlay = document.getElementById('global-loading-overlay');
@@ -255,5 +248,3 @@ export function hideLoadingOverlay() {
     }
 }
 
-window.showLoadingOverlay = showLoadingOverlay;
-window.hideLoadingOverlay = hideLoadingOverlay;

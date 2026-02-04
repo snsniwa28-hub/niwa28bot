@@ -106,8 +106,8 @@ export function openNewOpening() {
                 <div class="relative w-full aspect-video bg-slate-900 group/slide">
                     <img src="${images[0]}" class="w-full h-full object-contain" id="slide-img-${item.id}" data-idx="0">
                     ${images.length > 1 ? `
-                        <button class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition opacity-0 group-hover/slide:opacity-100" onclick="changeSlide('${item.id}', -1)">◀</button>
-                        <button class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition opacity-0 group-hover/slide:opacity-100" onclick="changeSlide('${item.id}', 1)">▶</button>
+                        <button class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition opacity-0 group-hover/slide:opacity-100 btn-slide-prev" data-id="${item.id}">◀</button>
+                        <button class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition opacity-0 group-hover/slide:opacity-100 btn-slide-next" data-id="${item.id}">▶</button>
                         <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
                             ${images.map((_, i) => `<div class="w-1.5 h-1.5 rounded-full ${i===0?'bg-white':'bg-white/50'}" id="dot-${item.id}-${i}"></div>`).join('')}
                         </div>
@@ -142,8 +142,8 @@ export function openNewOpening() {
     c.appendChild(listContainer);
 }
 
-// Global function for slideshow (since onclick is used in HTML string)
-window.changeSlide = (itemId, dir) => {
+// Slideshow helper (delegated)
+export const changeSlide = (itemId, dir) => {
     const item = newOpeningData.find(d => d.id === itemId);
     if (!item || !item.images || item.images.length < 2) return;
 
@@ -174,7 +174,7 @@ export function closeDetailModal() {
 // --- Admin Logic ---
 
 export function openNewOpeningEditAuth() {
-    window.showPasswordModal(openNewOpeningEdit);
+    showPasswordModal(openNewOpeningEdit);
 }
 
 export function openNewOpeningEdit() {
@@ -330,14 +330,13 @@ function renderEditingImages() {
         div.className = "relative shrink-0 w-20 h-20 bg-slate-100 rounded border border-slate-200 overflow-hidden group";
         div.innerHTML = `
             <img src="${img}" class="w-full h-full object-cover">
-            <button class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-[10px] rounded-bl opacity-0 group-hover:opacity-100 transition" onclick="removeNewOpeningImage(${idx})">✕</button>
+            <button class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-[10px] rounded-bl opacity-0 group-hover:opacity-100 transition btn-remove-image" data-idx="${idx}">✕</button>
         `;
         c.appendChild(div);
     });
 }
 
-// Global for inline onclick
-window.removeNewOpeningImage = (idx) => {
+export const removeNewOpeningImage = (idx) => {
     currentEditingImages.splice(idx, 1);
     renderEditingImages();
 };

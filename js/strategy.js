@@ -1,6 +1,6 @@
 import { db, app } from './firebase.js';
 import { collection, doc, setDoc, getDoc, getDocs, deleteDoc, updateDoc, serverTimestamp, query, orderBy, limit, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { showToast, showConfirmModal, showPasswordModal, showLoadingOverlay, hideLoadingOverlay } from './ui.js';
+import { showToast, showConfirmModal, showPasswordModal, showLoadingOverlay, hideLoadingOverlay, showImageViewer } from './ui.js';
 import { parseFile } from './file_parser.js';
 
 // --- State ---
@@ -11,6 +11,11 @@ let isStrategyAdmin = false;
 let isKnowledgeMode = false;
 let tempPdfImages = [];
 let knowledgeFilter = 'all';
+
+export function setKnowledgeFilter(filter) {
+    knowledgeFilter = filter;
+    renderStrategyList();
+}
 
 // --- Firestore Operations ---
 export async function loadStrategies() {
@@ -243,7 +248,7 @@ export function openStrategyDetail(id) {
             const img = document.createElement('img');
             img.src = url;
             img.className = "h-14 w-14 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-80 transition";
-            img.onclick = () => window.showImageViewer([url]);
+            img.onclick = () => showImageViewer([url]);
             imgContainer.appendChild(img);
         });
     } else {
@@ -338,7 +343,21 @@ function renderStrategyList() {
     const grid = document.createElement('div');
     grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4";
 
-    strategies.forEach(item => {
+    // Filtering logic
+    const filtered = strategies.filter(s => {
+        if (knowledgeFilter === 'all') return true;
+        return s.category === knowledgeFilter;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div class="flex flex-col items-center justify-center py-20 opacity-50">
+            <span class="text-4xl mb-2">🔍</span>
+            <p class="text-sm font-bold text-slate-400">該当する知識データがありません</p>
+        </div>`;
+        return;
+    }
+
+    filtered.forEach(item => {
         const date = item.updatedAt ? new Date(item.updatedAt.toDate()).toLocaleDateString() : '---';
 
         const card = document.createElement('div');
@@ -371,7 +390,7 @@ function renderStrategyList() {
             // Interaction: Image click opens viewer
             imgContainer.addEventListener('click', (e) => {
                 e.stopPropagation(); // Stop card click
-                window.showImageViewer(item.ai_images);
+                showImageViewer(item.ai_images);
             });
 
             const badge = document.createElement('div');
@@ -414,7 +433,7 @@ function renderStrategyList() {
         deleteBtn.textContent = "削除";
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            window.deleteStrategy(item.id);
+            deleteStrategy(item.id);
         });
 
         footerDiv.appendChild(deleteBtn);
@@ -432,7 +451,7 @@ function renderStrategyList() {
 }
 
 // --- Global Handlers ---
-window.handleContextFileUpload = async (input) => {
+export const handleContextFileUpload = async (input) => {
     if (input.files && input.files[0]) {
         const file = input.files[0];
         const statusEl = document.getElementById('ka-file-status');
@@ -501,17 +520,6 @@ export async function checkAndTriggerDailyUpdate() {
         console.error("Daily Check Error:", e);
     }
 }
-
-// Window Assignments
-window.openInternalSharedModal = openInternalSharedModal;
-window.openKnowledgeAddModal = openKnowledgeAddModal;
-window.closeKnowledgeAddModal = closeKnowledgeAddModal;
-window.saveKnowledge = saveKnowledge;
-window.deleteStrategy = deleteStrategy;
-window.manualUpdateSummary = manualUpdateSummary;
-window.openStrategyDetail = openStrategyDetail;
-window.closeStrategyDetailModal = closeStrategyDetailModal;
-window.updateStrategyDetail = updateStrategyDetail;
 
 export function initStrategy() {
     loadStrategies();

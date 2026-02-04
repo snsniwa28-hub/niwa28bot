@@ -1,4 +1,26 @@
-// Event Listeners for index.html (Part 1)
+import * as UI from './ui.js';
+import * as Customer from './customer.js';
+import * as Operations from './operations.js';
+import * as QSC from './qsc.js';
+import * as Shift from './shift.js';
+import * as MemberRace from './member_race.js';
+import * as Deadlines from './deadlines.js';
+import * as Strategy from './strategy.js';
+import * as SimpleTodo from './simple_todo.js';
+import * as Auth from './auth.js';
+import * as AI from './ai.js';
+import { changeStrategySlide } from './components.js';
+
+// Helper for Password Check (formerly global window.checkPassword in main.js)
+function checkPassword() {
+    const input = document.getElementById('password-input');
+    if (Auth.check(input.value)) {
+        UI.closePasswordModal();
+        Auth.executeCallback();
+    } else {
+        document.getElementById('password-error').classList.remove('hidden');
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // Navigation
@@ -8,115 +30,115 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('nav-internal-shared')?.addEventListener('click', () => {
-        window.toggleAIChat('unified', '社内共有・戦略（全体）');
+        AI.toggleAIChat('unified', '社内共有・戦略（全体）');
     });
 
     // Views
     document.getElementById('switch-view-customer-btn')?.addEventListener('click', () => {
-        window.switchView('customer');
+        UI.switchView('customer');
     });
 
     // Chat / Strategy
     document.getElementById('open-unified-chat-btn')?.addEventListener('click', () => {
-        window.openCategoryChat('unified', '社内共有・戦略');
+        AI.toggleAIChat('unified', '社内共有・戦略');
     });
 
     document.getElementById('open-strategy-admin-btn')?.addEventListener('click', (e) => {
         e.stopPropagation();
-        window.openStrategyAdminAuth('strategy');
+        Strategy.openStrategyAdminAuth('strategy');
     });
 
     // Deadlines
     document.getElementById('open-deadline-management-btn')?.addEventListener('click', () => {
-        window.showPasswordModal(window.openDeadlineManagementModal);
+        UI.showPasswordModal(Deadlines.openDeadlineManagementModal);
     });
 
     // Simple ToDo
     document.getElementById('open-simple-todo-btn')?.addEventListener('click', () => {
-        window.openSimpleTodoModal();
+        SimpleTodo.openSimpleTodoModal();
     });
 
     // Member Race
     document.getElementById('prev-member-month-btn')?.addEventListener('click', (e) => {
         e.preventDefault();
-        window.changeMemberMonth(-1);
+        MemberRace.changeMemberMonth(-1);
     });
 
     document.getElementById('next-member-month-btn')?.addEventListener('click', (e) => {
         e.preventDefault();
-        window.changeMemberMonth(1);
+        MemberRace.changeMemberMonth(1);
     });
 
     document.getElementById('open-member-settings-btn')?.addEventListener('click', (e) => {
         e.preventDefault();
-        window.openMemberSettings();
+        MemberRace.openMemberSettings();
     });
 
     document.getElementById('btn-member-early')?.addEventListener('click', () => {
-        window.switchMemberTab('early');
+        MemberRace.switchMemberTab('early');
     });
     document.getElementById('btn-member-late')?.addEventListener('click', () => {
-        window.switchMemberTab('late');
+        MemberRace.switchMemberTab('late');
     });
     document.getElementById('btn-member-employee')?.addEventListener('click', () => {
-        window.switchMemberTab('employee');
+        MemberRace.switchMemberTab('employee');
     });
 
     // Map
     document.getElementById('open-map-update-btn')?.addEventListener('click', () => {
-        window.showPasswordModal(window.openMapUpdateModal);
+        UI.showPasswordModal(Customer.openMapUpdateModal);
     });
 
     // --- Part 2: Modals ---
 
     // Deadline Management Modal
     document.getElementById('close-deadline-view-btn')?.addEventListener('click', () => {
-        window.closeDeadlineManagementModal();
+        Deadlines.closeDeadlineManagementModal();
     });
 
     document.getElementById('add-deadline-directly-btn')?.addEventListener('click', () => {
-        window.addDeadlineDirectly();
+        Deadlines.addDeadlineDirectly();
     });
 
     // Simple ToDo Modal
     document.getElementById('close-todo-view-btn')?.addEventListener('click', () => {
-        window.closeSimpleTodoModal();
+        SimpleTodo.closeSimpleTodoModal();
     });
 
     document.getElementById('add-todo-btn')?.addEventListener('click', () => {
-        window.addSimpleTodo();
+        SimpleTodo.addSimpleTodo();
     });
 
     document.getElementById('todo-input')?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-             window.addSimpleTodo();
+             SimpleTodo.addSimpleTodo();
         }
     });
 
     document.getElementById('clear-completed-todos-btn')?.addEventListener('click', () => {
-        window.clearCompletedTodos();
+        SimpleTodo.clearCompletedTodos();
     });
 
     // Map Update Modal
     document.getElementById('map-file-input')?.addEventListener('change', function() {
-        window.handleMapFileSelect(this);
+        Customer.handleMapFileSelect(this);
     });
 
     document.getElementById('close-map-update-view-btn')?.addEventListener('click', () => {
-        window.closeMapUpdateModal();
+        Customer.closeMapUpdateModal();
     });
 
     document.getElementById('btn-save-map')?.addEventListener('click', () => {
-        window.saveMapUpdate();
+        Customer.saveMapUpdate();
     });
 
     // Internal Shared Modal
     document.getElementById('btn-open-knowledge-add')?.addEventListener('click', () => {
-        window.openKnowledgeAddModal();
+        Strategy.openKnowledgeAddModal();
     });
 
     document.getElementById('btn-refresh-knowledge')?.addEventListener('click', () => {
-        window.manualUpdateSummary();
+        Strategy.manualUpdateSummary();
     });
 
     document.getElementById('close-internal-shared-view-btn')?.addEventListener('click', () => {
@@ -125,73 +147,73 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Knowledge Add Modal
     document.getElementById('close-knowledge-add-modal')?.addEventListener('click', () => {
-        window.closeKnowledgeAddModal();
+        Strategy.closeKnowledgeAddModal();
     });
 
     document.getElementById('btn-save-knowledge')?.addEventListener('click', () => {
-        window.saveKnowledge();
+        Strategy.saveKnowledge();
     });
 
     document.getElementById('ka-file')?.addEventListener('change', function() {
-        window.handleContextFileUpload(this);
+        Strategy.handleContextFileUpload(this);
     });
 
     // Knowledge Detail Modal
     document.getElementById('btn-cancel-strategy-detail')?.addEventListener('click', () => {
-        window.closeStrategyDetailModal();
+        Strategy.closeStrategyDetailModal();
     });
     document.getElementById('btn-cancel-strategy-detail-2')?.addEventListener('click', () => {
-        window.closeStrategyDetailModal();
+        Strategy.closeStrategyDetailModal();
     });
     document.getElementById('btn-save-strategy-detail')?.addEventListener('click', () => {
-        window.updateStrategyDetail();
+        Strategy.updateStrategyDetail();
     });
 
     // Member Target Modal
     document.getElementById('close-member-target-modal-btn')?.addEventListener('click', () => {
-        window.closeMemberTargetModal();
+        MemberRace.closeMemberTargetModal();
     });
 
     document.getElementById('save-member-targets-btn')?.addEventListener('click', () => {
-        window.saveMemberTargets();
+        MemberRace.saveMemberTargets();
     });
 
     // QSC Edit Modal
     document.getElementById('close-qsc-edit-modal-btn')?.addEventListener('click', () => {
-        window.closeQscEditModal();
+        QSC.closeQscEditModal();
     });
 
     document.getElementById('save-qsc-edit-btn')?.addEventListener('click', () => {
-        window.saveQscEdit();
+        QSC.saveQscEdit();
     });
 
     // Deadline Modal (Simple)
     document.getElementById('close-deadline-modal-btn')?.addEventListener('click', () => {
-        window.closeDeadlineModal();
+        Deadlines.closeDeadlineModal();
     });
 
     document.getElementById('add-deadline-btn')?.addEventListener('click', () => {
-        window.addDeadline();
+        Deadlines.addDeadline();
     });
 
     // AI Chat Modal
     document.getElementById('ai-chat-overlay')?.addEventListener('click', () => {
-        window.toggleAIChat();
+        AI.toggleAIChat();
     });
 
     document.getElementById('close-ai-chat-btn')?.addEventListener('click', () => {
-        window.toggleAIChat();
+        AI.toggleAIChat();
     });
 
     document.getElementById('ai-input')?.addEventListener('keydown', (event) => {
         if(event.key === 'Enter' && !event.shiftKey){
              event.preventDefault();
-             window.sendAIMessage();
+             AI.sendAIMessage();
         }
     });
 
     document.getElementById('send-ai-message-btn')?.addEventListener('click', () => {
-        window.sendAIMessage();
+        AI.sendAIMessage();
     });
 
     // --- Part 3: Dynamic Content Delegation ---
@@ -201,14 +223,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Knowledge Filter
         const filterBtn = e.target.closest('[data-action="filter-knowledge"]');
         if (filterBtn) {
-            window.setKnowledgeFilter(filterBtn.dataset.filter);
+            Strategy.setKnowledgeFilter(filterBtn.dataset.filter);
             return;
         }
     });
 
     document.addEventListener('change', (e) => {
         if (e.target && e.target.classList.contains('js-calc-trigger')) {
-             window.calcOpTotal(e.target.dataset.time);
+             Operations.calcOpTotal(e.target.dataset.time);
         }
     });
 
@@ -221,74 +243,126 @@ document.addEventListener('DOMContentLoaded', () => {
             // Operations Modal handled in operations.js
 
             // Calendar Modal
-            if (target.closest('#btn-close-calendar')) window.closeMonthlyCalendar();
-
-            // QSC Modal
-            // Note: QSC View is now static in HTML, but dynamic content might still be delegated if added here?
-            // Actually, we moved QSC View OUT of #modals-container. So these listeners won't fire for QSC View elements if they are in QSC View.
-            // But QSC Modal (Edit) might still be in modals container? No, we replaced QSC Modal.
-            // We need to move these listeners to direct attachment or document body delegation if needed.
-            // For now, removing them from here and adding direct listeners below.
+            if (target.closest('#btn-close-calendar')) Operations.closeMonthlyCalendar();
 
             // Machine Detail Modal
-            if (target.closest('#closeDetailModal')) window.closeDetailModal();
+            if (target.closest('#closeDetailModal')) Customer.closeDetailModal();
 
             // Password Modal
-            if (target.id === 'btn-cancel-password') window.closePasswordModal();
-            if (target.id === 'btn-check-password') window.checkPassword();
+            if (target.id === 'btn-cancel-password') UI.closePasswordModal();
+            if (target.id === 'btn-check-password') checkPassword();
         });
     }
+
+    // Password Input Enter Key (Delegated due to dynamic rendering)
+    document.addEventListener('keydown', (e) => {
+        if (e.target && e.target.id === 'password-input' && e.key === 'Enter') {
+            e.preventDefault();
+            checkPassword();
+        }
+    });
 
     // --- Static View Event Listeners (Moved from Delegation) ---
 
     // QSC View
-    document.getElementById('btn-add-qsc-item')?.addEventListener('click', () => window.addQscItem());
-    document.getElementById('qscEditButton')?.addEventListener('click', () => window.openQSCModal()); // In header
-    document.getElementById('close-qsc-view-btn')?.addEventListener('click', () => window.closeQSCModal());
-    document.getElementById('qscTabUnfinished')?.addEventListener('click', () => window.handleQscTab('未実施'));
-    document.getElementById('qscTabFinished')?.addEventListener('click', () => window.handleQscTab('完了'));
+    document.getElementById('btn-add-qsc-item')?.addEventListener('click', () => QSC.addQscItem());
+    document.getElementById('qscEditButton')?.addEventListener('click', () => QSC.openQSCModal()); // In header
+    document.getElementById('close-qsc-view-btn')?.addEventListener('click', () => QSC.closeQSCModal());
+    document.getElementById('qscTabUnfinished')?.addEventListener('click', () => QSC.setQscTab('未実施'));
+    document.getElementById('qscTabFinished')?.addEventListener('click', () => QSC.setQscTab('完了'));
 
     // New Opening Card (Dashboard)
     document.getElementById('newOpeningCard')?.addEventListener('click', (e) => {
         e.preventDefault();
-        window.openNewOpening();
+        Customer.openNewOpening();
     });
 
     // New Opening View
-    document.getElementById('close-new-opening-view-btn')?.addEventListener('click', () => window.closeNewOpeningModal());
+    document.getElementById('close-new-opening-view-btn')?.addEventListener('click', () => Customer.closeNewOpeningModal());
 
     // New Opening View - Admin Button
     document.getElementById('btn-open-new-opening-admin')?.addEventListener('click', () => {
-        window.openNewOpeningEditAuth();
+        Customer.openNewOpeningEditAuth();
     });
 
     // New Opening Edit - Close (Back)
     document.getElementById('close-new-opening-edit-view-btn')?.addEventListener('click', () => {
-        window.closeNewOpeningEditView();
+        Customer.closeNewOpeningEditView();
     });
 
     document.getElementById('no-edit-save-btn')?.addEventListener('click', () => {
-        window.saveNewOpeningItem();
+        Customer.saveNewOpeningItem();
     });
 
     document.getElementById('no-edit-clear-btn')?.addEventListener('click', () => {
-        window.openNewOpeningEdit(); // Re-opens (resets) form
+        Customer.openNewOpeningEdit(); // Re-opens (resets) form
     });
 
     document.getElementById('no-edit-image-upload')?.addEventListener('change', function() {
-        window.handleNewOpeningImageSelect(this);
+        Customer.handleNewOpeningImageSelect(this);
     });
 
     document.getElementById('no-edit-add-url-btn')?.addEventListener('click', () => {
-        window.handleAddNewUrl();
+        Customer.handleAddNewUrl();
     });
 
-    // QSC Edit Buttons (Delegation for dynamic list items inside #qsc-view)
-    document.getElementById('qsc-view')?.addEventListener('click', (e) => {
-        if (e.target.classList.contains('btn-edit-qsc')) {
-            // Logic handled in renderQSCList by attaching onclick directly to element creation
-            // So no delegation needed here if js/qsc.js does it.
-            // Checking js/qsc.js: Yes, d.querySelector('.btn-edit-qsc').onclick = ...
+    // Delegated Slideshow (New Opening)
+    document.getElementById('newOpeningInfo')?.addEventListener('click', (e) => {
+        const prevBtn = e.target.closest('.btn-slide-prev');
+        const nextBtn = e.target.closest('.btn-slide-next');
+
+        if (prevBtn) {
+            Customer.changeSlide(prevBtn.dataset.id, -1);
+        } else if (nextBtn) {
+            Customer.changeSlide(nextBtn.dataset.id, 1);
         }
+    });
+
+    // Delegated Image Removal (New Opening Edit)
+    document.getElementById('no-edit-images-preview')?.addEventListener('click', (e) => {
+        const removeBtn = e.target.closest('.btn-remove-image');
+        if (removeBtn) {
+            Customer.removeNewOpeningImage(parseInt(removeBtn.dataset.idx));
+        }
+    });
+
+    // Delegated Member Race Actions
+    document.getElementById('member-list-container')?.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('.btn-edit-target');
+        const updateBtn = e.target.closest('.btn-update-count');
+
+        if (editBtn) {
+            MemberRace.editMemberTarget(editBtn.dataset.name);
+        } else if (updateBtn) {
+            const name = updateBtn.dataset.name;
+            const delta = parseInt(updateBtn.dataset.delta);
+            MemberRace.updateMemberCount(name, delta);
+        }
+    });
+
+    // Delegated Strategy Slideshow - attached to body or a stable parent since container is dynamic
+    document.body.addEventListener('click', (e) => {
+        const prevBtn = e.target.closest('[data-action="strategy-slide-prev"]');
+        const nextBtn = e.target.closest('[data-action="strategy-slide-next"]');
+
+        if (prevBtn) {
+            changeStrategySlide(-1);
+        } else if (nextBtn) {
+            changeStrategySlide(1);
+        }
+    });
+
+    // --- Restored oninput handlers for Operations Inputs ---
+    const opInputs = [
+        { id: 'in_4p_15', time: '15' },
+        { id: 'in_1p_15', time: '15' },
+        { id: 'in_20s_15', time: '15' },
+        { id: 'in_4p_19', time: '19' },
+        { id: 'in_1p_19', time: '19' },
+        { id: 'in_20s_19', time: '19' }
+    ];
+    opInputs.forEach(item => {
+        const el = document.getElementById(item.id);
+        if(el) el.addEventListener('input', () => Operations.calcOpTotal(item.time));
     });
 });
