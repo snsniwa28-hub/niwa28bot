@@ -740,7 +740,9 @@ export function renderTaskView() {
     // Reuse Close Button as "Back to Dashboard"
     const closeBtn = document.getElementById('close-todo-view-btn');
     if (closeBtn) {
-        closeBtn.onclick = () => {
+        closeBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             currentCategory = null;
             renderDashboard();
         };
