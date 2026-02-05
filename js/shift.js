@@ -1311,7 +1311,9 @@ function handleActionPanelClick(role) {
 
              // DELETE assignment to reset to unassigned/blank state (NOT counting as work)
              delete shiftState.shiftDataCache[name].assignments[day];
-             delete shiftState.shiftDataCache[name].daily_remarks[day];
+             if (shiftState.shiftDataCache[name].daily_remarks) {
+                 delete shiftState.shiftDataCache[name].daily_remarks[day];
+             }
 
              updateViewAfterAction();
              showToast("✅ 変更しました", "black");
