@@ -143,7 +143,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('close-internal-shared-view-btn')?.addEventListener('click', () => {
         document.getElementById('internal-shared-view').classList.remove('active');
-        AI.toggleAIChat();
     });
 
     // Knowledge Add Modal
