@@ -444,6 +444,12 @@ export function renderDashboard() {
     viewTasks.classList.add('hidden');
     viewCategories.classList.remove('hidden');
 
+    // Reset Close Button to "Close Modal" behavior
+    const closeBtn = document.getElementById('close-todo-view-btn');
+    if (closeBtn) {
+        closeBtn.onclick = closeSimpleTodoModal;
+    }
+
     updateHeader('チームToDoリスト');
 
     // Setup Header Actions (Settings)
@@ -731,7 +737,18 @@ export function renderTaskView() {
     viewCategories.classList.add('hidden');
     viewTasks.classList.remove('hidden');
 
-    updateHeader(null, true);
+    // Reuse Close Button as "Back to Dashboard"
+    const closeBtn = document.getElementById('close-todo-view-btn');
+    if (closeBtn) {
+        closeBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            currentCategory = null;
+            renderDashboard();
+        };
+    }
+
+    updateHeader(currentCategory, true);
 
     setTimeout(() => {
         document.getElementById('todo-input')?.focus();
@@ -740,12 +757,9 @@ export function renderTaskView() {
     subscribeTodos(currentCategory);
 }
 
-function updateHeader(titleText, showBack = false) {
+function updateHeader(titleText, isTaskView = false) {
     const h2 = document.getElementById('todo-view-title');
     if (!h2) return;
-
-    // Clear any existing buttons first (except the close button which is outside h2 but in header)
-    // Actually h2 contains the title content.
 
     // Inject Settings Button in Header if not exists
     const headerContainer = h2.parentElement;
@@ -764,20 +778,8 @@ function updateHeader(titleText, showBack = false) {
 
     const settingsBtn = document.getElementById('todo-settings-btn');
 
-    if (showBack) {
-        h2.innerHTML = `
-            <button id="todo-back-btn" class="mr-2 text-slate-400 hover:text-blue-600 transition">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-            </button>
-            <span>${currentCategory}</span>
-        `;
-        const backBtn = h2.querySelector('#todo-back-btn');
-        if (backBtn) {
-            backBtn.onclick = () => {
-                currentCategory = null;
-                renderDashboard();
-            };
-        }
+    if (isTaskView) {
+        h2.innerHTML = `<span>${titleText}</span>`;
         if (settingsBtn) settingsBtn.classList.add('hidden'); // Hide settings in task view
     } else {
         h2.innerHTML = `<span>✅</span> ${titleText}`;
