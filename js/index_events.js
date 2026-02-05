@@ -101,10 +101,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Simple ToDo Modal
-    document.getElementById('close-todo-view-btn')?.addEventListener('click', () => {
-        SimpleTodo.closeSimpleTodoModal();
-    });
-
     document.getElementById('add-todo-btn')?.addEventListener('click', () => {
         SimpleTodo.addSimpleTodo();
     });
