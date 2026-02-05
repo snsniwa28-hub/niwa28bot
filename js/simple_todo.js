@@ -86,6 +86,34 @@ export async function initSimpleTodo() {
     } catch (error) {
         console.error("Error fetching staff for todo:", error);
     }
+
+    // Setup Image Input Listeners
+    const fileInput = document.getElementById('todo-attach-image');
+    const clearImgBtn = document.getElementById('todo-input-clear-img');
+    const previewDiv = document.getElementById('todo-input-image-preview');
+    const previewImg = document.getElementById('todo-input-preview-img');
+
+    if (fileInput && previewDiv && previewImg) {
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    previewImg.src = ev.target.result;
+                    previewDiv.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+    }
+
+    if (clearImgBtn && fileInput && previewDiv) {
+        clearImgBtn.onclick = () => {
+            fileInput.value = '';
+            previewDiv.classList.add('hidden');
+            previewImg.src = '';
+        };
+    }
 }
 
 export function openSimpleTodoModal() {
@@ -130,7 +158,7 @@ function subscribeTodos(category) {
         renderTodos(todos);
     }, (error) => {
         console.error("Error fetching todos:", error);
-        showToast('ToDoリストの読み込みに失敗しました', true);
+        showToast('トラブルノートの読み込みに失敗しました', true);
     });
 }
 
@@ -219,6 +247,17 @@ function createTodoElement(todo) {
         badge.className = "bg-indigo-50 text-indigo-600 text-[10px] font-bold px-1.5 py-0.5 rounded border border-indigo-100 whitespace-nowrap";
         badge.textContent = todo.assignee;
         header.appendChild(badge);
+    }
+
+    if (todo.attachedImage) {
+        const imgIcon = document.createElement('span');
+        imgIcon.className = "cursor-pointer hover:scale-110 transition ml-1";
+        imgIcon.innerHTML = "📷";
+        imgIcon.onclick = (e) => {
+            e.stopPropagation();
+            openImageModal(todo.attachedImage);
+        };
+        header.appendChild(imgIcon);
     }
     content.appendChild(header);
 
@@ -328,6 +367,7 @@ export async function addSimpleTodo() {
     const assigneeInput = document.getElementById('todo-assignee');
     const dateInput = document.getElementById('todo-due-date');
     const detailInput = document.getElementById('todo-detail');
+    const fileInput = document.getElementById('todo-attach-image');
 
     const text = input.value.trim();
     const assignee = assigneeInput ? assigneeInput.value : '';
@@ -336,18 +376,36 @@ export async function addSimpleTodo() {
 
     if (!text) return;
 
+    if (!dueDate) {
+        showToast('期限を設定してください', true);
+        return;
+    }
+
     try {
+        let attachedImage = null;
+        if (fileInput && fileInput.files[0]) {
+            attachedImage = await compressImage(fileInput.files[0]);
+        }
+
         // Clear immediately
         input.value = '';
         if (assigneeInput) assigneeInput.value = '';
         if (dateInput) dateInput.value = '';
         if (detailInput) detailInput.value = '';
+        if (fileInput) {
+            fileInput.value = '';
+            const previewDiv = document.getElementById('todo-input-image-preview');
+            const previewImg = document.getElementById('todo-input-preview-img');
+            if (previewDiv) previewDiv.classList.add('hidden');
+            if (previewImg) previewImg.src = '';
+        }
 
         await addDoc(collection(db, 'simple_todos'), {
             text: text,
             assignee: assignee,
             dueDate: dueDate,
             detail: detail,
+            attachedImage: attachedImage,
             category: currentCategory,
             isCompleted: false,
             createdAt: serverTimestamp(),
@@ -450,7 +508,7 @@ export function renderDashboard() {
         closeBtn.onclick = closeSimpleTodoModal;
     }
 
-    updateHeader('チームToDoリスト');
+    updateHeader('トラブルノート');
 
     // Setup Header Actions (Settings)
     const headerTitle = document.getElementById('todo-view-title');
@@ -460,10 +518,10 @@ export function renderDashboard() {
 
     viewCategories.innerHTML = `
         <div class="space-y-8">
-            <!-- 1. Recent Achievements -->
+            <!-- 1. Recent Solutions -->
             <section>
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <span>🏆</span> 最近の達成 (Recent)
+                    <span>🏆</span> 最近の解決 (Recent Solutions)
                 </h3>
                 <div id="todo-dashboard-recent" class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide min-h-[80px]">
                     <div class="flex items-center justify-center w-full text-xs text-slate-400 font-bold bg-white rounded-xl py-6 border border-slate-100">
@@ -526,15 +584,15 @@ function fetchDashboardData() {
         renderDashboardCategories(activeTodos);
     });
 
-    // 3. Fetch Recent Completed (Limit 10)
-    // Note: This requires composite index (isCompleted + completedAt).
-    // If index is missing, it will error. We should handle that or rely on client side filtering if volume is low.
-    // Given the prompt constraints, let's try strict query first. If it fails, we might need index creation.
+    // 3. Fetch Recent Completed (Last 7 Days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
     const qRecent = query(
         collection(db, 'simple_todos'),
         where('isCompleted', '==', true),
-        orderBy('completedAt', 'desc'),
-        limit(10)
+        where('completedAt', '>=', sevenDaysAgo),
+        orderBy('completedAt', 'desc')
     );
 
     unsubscribeDashboardRecent = onSnapshot(qRecent, (snapshot) => {
@@ -543,17 +601,23 @@ function fetchDashboardData() {
         renderDashboardRecent(recentTodos);
     }, (error) => {
         console.warn("Recent todos query failed (likely missing index). Falling back to basic query.", error);
-        // Fallback: Fetch some completed and sort client side (not ideal but works without index)
-        const qFallback = query(collection(db, 'simple_todos'), where('isCompleted', '==', true), limit(20));
+        // Fallback: Fetch some completed and sort client side
+        const qFallback = query(collection(db, 'simple_todos'), where('isCompleted', '==', true), limit(50));
         getDocs(qFallback).then(snap => {
             let recent = [];
             snap.forEach(doc => recent.push({ id: doc.id, ...doc.data() }));
+            // Client side filter 7 days
+            const threshold = sevenDaysAgo.getTime();
+            recent = recent.filter(t => {
+                const ms = t.completedAt?.toMillis ? t.completedAt.toMillis() : 0;
+                return ms >= threshold;
+            });
             recent.sort((a, b) => {
                  const tA = a.completedAt?.toMillis ? a.completedAt.toMillis() : 0;
                  const tB = b.completedAt?.toMillis ? b.completedAt.toMillis() : 0;
                  return tB - tA;
             });
-            renderDashboardRecent(recent.slice(0, 10));
+            renderDashboardRecent(recent);
         });
     });
 }
@@ -762,18 +826,18 @@ function updateHeader(titleText, isTaskView = false) {
     if (!h2) return;
 
     // Inject Settings Button in Header if not exists
-    const headerContainer = h2.parentElement;
-    if (!document.getElementById('todo-settings-btn')) {
+    const headerElement = h2.closest('.view-header');
+    if (headerElement && !document.getElementById('todo-settings-btn')) {
         const settingsBtn = document.createElement('button');
         settingsBtn.id = 'todo-settings-btn';
         settingsBtn.className = "text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition ml-auto";
         settingsBtn.innerHTML = "⚙️ 管理";
         settingsBtn.onclick = () => {
             showPasswordModal(() => {
-                 showCategoryManager();
+                 showSettingsMenu();
             });
         };
-        headerContainer.appendChild(settingsBtn);
+        headerElement.appendChild(settingsBtn);
     }
 
     const settingsBtn = document.getElementById('todo-settings-btn');
@@ -784,6 +848,147 @@ function updateHeader(titleText, isTaskView = false) {
     } else {
         h2.innerHTML = `<span>✅</span> ${titleText}`;
         if (settingsBtn) settingsBtn.classList.remove('hidden'); // Show settings in dashboard
+    }
+}
+
+function showSettingsMenu() {
+    const existingModal = document.getElementById('todo-settings-menu-modal');
+    if (existingModal) {
+        existingModal.classList.remove('hidden');
+        return;
+    }
+
+    const html = `
+    <div id="todo-settings-menu-modal" class="modal-overlay" style="z-index: 110;">
+        <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-2xl flex flex-col gap-4">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-lg font-bold text-slate-800">管理メニュー</h3>
+                <button onclick="document.getElementById('todo-settings-menu-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+
+            <button id="btn-open-category-manager" class="w-full py-4 bg-indigo-50 text-indigo-700 font-bold rounded-xl hover:bg-indigo-100 transition flex items-center justify-center gap-2">
+                <span>📁</span> カテゴリ管理
+            </button>
+
+            <button id="btn-open-history-manager" class="w-full py-4 bg-slate-50 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-2">
+                <span>📜</span> 解決済み履歴の管理
+            </button>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    document.getElementById('btn-open-category-manager').onclick = () => {
+        document.getElementById('todo-settings-menu-modal').classList.add('hidden');
+        showCategoryManager();
+    };
+
+    document.getElementById('btn-open-history-manager').onclick = () => {
+        document.getElementById('todo-settings-menu-modal').classList.add('hidden');
+        showHistoryManager();
+    };
+}
+
+async function showHistoryManager() {
+    // Show loading
+    const html = `
+    <div id="todo-history-manager-modal" class="modal-overlay" style="z-index: 110;">
+        <div class="modal-content p-0 w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-slate-800">解決済み履歴の管理</h3>
+                <button id="close-history-manager" class="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-0 bg-slate-50">
+                 <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-100 text-slate-500 font-bold sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="p-3">解決日</th>
+                            <th class="p-3">内容</th>
+                            <th class="p-3 text-right">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="todo-history-list" class="divide-y divide-slate-100 bg-white">
+                        <tr><td colspan="3" class="p-4 text-center text-slate-400">読み込み中...</td></tr>
+                    </tbody>
+                 </table>
+            </div>
+        </div>
+    </div>`;
+
+    // Remove existing if any
+    const existing = document.getElementById('todo-history-manager-modal');
+    if (existing) existing.remove();
+
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    document.getElementById('close-history-manager').onclick = () => {
+        document.getElementById('todo-history-manager-modal').remove();
+    };
+
+    // Fetch Completed Data (Limit 100 for performance)
+    try {
+        const q = query(
+            collection(db, 'simple_todos'),
+            where('isCompleted', '==', true),
+            orderBy('completedAt', 'desc'),
+            limit(100)
+        );
+
+        // Fallback handling for index missing
+        let todos = [];
+        try {
+            const snap = await getDocs(q);
+            snap.forEach(d => todos.push({ id: d.id, ...d.data() }));
+        } catch (e) {
+            console.warn("History query failed, falling back", e);
+            const qFb = query(collection(db, 'simple_todos'), where('isCompleted', '==', true), limit(100));
+            const snap = await getDocs(qFb);
+            snap.forEach(d => todos.push({ id: d.id, ...d.data() }));
+            todos.sort((a, b) => {
+                 const tA = a.completedAt?.toMillis ? a.completedAt.toMillis() : 0;
+                 const tB = b.completedAt?.toMillis ? b.completedAt.toMillis() : 0;
+                 return tB - tA;
+            });
+        }
+
+        const tbody = document.getElementById('todo-history-list');
+        tbody.innerHTML = '';
+
+        if (todos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400 font-bold">履歴はありません</td></tr>';
+            return;
+        }
+
+        todos.forEach(todo => {
+            const tr = document.createElement('tr');
+
+            const date = todo.completedAt?.toDate ? todo.completedAt.toDate() : new Date();
+            const dateStr = `${date.getFullYear()}/${date.getMonth()+1}/${date.getDate()}`;
+
+            tr.innerHTML = `
+                <td class="p-3 text-xs font-bold text-slate-500 whitespace-nowrap">${dateStr}</td>
+                <td class="p-3 text-slate-700 font-bold max-w-[200px] truncate" title="${todo.text}">
+                    ${todo.text}
+                    ${todo.category ? `<span class="block text-[10px] text-slate-400 font-normal">${todo.category}</span>` : ''}
+                </td>
+                <td class="p-3 text-right">
+                    <button class="btn-delete-history text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                        削除
+                    </button>
+                </td>
+            `;
+
+            tr.querySelector('.btn-delete-history').onclick = async () => {
+                if (confirm('この履歴を完全に削除しますか？\n（復元できません）')) {
+                    await deleteTodo(todo.id); // Reuses existing delete function
+                    tr.remove();
+                }
+            };
+            tbody.appendChild(tr);
+        });
+
+    } catch (error) {
+        console.error("Error loading history:", error);
+        document.getElementById('todo-history-list').innerHTML = '<tr><td colspan="3" class="p-4 text-center text-rose-400 font-bold">読み込みエラー</td></tr>';
     }
 }
 
