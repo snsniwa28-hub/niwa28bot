@@ -1111,7 +1111,9 @@ export function renderShiftAdminTable() {
                 } else {
                     if (isOffReq) { bgCell = 'bg-rose-50 hover:bg-rose-100'; cellContent = '<span class="text-rose-500 font-bold text-[10px] select-none">(休)</span>'; }
                     else if (isWorkReq) {
-                        if(reqType === 'early') { bgCell = 'bg-orange-50 hover:bg-orange-100'; cellContent = '<span class="text-orange-400 font-bold text-[10px]">(早)</span>'; }
+                        if(reqType === 'PAID') { bgCell = 'bg-pink-50 hover:bg-pink-100'; cellContent = '<span class="text-pink-400 font-bold text-[10px]">(有)</span>'; }
+                        else if(reqType === 'SPECIAL') { bgCell = 'bg-yellow-50 hover:bg-yellow-100'; cellContent = '<span class="text-yellow-600 font-bold text-[10px]">(特)</span>'; }
+                        else if(reqType === 'early') { bgCell = 'bg-orange-50 hover:bg-orange-100'; cellContent = '<span class="text-orange-400 font-bold text-[10px]">(早)</span>'; }
                         else if(reqType === 'late') { bgCell = 'bg-purple-50 hover:bg-purple-100'; cellContent = '<span class="text-purple-400 font-bold text-[10px]">(遅)</span>'; }
                         else { bgCell = 'bg-slate-50 hover:bg-slate-100'; cellContent = '<span class="text-blue-300 font-bold text-[10px]">(出)</span>'; }
                     }
@@ -1783,6 +1785,37 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
             s.physicalWorkDays = newPhysicalWorkDays;
             if(!shifts[s.name]) shifts[s.name] = {};
             shifts[s.name].assignments = newAssignments;
+        });
+
+        // --- 修正: 有休・特休の事前確定 (Pre-Confirmation) ---
+        // 自動割り振り前に、有休・特休の希望を確定させておく（上書き防止）
+        // 契約日数(assignedDays)にはカウントするが、連勤(physicalWorkDays)にはカウントしない
+        staffObjects.forEach(s => {
+            if (targetGroup && s.shiftType !== targetGroup) return;
+
+            const requests = s.requests.types || {};
+
+            // 全日チェックして希望を反映
+            for (let d = 1; d <= daysInMonth; d++) {
+                const reqType = requests[d];
+
+                if (reqType === 'PAID' || reqType === 'SPECIAL') {
+                    const roleName = reqType === 'PAID' ? '有休' : '特休';
+
+                    // 既に確定済み(維持されている)ならスキップ
+                    if (shifts[s.name].assignments[d] === roleName) continue;
+
+                    // 確定セット
+                    shifts[s.name].assignments[d] = roleName;
+
+                    // 契約日数に追加 (重複チェック)
+                    if (!s.assignedDays.includes(d)) {
+                        s.assignedDays.push(d);
+                    }
+
+                    // physicalWorkDays には追加しない（連勤判定除外）
+                }
+            }
         });
 
         const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
