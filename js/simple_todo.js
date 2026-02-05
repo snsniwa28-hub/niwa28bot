@@ -444,6 +444,10 @@ export function renderDashboard() {
     viewTasks.classList.add('hidden');
     viewCategories.classList.remove('hidden');
 
+    // Show Main Close Button
+    const closeBtn = document.getElementById('close-todo-view-btn');
+    if (closeBtn) closeBtn.classList.remove('hidden');
+
     updateHeader('チームToDoリスト');
 
     // Setup Header Actions (Settings)
@@ -730,6 +734,10 @@ export function renderTaskView() {
 
     viewCategories.classList.add('hidden');
     viewTasks.classList.remove('hidden');
+
+    // Hide Main Close Button (conflicts with Back button)
+    const closeBtn = document.getElementById('close-todo-view-btn');
+    if (closeBtn) closeBtn.classList.add('hidden');
 
     updateHeader(null, true);
 
