@@ -1,0 +1,10 @@
+127.0.0.1 - - [05/Feb/2026 13:20:54] "GET /verification/test.html HTTP/1.1" 200 -
+127.0.0.1 - - [05/Feb/2026 13:20:54] "GET /style.css HTTP/1.1" 200 -
+127.0.0.1 - - [05/Feb/2026 13:20:55] "GET /js/shift.js HTTP/1.1" 200 -
+127.0.0.1 - - [05/Feb/2026 13:20:55] "GET /js/firebase.js HTTP/1.1" 200 -
+127.0.0.1 - - [05/Feb/2026 13:20:55] "GET /js/ui.js HTTP/1.1" 200 -
+127.0.0.1 - - [05/Feb/2026 13:20:55] "GET /js/utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [05/Feb/2026 13:20:55] "GET /verification/mocks/firebase-firestore.js HTTP/1.1" 200 -
+127.0.0.1 - - [05/Feb/2026 13:20:55] "GET /verification/mocks/firebase-app.js HTTP/1.1" 200 -
+127.0.0.1 - - [05/Feb/2026 13:20:55] "GET /js/auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [05/Feb/2026 13:20:55] "GET /js/config.js HTTP/1.1" 200 -

@@ -1363,6 +1363,20 @@ function updateShiftRequest(type) {
     if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { off_days: [], work_days: [], assignments: {}, shift_requests: {} };
     const data = shiftState.shiftDataCache[name];
     if (!data.shift_requests) data.shift_requests = {};
+    if (!data.assignments) data.assignments = {};
+
+    // Sync Assignments for Paid/Special
+    if (type === 'paid') {
+        data.assignments[day] = '有休';
+    } else if (type === 'special') {
+        data.assignments[day] = '特休';
+    } else {
+        // If changing away from Paid/Special, remove the assignment if it was Paid/Special
+        const current = data.assignments[day];
+        if (current === '有休' || current === '特休') {
+            delete data.assignments[day];
+        }
+    }
 
     let offList = data.off_days || [];
     let workList = data.work_days || [];
