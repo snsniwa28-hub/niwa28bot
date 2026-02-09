@@ -1754,23 +1754,7 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
 // 1. バリデーション関数 (新規追加)
 // ------------------------------------------------------------
 function validateTargets(targetGroup) {
-    const targets = shiftState.shiftDataCache._daily_targets || {};
-    const daysInMonth = new Date(shiftState.currentYear, shiftState.currentMonth, 0).getDate();
-    let hasTarget = false;
-
-    for (let d = 1; d <= daysInMonth; d++) {
-        const t = targets[d] || {};
-        const val = targetGroup === 'A' ? t.A : t.B;
-        if (val && parseInt(val) > 0) {
-            hasTarget = true;
-            break;
-        }
-    }
-
-    if (!hasTarget) {
-        alert(`⚠️ ${targetGroup === 'A' ? '早番' : '遅番'}の目標人数（定員）が設定されていません。\n自動作成を行うには、少なくとも1日分の定員を設定してください。`);
-        return false;
-    }
+    // 修正: デフォルト値が9になったため、明示的な設定がなくてもOKとする
     return true;
 }
 
@@ -1860,11 +1844,12 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
 
         const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
 
-        // --- 修正2: 定員取得ロジック (空欄はスキップ=0) ---
+        // --- 修正2: 定員取得ロジック (空欄はデフォルト9) ---
         const getTarget = (day, type) => {
             const t = dailyTargets[day] || {};
             const val = type === 'A' ? t.A : t.B;
-            return (val !== undefined && val !== "") ? parseInt(val) : 0;
+            // 未設定(undefined/空文字)の場合は、画面表示に合わせてデフォルト9を返す
+            return (val !== undefined && val !== "") ? parseInt(val) : 9;
         };
 
         // 制約チェック関数
