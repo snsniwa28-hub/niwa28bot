@@ -512,9 +512,14 @@ export async function checkAndTriggerDailyUpdate() {
             overlay.className = "fixed inset-0 z-[9999] bg-slate-100 flex flex-col items-center justify-center transition-opacity duration-500";
             overlay.innerHTML = `<h2 class="text-xl font-bold text-slate-700 animate-pulse">おはようございます<br>本日の情報を準備中...</h2>`;
             document.body.appendChild(overlay);
-            await updateCategorySummary('unified');
-            overlay.style.opacity = '0';
-            setTimeout(() => overlay.remove(), 500);
+            try {
+                await updateCategorySummary('unified');
+            } catch (e) {
+                console.warn("Daily Update Skipped/Failed", e);
+            } finally {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.remove(), 500);
+            }
         }
     } catch (e) {
         console.error("Daily Check Error:", e);

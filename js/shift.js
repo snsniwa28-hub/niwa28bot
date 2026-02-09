@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { doc, getDoc, setDoc, updateDoc, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { showPasswordModal, closePasswordModal, showToast, showConfirmModal } from './ui.js';
 import { $, getHolidays } from './utils.js';
 
@@ -976,7 +976,7 @@ export function renderShiftAdminTable() {
             const details = shiftState.staffDetails[name] || {};
             const monthlySettings = (data.monthly_settings) || {};
             const currentType = monthlySettings.shift_type || details.basic_shift || 'A';
-            const hasAnyRemark = (data.remarks && data.remarks.trim() !== "") || (data.daily_remarks && Object.keys(data.daily_remarks).length > 0);
+            const hasAnyRemark = (data.remarks && data.remarks.trim() !== "") || (data.daily_remarks && Object.values(data.daily_remarks).some(v => v && v.trim() !== ""));
 
             // Calculate Actual Assigned Count
             // Logic: Contract Days includes Paid/Special. Physical Days is Work only.
@@ -1303,58 +1303,74 @@ export function closeShiftActionModal() {
 
 function handleActionPanelClick(role) {
     if (shiftState.isAdminMode) {
-        if (role === 'clear') {
-             const day = shiftState.selectedDay;
-             const name = shiftState.selectedStaff;
-             if(!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { assignments: {}, daily_remarks: {} };
-             if(!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
+        const name = shiftState.selectedStaff;
+        const day = shiftState.selectedDay;
+        const requests = shiftState.shiftDataCache[name]?.shift_requests || {};
 
-             // DELETE assignment to reset to unassigned/blank state (NOT counting as work)
-             delete shiftState.shiftDataCache[name].assignments[day];
-             if (shiftState.shiftDataCache[name].daily_remarks) {
-                 delete shiftState.shiftDataCache[name].daily_remarks[day];
-             }
-
-             updateViewAfterAction();
-             showToast("✅ 変更しました", "black");
-             closeShiftActionModal();
-        } else if (role === 'revert') {
-             const day = shiftState.selectedDay;
-             const name = shiftState.selectedStaff;
-             const data = shiftState.shiftDataCache[name];
-             const req = data?.shift_requests?.[day];
-             const isOff = data?.off_days?.includes(day);
-             const isWork = data?.work_days?.includes(day);
-
-             let newVal = '';
-             if (isOff) {
-                 newVal = '公休';
-             } else if (isWork) {
-                 // Check precise request type
-                 if (req === 'PAID') newVal = '有休';
-                 else if (req === 'SPECIAL') newVal = '特休';
-                 else newVal = '出勤';
-             }
-
-             // If no request -> '' (Blank).
-             if (!isOff && !isWork) newVal = '';
-
-             if(!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { assignments: {} };
-             if(!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
-
-             shiftState.shiftDataCache[name].assignments[day] = newVal;
-
-             updateViewAfterAction();
-             showToast("✅ 変更しました", "black");
-             closeShiftActionModal();
+        // Confirm if there is a request
+        if (requests[day]) {
+             showConfirmModal("シフト変更の確認",
+                 `スタッフ「${name}」から希望（${requests[day]}）が出ています。\n変更してよろしいですか？`,
+                 () => executeAdminAction(role),
+                 'bg-indigo-600'
+             );
         } else {
-            setAdminRole(role);
-            showToast("✅ 変更しました", "black");
-            closeShiftActionModal();
+            executeAdminAction(role);
         }
     } else {
         // User Mode
         updateShiftRequest(role); // 'early', 'late', 'any', 'off', 'clear', 'paid', 'special'
+        closeShiftActionModal();
+    }
+}
+
+function executeAdminAction(role) {
+    const day = shiftState.selectedDay;
+    const name = shiftState.selectedStaff;
+
+    if (role === 'clear') {
+         if(!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { assignments: {}, daily_remarks: {} };
+         if(!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
+
+         // DELETE assignment to reset to unassigned/blank state (NOT counting as work)
+         delete shiftState.shiftDataCache[name].assignments[day];
+         if (shiftState.shiftDataCache[name].daily_remarks) {
+             delete shiftState.shiftDataCache[name].daily_remarks[day];
+         }
+
+         updateViewAfterAction();
+         showToast("✅ クリアしました", "black");
+         closeShiftActionModal();
+    } else if (role === 'revert') {
+         const data = shiftState.shiftDataCache[name];
+         const req = data?.shift_requests?.[day];
+         const isOff = data?.off_days?.includes(day);
+         const isWork = data?.work_days?.includes(day);
+
+         let newVal = '';
+         if (isOff) {
+             newVal = '公休';
+         } else if (isWork) {
+             // Check precise request type
+             if (req === 'PAID') newVal = '有休';
+             else if (req === 'SPECIAL') newVal = '特休';
+             else newVal = '出勤';
+         }
+
+         // If no request -> '' (Blank).
+         if (!isOff && !isWork) newVal = '';
+
+         if(!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { assignments: {} };
+         if(!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
+
+         shiftState.shiftDataCache[name].assignments[day] = newVal;
+
+         updateViewAfterAction();
+         showToast("✅ 変更しました", "black");
+         closeShiftActionModal();
+    } else {
+        setAdminRole(role);
+        showToast("✅ 変更しました", "black");
         closeShiftActionModal();
     }
 }
@@ -1420,7 +1436,6 @@ function updateShiftRequest(type) {
 
 function updateViewAfterAction() {
     if (shiftState.isAdminMode) {
-        saveShiftToFirestore(shiftState.selectedStaff);
         renderShiftAdminTable();
         renderShiftCalendar();
     } else {
@@ -1489,9 +1504,16 @@ async function undoShiftAction() {
 async function saveShiftToFirestore(name) {
     const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
     const docRef = doc(db, "shift_submissions", docId);
-    const updateData = {};
-    updateData[name] = shiftState.shiftDataCache[name];
-    await setDoc(docRef, updateData, { merge: true });
+
+    // Use updateDoc to replace the entire staff object (ensuring deletions in assignments map are reflected)
+    try {
+        await updateDoc(docRef, { [name]: shiftState.shiftDataCache[name] });
+    } catch(e) {
+        // Document might not exist, fallback to setDoc (merge is fine for creation)
+        const updateData = {};
+        updateData[name] = shiftState.shiftDataCache[name];
+        await setDoc(docRef, updateData, { merge: true });
+    }
 }
 
 async function toggleStaffShiftType(name, currentType) {
@@ -2667,30 +2689,46 @@ export const finalizeAutoShift = async () => {
 
 // 公休・有休・特休以外（出勤など）をクリアする関数
 export async function clearWorkOnly() {
-    showConfirmModal("出勤のみクリア", "「公休」「有休」「特休」は残したまま、\n自動割り振りされた「出勤」や「/」のみをリセットしますか？", async () => {
+    showConfirmModal("出勤のみクリア", "「公休」「有休」「特休」は残したまま、\n自動割り振りされた「出勤」や「/」のみをリセット（完全消去）しますか？", async () => {
         pushHistory();
         const protectedRoles = ['公休', '有休', '特休'];
         let count = 0;
+        const updates = {};
 
         Object.keys(shiftState.shiftDataCache).forEach(name => {
             const data = shiftState.shiftDataCache[name];
+            let modified = false;
             if (data && data.assignments) {
                 Object.keys(data.assignments).forEach(day => {
                     const role = data.assignments[day];
-                    // 保護対象以外の役職（出勤、/、金メなど）はすべてクリア
+                    // 保護対象以外の役職（出勤、/、金メなど）はすべてクリア(削除)
                     if (role && !protectedRoles.includes(role)) {
-                        data.assignments[day] = '/';
+                        delete data.assignments[day]; // Delete key
+                        modified = true;
                         count++;
                     }
                 });
             }
+            if (modified) {
+                updates[`${name}.assignments`] = data.assignments;
+            }
         });
 
         const docId = `${shiftState.currentYear}-${String(shiftState.currentMonth).padStart(2,'0')}`;
-        await setDoc(doc(db, "shift_submissions", docId), shiftState.shiftDataCache, { merge: true });
+        const docRef = doc(db, "shift_submissions", docId);
+
+        try {
+            // updateDoc to replace assignments maps
+            if (Object.keys(updates).length > 0) {
+                await updateDoc(docRef, updates);
+            }
+        } catch(e) {
+             // Fallback if doc doesn't exist (unlikely here)
+            await setDoc(docRef, shiftState.shiftDataCache, { merge: true });
+        }
 
         renderShiftAdminTable();
-        showToast(`🧹 ${count}箇所の割り振りをリセットしました`);
+        showToast(`🧹 ${count}箇所の割り振りを完全消去しました`);
     }, 'bg-orange-500');
 }
 
