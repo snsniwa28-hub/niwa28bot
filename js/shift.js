@@ -1,5 +1,6 @@
 import { db } from './firebase.js';
 import { doc, getDoc, setDoc, updateDoc, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { loginAsShiftAdmin } from './auth.js';
 import { showPasswordModal, closePasswordModal, showToast, showConfirmModal } from './ui.js';
 import { $, getHolidays } from './utils.js';
 
@@ -651,10 +652,11 @@ function setupShiftEventListeners() {
     }
 }
 
-export function checkShiftAdminPassword() {
-    const pwModal = document.getElementById('password-modal');
-    if(pwModal) pwModal.style.zIndex = "100";
-    showPasswordModal(activateShiftAdminMode);
+export async function checkShiftAdminPassword() {
+    const success = await loginAsShiftAdmin();
+    if (success) {
+        activateShiftAdminMode();
+    }
 }
 
 export function activateShiftAdminMode() {
