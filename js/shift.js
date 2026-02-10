@@ -2308,7 +2308,7 @@ export const openStaffEditModal = (name) => {
     document.getElementById('se-max-consecutive').value = details.max_consecutive_days || 5;
 
     // Update Ranks based on type, then select
-    window.updateRankOptions();
+    updateRankOptions();
     if(details.rank) document.getElementById('se-rank').value = details.rank;
 
     // Checkboxes
