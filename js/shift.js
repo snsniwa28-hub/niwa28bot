@@ -1546,32 +1546,32 @@ async function toggleStaffShiftType(name, currentType) {
 async function prepareShiftAnalysisContext(year, month, currentShiftData, staffDetails, staffLists) {
     const daysInMonth = new Date(year, month, 0).getDate();
 
-    // Fetch Previous Month Data (Cached if possible)
-    let prevMonthAssignments = shiftState.prevMonthCache;
-    if (!prevMonthAssignments) {
-        prevMonthAssignments = {};
-        const prevDate = new Date(year, month - 1, 0);
-        const prevY = prevDate.getFullYear();
-        const prevM = prevDate.getMonth() + 1;
-        const prevDocId = `${prevY}-${String(prevM).padStart(2,'0')}`;
-        try {
-            const docRef = doc(db, "shift_submissions", prevDocId);
-            const snap = await getDoc(docRef);
-            if(snap.exists()) {
-                const data = snap.data();
-                Object.keys(data).forEach(key => {
-                    if (data[key] && data[key].assignments) {
-                        prevMonthAssignments[key] = data[key].assignments;
-                    }
-                });
-            }
-        } catch(e) {
-            console.warn("Could not fetch prev month data", e);
-        }
-        shiftState.prevMonthCache = prevMonthAssignments; // Update Cache
-    }
-
+    // Always fetch fresh Previous Month Data from Firestore to ensure continuity
+    // (Regardless of cache, to support cross-month workflow without stale data)
+    let prevMonthAssignments = {};
     const prevDate = new Date(year, month - 1, 0);
+    const prevY = prevDate.getFullYear();
+    const prevM = prevDate.getMonth() + 1;
+    const prevDocId = `${prevY}-${String(prevM).padStart(2,'0')}`;
+
+    console.log(`Fetching previous month data from DB: ${prevDocId}`);
+    try {
+        const docRef = doc(db, "shift_submissions", prevDocId);
+        const snap = await getDoc(docRef);
+        if(snap.exists()) {
+            const data = snap.data();
+            Object.keys(data).forEach(key => {
+                if (data[key] && data[key].assignments) {
+                    prevMonthAssignments[key] = data[key].assignments;
+                }
+            });
+        }
+    } catch(e) {
+        console.warn("Could not fetch prev month data", e);
+    }
+    // Update cache just in case, though we force fetch above
+    shiftState.prevMonthCache = prevMonthAssignments;
+
     const prevDaysCount = prevDate.getDate();
 
     // Prepare Staff Objects
