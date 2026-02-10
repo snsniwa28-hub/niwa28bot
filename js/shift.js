@@ -662,6 +662,7 @@ export async function checkShiftAdminPassword() {
 export function activateShiftAdminMode() {
     closePasswordModal();
     shiftState.isAdminMode = true;
+    document.getElementById('btn-shift-admin-login').classList.add('hidden'); // Hide admin button
     switchShiftView('admin');
 }
 
@@ -670,6 +671,10 @@ export async function openShiftUserModal() {
     createShiftModals();
     const view = document.getElementById('shift-main-view');
     view.classList.add('active');
+
+    // Ensure admin button is visible initially
+    const adminBtn = document.getElementById('btn-shift-admin-login');
+    if(adminBtn) adminBtn.classList.remove('hidden');
 
     const d = new Date();
     d.setMonth(d.getMonth() + 1);
@@ -736,6 +741,7 @@ export function backToShiftList() {
              switchShiftView('admin');
         } else {
              shiftState.isAdminMode = false;
+             document.getElementById('btn-shift-admin-login').classList.remove('hidden'); // Show admin button
              switchShiftView('list');
         }
     } else {
