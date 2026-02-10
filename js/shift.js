@@ -18,7 +18,7 @@ let shiftState = {
     earlyWarehouseMode: false,
     prevMonthCache: null,
     currentStaffTab: 'early',
-    autoShiftSettings: { money: true, warehouse: true, hall_resp: true } // New
+    autoShiftSettings: { money: false, warehouse: false, hall_resp: false } // New
 };
 
 const RANKS = {
@@ -205,7 +205,7 @@ export function createShiftModals() {
                     <button id="btn-clear-roles-only" class="text-xs font-bold text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-lg border border-orange-200 transition">🧹 役職のみクリア</button>
 
                     <button id="btn-shift-settings" class="text-xs font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition flex items-center gap-2">
-                        <span>⚙️</span> 設定
+                        <span>⚙️</span> 役職割り振り設定
                     </button>
                     <button id="btn-ai-early" class="text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2 ml-2">
                         <span>🤖</span> 早番(A)作成
@@ -305,7 +305,7 @@ export function createShiftModals() {
             <h4 class="text-center font-black text-slate-800 mb-6">管理者メニュー</h4>
             <div class="grid grid-cols-1 gap-3">
                 <button id="btn-mobile-clear" class="w-full py-4 bg-rose-50 text-rose-600 font-bold rounded-xl border border-rose-100">割り振りをクリア</button>
-                <button id="btn-mobile-settings" class="w-full py-4 bg-slate-50 text-slate-600 font-bold rounded-xl border border-slate-100">⚙️ 自動割り振り設定</button>
+                <button id="btn-mobile-settings" class="w-full py-4 bg-slate-50 text-slate-600 font-bold rounded-xl border border-slate-100">⚙️ 役職割り振り設定</button>
                 <button id="btn-mobile-ai-early" class="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2">
                     <span>🤖</span> 早番(A)作成
                 </button>
@@ -529,8 +529,16 @@ function setupShiftEventListeners() {
     $('#btn-undo-action').onclick = undoShiftAction;
     $('#btn-clear-shift').onclick = clearShiftAssignments;
     $('#btn-mobile-clear').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); clearShiftAssignments(); };
-    $('#btn-shift-settings').onclick = () => document.getElementById('auto-shift-settings-modal').classList.remove('hidden');
-    $('#btn-mobile-settings').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); document.getElementById('auto-shift-settings-modal').classList.remove('hidden'); };
+
+    const openSettings = () => {
+         document.getElementById('chk-as-money').checked = shiftState.autoShiftSettings.money;
+         document.getElementById('chk-as-warehouse').checked = shiftState.autoShiftSettings.warehouse;
+         document.getElementById('chk-as-hall-resp').checked = shiftState.autoShiftSettings.hall_resp;
+         document.getElementById('chk-early-warehouse-auto').checked = shiftState.earlyWarehouseMode;
+         document.getElementById('auto-shift-settings-modal').classList.remove('hidden');
+    };
+    $('#btn-shift-settings').onclick = openSettings;
+    $('#btn-mobile-settings').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); openSettings(); };
 
     // New AI Buttons
     // AI廃止 -> 高速ロジックへ直結 (executeAutoShiftLogic(isPreview, targetGroup))
