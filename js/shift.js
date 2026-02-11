@@ -215,6 +215,9 @@ export function createShiftModals() {
                     <button id="btn-shift-settings" class="text-xs font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition flex items-center gap-2">
                         <span>⚙️</span> 役職割り振り設定
                     </button>
+                    <button id="btn-shift-rules" class="text-xs font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition flex items-center gap-2">
+                        <span>🤖</span> 作成ルール設定
+                    </button>
                     <button id="btn-ai-early" class="text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2 ml-2">
                         <span>🤖</span> 早番(A)作成
                     </button>
@@ -314,6 +317,7 @@ export function createShiftModals() {
             <div class="grid grid-cols-1 gap-3">
                 <button id="btn-mobile-clear" class="w-full py-4 bg-rose-50 text-rose-600 font-bold rounded-xl border border-rose-100">割り振りをクリア</button>
                 <button id="btn-mobile-settings" class="w-full py-4 bg-slate-50 text-slate-600 font-bold rounded-xl border border-slate-100">⚙️ 役職割り振り設定</button>
+                <button id="btn-mobile-rules" class="w-full py-4 bg-slate-50 text-slate-600 font-bold rounded-xl border border-slate-100">🤖 作成ルール設定</button>
                 <button id="btn-mobile-ai-early" class="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2">
                     <span>🤖</span> 早番(A)作成
                 </button>
@@ -325,7 +329,7 @@ export function createShiftModals() {
         </div>
     </div>
 
-    <!-- AUTO SHIFT SETTINGS MODAL -->
+    <!-- AUTO SHIFT SETTINGS MODAL (Roles Only) -->
     <div id="auto-shift-settings-modal" class="modal-overlay hidden" style="z-index: 100;">
         <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl">
             <h3 class="font-bold text-slate-800 text-lg mb-4">⚙️ 役職割り振り設定</h3>
@@ -350,31 +354,39 @@ export function createShiftModals() {
                 </label>
             </div>
 
-            <!-- New AI Logic Settings -->
-            <div class="mt-6 border-t border-slate-100 pt-4">
-                <h4 class="font-bold text-slate-800 text-sm mb-3">🤖 シフト作成ルール設定</h4>
-                <div class="bg-slate-50 p-4 rounded-xl space-y-3 border border-slate-100">
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-500 mb-1 block">平日 責任者最低人数</label>
-                        <input type="number" id="cfg-manager-weekday" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700" min="0" value="1">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-500 mb-1 block">土日祝 責任者最低人数</label>
-                        <input type="number" id="cfg-manager-weekend" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700" min="0" value="2">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-500 mb-1 block">最大連勤リミット</label>
-                        <input type="number" id="cfg-max-streak" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700" min="3" max="14" value="6">
-                    </div>
-                    <label class="flex items-center justify-between cursor-pointer pt-1">
-                        <span class="text-[10px] font-bold text-slate-500">遅番翌日の早番を禁止</span>
-                        <input type="checkbox" id="cfg-block-late-early" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500">
-                    </label>
+            <div class="mt-6 pt-4 border-t border-slate-100">
+                <button onclick="document.getElementById('auto-shift-settings-modal').classList.add('hidden')" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW MODAL: SHIFT CREATION RULES -->
+    <div id="shift-creation-rules-modal" class="modal-overlay hidden" style="z-index: 100;">
+        <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl">
+            <h3 class="font-bold text-slate-800 text-lg mb-4">🤖 シフト作成ルール設定</h3>
+            <p class="text-xs font-bold text-slate-400 mb-6">AI自動作成時の制約条件を設定します。</p>
+
+            <div class="bg-slate-50 p-4 rounded-xl space-y-4 border border-slate-100">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 mb-1 block">平日 責任者最低人数</label>
+                    <input type="number" id="cfg-manager-weekday" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" min="0" value="1">
                 </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 mb-1 block">土日祝 責任者最低人数</label>
+                    <input type="number" id="cfg-manager-weekend" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" min="0" value="2">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 mb-1 block">最大連勤リミット</label>
+                    <input type="number" id="cfg-max-streak" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" min="3" max="14" value="6">
+                </div>
+                <label class="flex items-center justify-between cursor-pointer pt-1 hover:bg-slate-100 rounded-lg p-2 -mx-2 transition">
+                    <span class="text-[10px] font-bold text-slate-500">遅番翌日の早番を禁止</span>
+                    <input type="checkbox" id="cfg-block-late-early" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500">
+                </label>
             </div>
 
             <div class="mt-6 pt-4 border-t border-slate-100">
-                <button onclick="document.getElementById('auto-shift-settings-modal').classList.add('hidden')" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition">閉じる</button>
+                <button onclick="document.getElementById('shift-creation-rules-modal').classList.add('hidden')" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition">閉じる</button>
             </div>
         </div>
     </div>
@@ -566,17 +578,20 @@ function setupShiftEventListeners() {
          document.getElementById('chk-as-warehouse').checked = shiftState.autoShiftSettings.warehouse;
          document.getElementById('chk-as-hall-resp').checked = shiftState.autoShiftSettings.hall_resp;
          document.getElementById('chk-early-warehouse-auto').checked = shiftState.earlyWarehouseMode;
-
-         // Logic Settings
-         document.getElementById('cfg-manager-weekday').value = shiftState.autoShiftSettings.managerWeekday ?? 1;
-         document.getElementById('cfg-manager-weekend').value = shiftState.autoShiftSettings.managerWeekend ?? 2;
-         document.getElementById('cfg-max-streak').value = shiftState.autoShiftSettings.maxStreak ?? 6;
-         document.getElementById('cfg-block-late-early').checked = shiftState.autoShiftSettings.blockLateEarly ?? true;
-
          document.getElementById('auto-shift-settings-modal').classList.remove('hidden');
     };
     $('#btn-shift-settings').onclick = openSettings;
     $('#btn-mobile-settings').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); openSettings(); };
+
+    const openRules = () => {
+         document.getElementById('cfg-manager-weekday').value = shiftState.autoShiftSettings.managerWeekday ?? 1;
+         document.getElementById('cfg-manager-weekend').value = shiftState.autoShiftSettings.managerWeekend ?? 2;
+         document.getElementById('cfg-max-streak').value = shiftState.autoShiftSettings.maxStreak ?? 6;
+         document.getElementById('cfg-block-late-early').checked = shiftState.autoShiftSettings.blockLateEarly ?? true;
+         document.getElementById('shift-creation-rules-modal').classList.remove('hidden');
+    };
+    $('#btn-shift-rules').onclick = openRules;
+    $('#btn-mobile-rules').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); openRules(); };
 
     // New AI Buttons
     // AI廃止 -> 高速ロジックへ直結 (executeAutoShiftLogic(isPreview, targetGroup))
