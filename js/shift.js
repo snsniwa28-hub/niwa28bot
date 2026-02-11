@@ -18,7 +18,15 @@ let shiftState = {
     earlyWarehouseMode: false,
     prevMonthCache: null,
     currentStaffTab: 'early',
-    autoShiftSettings: { money: false, warehouse: false, hall_resp: false } // New
+    autoShiftSettings: {
+        money: false,
+        warehouse: false,
+        hall_resp: false,
+        managerWeekday: 1,
+        managerWeekend: 2,
+        maxStreak: 6,
+        blockLateEarly: true
+    }
 };
 
 const RANKS = {
@@ -342,6 +350,29 @@ export function createShiftModals() {
                 </label>
             </div>
 
+            <!-- New AI Logic Settings -->
+            <div class="mt-6 border-t border-slate-100 pt-4">
+                <h4 class="font-bold text-slate-800 text-sm mb-3">🤖 シフト作成ルール設定</h4>
+                <div class="bg-slate-50 p-4 rounded-xl space-y-3 border border-slate-100">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 mb-1 block">平日 責任者最低人数</label>
+                        <input type="number" id="cfg-manager-weekday" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700" min="0" value="1">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 mb-1 block">土日祝 責任者最低人数</label>
+                        <input type="number" id="cfg-manager-weekend" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700" min="0" value="2">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 mb-1 block">最大連勤リミット</label>
+                        <input type="number" id="cfg-max-streak" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700" min="3" max="14" value="6">
+                    </div>
+                    <label class="flex items-center justify-between cursor-pointer pt-1">
+                        <span class="text-[10px] font-bold text-slate-500">遅番翌日の早番を禁止</span>
+                        <input type="checkbox" id="cfg-block-late-early" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500">
+                    </label>
+                </div>
+            </div>
+
             <div class="mt-6 pt-4 border-t border-slate-100">
                 <button onclick="document.getElementById('auto-shift-settings-modal').classList.add('hidden')" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition">閉じる</button>
             </div>
@@ -535,6 +566,13 @@ function setupShiftEventListeners() {
          document.getElementById('chk-as-warehouse').checked = shiftState.autoShiftSettings.warehouse;
          document.getElementById('chk-as-hall-resp').checked = shiftState.autoShiftSettings.hall_resp;
          document.getElementById('chk-early-warehouse-auto').checked = shiftState.earlyWarehouseMode;
+
+         // Logic Settings
+         document.getElementById('cfg-manager-weekday').value = shiftState.autoShiftSettings.managerWeekday ?? 1;
+         document.getElementById('cfg-manager-weekend').value = shiftState.autoShiftSettings.managerWeekend ?? 2;
+         document.getElementById('cfg-max-streak').value = shiftState.autoShiftSettings.maxStreak ?? 6;
+         document.getElementById('cfg-block-late-early').checked = shiftState.autoShiftSettings.blockLateEarly ?? true;
+
          document.getElementById('auto-shift-settings-modal').classList.remove('hidden');
     };
     $('#btn-shift-settings').onclick = openSettings;
@@ -577,9 +615,15 @@ function setupShiftEventListeners() {
     $('#mobile-fab-menu').onclick = () => $('#mobile-admin-menu').classList.remove('hidden');
 
     // Auto Shift Settings Listeners
-    $('#chk-as-money').onchange = (e) => { shiftState.autoShiftSettings.money = e.target.checked; };
-    $('#chk-as-warehouse').onchange = (e) => { shiftState.autoShiftSettings.warehouse = e.target.checked; };
-    $('#chk-as-hall-resp').onchange = (e) => { shiftState.autoShiftSettings.hall_resp = e.target.checked; };
+    $('#chk-as-money').onchange = (e) => { shiftState.autoShiftSettings.money = e.target.checked; saveStoreConfig(); };
+    $('#chk-as-warehouse').onchange = (e) => { shiftState.autoShiftSettings.warehouse = e.target.checked; saveStoreConfig(); };
+    $('#chk-as-hall-resp').onchange = (e) => { shiftState.autoShiftSettings.hall_resp = e.target.checked; saveStoreConfig(); };
+
+    // Logic Settings Listeners
+    $('#cfg-manager-weekday').onchange = (e) => { shiftState.autoShiftSettings.managerWeekday = parseInt(e.target.value) || 1; saveStoreConfig(); };
+    $('#cfg-manager-weekend').onchange = (e) => { shiftState.autoShiftSettings.managerWeekend = parseInt(e.target.value) || 2; saveStoreConfig(); };
+    $('#cfg-max-streak').onchange = (e) => { shiftState.autoShiftSettings.maxStreak = parseInt(e.target.value) || 6; saveStoreConfig(); };
+    $('#cfg-block-late-early').onchange = (e) => { shiftState.autoShiftSettings.blockLateEarly = e.target.checked; saveStoreConfig(); };
 
     $('#btn-clear-work-only').onclick = clearWorkOnly;
     $('#btn-clear-roles-only').onclick = clearRolesOnly;
@@ -1698,36 +1742,37 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
     // Uses physicalWorkDays for "Prev Day" check? Or assignedDays?
     // Usually Paid Leave doesn't cause interval issues. So use physicalWorkDays.
     // If I took Paid Leave yesterday, I can work Early today regardless of my shift type.
+    if (shiftState.autoShiftSettings.blockLateEarly) {
+        if (day > 1) {
+            if (staff.physicalWorkDays.includes(day - 1)) {
+                    let prevEffective = staff.shiftType;
+                    if (staff.requests.types[day-1] === 'early') prevEffective = 'A';
+                    if (staff.requests.types[day-1] === 'late') prevEffective = 'B';
 
-    if (day > 1) {
-        if (staff.physicalWorkDays.includes(day - 1)) {
-                let prevEffective = staff.shiftType;
-                if (staff.requests.types[day-1] === 'early') prevEffective = 'A';
-                if (staff.requests.types[day-1] === 'late') prevEffective = 'B';
+                    let currentEffective = staff.shiftType;
+                    if (staff.requests.types[day] === 'early') currentEffective = 'A';
+                    if (staff.requests.types[day] === 'late') currentEffective = 'B';
 
+                    if (prevEffective === 'B' && currentEffective === 'A') return false;
+            }
+        } else if (day === 1) {
+            const lastRole = prevMonthAssignments[staff.name]?.[prevDaysCount];
+
+            // 明示的な遅番、または「出勤」かつ「B番スタッフ」の場合も遅番とみなす
+            const isExplicitLate = lastRole && (lastRole.includes('遅') || lastRole.includes('B'));
+            const isImplicitLate = lastRole &&
+                                   lastRole !== '公休' && lastRole !== '/' &&
+                                   lastRole !== '有休' && lastRole !== 'PAID' &&
+                                   lastRole !== '特休' && lastRole !== 'SPECIAL' &&
+                                   staff.shiftType === 'B';
+
+            if (isExplicitLate || isImplicitLate) {
                 let currentEffective = staff.shiftType;
                 if (staff.requests.types[day] === 'early') currentEffective = 'A';
-                if (staff.requests.types[day] === 'late') currentEffective = 'B';
 
-                if (prevEffective === 'B' && currentEffective === 'A') return false;
-        }
-    } else if (day === 1) {
-        const lastRole = prevMonthAssignments[staff.name]?.[prevDaysCount];
-
-        // 明示的な遅番、または「出勤」かつ「B番スタッフ」の場合も遅番とみなす
-        const isExplicitLate = lastRole && (lastRole.includes('遅') || lastRole.includes('B'));
-        const isImplicitLate = lastRole &&
-                               lastRole !== '公休' && lastRole !== '/' &&
-                               lastRole !== '有休' && lastRole !== 'PAID' &&
-                               lastRole !== '特休' && lastRole !== 'SPECIAL' &&
-                               staff.shiftType === 'B';
-
-        if (isExplicitLate || isImplicitLate) {
-            let currentEffective = staff.shiftType;
-            if (staff.requests.types[day] === 'early') currentEffective = 'A';
-
-            // 遅番明けの早番(A)は禁止
-            if (currentEffective === 'A') return false;
+                // 遅番明けの早番(A)は禁止
+                if (currentEffective === 'A') return false;
+            }
         }
     }
 
@@ -1752,7 +1797,8 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
     // HARD CONSTRAINT: Absolutely Block 6 Consecutive Days (Max Streak = 5)
     // regardless of user settings.
     // If assigning this day results in 6 days streak, return false.
-    if (currentSeq >= 6) return false;
+    const maxStreak = shiftState.autoShiftSettings.maxStreak ?? 6;
+    if (currentSeq >= maxStreak) return false;
 
     // 4. Sandwich Check (Removed as per new requirements)
     // AI or Logic is allowed to create Sandwich shifts if necessary.
@@ -1894,7 +1940,9 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
                 const isHoliday = holidays.includes(d);
 
                 // 土日祝は2人、平日は1人
-                const baseReq = (dayOfWeek === 0 || dayOfWeek === 6 || isHoliday) ? 2 : 1;
+                const baseReq = (dayOfWeek === 0 || dayOfWeek === 6 || isHoliday)
+                    ? (shiftState.autoShiftSettings.managerWeekend ?? 2)
+                    : (shiftState.autoShiftSettings.managerWeekday ?? 1);
 
                 // ただし、そのグループに責任者がそもそも何人いるか？ (身の丈チェック)
                 const totalResp = staffObjects.filter(s => s.shiftType === st && isResponsible(s)).length;
@@ -2780,7 +2828,31 @@ export async function initStaffData() {
 
             console.log("Staff data initialized via Shift module.");
         }
+        await loadStoreConfig();
     } catch(e) {
         console.error("Staff Init Error:", e);
+    }
+}
+
+async function loadStoreConfig() {
+    try {
+        const docRef = doc(db, 'masters', 'store_config');
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+            const data = snap.data();
+            // Merge with defaults
+            shiftState.autoShiftSettings = { ...shiftState.autoShiftSettings, ...data };
+        }
+    } catch (e) {
+        console.error("Store Config Load Error:", e);
+    }
+}
+
+async function saveStoreConfig() {
+    try {
+        const docRef = doc(db, 'masters', 'store_config');
+        await setDoc(docRef, shiftState.autoShiftSettings, { merge: true });
+    } catch (e) {
+        console.error("Store Config Save Error:", e);
     }
 }
