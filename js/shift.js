@@ -2021,9 +2021,13 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
             if (targetGroup && s.shiftType !== targetGroup) return;
 
             const requests = s.requests.types || {};
+            const locks = shifts[s.name]?.manual_locks || [];
 
             // 全日チェックして希望を反映
             for (let d = 1; d <= daysInMonth; d++) {
+                // ロックされている日は管理者の意図（／など）を優先するため、希望があっても強制適用しない
+                if (locks.includes(d)) continue;
+
                 const reqType = requests[d];
 
                 if (reqType === 'PAID' || reqType === 'SPECIAL') {
