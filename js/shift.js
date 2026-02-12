@@ -1052,6 +1052,7 @@ export function renderShiftAdminTable() {
                 const reqType = requests[d] || 'any';
                 const assignment = (data.assignments && data.assignments[d]) || null;
                 const dailyRemark = data.daily_remarks && data.daily_remarks[d];
+                const isLocked = data.manual_locks && data.manual_locks.includes(d);
 
                 let bgCell = '';
                 let cellContent = '';
@@ -1136,6 +1137,21 @@ export function renderShiftAdminTable() {
                 }
 
                 if (dailyRemark) cellContent += `<span class="absolute top-0 right-0 text-[8px] text-yellow-600">●</span>`;
+
+                // Visual Indicator for Locked Cells
+                if (isLocked) {
+                    // Add a small lock icon or border style
+                    // Let's use a subtle lock icon in the corner, or a border color.
+                    // A small lock icon in top-left might conflict with text.
+                    // Let's try a dashed border or a small icon overlay.
+                    // Given the cell is small, an overlay icon `🔒` at bottom-right or top-left.
+                    // Let's use top-left.
+                    cellContent += `<span class="absolute top-0 left-0 text-[8px] opacity-60 pointer-events-none">🔒</span>`;
+                    // And maybe a slight background tint to signify "Frozen"?
+                    // But background is already used for Role.
+                    // Let's add a ring/border if not already heavily bordered.
+                    // Actually, just the icon is cleanest.
+                }
 
                 // UPDATED: Cell padding
                 td.className = `border-b border-r border-slate-200 text-center cursor-pointer transition relative ${bgCell} p-0.5 md:p-1 h-8 md:h-auto align-middle`;
@@ -1340,24 +1356,58 @@ function handleActionPanelClick(role) {
     }
 }
 
+// --- New: Manual Lock Logic ---
+function addManualLock(name, day) {
+    if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = {};
+    const data = shiftState.shiftDataCache[name];
+    if (!data.manual_locks) data.manual_locks = [];
+    if (!data.manual_locks.includes(day)) {
+        data.manual_locks.push(day);
+    }
+}
+
+// Remove lock (if needed, currently mostly adding)
+function removeManualLock(name, day) {
+    const data = shiftState.shiftDataCache[name];
+    if (data && data.manual_locks) {
+        data.manual_locks = data.manual_locks.filter(d => d !== day);
+    }
+}
+
 function executeAdminAction(role) {
     const day = shiftState.selectedDay;
     const name = shiftState.selectedStaff;
+
+    // LOCK: All manual admin actions trigger a lock
+    addManualLock(name, day);
 
     if (role === 'clear') {
          if(!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { assignments: {}, daily_remarks: {} };
          if(!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
 
-         // DELETE assignment to reset to unassigned/blank state (NOT counting as work)
-         delete shiftState.shiftDataCache[name].assignments[day];
+         // DELETE assignment to reset to unassigned/blank state
+         // IMPORTANT: Even 'cleared' manual input is now locked as "Explicitly Empty"
+         // But the system treats 'undefined' as 'unassigned'.
+         // To lock a "Blank", we might need to set it to '' (empty string) or ensure logic respects lock on undefined.
+         // Let's set it to '' (Empty String) so it's a value we can see is "Set to Empty".
+         // Previously we deleted it. Now we set to ''.
+
+         shiftState.shiftDataCache[name].assignments[day] = '';
+
          if (shiftState.shiftDataCache[name].daily_remarks) {
              delete shiftState.shiftDataCache[name].daily_remarks[day];
          }
 
          updateViewAfterAction();
-         showToast("✅ クリアしました", "black");
+         showToast("✅ クリア(固定)しました", "black");
          closeShiftActionModal();
     } else if (role === 'revert') {
+         // Revert means "Go back to Request".
+         // Does this mean "Unlock"? Probably yes, if we are reverting to "Default".
+         // But user might want to "Force Request".
+         // Let's assume 'Revert' = "Reset to default state (Unlocked)".
+         removeManualLock(name, day);
+
          const data = shiftState.shiftDataCache[name];
          const req = data?.shift_requests?.[day];
          const isOff = data?.off_days?.includes(day);
@@ -1379,14 +1429,22 @@ function executeAdminAction(role) {
          if(!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { assignments: {} };
          if(!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
 
-         shiftState.shiftDataCache[name].assignments[day] = newVal;
+         // If reverting to a specific value, do we lock it?
+         // "Revert" usually implies "Unfix". So we removed lock above.
+         // Just set the value derived from request.
+         // If it's unlocked, AI can change it again.
+         // If user wants to "Lock to Request", they should select the role manually.
+
+         // SPECIAL CASE: If reverting to 'Blank' (no request), we delete the key to be truly unassigned.
+         if (newVal === '') delete shiftState.shiftDataCache[name].assignments[day];
+         else shiftState.shiftDataCache[name].assignments[day] = newVal;
 
          updateViewAfterAction();
-         showToast("✅ 変更しました", "black");
+         showToast("✅ 希望/初期状態に戻しました(ロック解除)", "black");
          closeShiftActionModal();
     } else {
         setAdminRole(role);
-        showToast("✅ 変更しました", "black");
+        showToast("✅ 変更(固定)しました", "black");
         closeShiftActionModal();
     }
 }
@@ -1399,16 +1457,25 @@ function updateShiftRequest(type) {
     if (!data.shift_requests) data.shift_requests = {};
     if (!data.assignments) data.assignments = {};
 
-    // Sync Assignments for Paid/Special
+    // User Requests do NOT lock assignments usually (they are requests).
+    // EXCEPT: Paid/Special are treated as assignments immediately.
+    // Should we lock Paid/Special requests?
+    // "手入力したものは絶対に保持".
+    // If a USER inputs "Paid Leave Request", it sets assignment to '有休'.
+    // If we lock it, AI won't touch it. This is desired.
+
     if (type === 'paid') {
         data.assignments[day] = '有休';
+        addManualLock(name, day); // Lock Paid
     } else if (type === 'special') {
         data.assignments[day] = '特休';
+        addManualLock(name, day); // Lock Special
     } else {
         // If changing away from Paid/Special, remove the assignment if it was Paid/Special
         const current = data.assignments[day];
         if (current === '有休' || current === '特休') {
             delete data.assignments[day];
+            removeManualLock(name, day); // Unlock if removing forced assignment
         }
     }
 
@@ -1419,18 +1486,19 @@ function updateShiftRequest(type) {
         offList = offList.filter(d => d !== day);
         workList = workList.filter(d => d !== day);
         delete data.shift_requests[day];
+        // If clearing request, we should also ensure no forced assignment exists (already handled above partially)
+        // And unlock if we are just clearing a request
+        removeManualLock(name, day);
     } else if (type === 'off') {
         if(!offList.includes(day)) offList.push(day);
         workList = workList.filter(d => d !== day);
         delete data.shift_requests[day];
+        // Off Request usually doesn't force assignment '公休' until AI runs or admin confirms.
+        // But if user sets "Off", they want "Off".
+        // Current logic: Just sets off_days. AI sees it and sets '公休'.
+        // So no manual lock needed here unless we want to force it NOW.
+        // Let's stick to request logic for 'off'.
     } else if (type === 'paid') {
-        // Paid Leave - Treated like work in contract, but technically a request here?
-        // User instructions say: [有休希望] ... 選択時はあくまで「希望」として保存する
-        // For logic simplicity, treat as Work Day with special request type 'paid'
-        // But wait, the system logic uses assignments for calculations mostly.
-        // For requests, we can just store 'paid' in shift_requests.
-        // And ensure it counts as "Work Day" (contract) but maybe handle differently in logic.
-        // Let's store as work_day + request 'paid'.
         if(!workList.includes(day)) workList.push(day);
         offList = offList.filter(d => d !== day);
         data.shift_requests[day] = 'PAID';
@@ -1443,6 +1511,7 @@ function updateShiftRequest(type) {
         if(!workList.includes(day)) workList.push(day);
         offList = offList.filter(d => d !== day);
         data.shift_requests[day] = type;
+        // Standard work request doesn't lock assignment.
     }
 
     data.off_days = offList;
@@ -1462,6 +1531,7 @@ function updateViewAfterAction() {
 async function setAdminRole(role) {
     const name = shiftState.selectedStaff;
     const day = shiftState.selectedDay;
+    addManualLock(name, day); // Ensure Lock
     if (!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = {};
     if (!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
     shiftState.shiftDataCache[name].assignments[day] = role;
@@ -1794,12 +1864,13 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
         const context = await prepareShiftAnalysisContext(Y, M, shifts, shiftState.staffDetails, shiftState.staffListLists);
         const { staffObjects, prevMonthAssignments, prevDaysCount } = context;
 
-        // --- 修正1: 対象グループのみをクリア ---
+        // --- 修正1: 対象グループのみをクリア (Lock機能対応) ---
         staffObjects.forEach(s => {
             // targetGroup指定時、対象外のスタッフは何もしない（維持）
             if (targetGroup && s.shiftType !== targetGroup) return;
 
             const oldAssignments = shifts[s.name]?.assignments || {};
+            const manualLocks = shifts[s.name]?.manual_locks || []; // Get Locks
             const newAssignments = {};
             const newAssignedDays = [];
             const newPhysicalWorkDays = [];
@@ -1807,13 +1878,35 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
             Object.keys(oldAssignments).forEach(dayKey => {
                 const day = parseInt(dayKey);
                 const role = oldAssignments[dayKey];
-                // 公休・有休・特休は維持。それ以外の「出勤」「/」などはリセット対象
-                if (role && role !== '/') {
+                const isLocked = manualLocks.includes(day);
+
+                // 公休・有休・特休は維持。
+                // ★追加: ロックされたマスは「/」や空白であっても維持
+                // role が '/' の場合、通常は消えるが、Lockedなら残す。
+                // role が '' (空文字/Clear) の場合も、Lockedなら残す。
+
+                if (isLocked || (role && role !== '/')) {
+                    // locked assignment or valid role (not unlocked slash)
                     newAssignments[dayKey] = role;
-                    if (role !== '公休') {
-                        newAssignedDays.push(day);
-                        if (role !== '有休' && role !== '特休' && role !== 'PAID' && role !== 'SPECIAL') {
-                            newPhysicalWorkDays.push(day);
+
+                    // Update Counters
+                    if (role !== '公休' && role !== '/') {
+                        // Explicit Blank ('') counts as work in some logic?
+                        // No, Empty string is usually "Cleared". If locked, it means "Force Empty".
+                        // Force Empty should NOT count as Assigned Day or Physical Work.
+                        // So only add if role is truly a "Work-like" thing.
+                        // Wait, previous logic: "if (role !== '公休') newAssignedDays.push".
+                        // So '有休', '特休', '出勤', '金メ' etc are pushed.
+                        // What about ''? If manual clear, role is ''.
+                        // If role is '', and locked. It is "Assigned" as "Empty".
+                        // Should it count towards contract? No. It's a day OFF effectively.
+                        // So exclude '' from assignedDays.
+
+                        if (role !== '') {
+                            newAssignedDays.push(day);
+                            if (role !== '有休' && role !== '特休' && role !== 'PAID' && role !== 'SPECIAL') {
+                                newPhysicalWorkDays.push(day);
+                            }
                         }
                     }
                 }
@@ -1869,6 +1962,19 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
         // 制約チェック関数
         const canAssign = (staff, day, strictContractMode = false) => {
             const currentAssign = shifts[staff.name].assignments[day];
+
+            // ★Check Lock: If locked, cannot assign (even if it is '/', if it's locked as '/', it means "Force Not Work")
+            // Wait, if locked as 'Work', currentAssign is defined.
+            // If locked as 'Blank' (''), currentAssign is ''.
+            // If locked as '/', currentAssign is '/'.
+
+            // If assignment exists, check if it's a "Fillable Slot".
+            // Fillable = undefined or (unlocked '/').
+            // If locked, it is NOT fillable.
+
+            const locks = shifts[staff.name]?.manual_locks || [];
+            if (locks.includes(day)) return false; // Absolutely forbidden to touch locked cells
+
             if (currentAssign !== undefined && currentAssign !== '/') return false;
             return checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCount, strictContractMode);
         };
@@ -2038,7 +2144,7 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
         });
 
         // =========================================================
-        // PHASE 7: 役職割り振り (ここは変更なし)
+        // PHASE 7: 役職割り振り
         // =========================================================
         groupsToProcess.forEach(st => {
             days.forEach(d => {
@@ -2048,6 +2154,15 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
                 let workGroup = [];
 
                 allAssigned.forEach(s => {
+                    const locks = shifts[s.name]?.manual_locks || [];
+                    // Locked cells are excluded from Auto Role Assignment unless they are just "Work" and we want to assign role?
+                    // User said: "手入力で入れたものに関してはもう絶対にしてほしい全部".
+                    // If user put '出勤', maybe they meant "Just Work".
+                    // If they wanted '金メ', they would have put '金メ'.
+                    // So we should NOT assign roles to Locked '出勤' cells either.
+
+                    if (locks.includes(d)) return; // Locked: Skip completely
+
                     const req = s.requests.types[d];
                     const existing = shifts[s.name].assignments[d];
                     // 公休等は既に除外されているはずだが念のため
@@ -2058,7 +2173,11 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
                         leaveGroup.push(s);
                         shifts[s.name].assignments[d] = '特休';
                     } else {
-                        if (!existing || existing === '/') {
+                        // Only assign roles to undefined or '/' or '出勤' (if not locked, which we checked)
+                        // Wait, if it's '出勤' but unlocked, it means AI assigned '出勤' in previous phase.
+                        // So we can upgrade it to Role.
+
+                        if (!existing || existing === '/' || existing === '出勤') {
                             workGroup.push(s);
                         }
                     }
@@ -2088,6 +2207,7 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
                 // 残りは出勤
                 workGroup.forEach(s => {
                     const current = shifts[s.name].assignments[d];
+                    // If undefined or /, set to Work.
                     if (current === undefined || current === '/') {
                         shifts[s.name].assignments[d] = '出勤';
                     }
@@ -2118,6 +2238,7 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
             if (targetGroup && s.shiftType !== targetGroup) return;
 
             const contractTarget = s.contractDays;
+            const locks = shifts[s.name]?.manual_locks || []; // Locks
 
             // 出勤日数のカウント & 出勤日の特定
             let workDayKeys = [];
@@ -2128,15 +2249,27 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
 
             days.forEach(d => {
                 const role = assignments[d];
+                // Count active roles
                 if (role && role !== '/' && role !== '公休') {
                     workCount++;
-                    if (role === '出勤') workDayKeys.push(d); // 削除対象は「出勤」のみ（有休は残す）
+                    // Deletion Candidates:
+                    // 1. Role is '出勤' (we don't delete Paid/Special usually)
+                    // 2. NOT LOCKED (Crucial fix)
+                    if (role === '出勤' && !locks.includes(d)) {
+                        workDayKeys.push(d);
+                    }
                 }
             });
 
             if (workCount > contractTarget) {
                 const removeCount = workCount - contractTarget;
                 console.log(`🛡 Safety Brake: ${s.name} is over by ${removeCount}. Removing...`);
+
+                // Check if we have enough unlockable days to remove
+                // If removeCount > workDayKeys.length, we can only remove what is unlocked.
+                // Manual inputs (locked) are kept even if over contract.
+
+                const actualRemoveCount = Math.min(removeCount, workDayKeys.length);
 
                 // スマート削除: 「その日の出勤人数」が多い順（余裕がある順）にソートして消す
                 workDayKeys.sort((d1, d2) => {
@@ -2150,7 +2283,7 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
                     return getCnt(d2) - getCnt(d1); // 降順（多い日＝消す候補）
                 });
 
-                for (let i = 0; i < removeCount; i++) {
+                for (let i = 0; i < actualRemoveCount; i++) {
                     if (workDayKeys[i]) {
                         assignments[workDayKeys[i]] = '/';
                     }
