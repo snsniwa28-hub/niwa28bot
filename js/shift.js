@@ -1138,19 +1138,68 @@ export function renderShiftAdminTable() {
 
                 if (dailyRemark) cellContent += `<span class="absolute top-0 right-0 text-[8px] text-yellow-600">●</span>`;
 
-                // Visual Indicator for Locked Cells
+                // Visual Indicator for Locked Cells & Warning
                 if (isLocked) {
-                    // Add a small lock icon or border style
-                    // Let's use a subtle lock icon in the corner, or a border color.
-                    // A small lock icon in top-left might conflict with text.
-                    // Let's try a dashed border or a small icon overlay.
-                    // Given the cell is small, an overlay icon `🔒` at bottom-right or top-left.
-                    // Let's use top-left.
                     cellContent += `<span class="absolute top-0 left-0 text-[8px] opacity-60 pointer-events-none">🔒</span>`;
-                    // And maybe a slight background tint to signify "Frozen"?
-                    // But background is already used for Role.
-                    // Let's add a ring/border if not already heavily bordered.
-                    // Actually, just the icon is cleanest.
+
+                    // Check for Request Mismatch (Warning)
+                    let reqLabel = '';
+                    if (isOffReq) reqLabel = '公休';
+                    else if (isWorkReq) {
+                        if (reqType === 'PAID') reqLabel = '有休';
+                        else if (reqType === 'SPECIAL') reqLabel = '特休';
+                        else reqLabel = '出勤';
+                    } else {
+                        reqLabel = ''; // No Request
+                    }
+
+                    // Normalize Assignment for Comparison
+                    let assignLabel = assignment;
+                    if (assignLabel === '/' || assignLabel === '') assignLabel = '公休'; // Treat / or blank as Off for comparison? Or explicitly as "Not Work"
+                    else if (assignLabel === 'A' || assignLabel === 'B' || assignLabel === '出勤' || assignLabel === '中番' || assignLabel.includes('金') || assignLabel.includes('倉') || assignLabel.includes('責')) {
+                        assignLabel = '出勤';
+                    }
+
+                    // Normalize Request
+                    let simpleReq = reqLabel;
+                    if (simpleReq === '早番' || simpleReq === '遅番' || simpleReq === '出勤') simpleReq = '出勤';
+
+                    // Mismatch Logic
+                    // 1. Request is Leave (Paid/Special/Off), but Assignment is Work
+                    // 2. Request is Work, but Assignment is Off (/)
+                    // 3. Request is Paid/Special, but Assignment is normal Work
+
+                    let isMismatch = false;
+
+                    // If Request is Paid/Special/Off (Leave Types)
+                    if (reqLabel === '有休' || reqLabel === '特休' || reqLabel === '公休') {
+                         // If assigned Work (any work role) -> Mismatch
+                         if (assignment !== '公休' && assignment !== '/' && assignment !== '' && assignment !== '有休' && assignment !== '特休') {
+                             isMismatch = true;
+                         }
+                         // If Request is Paid/Special but assigned just '公休' or '/' -> Technical Mismatch?
+                         // User said: "有休希望の日に無理やり出勤を入れたら...".
+                         // Usually Paid -> Work is the main warning.
+                         // What if Paid -> Public Holiday? Probably fine, but user might want to know.
+                         // Let's focus on LEAVE vs WORK conflict.
+
+                         // If request is Paid, and assignment is NOT Paid -> Mismatch
+                         if (reqLabel === '有休' && assignment !== '有休') isMismatch = true;
+                         // If request is Special, and assignment is NOT Special -> Mismatch
+                         if (reqLabel === '特休' && assignment !== '特休') isMismatch = true;
+                    }
+
+                    // If Request is Work (Early/Late/Any)
+                    if (simpleReq === '出勤') {
+                         // If assigned Off ('/', '', '公休') -> Mismatch
+                         if (assignment === '/' || assignment === '' || assignment === '公休') {
+                             isMismatch = true;
+                         }
+                    }
+
+                    if (isMismatch) {
+                        cellContent += `<span class="absolute top-0 right-0 text-[10px] pointer-events-none" title="元: ${reqLabel || 'なし'}">⚠️</span>`;
+                    }
                 }
 
                 // UPDATED: Cell padding
@@ -1378,36 +1427,17 @@ function executeAdminAction(role) {
     const day = shiftState.selectedDay;
     const name = shiftState.selectedStaff;
 
-    // LOCK: All manual admin actions trigger a lock
-    addManualLock(name, day);
-
     if (role === 'clear') {
+         // NEW BEHAVIOR: Clear = UNLOCK & RESET TO REQUEST
+         // User requested: "Clear" should revert to "AI/Request State" (Unlocked)
+         // So we remove the lock and delete the manual assignment, letting the underlying request shine through or stay blank.
+
+         removeManualLock(name, day);
+
          if(!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { assignments: {}, daily_remarks: {} };
          if(!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
 
-         // DELETE assignment to reset to unassigned/blank state
-         // IMPORTANT: Even 'cleared' manual input is now locked as "Explicitly Empty"
-         // But the system treats 'undefined' as 'unassigned'.
-         // To lock a "Blank", we might need to set it to '' (empty string) or ensure logic respects lock on undefined.
-         // Let's set it to '' (Empty String) so it's a value we can see is "Set to Empty".
-         // Previously we deleted it. Now we set to ''.
-
-         shiftState.shiftDataCache[name].assignments[day] = '';
-
-         if (shiftState.shiftDataCache[name].daily_remarks) {
-             delete shiftState.shiftDataCache[name].daily_remarks[day];
-         }
-
-         updateViewAfterAction();
-         showToast("✅ クリア(固定)しました", "black");
-         closeShiftActionModal();
-    } else if (role === 'revert') {
-         // Revert means "Go back to Request".
-         // Does this mean "Unlock"? Probably yes, if we are reverting to "Default".
-         // But user might want to "Force Request".
-         // Let's assume 'Revert' = "Reset to default state (Unlocked)".
-         removeManualLock(name, day);
-
+         // Reset to Request State (Logic borrowed from Revert)
          const data = shiftState.shiftDataCache[name];
          const req = data?.shift_requests?.[day];
          const isOff = data?.off_days?.includes(day);
@@ -1423,28 +1453,34 @@ function executeAdminAction(role) {
              else newVal = '出勤';
          }
 
-         // If no request -> '' (Blank).
-         if (!isOff && !isWork) newVal = '';
+         // If no request -> delete key (Truly unassigned)
+         if (!isOff && !isWork) {
+             delete shiftState.shiftDataCache[name].assignments[day];
+         } else {
+             // If request exists, set it as the current value (but unlocked)
+             // This ensures display is correct immediately
+             shiftState.shiftDataCache[name].assignments[day] = newVal;
+         }
 
-         if(!shiftState.shiftDataCache[name]) shiftState.shiftDataCache[name] = { assignments: {} };
-         if(!shiftState.shiftDataCache[name].assignments) shiftState.shiftDataCache[name].assignments = {};
-
-         // If reverting to a specific value, do we lock it?
-         // "Revert" usually implies "Unfix". So we removed lock above.
-         // Just set the value derived from request.
-         // If it's unlocked, AI can change it again.
-         // If user wants to "Lock to Request", they should select the role manually.
-
-         // SPECIAL CASE: If reverting to 'Blank' (no request), we delete the key to be truly unassigned.
-         if (newVal === '') delete shiftState.shiftDataCache[name].assignments[day];
-         else shiftState.shiftDataCache[name].assignments[day] = newVal;
+         // Also clear remarks if any? Maybe not daily remarks.
+         // User didn't specify, but usually "Clear" clears remarks too?
+         // Let's keep remarks for now as they might be important notes.
+         // if (shiftState.shiftDataCache[name].daily_remarks) {
+         //    delete shiftState.shiftDataCache[name].daily_remarks[day];
+         // }
 
          updateViewAfterAction();
-         showToast("✅ 希望/初期状態に戻しました(ロック解除)", "black");
+         showToast("🔓 ロック解除 (希望/初期状態へ)", "black");
          closeShiftActionModal();
+
+    } else if (role === 'revert') {
+         // Revert is now synonymous with Clear in this new logic, but let's keep it for compatibility
+         executeAdminAction('clear');
     } else {
+        // Any specific role setting (including '/') is a LOCK
+        addManualLock(name, day);
         setAdminRole(role);
-        showToast("✅ 変更(固定)しました", "black");
+        showToast("🔒 固定しました", "black");
         closeShiftActionModal();
     }
 }
