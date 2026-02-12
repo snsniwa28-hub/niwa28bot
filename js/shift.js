@@ -18,7 +18,15 @@ let shiftState = {
     earlyWarehouseMode: false,
     prevMonthCache: null,
     currentStaffTab: 'early',
-    autoShiftSettings: { money: false, warehouse: false, hall_resp: false } // New
+    autoShiftSettings: {
+        money: false,
+        warehouse: false,
+        hall_resp: false,
+        managerWeekday: 1,
+        managerWeekend: 2,
+        maxStreak: 6,
+        blockLateEarly: true
+    }
 };
 
 const RANKS = {
@@ -207,6 +215,9 @@ export function createShiftModals() {
                     <button id="btn-shift-settings" class="text-xs font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition flex items-center gap-2">
                         <span>⚙️</span> 役職割り振り設定
                     </button>
+                    <button id="btn-shift-rules" class="text-xs font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg transition flex items-center gap-2">
+                        <span>🤖</span> 作成ルール設定
+                    </button>
                     <button id="btn-ai-early" class="text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2 ml-2">
                         <span>🤖</span> 早番(A)作成
                     </button>
@@ -306,6 +317,7 @@ export function createShiftModals() {
             <div class="grid grid-cols-1 gap-3">
                 <button id="btn-mobile-clear" class="w-full py-4 bg-rose-50 text-rose-600 font-bold rounded-xl border border-rose-100">割り振りをクリア</button>
                 <button id="btn-mobile-settings" class="w-full py-4 bg-slate-50 text-slate-600 font-bold rounded-xl border border-slate-100">⚙️ 役職割り振り設定</button>
+                <button id="btn-mobile-rules" class="w-full py-4 bg-slate-50 text-slate-600 font-bold rounded-xl border border-slate-100">🤖 作成ルール設定</button>
                 <button id="btn-mobile-ai-early" class="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2">
                     <span>🤖</span> 早番(A)作成
                 </button>
@@ -317,7 +329,7 @@ export function createShiftModals() {
         </div>
     </div>
 
-    <!-- AUTO SHIFT SETTINGS MODAL -->
+    <!-- AUTO SHIFT SETTINGS MODAL (Roles Only) -->
     <div id="auto-shift-settings-modal" class="modal-overlay hidden" style="z-index: 100;">
         <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl">
             <h3 class="font-bold text-slate-800 text-lg mb-4">⚙️ 役職割り振り設定</h3>
@@ -344,6 +356,37 @@ export function createShiftModals() {
 
             <div class="mt-6 pt-4 border-t border-slate-100">
                 <button onclick="document.getElementById('auto-shift-settings-modal').classList.add('hidden')" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW MODAL: SHIFT CREATION RULES -->
+    <div id="shift-creation-rules-modal" class="modal-overlay hidden" style="z-index: 100;">
+        <div class="modal-content p-6 w-full max-w-sm bg-white rounded-2xl shadow-xl">
+            <h3 class="font-bold text-slate-800 text-lg mb-4">🤖 シフト作成ルール設定</h3>
+            <p class="text-xs font-bold text-slate-400 mb-6">AI自動作成時の制約条件を設定します。</p>
+
+            <div class="bg-slate-50 p-4 rounded-xl space-y-4 border border-slate-100">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 mb-1 block">平日 責任者最低人数</label>
+                    <input type="number" id="cfg-manager-weekday" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" min="0" value="1">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 mb-1 block">土日祝 責任者最低人数</label>
+                    <input type="number" id="cfg-manager-weekend" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" min="0" value="2">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 mb-1 block">最大連勤数 (許可する日数)</label>
+                    <input type="number" id="cfg-max-streak" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" min="3" max="14" value="6">
+                </div>
+                <label class="flex items-center justify-between cursor-pointer pt-1 hover:bg-slate-100 rounded-lg p-2 -mx-2 transition">
+                    <span class="text-[10px] font-bold text-slate-500">遅番翌日の早番を禁止</span>
+                    <input type="checkbox" id="cfg-block-late-early" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500">
+                </label>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-100">
+                <button onclick="document.getElementById('shift-creation-rules-modal').classList.add('hidden')" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition">閉じる</button>
             </div>
         </div>
     </div>
@@ -540,6 +583,16 @@ function setupShiftEventListeners() {
     $('#btn-shift-settings').onclick = openSettings;
     $('#btn-mobile-settings').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); openSettings(); };
 
+    const openRules = () => {
+         document.getElementById('cfg-manager-weekday').value = shiftState.autoShiftSettings.managerWeekday ?? 1;
+         document.getElementById('cfg-manager-weekend').value = shiftState.autoShiftSettings.managerWeekend ?? 2;
+         document.getElementById('cfg-max-streak').value = shiftState.autoShiftSettings.maxStreak ?? 6;
+         document.getElementById('cfg-block-late-early').checked = shiftState.autoShiftSettings.blockLateEarly ?? true;
+         document.getElementById('shift-creation-rules-modal').classList.remove('hidden');
+    };
+    $('#btn-shift-rules').onclick = openRules;
+    $('#btn-mobile-rules').onclick = () => { $('#mobile-admin-menu').classList.add('hidden'); openRules(); };
+
     // New AI Buttons
     // AI廃止 -> 高速ロジックへ直結 (executeAutoShiftLogic(isPreview, targetGroup))
     $('#btn-ai-early').onclick = () => { if(validateTargets('A')) executeAutoShiftLogic(true, 'A'); };
@@ -577,9 +630,15 @@ function setupShiftEventListeners() {
     $('#mobile-fab-menu').onclick = () => $('#mobile-admin-menu').classList.remove('hidden');
 
     // Auto Shift Settings Listeners
-    $('#chk-as-money').onchange = (e) => { shiftState.autoShiftSettings.money = e.target.checked; };
-    $('#chk-as-warehouse').onchange = (e) => { shiftState.autoShiftSettings.warehouse = e.target.checked; };
-    $('#chk-as-hall-resp').onchange = (e) => { shiftState.autoShiftSettings.hall_resp = e.target.checked; };
+    $('#chk-as-money').onchange = (e) => { shiftState.autoShiftSettings.money = e.target.checked; saveStoreConfig(); };
+    $('#chk-as-warehouse').onchange = (e) => { shiftState.autoShiftSettings.warehouse = e.target.checked; saveStoreConfig(); };
+    $('#chk-as-hall-resp').onchange = (e) => { shiftState.autoShiftSettings.hall_resp = e.target.checked; saveStoreConfig(); };
+
+    // Logic Settings Listeners
+    $('#cfg-manager-weekday').onchange = (e) => { shiftState.autoShiftSettings.managerWeekday = parseInt(e.target.value) || 1; saveStoreConfig(); };
+    $('#cfg-manager-weekend').onchange = (e) => { shiftState.autoShiftSettings.managerWeekend = parseInt(e.target.value) || 2; saveStoreConfig(); };
+    $('#cfg-max-streak').onchange = (e) => { shiftState.autoShiftSettings.maxStreak = parseInt(e.target.value) || 6; saveStoreConfig(); };
+    $('#cfg-block-late-early').onchange = (e) => { shiftState.autoShiftSettings.blockLateEarly = e.target.checked; saveStoreConfig(); };
 
     $('#btn-clear-work-only').onclick = clearWorkOnly;
     $('#btn-clear-roles-only').onclick = clearRolesOnly;
@@ -1698,36 +1757,37 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
     // Uses physicalWorkDays for "Prev Day" check? Or assignedDays?
     // Usually Paid Leave doesn't cause interval issues. So use physicalWorkDays.
     // If I took Paid Leave yesterday, I can work Early today regardless of my shift type.
+    if (shiftState.autoShiftSettings.blockLateEarly) {
+        if (day > 1) {
+            if (staff.physicalWorkDays.includes(day - 1)) {
+                    let prevEffective = staff.shiftType;
+                    if (staff.requests.types[day-1] === 'early') prevEffective = 'A';
+                    if (staff.requests.types[day-1] === 'late') prevEffective = 'B';
 
-    if (day > 1) {
-        if (staff.physicalWorkDays.includes(day - 1)) {
-                let prevEffective = staff.shiftType;
-                if (staff.requests.types[day-1] === 'early') prevEffective = 'A';
-                if (staff.requests.types[day-1] === 'late') prevEffective = 'B';
+                    let currentEffective = staff.shiftType;
+                    if (staff.requests.types[day] === 'early') currentEffective = 'A';
+                    if (staff.requests.types[day] === 'late') currentEffective = 'B';
 
+                    if (prevEffective === 'B' && currentEffective === 'A') return false;
+            }
+        } else if (day === 1) {
+            const lastRole = prevMonthAssignments[staff.name]?.[prevDaysCount];
+
+            // 明示的な遅番、または「出勤」かつ「B番スタッフ」の場合も遅番とみなす
+            const isExplicitLate = lastRole && (lastRole.includes('遅') || lastRole.includes('B'));
+            const isImplicitLate = lastRole &&
+                                   lastRole !== '公休' && lastRole !== '/' &&
+                                   lastRole !== '有休' && lastRole !== 'PAID' &&
+                                   lastRole !== '特休' && lastRole !== 'SPECIAL' &&
+                                   staff.shiftType === 'B';
+
+            if (isExplicitLate || isImplicitLate) {
                 let currentEffective = staff.shiftType;
                 if (staff.requests.types[day] === 'early') currentEffective = 'A';
-                if (staff.requests.types[day] === 'late') currentEffective = 'B';
 
-                if (prevEffective === 'B' && currentEffective === 'A') return false;
-        }
-    } else if (day === 1) {
-        const lastRole = prevMonthAssignments[staff.name]?.[prevDaysCount];
-
-        // 明示的な遅番、または「出勤」かつ「B番スタッフ」の場合も遅番とみなす
-        const isExplicitLate = lastRole && (lastRole.includes('遅') || lastRole.includes('B'));
-        const isImplicitLate = lastRole &&
-                               lastRole !== '公休' && lastRole !== '/' &&
-                               lastRole !== '有休' && lastRole !== 'PAID' &&
-                               lastRole !== '特休' && lastRole !== 'SPECIAL' &&
-                               staff.shiftType === 'B';
-
-        if (isExplicitLate || isImplicitLate) {
-            let currentEffective = staff.shiftType;
-            if (staff.requests.types[day] === 'early') currentEffective = 'A';
-
-            // 遅番明けの早番(A)は禁止
-            if (currentEffective === 'A') return false;
+                // 遅番明けの早番(A)は禁止
+                if (currentEffective === 'A') return false;
+            }
         }
     }
 
@@ -1749,10 +1809,10 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
 
     if (currentSeq > staff.maxConsecutive) return false;
 
-    // HARD CONSTRAINT: Absolutely Block 6 Consecutive Days (Max Streak = 5)
-    // regardless of user settings.
-    // If assigning this day results in 6 days streak, return false.
-    if (currentSeq >= 6) return false;
+    // HARD CONSTRAINT: Block if exceeds Max Streak
+    // If setting is 6, we allow 6. So block if currentSeq > 6.
+    const maxStreak = shiftState.autoShiftSettings.maxStreak ?? 6;
+    if (currentSeq > maxStreak) return false;
 
     // 4. Sandwich Check (Removed as per new requirements)
     // AI or Logic is allowed to create Sandwich shifts if necessary.
@@ -1894,7 +1954,9 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
                 const isHoliday = holidays.includes(d);
 
                 // 土日祝は2人、平日は1人
-                const baseReq = (dayOfWeek === 0 || dayOfWeek === 6 || isHoliday) ? 2 : 1;
+                const baseReq = (dayOfWeek === 0 || dayOfWeek === 6 || isHoliday)
+                    ? (shiftState.autoShiftSettings.managerWeekend ?? 2)
+                    : (shiftState.autoShiftSettings.managerWeekday ?? 1);
 
                 // ただし、そのグループに責任者がそもそも何人いるか？ (身の丈チェック)
                 const totalResp = staffObjects.filter(s => s.shiftType === st && isResponsible(s)).length;
@@ -2780,7 +2842,31 @@ export async function initStaffData() {
 
             console.log("Staff data initialized via Shift module.");
         }
+        await loadStoreConfig();
     } catch(e) {
         console.error("Staff Init Error:", e);
+    }
+}
+
+async function loadStoreConfig() {
+    try {
+        const docRef = doc(db, 'masters', 'store_config');
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+            const data = snap.data();
+            // Merge with defaults
+            shiftState.autoShiftSettings = { ...shiftState.autoShiftSettings, ...data };
+        }
+    } catch (e) {
+        console.error("Store Config Load Error:", e);
+    }
+}
+
+async function saveStoreConfig() {
+    try {
+        const docRef = doc(db, 'masters', 'store_config');
+        await setDoc(docRef, shiftState.autoShiftSettings, { merge: true });
+    } catch (e) {
+        console.error("Store Config Save Error:", e);
     }
 }
