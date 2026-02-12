@@ -1961,9 +1961,13 @@ async function executeAutoShiftLogic(isPreview = true, targetGroup = null) {
             if (targetGroup && s.shiftType !== targetGroup) return;
 
             const requests = s.requests.types || {};
+            const manualLocks = shifts[s.name]?.manual_locks || []; // Get Locks
 
             // 全日チェックして希望を反映
             for (let d = 1; d <= daysInMonth; d++) {
+                // 手入力ロックがある場合は、希望があっても無視する（ロック優先）
+                if (manualLocks.includes(d)) continue;
+
                 const reqType = requests[d];
 
                 if (reqType === 'PAID' || reqType === 'SPECIAL') {
