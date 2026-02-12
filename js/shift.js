@@ -376,7 +376,7 @@ export function createShiftModals() {
                     <input type="number" id="cfg-manager-weekend" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" min="0" value="2">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-500 mb-1 block">最大連勤リミット</label>
+                    <label class="text-[10px] font-bold text-slate-500 mb-1 block">最大連勤数 (許可する日数)</label>
                     <input type="number" id="cfg-max-streak" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none" min="3" max="14" value="6">
                 </div>
                 <label class="flex items-center justify-between cursor-pointer pt-1 hover:bg-slate-100 rounded-lg p-2 -mx-2 transition">
@@ -1809,11 +1809,10 @@ function checkAssignmentConstraint(staff, day, prevMonthAssignments, prevDaysCou
 
     if (currentSeq > staff.maxConsecutive) return false;
 
-    // HARD CONSTRAINT: Absolutely Block 6 Consecutive Days (Max Streak = 5)
-    // regardless of user settings.
-    // If assigning this day results in 6 days streak, return false.
+    // HARD CONSTRAINT: Block if exceeds Max Streak
+    // If setting is 6, we allow 6. So block if currentSeq > 6.
     const maxStreak = shiftState.autoShiftSettings.maxStreak ?? 6;
-    if (currentSeq >= maxStreak) return false;
+    if (currentSeq > maxStreak) return false;
 
     // 4. Sandwich Check (Removed as per new requirements)
     // AI or Logic is allowed to create Sandwich shifts if necessary.
